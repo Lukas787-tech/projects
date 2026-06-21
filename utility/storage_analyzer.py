@@ -1,10 +1,47 @@
 import os
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, simpledialog
+from tkinter import ttk, filedialog, messagebox
 import subprocess
 import threading
 import time
 import shutil
+
+def send_to_recycle_bin_windows(path):
+    try:
+        import ctypes
+        from ctypes.wintypes import HWND, UINT, LPCWSTR, BOOL, LPVOID
+        
+        class SHFILEOPSTRUCTW(ctypes.Structure):
+            _fields_ = [
+                ("hwnd", HWND),
+                ("wFunc", UINT),
+                ("pFrom", LPCWSTR),
+                ("pTo", LPCWSTR),
+                ("fFlags", ctypes.c_uint16),
+                ("fAnyOperationsAborted", BOOL),
+                ("hNameMappings", LPVOID),
+                ("lpszProgressTitle", LPCWSTR)
+            ]
+        
+        FO_DELETE = 3
+        FOF_ALLOWUNDO = 0x40
+        FOF_NOCONFIRMATION = 0x10
+        
+        shfos = SHFILEOPSTRUCTW()
+        shfos.hwnd = None
+        shfos.wFunc = FO_DELETE
+        shfos.pFrom = os.path.abspath(path) + '\0'
+        shfos.pTo = None
+        shfos.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION
+        shfos.fAnyOperationsAborted = False
+        shfos.hNameMappings = None
+        shfos.lpszProgressTitle = None
+        
+        result = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(shfos))
+        return result == 0
+    except Exception as e:
+        print(f"Recycle Bin Error: {e}")
+        return False
 
 def format_size(size):
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
@@ -46,7 +83,7 @@ class StorageAnalyzerApp:
         self.entry_path.bind('<Return>', lambda e: self.start_analysis())
 
         ttk.Button(top_frame, text="Browse...", command=self.browse).pack(side=tk.LEFT, padx=2)
-        ttk.Button(top_frame, text="Up Level", command=self.go_up).pack(side=tk.LEFT, padx=2)
+        ttk.Button(top_frame, text="\u2191 Up Level", command=self.go_up).pack(side=tk.LEFT, padx=2)
         
         self.btn_analyze = tk.Button(top_frame, text="Analyze", command=self.start_analysis, bg="#4CAF50", fg="white", font=('Segoe UI', 10, 'bold'), relief="flat", padx=10)
         self.btn_analyze.pack(side=tk.LEFT, padx=10)
@@ -76,12 +113,14 @@ class StorageAnalyzerApp:
 
         # Context Menu
         self.menu = tk.Menu(self.root, tearoff=0)
-        self.menu.add_command(label="Open in Explorer", command=self.open_selected)
-        self.menu.add_command(label="Open Folder Path", command=self.open_selected_dir)
+        self.menu.add_command(label="Open in File Explorer", command=self.open_selected_explorer)
+        self.menu.add_command(label="Drill Down (Enter Folder)", command=self.drill_down)
         self.menu.add_separator()
-        self.menu.add_command(label="Delete (Send to Trash)", command=self.delete_selected)
+        self.menu.add_command(label="Move to Recycle Bin", command=lambda: self.delete_selected(recycle=True))
+        self.menu.add_command(label="Permanently Delete", command=lambda: self.delete_selected(recycle=False))
         
-        self.tree.bind("<Double-1>", lambda e: self.open_selected())
+        # Double click to drill down into folder
+        self.tree.bind("<Double-1>", lambda e: self.drill_down())
         self.tree.bind("<Button-3>", self.show_context_menu)
 
         # Bottom frame for status and progress
@@ -103,9 +142,24 @@ class StorageAnalyzerApp:
     def go_up(self):
         current = self.current_path.get()
         parent = os.path.dirname(current)
-        if parent and os.path.isdir(parent):
+        if parent and os.path.isdir(parent) and parent != current:
             self.current_path.set(parent)
             self.start_analysis()
+
+    def drill_down(self):
+        selected = self.tree.selection()
+        if not selected: return
+        
+        item = self.tree.item(selected[0])
+        item_type = item["values"][2]
+        path = item["values"][3]
+        
+        if item_type == "Folder" and os.path.isdir(path):
+            self.current_path.set(path)
+            self.start_analysis()
+        else:
+            # If it's a file, just open it in explorer
+            self.open_selected_explorer()
 
     def show_context_menu(self, event):
         item = self.tree.identify_row(event.y)
@@ -142,7 +196,6 @@ class StorageAnalyzerApp:
         """Fast size calculator using scandir iteratively instead of os.walk"""
         total = 0
         try:
-            # using a stack for iterative traversal avoids recursion depth issues and is slightly faster
             dirs = [path]
             while dirs:
                 if self.cancel_scan:
@@ -239,44 +292,40 @@ class StorageAnalyzerApp:
         # reverse sort next time
         self.tree.heading(col, command=lambda: self.sort_tree(col, not reverse))
 
-    def open_selected(self):
+    def open_selected_explorer(self):
         selected = self.tree.selection()
         if not selected: return
         path = self.tree.item(selected[0])["values"][3]
         if os.path.exists(path):
-            self._launch_path(path)
+            try:
+                if os.name == 'nt':
+                    os.startfile(path)
+                else:
+                    subprocess.call(["xdg-open", path])
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to open path: {e}")
 
-    def open_selected_dir(self):
-        selected = self.tree.selection()
-        if not selected: return
-        path = self.tree.item(selected[0])["values"][3]
-        if os.path.exists(path):
-            if os.path.isfile(path):
-                path = os.path.dirname(path)
-            self._launch_path(path)
-
-    def _launch_path(self, path):
-        try:
-            if os.name == 'nt':
-                os.startfile(path)
-            else:
-                subprocess.call(["xdg-open", path])
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to open: {e}")
-
-    def delete_selected(self):
+    def delete_selected(self, recycle=True):
         selected = self.tree.selection()
         if not selected: return
         
         path = self.tree.item(selected[0])["values"][3]
-        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to permanently delete:\n{path}?"):
+        
+        action_name = "move to Recycle Bin" if recycle else "PERMANENTLY delete"
+        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to {action_name}:\n{path}?"):
             try:
-                if os.path.isfile(path):
-                    os.remove(path)
+                if recycle:
+                    success = send_to_recycle_bin_windows(path)
+                    if not success:
+                        raise Exception("Windows API failed to send to Recycle Bin.")
                 else:
-                    shutil.rmtree(path)
+                    if os.path.isfile(path):
+                        os.remove(path)
+                    else:
+                        shutil.rmtree(path)
+                
                 self.tree.delete(selected[0])
-                messagebox.showinfo("Success", "Deleted successfully.")
+                messagebox.showinfo("Success", f"Successfully deleted.")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to delete: {e}\n(Might require Administrator privileges)")
 
