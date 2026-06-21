@@ -1,0 +1,330 @@
+/* ==========================================================================
+   THEME PALETTES (CSS VARIABLE DEFINITIONS)
+   ========================================================================== */
+
+/* Fallback defaults (Apple Dark) */
+:root {
+  --bg-color: #0c0c0c;
+  --blur-intensity: 0px;
+  --accent-color: #007aff;
+  --text-color: #cccccc;
+  --terminal-font: 'Consolas', 'Courier New', monospace;
+  --prompt-color: #4ade80;
+  --error-color: #f87171;
+  --ai-color: #a78bfa;
+  --border-color: #333333;
+  --titlebar-bg: #1e1e1e;
+  --titlebar-text: #ffffff;
+  --ghost-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Apple Dark Glass */
+body.theme-apple-dark {
+  --bg-color: rgba(12, 12, 12, 0.95);
+  --text-color: #cccccc;
+  --prompt-color: #4ade80;
+  --error-color: #f87171;
+  --ai-color: #a78bfa;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --titlebar-bg: #1e1e1e;
+  --titlebar-text: #ffffff;
+  --ghost-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Apple Light Glass */
+body.theme-apple-light {
+  --bg-color: rgba(244, 244, 244, 0.95);
+  --text-color: #111111;
+  --prompt-color: #16a34a;
+  --error-color: #dc2626;
+  --ai-color: #7c3aed;
+  --border-color: #cccccc;
+  --titlebar-bg: #e0e0e0;
+  --titlebar-text: #000000;
+  --ghost-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Cyberpunk Neon */
+body.theme-cyberpunk {
+  --bg-color: rgba(10, 5, 20, 0.95);
+  --text-color: #00f0ff;
+  --prompt-color: #00f0ff;
+  --error-color: #fe007a;
+  --ai-color: #fe007a;
+  --border-color: rgba(0, 240, 255, 0.3);
+  --titlebar-bg: #120a1c;
+  --titlebar-text: #00f0ff;
+  --ghost-color: rgba(0, 240, 255, 0.3);
+}
+
+/* Obsidian Slate */
+body.theme-obsidian {
+  --bg-color: rgba(15, 15, 18, 0.96);
+  --text-color: #a9b2c3;
+  --prompt-color: #64748b;
+  --error-color: #ef4444;
+  --ai-color: #e2e8f0;
+  --border-color: rgba(255, 255, 255, 0.05);
+  --titlebar-bg: #16171a;
+  --titlebar-text: #a9b2c3;
+  --ghost-color: rgba(169, 178, 195, 0.2);
+}
+
+/* Sakura Blossom */
+body.theme-sakura {
+  --bg-color: rgba(255, 245, 247, 0.96);
+  --text-color: #5f3e46;
+  --prompt-color: #ff69b4;
+  --error-color: #ef4444;
+  --ai-color: #ff69b4;
+  --border-color: rgba(255, 182, 193, 0.3);
+  --titlebar-bg: #fff0f5;
+  --titlebar-text: #5f3e46;
+  --ghost-color: rgba(95, 62, 70, 0.2);
+}
+
+/* Amethyst Purple */
+body.theme-amethyst {
+  --bg-color: rgba(24, 12, 40, 0.95);
+  --text-color: #e9d5ff;
+  --prompt-color: #c084fc;
+  --error-color: #ef4444;
+  --ai-color: #a855f7;
+  --border-color: rgba(168, 85, 247, 0.25);
+  --titlebar-bg: #180c28;
+  --titlebar-text: #e9d5ff;
+  --ghost-color: rgba(233, 213, 255, 0.25);
+}
+
+/* ==========================================================================
+   GLOBAL LAYOUT STYLES
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--terminal-font);
+  background: transparent;
+}
+
+.terminal-container {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.titlebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 16px;
+  background: var(--titlebar-bg);
+  border-bottom: 1px solid var(--border-color);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  user-select: none;
+}
+
+.title-text {
+  flex-grow: 1;
+  cursor: grab;
+  color: var(--titlebar-text);
+}
+
+.title-text:active {
+  cursor: grabbing;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+  margin-left: 8px;
+}
+
+.icon-btn:hover {
+  opacity: 1;
+}
+
+.terminal-body {
+  flex-grow: 1;
+  padding: 8px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom Scrollbar */
+.terminal-body::-webkit-scrollbar {
+  width: 8px;
+}
+.terminal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.terminal-body::-webkit-scrollbar-thumb {
+  background: var(--ghost-color);
+}
+
+.terminal-line {
+  word-break: break-all;
+  white-space: pre-wrap;
+  margin-bottom: 2px;
+}
+
+.line-prompt {
+  color: var(--prompt-color);
+  margin-right: 8px;
+}
+
+.line-error {
+  color: var(--error-color);
+}
+
+.line-ai {
+  color: var(--ai-color);
+  margin-top: 4px;
+  margin-bottom: 4px;
+  padding-left: 12px;
+  border-left: 2px solid var(--ai-color);
+  font-style: italic;
+}
+
+.input-line {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 2px;
+}
+
+.prompt {
+  color: var(--prompt-color);
+  margin-right: 8px;
+  white-space: pre;
+}
+
+.input-wrapper {
+  position: relative;
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+}
+
+#terminal-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-color);
+  font-family: var(--terminal-font);
+  font-size: 14px;
+  z-index: 2;
+  position: relative;
+  caret-color: var(--text-color);
+}
+
+.ghost-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--ghost-color);
+  pointer-events: none;
+  z-index: 1;
+  white-space: pre;
+}
+
+/* Inline code blocks in AI output */
+.terminal-inline-code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: var(--terminal-font);
+  cursor: pointer;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  transition: all 0.2s ease;
+  user-select: all;
+  position: relative;
+  display: inline-block;
+}
+
+.terminal-inline-code:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--accent-color);
+  color: #ffffff;
+}
+
+/* Hover Copy button for terminal lines */
+.terminal-copy-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(30, 30, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-color);
+  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.terminal-line:hover .terminal-copy-btn {
+  opacity: 1;
+}
+
+.terminal-copy-btn:hover {
+  background: var(--accent-color);
+  color: #ffffff;
+  border-color: var(--accent-color);
+}
+
+/* Terminal toast notifications */
+.terminal-toast-msg {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(10, 10, 10, 0.9);
+  border: 1px solid var(--accent-color);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  opacity: 0;
+  transition: all 0.2s ease;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.terminal-toast-msg.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

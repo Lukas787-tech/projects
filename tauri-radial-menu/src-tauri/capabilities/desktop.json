@@ -1,0 +1,21 @@
+{
+  "identifier": "desktop-capability",
+  "platforms": [
+    "macOS",
+    "windows",
+    "linux"
+  ],
+  "windows": [
+    "main",
+    "settings",
+    "overlay",
+    "assistant",
+    "ai_terminal",
+    "project_board",
+    "design_maker"
+  ],
+  "permissions": [
+    "global-shortcut:default",
+    "allow-all-app-commands"
+  ]
+}

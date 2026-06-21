@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design Maker - Radial Menu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="design_maker.css">
+  <script type="module" src="/design_maker.js" defer></script>
+</head>
+<body>
+  <div class="dm-container">
+    <header class="dm-header" data-tauri-drag-region>
+      <div class="dm-header-left" data-tauri-drag-region>
+        <span class="dm-header-icon">🎨</span>
+        <div class="dm-header-text" data-tauri-drag-region>
+          <h1>Design Maker</h1>
+          <span class="dm-subtitle">Visual Theme Builder</span>
+        </div>
+      </div>
+      <div class="dm-header-controls">
+        <button id="dm-close-btn" class="icon-btn" title="Close">✕</button>
+      </div>
+    </header>
+
+    <div class="dm-body">
+      <!-- Left: Controls Panel -->
+      <aside class="dm-controls">
+        <!-- Preset Templates -->
+        <section class="dm-section" data-section="presets">
+          <h3 class="dm-section-title" data-toggle="presets">
+            <span>🎭 Presets</span>
+            <span class="dm-chevron">▾</span>
+          </h3>
+          <div class="dm-section-body open" id="section-presets">
+            <div class="dm-presets-grid" id="presets-grid">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Color Palette -->
+        <section class="dm-section" data-section="colors">
+          <h3 class="dm-section-title" data-toggle="colors">
+            <span>🎨 Colors</span>
+            <span class="dm-chevron">▾</span>
+          </h3>
+          <div class="dm-section-body open" id="section-colors">
+            <div class="dm-color-grid">
+              <div class="dm-color-field">
+                <label>Background</label>
+                <input type="color" id="color-bg" value="#0a0a0f">
+              </div>
+              <div class="dm-color-field">
+                <label>Surface</label>
+                <input type="color" id="color-surface" value="#1a1a2e">
+              </div>
+              <div class="dm-color-field">
+                <label>Primary</label>
+                <input type="color" id="color-primary" value="#6366f1">
+              </div>
+              <div class="dm-color-field">
+                <label>Secondary</label>
+                <input type="color" id="color-secondary" value="#8b5cf6">
+              </div>
+              <div class="dm-color-field">
+                <label>Accent</label>
+                <input type="color" id="color-accent" value="#06b6d4">
+              </div>
+              <div class="dm-color-field">
+                <label>Text</label>
+                <input type="color" id="color-text" value="#e2e8f0">
+              </div>
+              <div class="dm-color-field">
+                <label>Slice Fill</label>
+                <input type="color" id="color-slice" value="#1e1e3a">
+              </div>
+              <div class="dm-color-field">
+                <label>Slice Hover</label>
+                <input type="color" id="color-slice-hover" value="#2d2d5e">
+              </div>
+              <div class="dm-color-field">
+                <label>Hub</label>
+                <input type="color" id="color-hub" value="#111128">
+              </div>
+              <div class="dm-color-field">
+                <label>Sub-Slice</label>
+                <input type="color" id="color-sub-slice" value="#16163a">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Geometry -->
+        <section class="dm-section" data-section="geometry">
+          <h3 class="dm-section-title" data-toggle="geometry">
+            <span>📐 Geometry</span>
+            <span class="dm-chevron">▾</span>
+          </h3>
+          <div class="dm-section-body" id="section-geometry">
+            <div class="dm-slider-field">
+              <label>Inner Radius <span id="val-inner-radius">68</span></label>
+              <input type="range" id="geom-inner-radius" min="30" max="120" value="68">
+            </div>
+            <div class="dm-slider-field">
+              <label>Outer Radius <span id="val-outer-radius">185</span></label>
+              <input type="range" id="geom-outer-radius" min="120" max="250" value="185">
+            </div>
+            <div class="dm-slider-field">
+              <label>Hub Size <span id="val-hub-size">68</span></label>
+              <input type="range" id="geom-hub-size" min="30" max="120" value="68">
+            </div>
+            <div class="dm-slider-field">
+              <label>Slice Gap <span id="val-gap">0</span>°</label>
+              <input type="range" id="geom-gap" min="0" max="10" step="0.5" value="0">
+            </div>
+          </div>
+        </section>
+
+        <!-- Effects -->
+        <section class="dm-section" data-section="effects">
+          <h3 class="dm-section-title" data-toggle="effects">
+            <span>✨ Effects</span>
+            <span class="dm-chevron">▾</span>
+          </h3>
+          <div class="dm-section-body" id="section-effects">
+            <div class="dm-slider-field">
+              <label>Blur Intensity <span id="val-blur">25</span>px</label>
+              <input type="range" id="effect-blur" min="0" max="50" value="25">
+            </div>
+            <div class="dm-slider-field">
+              <label>Background Opacity <span id="val-opacity">65</span>%</label>
+              <input type="range" id="effect-opacity" min="10" max="100" value="65">
+            </div>
+            <div class="dm-slider-field">
+              <label>Glow Intensity <span id="val-glow">0.5</span></label>
+              <input type="range" id="effect-glow" min="0" max="2" step="0.1" value="0.5">
+            </div>
+            <div class="dm-slider-field">
+              <label>Border Width <span id="val-border">1</span>px</label>
+              <input type="range" id="effect-border" min="0" max="4" step="0.5" value="1">
+            </div>
+          </div>
+        </section>
+
+        <!-- AI Assist -->
+        <section class="dm-section" data-section="ai">
+          <h3 class="dm-section-title" data-toggle="ai">
+            <span>🤖 AI Theme Generator</span>
+            <span class="dm-chevron">▾</span>
+          </h3>
+          <div class="dm-section-body" id="section-ai">
+            <div class="dm-ai-input-group">
+              <textarea id="ai-theme-prompt" placeholder="Describe a theme... e.g. 'Neon cyberpunk with purple and cyan glows'" rows="3"></textarea>
+              <button id="btn-ai-generate" class="dm-btn-ai">✨ Generate Theme</button>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Center: Live Preview -->
+      <main class="dm-preview-area">
+        <div class="dm-preview-bg" id="preview-bg">
+          <svg id="preview-svg" viewBox="0 0 600 600" width="500" height="500">
+            <defs>
+              <filter id="preview-glow">
+                <feGaussianBlur stdDeviation="4" result="glow"/>
+                <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <g id="preview-slices"></g>
+            <g id="preview-sub-slices"></g>
+            <circle id="preview-hub" cx="300" cy="300" r="68" />
+            <g id="preview-icons"></g>
+            <g id="preview-labels"></g>
+            <text id="preview-hub-label" x="300" y="296" text-anchor="middle" dominant-baseline="middle" class="preview-hub-text">22:30</text>
+            <text id="preview-hub-sublabel" x="300" y="314" text-anchor="middle" dominant-baseline="middle" class="preview-hub-subtext">Sun, Jun 21</text>
+          </svg>
+        </div>
+
+        <!-- Bottom action bar -->
+        <div class="dm-action-bar">
+          <div class="dm-theme-name-group">
+            <label>Theme Name:</label>
+            <input type="text" id="theme-name-input" placeholder="my-custom-theme" value="">
+          </div>
+          <div class="dm-action-buttons">
+            <button id="btn-save-theme" class="dm-btn-save">💾 Save & Apply Theme</button>
+            <button id="btn-copy-css" class="dm-btn-secondary">📋 Copy CSS</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

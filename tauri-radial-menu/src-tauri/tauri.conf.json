@@ -1,0 +1,104 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "tauri-radial-menu",
+  "version": "0.1.0",
+  "identifier": "com.ralfm.tauri-radial-menu",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:5173",
+    "frontendDist": "../src"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "url": "index.html",
+        "title": "Radial Menu",
+        "width": 400,
+        "height": 400,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visible": false,
+        "resizable": false,
+        "skipTaskbar": true
+      },
+      {
+        "label": "settings",
+        "url": "settings.html",
+        "title": "Settings - Radial Menu",
+        "width": 720,
+        "height": 620,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": false,
+        "visible": false,
+        "resizable": false
+      },
+      {
+        "label": "assistant",
+        "url": "assistant.html",
+        "title": "AI Assistant - Radial Menu",
+        "width": 720,
+        "height": 620,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visible": false,
+        "resizable": true,
+        "skipTaskbar": true
+      },
+      {
+        "label": "ai_terminal",
+        "url": "ai_terminal.html",
+        "title": "AI Terminal",
+        "width": 640,
+        "height": 480,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": false,
+        "visible": false,
+        "resizable": false
+      },
+      {
+        "label": "project_board",
+        "url": "project_board.html",
+        "title": "Project Board - Radial Menu",
+        "width": 900,
+        "height": 700,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": false,
+        "visible": false,
+        "resizable": true
+      },
+      {
+        "label": "design_maker",
+        "url": "design_maker.html",
+        "title": "Design Maker - Radial Menu",
+        "width": 960,
+        "height": 700,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": false,
+        "visible": false,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Terminal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="ai_terminal.css" />
+    <script type="module" src="/ai_terminal.js" defer></script>
+  </head>
+  <body>
+    <div class="terminal-container">
+      <div class="titlebar" data-tauri-drag-region>
+        <span class="title-text" data-tauri-drag-region>Windows PowerShell</span>
+        <div class="title-controls">
+          <button id="min-btn" class="icon-btn" title="Minimize">_</button>
+          <button id="close-btn" class="icon-btn" title="Close">✕</button>
+        </div>
+      </div>
+      
+      <div class="terminal-body" id="terminal-body">
+        <div id="terminal-output"></div>
+        <div class="input-line">
+          <span class="prompt" id="prompt-text">PS C:\&gt;</span>
+          <div class="input-wrapper">
+            <input type="text" id="terminal-input" autocomplete="off" spellcheck="false" autofocus />
+            <span id="ghost-text" class="ghost-text"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
