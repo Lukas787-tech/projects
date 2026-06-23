@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{Manager, Emitter};
+use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
+use tauri::{Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
-use sysinfo::{System, CpuRefreshKind, RefreshKind, MemoryRefreshKind};
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 struct SubItem {
@@ -109,7 +109,9 @@ struct Plugin {
     layout_overrides: Option<LayoutOverrides>,
 }
 
-fn default_plugin_enabled() -> bool { true }
+fn default_plugin_enabled() -> bool {
+    true
+}
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 struct AppSettings {
@@ -153,11 +155,21 @@ struct PlannerEvent {
     last_run: Option<String>,
 }
 
-fn default_anim_speed() -> f64 { 1.0 }
-fn default_bg_opacity() -> f64 { 0.65 }
-fn default_accent() -> String { "#007aff".to_string() }
-fn default_autostart() -> bool { true }
-fn default_assistant_hotkey() -> String { "Control+Shift+A".to_string() }
+fn default_anim_speed() -> f64 {
+    1.0
+}
+fn default_bg_opacity() -> f64 {
+    0.65
+}
+fn default_accent() -> String {
+    "#007aff".to_string()
+}
+fn default_autostart() -> bool {
+    true
+}
+fn default_assistant_hotkey() -> String {
+    "Control+Shift+A".to_string()
+}
 
 struct OverlayState(Mutex<bool>);
 
@@ -187,7 +199,11 @@ fn get_mouse_position() -> Option<(i32, i32)> {
 }
 
 #[cfg(target_os = "windows")]
-fn get_monitor_for_cursor(window: &tauri::WebviewWindow, cx: i32, cy: i32) -> Option<tauri::Monitor> {
+fn get_monitor_for_cursor(
+    window: &tauri::WebviewWindow,
+    cx: i32,
+    cy: i32,
+) -> Option<tauri::Monitor> {
     if let Ok(monitors) = window.available_monitors() {
         for monitor in monitors {
             let pos = monitor.position();
@@ -196,7 +212,7 @@ fn get_monitor_for_cursor(window: &tauri::WebviewWindow, cx: i32, cy: i32) -> Op
             let max_x = pos.x + size.width as i32;
             let min_y = pos.y;
             let max_y = pos.y + size.height as i32;
-            
+
             if cx >= min_x && cx < max_x && cy >= min_y && cy < max_y {
                 return Some(monitor);
             }
@@ -206,26 +222,39 @@ fn get_monitor_for_cursor(window: &tauri::WebviewWindow, cx: i32, cy: i32) -> Op
 }
 
 #[cfg(not(target_os = "windows"))]
-fn get_monitor_for_cursor(_window: &tauri::WebviewWindow, _cx: i32, _cy: i32) -> Option<tauri::Monitor> {
+fn get_monitor_for_cursor(
+    _window: &tauri::WebviewWindow,
+    _cx: i32,
+    _cy: i32,
+) -> Option<tauri::Monitor> {
     None
 }
 
 fn get_settings_path(app: &tauri::AppHandle) -> PathBuf {
-    let mut path = app.path().app_data_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let mut path = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."));
     let _ = std::fs::create_dir_all(&path);
     path.push("settings.json");
     path
 }
 
 fn get_plugins_path(app: &tauri::AppHandle) -> PathBuf {
-    let mut path = app.path().app_data_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let mut path = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."));
     path.push("plugins");
     let _ = std::fs::create_dir_all(&path);
     path
 }
 
 fn get_media_helper_path(app: &tauri::AppHandle) -> PathBuf {
-    let mut path = app.path().app_data_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let mut path = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."));
     let _ = std::fs::create_dir_all(&path);
     path.push("media_helper_v2.exe");
     path
@@ -335,8 +364,8 @@ class Program {
     std::fs::write(&helper_cs, source_code)
         .map_err(|e| format!("Failed to write media_helper.cs: {:?}", e))?;
 
-    use std::process::Command;
     use std::os::windows::process::CommandExt;
+    use std::process::Command;
 
     let output = Command::new(r#"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"#)
         .creation_flags(0x08000000) // CREATE_NO_WINDOW
@@ -365,7 +394,6 @@ class Program {
 
     Ok(helper_exe)
 }
-
 
 fn get_default_settings() -> AppSettings {
     AppSettings {
@@ -515,7 +543,7 @@ fn load_settings_internal(app: &tauri::AppHandle) -> Option<AppSettings> {
 fn get_plugins(app_handle: tauri::AppHandle) -> Vec<Plugin> {
     let plugins_dir = get_plugins_path(&app_handle);
     let mut plugins = Vec::new();
-    
+
     if let Ok(entries) = std::fs::read_dir(plugins_dir) {
         for entry in entries.flatten() {
             if let Ok(content) = std::fs::read_to_string(entry.path()) {
@@ -532,13 +560,12 @@ fn get_plugins(app_handle: tauri::AppHandle) -> Vec<Plugin> {
 fn save_plugin(plugin: Plugin, app_handle: tauri::AppHandle) -> Result<(), String> {
     let mut path = get_plugins_path(&app_handle);
     path.push(format!("{}.json", plugin.id));
-    
+
     let serialized = serde_json::to_string_pretty(&plugin)
         .map_err(|e| format!("Failed to serialize plugin: {:?}", e))?;
-        
-    std::fs::write(&path, &serialized)
-        .map_err(|e| format!("Failed to write plugin: {:?}", e))?;
-        
+
+    std::fs::write(&path, &serialized).map_err(|e| format!("Failed to write plugin: {:?}", e))?;
+
     Ok(())
 }
 
@@ -546,7 +573,7 @@ fn save_plugin(plugin: Plugin, app_handle: tauri::AppHandle) -> Result<(), Strin
 fn delete_plugin(id: String, app_handle: tauri::AppHandle) -> Result<(), String> {
     let mut path = get_plugins_path(&app_handle);
     path.push(format!("{}.json", id));
-    
+
     if path.exists() {
         std::fs::remove_file(path).map_err(|e| format!("Failed to delete: {:?}", e))?;
     }
@@ -559,7 +586,7 @@ fn toggle_plugin(id: String, enabled: bool, app_handle: tauri::AppHandle) -> Res
     if let Some(plugin) = plugins.iter_mut().find(|p| p.id == id) {
         plugin.enabled = enabled;
         save_plugin(plugin.clone(), app_handle.clone())?;
-        
+
         // Broadcast that settings/plugins updated so frontend refreshes
         let settings = get_settings(app_handle.clone());
         let _ = app_handle.emit("config-updated", settings);
@@ -569,7 +596,10 @@ fn toggle_plugin(id: String, enabled: bool, app_handle: tauri::AppHandle) -> Res
 
 // Plugin-specific settings storage
 fn get_plugin_settings_path(app: &tauri::AppHandle, plugin_id: &str) -> PathBuf {
-    let mut path = app.path().app_data_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let mut path = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."));
     path.push("plugin_settings");
     let _ = std::fs::create_dir_all(&path);
     path.push(format!("{}.json", plugin_id));
@@ -577,7 +607,10 @@ fn get_plugin_settings_path(app: &tauri::AppHandle, plugin_id: &str) -> PathBuf 
 }
 
 #[tauri::command]
-fn get_plugin_settings(id: String, app_handle: tauri::AppHandle) -> Result<serde_json::Value, String> {
+fn get_plugin_settings(
+    id: String,
+    app_handle: tauri::AppHandle,
+) -> Result<serde_json::Value, String> {
     let path = get_plugin_settings_path(&app_handle, &id);
     if path.exists() {
         let content = std::fs::read_to_string(&path)
@@ -590,7 +623,11 @@ fn get_plugin_settings(id: String, app_handle: tauri::AppHandle) -> Result<serde
 }
 
 #[tauri::command]
-fn save_plugin_settings(id: String, settings: serde_json::Value, app_handle: tauri::AppHandle) -> Result<(), String> {
+fn save_plugin_settings(
+    id: String,
+    settings: serde_json::Value,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
     let path = get_plugin_settings_path(&app_handle, &id);
     let serialized = serde_json::to_string_pretty(&settings)
         .map_err(|e| format!("Failed to serialize plugin settings: {:?}", e))?;
@@ -612,8 +649,8 @@ fn export_plugin(id: String, app_handle: tauri::AppHandle) -> Result<String, Str
 
 #[tauri::command]
 fn import_plugin(json: String, app_handle: tauri::AppHandle) -> Result<String, String> {
-    let plugin: Plugin = serde_json::from_str(&json)
-        .map_err(|e| format!("Invalid plugin JSON: {:?}", e))?;
+    let plugin: Plugin =
+        serde_json::from_str(&json).map_err(|e| format!("Invalid plugin JSON: {:?}", e))?;
     let name = plugin.name.clone();
     save_plugin(plugin, app_handle.clone())?;
     let _ = app_handle.emit("plugins-updated", ());
@@ -634,89 +671,108 @@ fn show_design_maker(app_handle: tauri::AppHandle) {
 fn trigger_menu_open(window: &tauri::WebviewWindow) {
     if let Some((x, y)) = get_mouse_position() {
         let mut positioned = false;
-        
+
         #[cfg(target_os = "windows")]
         {
             if let Some(monitor) = get_monitor_for_cursor(window, x, y) {
                 let m_pos = monitor.position();
-                
+                let m_size = monitor.size();
+
                 let _ = window.set_position(tauri::Position::Physical(m_pos.clone()));
-                let _ = window.set_fullscreen(true);
-                
+                let _ = window.set_size(tauri::Size::Physical(m_size.clone()));
+
                 let local_x = x - m_pos.x;
                 let local_y = y - m_pos.y;
-                
+
                 let scale_factor = window.scale_factor().unwrap_or(1.0);
                 let logical_x = local_x as f64 / scale_factor;
                 let logical_y = local_y as f64 / scale_factor;
-                
-                let _ = window.emit("show-menu", PositionPayload { x: logical_x, y: logical_y });
+
+                let _ = window.emit(
+                    "show-menu",
+                    PositionPayload {
+                        x: logical_x,
+                        y: logical_y,
+                    },
+                );
                 positioned = true;
             }
         }
-        
+
         if !positioned {
             let scale_factor = window.scale_factor().unwrap_or(1.0);
             let logical_x = x as f64 / scale_factor;
             let logical_y = y as f64 / scale_factor;
-            let _ = window.emit("show-menu", PositionPayload { x: logical_x, y: logical_y });
+            let _ = window.emit(
+                "show-menu",
+                PositionPayload {
+                    x: logical_x,
+                    y: logical_y,
+                },
+            );
         }
     }
-    
+
     let _ = window.show();
     let _ = window.set_focus();
 }
 
 fn register_hotkey(app: &tauri::AppHandle, hotkey_str: &str) -> Result<(), String> {
     use std::str::FromStr;
-    
+
     let _ = app.global_shortcut().unregister_all();
-    
+
     match Shortcut::from_str(hotkey_str) {
         Ok(shortcut) => {
-            if let Err(e) = app.global_shortcut().on_shortcut(shortcut, move |app_inner, _shortcut, event| {
-                if event.state() == ShortcutState::Pressed {
-                    if let Some(window) = app_inner.get_webview_window("main") {
-                        trigger_menu_open(&window);
-                    }
-                }
-            }) {
+            if let Err(e) =
+                app.global_shortcut()
+                    .on_shortcut(shortcut, move |app_inner, _shortcut, event| {
+                        if event.state() == ShortcutState::Pressed {
+                            if let Some(window) = app_inner.get_webview_window("main") {
+                                trigger_menu_open(&window);
+                            }
+                        }
+                    })
+            {
                 eprintln!("Failed to register main hotkey: {:?}", e);
             }
-        },
-        Err(e) => eprintln!("Failed to parse main hotkey: {:?}", e)
+        }
+        Err(e) => eprintln!("Failed to parse main hotkey: {:?}", e),
     }
-    
+
     // Register Assistant window toggle shortcut
     let assistant_hotkey = get_settings(app.clone()).assistant_hotkey;
     match Shortcut::from_str(&assistant_hotkey) {
         Ok(ass_shortcut) => {
-            if let Err(e) = app.global_shortcut().on_shortcut(ass_shortcut, |app_inner, _shortcut, event| {
-                if event.state() == ShortcutState::Pressed {
-                    if let Some(window) = app_inner.get_webview_window("assistant") {
-                        let is_visible = window.is_visible().unwrap_or(false);
-                        if is_visible {
-                            let _ = window.hide();
-                        } else {
-                            let _ = window.show();
-                            let _ = window.set_focus();
+            if let Err(e) =
+                app.global_shortcut()
+                    .on_shortcut(ass_shortcut, |app_inner, _shortcut, event| {
+                        if event.state() == ShortcutState::Pressed {
+                            if let Some(window) = app_inner.get_webview_window("assistant") {
+                                let is_visible = window.is_visible().unwrap_or(false);
+                                if is_visible {
+                                    let _ = window.hide();
+                                } else {
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
+                            }
                         }
-                    }
-                }
-            }) {
+                    })
+            {
                 eprintln!("Failed to register assistant hotkey: {:?}", e);
             }
-        },
-        Err(e) => eprintln!("Failed to parse assistant hotkey: {:?}", e)
+        }
+        Err(e) => eprintln!("Failed to parse assistant hotkey: {:?}", e),
     }
-    
+
     Ok(())
 }
 
 #[tauri::command]
 fn get_settings(app_handle: tauri::AppHandle) -> AppSettings {
     let settings = load_settings_internal(&app_handle).unwrap_or_else(get_default_settings);
-    
+
     settings
 }
 
@@ -725,10 +781,10 @@ fn save_settings(settings: AppSettings, app_handle: tauri::AppHandle) -> Result<
     let path = get_settings_path(&app_handle);
     let serialized = serde_json::to_string_pretty(&settings)
         .map_err(|e| format!("Failed to serialize settings: {:?}", e))?;
-        
+
     std::fs::write(&path, &serialized)
         .map_err(|e| format!("Failed to write settings file: {:?}", e))?;
-        
+
     let _ = register_hotkey(&app_handle, &settings.hotkey);
     let _ = app_handle.emit("config-updated", settings.clone());
 
@@ -744,7 +800,7 @@ fn save_settings(settings: AppSettings, app_handle: tauri::AppHandle) -> Result<
                 "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
                 "/v",
                 "TauriRadialMenu",
-                "/f"
+                "/f",
             ]);
             use std::os::windows::process::CommandExt;
             cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
@@ -765,7 +821,7 @@ fn save_settings(settings: AppSettings, app_handle: tauri::AppHandle) -> Result<
                         "REG_SZ",
                         "/d",
                         &format!("\"{}\"", exe_str),
-                        "/f"
+                        "/f",
                     ]);
                     use std::os::windows::process::CommandExt;
                     cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
@@ -778,7 +834,7 @@ fn save_settings(settings: AppSettings, app_handle: tauri::AppHandle) -> Result<
                     "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
                     "/v",
                     "TauriRadialMenu",
-                    "/f"
+                    "/f",
                 ]);
                 use std::os::windows::process::CommandExt;
                 cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
@@ -786,7 +842,7 @@ fn save_settings(settings: AppSettings, app_handle: tauri::AppHandle) -> Result<
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -800,7 +856,6 @@ fn show_settings(app_handle: tauri::AppHandle) {
 
 #[tauri::command]
 fn hide_menu(window: tauri::WebviewWindow) {
-    let _ = window.set_fullscreen(false);
     let _ = window.hide();
 }
 
@@ -819,21 +874,30 @@ fn is_hotkey_held(hotkey: String) -> bool {
     #[cfg(target_os = "windows")]
     {
         let hotkey_lower = hotkey.to_lowercase();
-        let has_modifiers = hotkey_lower.contains("control") || 
-                            hotkey_lower.contains("ctrl") ||
-                            hotkey_lower.contains("shift") ||
-                            hotkey_lower.contains("alt") ||
-                            hotkey_lower.contains("menu") ||
-                            hotkey_lower.contains("super") ||
-                            hotkey_lower.contains("win") ||
-                            hotkey_lower.contains("command") ||
-                            hotkey_lower.contains("windows");
+        let has_modifiers = hotkey_lower.contains("control")
+            || hotkey_lower.contains("ctrl")
+            || hotkey_lower.contains("shift")
+            || hotkey_lower.contains("alt")
+            || hotkey_lower.contains("menu")
+            || hotkey_lower.contains("super")
+            || hotkey_lower.contains("win")
+            || hotkey_lower.contains("command")
+            || hotkey_lower.contains("windows");
 
         let parts = hotkey.split('+');
         for part in parts {
             let part_lower = part.trim().to_lowercase();
-            let is_modifier = matches!(part_lower.as_str(), 
-                "control" | "ctrl" | "shift" | "alt" | "menu" | "super" | "win" | "command" | "windows"
+            let is_modifier = matches!(
+                part_lower.as_str(),
+                "control"
+                    | "ctrl"
+                    | "shift"
+                    | "alt"
+                    | "menu"
+                    | "super"
+                    | "win"
+                    | "command"
+                    | "windows"
             );
 
             // If modifiers are present, skip checking non-modifier keys (like 'Q')
@@ -842,14 +906,14 @@ fn is_hotkey_held(hotkey: String) -> bool {
             }
 
             let vkey = match part_lower.as_str() {
-                "control" | "ctrl" => 0x11, // VK_CONTROL
-                "shift" => 0x10, // VK_SHIFT
-                "alt" | "menu" => 0x12, // VK_MENU
+                "control" | "ctrl" => 0x11,                      // VK_CONTROL
+                "shift" => 0x10,                                 // VK_SHIFT
+                "alt" | "menu" => 0x12,                          // VK_MENU
                 "super" | "win" | "command" | "windows" => 0x5B, // VK_LWIN
-                "tab" => 0x09, // VK_TAB
-                "space" => 0x20, // VK_SPACE
-                "escape" | "esc" => 0x1B, // VK_ESCAPE
-                "enter" | "return" => 0x0D, // VK_RETURN
+                "tab" => 0x09,                                   // VK_TAB
+                "space" => 0x20,                                 // VK_SPACE
+                "escape" | "esc" => 0x1B,                        // VK_ESCAPE
+                "enter" | "return" => 0x0D,                      // VK_RETURN
                 "up" | "arrowup" => 0x26,
                 "down" | "arrowdown" => 0x28,
                 "left" | "arrowleft" => 0x25,
@@ -897,17 +961,17 @@ struct SystemStats {
 #[tauri::command]
 fn get_current_media_info(app_handle: tauri::AppHandle) -> Result<MediaInfo, String> {
     let helper_exe = compile_media_helper(&app_handle)?;
-    
+
     #[cfg(target_os = "windows")]
     {
-        use std::process::Command;
         use std::os::windows::process::CommandExt;
-        
+        use std::process::Command;
+
         let output = Command::new(&helper_exe)
             .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .output()
             .map_err(|e| format!("Failed to execute media helper: {:?}", e))?;
-            
+
         let stdout = String::from_utf8_lossy(&output.stdout);
         let trimmed = stdout.trim();
         let parts: Vec<&str> = trimmed.split('|').collect();
@@ -939,7 +1003,7 @@ fn get_current_media_info(app_handle: tauri::AppHandle) -> Result<MediaInfo, Str
             })
         }
     }
-    
+
     #[cfg(not(target_os = "windows"))]
     {
         Ok(MediaInfo {
@@ -957,8 +1021,8 @@ fn control_media(action: String, app_handle: tauri::AppHandle) -> Result<(), Str
     let helper_exe = compile_media_helper(&app_handle)?;
     #[cfg(target_os = "windows")]
     {
-        use std::process::Command;
         use std::os::windows::process::CommandExt;
+        use std::process::Command;
         let _ = Command::new(&helper_exe)
             .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .arg(&action)
@@ -1008,7 +1072,10 @@ struct CustomModule {
 }
 
 fn get_modules_dir(app_handle: &tauri::AppHandle) -> std::path::PathBuf {
-    let mut path = app_handle.path().app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let mut path = app_handle
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| std::path::PathBuf::from("."));
     path.push("modules");
     let _ = std::fs::create_dir_all(&path);
     path
@@ -1018,7 +1085,7 @@ fn get_modules_dir(app_handle: &tauri::AppHandle) -> std::path::PathBuf {
 fn get_custom_modules(app_handle: tauri::AppHandle) -> Result<Vec<CustomModule>, String> {
     let dir = get_modules_dir(&app_handle);
     let mut modules = Vec::new();
-    
+
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
             if entry.path().extension().map_or(false, |e| e == "json") {
@@ -1037,14 +1104,14 @@ fn get_custom_modules(app_handle: tauri::AppHandle) -> Result<Vec<CustomModule>,
 fn save_custom_module(module: CustomModule, app_handle: tauri::AppHandle) -> Result<(), String> {
     let dir = get_modules_dir(&app_handle);
     let path = dir.join(format!("{}.json", module.id));
-    
+
     let content = serde_json::to_string_pretty(&module).map_err(|e| e.to_string())?;
     std::fs::write(path, content).map_err(|e| e.to_string())?;
-    
+
     if let Some(overlay) = app_handle.get_webview_window("overlay") {
         let _ = overlay.emit("custom-modules-updated", ());
     }
-    
+
     Ok(())
 }
 
@@ -1052,18 +1119,17 @@ fn save_custom_module(module: CustomModule, app_handle: tauri::AppHandle) -> Res
 fn delete_custom_module(id: String, app_handle: tauri::AppHandle) -> Result<(), String> {
     let dir = get_modules_dir(&app_handle);
     let path = dir.join(format!("{}.json", id));
-    
+
     if path.exists() {
         let _ = std::fs::remove_file(path);
     }
-    
+
     if let Some(overlay) = app_handle.get_webview_window("overlay") {
         let _ = overlay.emit("custom-modules-updated", ());
     }
-    
+
     Ok(())
 }
-
 
 // ==========================================
 // SEARCH FILES (recursive grep for AI)
@@ -1076,7 +1142,11 @@ struct SearchResult {
 }
 
 #[tauri::command]
-fn search_files(directory: String, pattern: String, max_results: Option<usize>) -> Result<Vec<SearchResult>, String> {
+fn search_files(
+    directory: String,
+    pattern: String,
+    max_results: Option<usize>,
+) -> Result<Vec<SearchResult>, String> {
     let max = max_results.unwrap_or(50);
     let mut results = Vec::new();
     let dir_path = std::path::Path::new(&directory);
@@ -1087,29 +1157,53 @@ fn search_files(directory: String, pattern: String, max_results: Option<usize>) 
     Ok(results)
 }
 
-fn search_files_recursive(dir: &std::path::Path, pattern: &str, results: &mut Vec<SearchResult>, max: usize) -> Result<(), String> {
-    if results.len() >= max { return Ok(()); }
+fn search_files_recursive(
+    dir: &std::path::Path,
+    pattern: &str,
+    results: &mut Vec<SearchResult>,
+    max: usize,
+) -> Result<(), String> {
+    if results.len() >= max {
+        return Ok(());
+    }
     let pattern_lower = pattern.to_lowercase();
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
-            if results.len() >= max { return Ok(()); }
+            if results.len() >= max {
+                return Ok(());
+            }
             let path = entry.path();
             if path.is_dir() {
                 let name = path.file_name().unwrap_or_default().to_string_lossy();
                 // Skip common non-searchable directories
-                if name == "node_modules" || name == ".git" || name == "target" || name == "__pycache__" {
+                if name == "node_modules"
+                    || name == ".git"
+                    || name == "target"
+                    || name == "__pycache__"
+                {
                     continue;
                 }
                 search_files_recursive(&path, pattern, results, max)?;
             } else if path.is_file() {
                 // Skip binary files by extension
-                let ext = path.extension().unwrap_or_default().to_string_lossy().to_lowercase();
-                let binary_exts = ["exe", "dll", "so", "dylib", "bin", "obj", "o", "png", "jpg", "jpeg", "gif", "ico", "mp3", "mp4", "zip", "tar", "gz"];
-                if binary_exts.contains(&ext.as_str()) { continue; }
-                
+                let ext = path
+                    .extension()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_lowercase();
+                let binary_exts = [
+                    "exe", "dll", "so", "dylib", "bin", "obj", "o", "png", "jpg", "jpeg", "gif",
+                    "ico", "mp3", "mp4", "zip", "tar", "gz",
+                ];
+                if binary_exts.contains(&ext.as_str()) {
+                    continue;
+                }
+
                 if let Ok(content) = std::fs::read_to_string(&path) {
                     for (i, line) in content.lines().enumerate() {
-                        if results.len() >= max { return Ok(()); }
+                        if results.len() >= max {
+                            return Ok(());
+                        }
                         if line.to_lowercase().contains(&pattern_lower) {
                             results.push(SearchResult {
                                 path: path.to_string_lossy().to_string(),
@@ -1134,17 +1228,17 @@ fn edit_file_content(path: String, find: String, replace: String) -> Result<Stri
     if !file_path.exists() {
         return Err(format!("File '{}' does not exist", path));
     }
-    let content = std::fs::read_to_string(file_path)
-        .map_err(|e| format!("Failed to read file: {:?}", e))?;
-    
+    let content =
+        std::fs::read_to_string(file_path).map_err(|e| format!("Failed to read file: {:?}", e))?;
+
     if !content.contains(&find) {
         return Err(format!("Could not find the target text in '{}'", path));
     }
-    
+
     let new_content = content.replacen(&find, &replace, 1);
     std::fs::write(file_path, &new_content)
         .map_err(|e| format!("Failed to write file: {:?}", e))?;
-    
+
     Ok(format!("Successfully edited {}", path))
 }
 
@@ -1183,7 +1277,7 @@ struct MergedAction {
 fn get_merged_actions_internal(app_handle: &tauri::AppHandle) -> Vec<MergedAction> {
     let mut merged = Vec::new();
     let mut existing_ids = std::collections::HashSet::new();
-    
+
     // 1. Add core actions
     if let Some(settings) = load_settings_internal(app_handle) {
         for action in settings.actions {
@@ -1192,15 +1286,19 @@ fn get_merged_actions_internal(app_handle: &tauri::AppHandle) -> Vec<MergedActio
                 id: action.id,
                 cmd: action.cmd,
                 args: action.args,
-                sub_items: action.sub_items.into_iter().map(|s| MergedSubItem {
-                    label: s.label,
-                    cmd: s.cmd,
-                    args: s.args,
-                }).collect(),
+                sub_items: action
+                    .sub_items
+                    .into_iter()
+                    .map(|s| MergedSubItem {
+                        label: s.label,
+                        cmd: s.cmd,
+                        args: s.args,
+                    })
+                    .collect(),
             });
         }
     }
-    
+
     // 2. Add plugin actions
     let plugins = get_plugins(app_handle.clone());
     for plugin in plugins {
@@ -1212,17 +1310,21 @@ fn get_merged_actions_internal(app_handle: &tauri::AppHandle) -> Vec<MergedActio
                         id: action.id,
                         cmd: action.cmd,
                         args: action.args,
-                        sub_items: action.sub_items.into_iter().map(|s| MergedSubItem {
-                            label: s.label,
-                            cmd: s.cmd,
-                            args: s.args,
-                        }).collect(),
+                        sub_items: action
+                            .sub_items
+                            .into_iter()
+                            .map(|s| MergedSubItem {
+                                label: s.label,
+                                cmd: s.cmd,
+                                args: s.args,
+                            })
+                            .collect(),
                     });
                 }
             }
         }
     }
-    
+
     merged
 }
 
@@ -1237,8 +1339,11 @@ fn run_action_command(cmd: &str, args: &[String], app_handle: &tauri::AppHandle)
             }
         }
         let mut resolved_cmd = cmd_str.clone();
-        if resolved_cmd.to_lowercase() == "powershell.exe" || resolved_cmd.to_lowercase() == "powershell" {
-            resolved_cmd = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe".to_string();
+        if resolved_cmd.to_lowercase() == "powershell.exe"
+            || resolved_cmd.to_lowercase() == "powershell"
+        {
+            resolved_cmd =
+                "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe".to_string();
         }
         let mut command = std::process::Command::new(&resolved_cmd);
         if cmd_str.contains("powershell") || cmd == "media_helper" {
@@ -1288,14 +1393,20 @@ fn execute_sub_action(primary_index: usize, sub_index: usize, app_handle: tauri:
 }
 
 fn get_scripts_dir(app: &tauri::AppHandle) -> PathBuf {
-    let mut path = app.path().app_data_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let mut path = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."));
     path.push("scripts");
     let _ = std::fs::create_dir_all(&path);
     path
 }
 
 fn get_events_path(app: &tauri::AppHandle) -> PathBuf {
-    let mut path = app.path().app_data_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let mut path = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."));
     let _ = std::fs::create_dir_all(&path);
     path.push("events.json");
     path
@@ -1379,14 +1490,19 @@ fn run_terminal_command(cmd: String) -> Result<String, String> {
             .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .output()
             .map_err(|e| format!("Failed to execute process: {:?}", e))?;
-        
+
         let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
         let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-        
+
         if output.status.success() {
             Ok(stdout)
         } else {
-            Err(format!("Code {:?}\nStdout: {}\nStderr: {}", output.status.code(), stdout, stderr))
+            Err(format!(
+                "Code {:?}\nStdout: {}\nStderr: {}",
+                output.status.code(),
+                stdout,
+                stderr
+            ))
         }
     }
     #[cfg(not(target_os = "windows"))]
@@ -1395,23 +1511,32 @@ fn run_terminal_command(cmd: String) -> Result<String, String> {
             .args(["-c", &cmd])
             .output()
             .map_err(|e| format!("Failed to execute process: {:?}", e))?;
-        
+
         let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
         let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-        
+
         if output.status.success() {
             Ok(stdout)
         } else {
-            Err(format!("Code {:?}\nStdout: {}\nStderr: {}", output.status.code(), stdout, stderr))
+            Err(format!(
+                "Code {:?}\nStdout: {}\nStderr: {}",
+                output.status.code(),
+                stdout,
+                stderr
+            ))
         }
     }
 }
 
 #[tauri::command]
-fn spawn_terminal_command(id: String, cmd: String, app_handle: tauri::AppHandle) -> Result<(), String> {
+fn spawn_terminal_command(
+    id: String,
+    cmd: String,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
     use std::process::Command;
     use tauri::Emitter;
-    
+
     #[cfg(target_os = "windows")]
     let mut command = {
         use std::os::windows::process::CommandExt;
@@ -1431,7 +1556,9 @@ fn spawn_terminal_command(id: String, cmd: String, app_handle: tauri::AppHandle)
     command.stdout(std::process::Stdio::piped());
     command.stderr(std::process::Stdio::piped());
 
-    let mut child = command.spawn().map_err(|e| format!("Failed to spawn process: {:?}", e))?;
+    let mut child = command
+        .spawn()
+        .map_err(|e| format!("Failed to spawn process: {:?}", e))?;
 
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
     let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
@@ -1472,7 +1599,8 @@ fn spawn_terminal_command(id: String, cmd: String, app_handle: tauri::AppHandle)
 fn write_file(path: String, content: String) -> Result<(), String> {
     let p = std::path::Path::new(&path);
     if let Some(parent) = p.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create directories: {:?}", e))?;
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create directories: {:?}", e))?;
     }
     std::fs::write(p, content).map_err(|e| format!("Failed to write file: {:?}", e))?;
     Ok(())
@@ -1491,7 +1619,8 @@ fn read_file(path: String) -> Result<String, String> {
 
 #[tauri::command]
 fn list_directory(path: String) -> Result<Vec<String>, String> {
-    let entries = std::fs::read_dir(path).map_err(|e| format!("Failed to read directory: {:?}", e))?;
+    let entries =
+        std::fs::read_dir(path).map_err(|e| format!("Failed to read directory: {:?}", e))?;
     let mut files = Vec::new();
     for entry in entries.flatten() {
         if let Some(name) = entry.file_name().to_str() {
@@ -1577,11 +1706,18 @@ fn get_active_app() -> String {
             let title_lower = title.to_lowercase();
             if title_lower.contains("minecraft") {
                 return "Minecraft".to_string();
-            } else if title_lower.contains("visual studio code") || title_lower.contains("vscode") || title_lower.contains("code - ") {
+            } else if title_lower.contains("visual studio code")
+                || title_lower.contains("vscode")
+                || title_lower.contains("code - ")
+            {
                 return "VSCode".to_string();
             } else if title_lower.contains("notepad") {
                 return "Notepad".to_string();
-            } else if title_lower.contains("browser") || title_lower.contains("chrome") || title_lower.contains("edge") || title_lower.contains("firefox") {
+            } else if title_lower.contains("browser")
+                || title_lower.contains("chrome")
+                || title_lower.contains("edge")
+                || title_lower.contains("firefox")
+            {
                 return "Browser".to_string();
             }
             return title;
@@ -1592,9 +1728,9 @@ fn get_active_app() -> String {
 
 #[cfg(target_os = "windows")]
 fn get_local_date_time() -> (String, String) {
-    use windows_sys::Win32::System::SystemInformation::GetLocalTime;
     use windows_sys::Win32::Foundation::SYSTEMTIME;
-    
+    use windows_sys::Win32::System::SystemInformation::GetLocalTime;
+
     let mut st = SYSTEMTIME {
         wYear: 0,
         wMonth: 0,
@@ -1624,17 +1760,24 @@ fn run_script_file(script_name: &str, app_handle: &tauri::AppHandle) {
     if !path.exists() {
         return;
     }
-    
+
     let path_str = path.to_string_lossy().to_string();
-    
+
     #[cfg(target_os = "windows")]
     {
-        use std::process::Command;
         use std::os::windows::process::CommandExt;
-        
+        use std::process::Command;
+
         let mut command = if path_str.ends_with(".ps1") {
-            let mut c = Command::new("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
-            c.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", &path_str]);
+            let mut c =
+                Command::new("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+            c.args([
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                &path_str,
+            ]);
             c
         } else if path_str.ends_with(".bat") || path_str.ends_with(".cmd") {
             let mut c = Command::new("cmd.exe");
@@ -1647,7 +1790,7 @@ fn run_script_file(script_name: &str, app_handle: &tauri::AppHandle) {
         } else {
             Command::new(&path_str)
         };
-        
+
         command.creation_flags(0x08000000); // CREATE_NO_WINDOW
         let _ = command.spawn();
     }
@@ -1656,8 +1799,8 @@ fn run_script_file(script_name: &str, app_handle: &tauri::AppHandle) {
 fn trigger_notification(title: &str, body: &str) {
     #[cfg(target_os = "windows")]
     {
-        use std::process::Command;
         use std::os::windows::process::CommandExt;
+        use std::process::Command;
         let script = format!(
             "[void] [System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); \
              $objNotification = New-Object System.Windows.Forms.NotifyIcon; \
@@ -1680,9 +1823,14 @@ fn trigger_notification(title: &str, body: &str) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .manage(SystemMonitor(Mutex::new(System::new_with_specifics(RefreshKind::new().with_cpu(CpuRefreshKind::everything()).with_memory(MemoryRefreshKind::everything())))))
+        .manage(SystemMonitor(Mutex::new(System::new_with_specifics(
+            RefreshKind::new()
+                .with_cpu(CpuRefreshKind::everything())
+                .with_memory(MemoryRefreshKind::everything()),
+        ))))
         .manage(OverlayState(Mutex::new(false)))
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -1701,7 +1849,7 @@ pub fn run() {
                         "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
                         "/v",
                         "TauriRadialMenu",
-                        "/f"
+                        "/f",
                     ]);
                     use std::os::windows::process::CommandExt;
                     cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
@@ -1722,7 +1870,7 @@ pub fn run() {
                                 "REG_SZ",
                                 "/d",
                                 &format!("\"{}\"", exe_str),
-                                "/f"
+                                "/f",
                             ]);
                             use std::os::windows::process::CommandExt;
                             cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
@@ -1735,7 +1883,7 @@ pub fn run() {
                             "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
                             "/v",
                             "TauriRadialMenu",
-                            "/f"
+                            "/f",
                         ]);
                         use std::os::windows::process::CommandExt;
                         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
@@ -1743,13 +1891,16 @@ pub fn run() {
                     }
                 }
             }
-            
+
             // Delete old settings file so defaults reload with sub-items
             let s_path = get_settings_path(&app_handle);
             if s_path.exists() {
                 if let Ok(content) = std::fs::read_to_string(&s_path) {
                     // Force migration if missing v2 defaults (Quick Apps, ChatGPT, assistant, etc.)
-                    if !content.contains("media_helper") || !content.contains("Quick Apps") || !content.contains("assistant") {
+                    if !content.contains("media_helper")
+                        || !content.contains("Quick Apps")
+                        || !content.contains("assistant")
+                    {
                         let _ = std::fs::remove_file(&s_path);
                         let defaults = get_default_settings();
                         if let Ok(serialized) = serde_json::to_string_pretty(&defaults) {
@@ -1759,8 +1910,6 @@ pub fn run() {
                 }
             }
 
-
-            
             if let Some(settings_window) = app.get_webview_window("settings") {
                 let settings_window_clone = settings_window.clone();
                 settings_window.on_window_event(move |event| {
@@ -1774,48 +1923,50 @@ pub fn run() {
             // Start automation scheduler background thread
             use tauri::Emitter;
             let app_handle_scheduler = app.handle().clone();
-            std::thread::spawn(move || {
-                loop {
-                    std::thread::sleep(std::time::Duration::from_secs(60));
-                    
-                    let (curr_date, curr_time) = get_local_date_time();
-                    
-                    if let Ok(mut events) = get_events(app_handle_scheduler.clone()) {
-                        let mut updated = false;
-                        for event in &mut events {
-                            if !event.completed && event.script.is_some() {
-                                let is_due = event.date < curr_date || (event.date == curr_date && event.time <= curr_time);
-                                if is_due {
-                                    if let Some(ref script_name) = event.script {
-                                        run_script_file(script_name, &app_handle_scheduler);
-                                        trigger_notification(
-                                            &format!("Task Automated: {}", event.title),
-                                            &format!("Successfully triggered script '{}'.", script_name)
-                                        );
-                                    }
-                                    event.completed = true;
-                                    event.last_run = Some(format!("{} {}", curr_date, curr_time));
-                                    updated = true;
+            std::thread::spawn(move || loop {
+                std::thread::sleep(std::time::Duration::from_secs(60));
+
+                let (curr_date, curr_time) = get_local_date_time();
+
+                if let Ok(mut events) = get_events(app_handle_scheduler.clone()) {
+                    let mut updated = false;
+                    for event in &mut events {
+                        if !event.completed && event.script.is_some() {
+                            let is_due = event.date < curr_date
+                                || (event.date == curr_date && event.time <= curr_time);
+                            if is_due {
+                                if let Some(ref script_name) = event.script {
+                                    run_script_file(script_name, &app_handle_scheduler);
+                                    trigger_notification(
+                                        &format!("Task Automated: {}", event.title),
+                                        &format!(
+                                            "Successfully triggered script '{}'.",
+                                            script_name
+                                        ),
+                                    );
                                 }
+                                event.completed = true;
+                                event.last_run = Some(format!("{} {}", curr_date, curr_time));
+                                updated = true;
                             }
                         }
-                        
-                        if updated {
-                            let _ = save_events(events, app_handle_scheduler.clone());
-                            let _ = app_handle_scheduler.emit("events-updated", ());
-                        }
+                    }
+
+                    if updated {
+                        let _ = save_events(events, app_handle_scheduler.clone());
+                        let _ = app_handle_scheduler.emit("events-updated", ());
                     }
                 }
             });
-            
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            get_settings, 
-            save_settings, 
-            show_settings, 
-            hide_menu, 
-            execute_action, 
+            get_settings,
+            save_settings,
+            show_settings,
+            hide_menu,
+            execute_action,
             execute_sub_action,
             get_current_media_info,
             get_system_stats,
