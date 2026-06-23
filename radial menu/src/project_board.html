@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Board</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="project_board.css">
+  <script type="module" src="/project_board.js" defer></script>
+</head>
+<body class="theme-apple-dark">
+  <div class="app-container">
+    <div class="titlebar" data-tauri-drag-region>
+      <div class="title-text" data-tauri-drag-region>Project Board & Tasks</div>
+      <div class="window-controls">
+        <button id="minimize-btn" class="icon-btn" title="Minimize">_</button>
+        <button id="close-btn" class="icon-btn close-btn" title="Close">✕</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button id="new-task-btn" class="btn primary-btn">+ New Task</button>
+      <button id="refresh-btn" class="btn">Refresh</button>
+      <div class="stats" id="task-stats">0 Tasks</div>
+    </div>
+
+    <div class="board-container">
+      <!-- TODO Column -->
+      <div class="board-column" id="col-todo">
+        <div class="column-header">
+          <h3>To Do</h3>
+          <span class="count" id="count-todo">0</span>
+        </div>
+        <div class="column-body" id="list-todo">
+          <!-- Task cards injected here -->
+        </div>
+      </div>
+
+      <!-- IN PROGRESS Column -->
+      <div class="board-column" id="col-in-progress">
+        <div class="column-header">
+          <h3>In Progress</h3>
+          <span class="count" id="count-in-progress">0</span>
+        </div>
+        <div class="column-body" id="list-in-progress">
+          <!-- Task cards injected here -->
+        </div>
+      </div>
+
+      <!-- DONE Column -->
+      <div class="board-column" id="col-done">
+        <div class="column-header">
+          <h3>Done</h3>
+          <span class="count" id="count-done">0</span>
+        </div>
+        <div class="column-body" id="list-done">
+          <!-- Task cards injected here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Task Modal -->
+  <div id="task-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="modal-title">New Task</h3>
+      <input type="text" id="task-title" placeholder="Task Title (e.g. Implement Login API)" />
+      <textarea id="task-desc" placeholder="Task Details..."></textarea>
+      
+      <div class="modal-row">
+        <div class="input-group">
+          <label>Status</label>
+          <select id="task-status">
+            <option value="todo">To Do</option>
+            <option value="in-progress">In Progress</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Due Date</label>
+          <input type="date" id="task-due-date" />
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="modal-cancel-btn" class="btn">Cancel</button>
+        <button id="modal-save-btn" class="btn primary-btn">Save Task</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

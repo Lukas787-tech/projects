@@ -1,1 +1,0 @@
-"""Quick notes feature package."""

@@ -1,9 +1,0 @@
-PySide6>=6.6
-keyboard>=0.13.5
-pycaw>=20230407
-comtypes>=1.2
-screen-brightness-control>=0.22
-mss>=9.0
-psutil>=5.9
-pyperclip>=1.8
-Pillow>=10.0

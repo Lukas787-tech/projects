@@ -546,7 +546,7 @@ async function triggerSelectedAction(shouldClose = true) {
     }
   }
   
-  if (shouldClose && isMenuHiding) {
+  if (shouldClose) {
     stopClock();
     await invoke('hide_menu');
   }
@@ -745,7 +745,7 @@ function handleKeyRelease() {
   if (hasClickedThisSession) {
     const appContainer = document.getElementById('app');
     if (appContainer) appContainer.classList.remove('visible');
-    if (isMenuHiding) invoke('hide_menu');
+    invoke('hide_menu');
   } else {
     triggerSelectedAction(true);
   }
@@ -944,6 +944,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Listen to coordinates from Rust backend
   listen('show-menu', (event) => {
     isMenuHiding = false;
     hasClickedThisSession = false;
@@ -961,11 +962,6 @@ window.addEventListener('DOMContentLoaded', () => {
     startMediaPolling();
     startPolling();
     startClock();
-    
-    // Add visible class immediately to ensure transition starts
-    const appContainer = document.getElementById('app');
-    if (appContainer) appContainer.classList.add('visible');
-    
     // Fire plugin hook
     firePluginHook('on_menu_open', { x, y });
   });

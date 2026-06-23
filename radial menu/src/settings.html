@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radial Menu Settings</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="settings.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+    <script type="module" src="/settings.js" defer></script>
+  </head>
+  <body>
+    <div class="settings-container">
+      <header class="settings-header" data-tauri-drag-region>
+        <div class="header-left" data-tauri-drag-region>
+          <span class="header-icon">🌀</span>
+          <div class="header-info" data-tauri-drag-region>
+            <h1>Radial Menu Preferences</h1>
+            <p>Customize shortcuts, glass aesthetics, and slot actions.</p>
+          </div>
+        </div>
+        <div class="header-controls">
+          <button id="settings-close-btn" class="icon-btn" title="Close Settings">✕</button>
+        </div>
+      </header>
+      
+      <!-- Tab Navigation -->
+      <div class="tab-bar">
+        <button class="tab-button active" data-tab="general">General</button>
+        <button class="tab-button" data-tab="appearance">Appearance</button>
+        <button class="tab-button" data-tab="actions">Actions</button>
+        <button class="tab-button" data-tab="editor">Script Editor</button>
+        <button class="tab-button" data-tab="planner">Planner</button>
+        <button class="tab-button" data-tab="plugins">Plugins</button>
+        <div class="tab-indicator"></div>
+      </div>
+      
+      <main class="settings-main">
+        <!-- GENERAL TAB -->
+        <section class="settings-tab active" data-tab="general">
+          <h2>General Styles & Hotkey</h2>
+          
+          <div class="settings-grid-2">
+            <div class="form-group">
+              <label for="hotkey-input">Global Menu Hotkey</label>
+              <input type="text" id="hotkey-input" class="form-control hotkey-capture" placeholder="Click and press keys..." readonly>
+              <span class="field-desc">Hotkey to trigger the radial menu. Hold keys down to keep open.</span>
+            </div>
+
+
+            <div class="form-group">
+              <label for="assistant-hotkey-input">AI Assistant Hotkey</label>
+              <input type="text" id="assistant-hotkey-input" class="form-control hotkey-capture" placeholder="Click and press keys..." readonly>
+              <span class="field-desc">Toggle the AI builder window globally.</span>
+            </div>
+            
+            <!-- Theme -->
+            <div class="form-group">
+              <label for="theme-select">Visual Theme</label>
+              <select id="theme-select" class="form-control">
+                <option value="apple-dark">Apple Dark Glass</option>
+                <option value="apple-light">Apple Light Glass</option>
+                <option value="cyberpunk">Cyberpunk Neon</option>
+                <option value="obsidian">Obsidian Slate</option>
+                <option value="sakura">Sakura Blossom</option>
+                <option value="amethyst">Amethyst Purple</option>
+              </select>
+              <span class="field-desc">The light or dark frosted glass appearance.</span>
+            </div>
+          </div>
+          
+          <div class="settings-grid-2">
+            <!-- Blur Slider -->
+            <div class="form-group">
+              <label for="blur-slider">Screen Blur Intensity (<span id="blur-val">25</span>px)</label>
+              <input type="range" id="blur-slider" min="10" max="50" step="5" value="25" class="range-slider">
+            </div>
+            
+            <!-- Scale Slider -->
+            <div class="form-group">
+              <label for="scale-slider">Menu Scale Size (<span id="scale-val">1.0</span>x)</label>
+              <input type="range" id="scale-slider" min="0.8" max="1.3" step="0.05" value="1.0" class="range-slider">
+            </div>
+          </div>
+
+          <div class="toggle-group" style="margin-top: 8px;">
+            <label for="autostart-toggle">
+              <div class="toggle-switch">
+                <input type="checkbox" id="autostart-toggle" class="toggle-input" />
+                <span class="toggle-slider"></span>
+              </div>
+              <span class="toggle-label">Start at Windows Startup</span>
+            </label>
+            <span class="toggle-desc">Automatically launch the radial menu app when you boot your system</span>
+          </div>
+        </section>
+
+        <!-- APPEARANCE TAB -->
+        <section class="settings-tab" data-tab="appearance">
+          <h2>Appearance & Animation</h2>
+          
+          <div class="settings-grid-2">
+            <!-- Animation Speed Slider -->
+            <div class="form-group">
+              <label for="anim-speed-slider">Animation Speed (<span id="anim-speed-val">1.0</span>x)</label>
+              <input type="range" id="anim-speed-slider" min="0.5" max="2.0" step="0.1" value="1.0" class="range-slider">
+              <span class="field-desc">Adjust slice animation and transition timing.</span>
+            </div>
+            
+            <!-- Background Opacity Slider -->
+            <div class="form-group">
+              <label for="bg-opacity-slider">Background Opacity (<span id="bg-opacity-val">65</span>%)</label>
+              <input type="range" id="bg-opacity-slider" min="20" max="95" step="5" value="65" class="range-slider">
+              <span class="field-desc">How dark the menu backdrop is.</span>
+            </div>
+          </div>
+
+          <div class="settings-grid-2">
+            <!-- Accent Color Picker -->
+            <div class="form-group">
+              <label for="accent-color">Accent Color</label>
+              <input type="color" id="accent-color" class="color-picker" value="#007aff">
+              <span class="field-desc">Primary highlight and glow color.</span>
+            </div>
+
+            <!-- Design Maker Button -->
+            <div class="form-group">
+              <label>Advanced Theming</label>
+              <button id="btn-open-design-maker" class="btn btn-primary" style="width: 100%; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; font-weight: 600;">
+                <span style="margin-right: 8px;">🎨</span> Open Design Maker
+              </button>
+              <span class="field-desc">Launch the visual GUI to edit custom colors, geometry, and effects.</span>
+            </div>
+          </div>
+        </section>
+
+
+
+        <!-- ACTIONS TAB -->
+        <section class="settings-tab" data-tab="actions">
+          <h2>Edit Slices (6 Slots)</h2>
+          <div class="actions-list" id="actions-list">
+            <!-- JavaScript will render the 6 rows here -->
+          </div>
+        </section>
+
+        <!-- SCRIPT EDITOR TAB -->
+        <section class="settings-tab" data-tab="editor">
+          <h2>Automation Script Editor</h2>
+          <p class="tab-desc">Create and edit batch (.bat) or PowerShell (.ps1) scripts to automate tasks.</p>
+          <div class="editor-layout">
+            <div class="editor-sidebar">
+              <button id="btn-new-script" class="btn btn-secondary btn-full">+ New Script</button>
+              <ul class="script-list" id="script-list">
+                <!-- Dynamic Script list -->
+              </ul>
+            </div>
+            <div class="editor-main-panel">
+              <div class="form-group-inline">
+                <input type="text" id="script-filename" placeholder="script_name.ps1" class="form-control" />
+                <button id="btn-delete-script" class="btn btn-danger">Delete</button>
+                <button id="btn-save-script" class="btn btn-primary">Save Script</button>
+              </div>
+              <div id="editor-container" class="editor-glass-container">
+                <textarea id="script-fallback-textarea" class="script-fallback-textarea" placeholder="# Write your script here..."></textarea>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- PROJECT PLANNER TAB -->
+        <section class="settings-tab" data-tab="planner">
+          <h2>Project Planner & Calendar</h2>
+          <p class="tab-desc">Schedule scripts, plan milestones, and track deadlines.</p>
+          <div class="planner-layout">
+            <div class="planner-calendar-side">
+              <div class="calendar-header">
+                <button id="btn-prev-month" class="btn-icon">◀</button>
+                <h3 id="calendar-month-year">June 2026</h3>
+                <button id="btn-next-month" class="btn-icon">▶</button>
+              </div>
+              <div class="calendar-weekdays">
+                <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+              </div>
+              <div class="calendar-days" id="calendar-days">
+                <!-- Days grid -->
+              </div>
+            </div>
+            <div class="planner-events-side">
+              <h3 id="selected-date-header">Events on June 3, 2026</h3>
+              <div class="events-list" id="events-list">
+                <!-- List of events -->
+              </div>
+              <form class="event-form" id="event-form">
+                <h4>Add New Task/Event</h4>
+                <input type="text" id="event-title" placeholder="Event/Task Title" class="form-control" required />
+                <textarea id="event-desc" placeholder="Task Description" class="form-control" rows="2"></textarea>
+                <div class="form-group-inline">
+                  <input type="time" id="event-time" class="form-control" value="12:00" required />
+                  <select id="event-script-select" class="form-control">
+                    <option value="">No Automation Script</option>
+                    <!-- Populated scripts -->
+                  </select>
+                </div>
+                <button type="submit" id="btn-add-event" class="btn btn-primary btn-full">Save Event</button>
+              </form>
+            </div>
+        </section>
+
+        <!-- PLUGINS TAB -->
+        <section class="settings-tab" data-tab="plugins">
+          <h2>Plugin Manager</h2>
+          <p class="tab-desc">Enable, disable, or delete AI-generated plugins that enhance your radial menu.</p>
+          <div class="plugins-layout">
+            <div class="plugins-list" id="plugins-list">
+              <!-- Dynamically populated plugin cards -->
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="settings-footer">
+        <span id="save-status" class="save-status"></span>
+        <div class="button-group">
+          <button id="btn-save" class="btn btn-primary">Save & Apply Changes</button>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

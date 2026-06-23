@@ -1,1 +1,0 @@
-"""Screenshot tool feature package."""

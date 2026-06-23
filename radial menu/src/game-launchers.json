@@ -1,0 +1,34 @@
+{
+  "id": "game-launchers",
+  "name": "Games",
+  "version": "",
+  "description": "",
+  "author": "",
+  "menu_actions": [
+    {
+      "id": "game-launchers-parent",
+      "label": "Games",
+      "icon": "globe",
+      "cmd": "noop",
+      "args": [],
+      "subItems": [
+        {
+          "label": "Epic Games",
+          "cmd": "C:\\Program Files\\Epic Games\\Launcher\\Portal\\Binaries\\Win64\\EpicGamesLauncher.exe",
+          "args": []
+        },
+        {
+          "label": "Steam",
+          "cmd": "C:\\Program Files (x86)\\Steam\\steam.exe",
+          "args": []
+        },
+        {
+          "label": "Prism Launcher",
+          "cmd": "C:\\Users\\ralfm\\AppData\\Local\\Programs\\PrismLauncher\\prismlauncher.exe",
+          "args": []
+        }
+      ]
+    }
+  ],
+  "on_init_script": ""
+}

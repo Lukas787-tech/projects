@@ -1,1 +1,0 @@
-"""Power options feature package."""

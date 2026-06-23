@@ -1,1 +1,0 @@
-"""App launcher feature package."""
