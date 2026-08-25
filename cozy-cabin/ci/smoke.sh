@@ -38,13 +38,18 @@ adb shell input tap 640 581
 sleep 4
 shot 03-morning.png
 
-# Hold the right walk pad to stroll toward the field
-adb shell input swipe 375 582 375 582 4000
+# Stroll right until we are standing at the first field plot
+adb shell input swipe 375 582 375 582 1300
 sleep 1
 shot 04-walking.png
 
-adb shell input swipe 375 582 375 582 4000
-sleep 1
+# Till, plant and water it: this is the only path that exercises crop rendering
+adb shell input tap 1162 584   # till
+sleep 2
+adb shell input tap 1162 584   # plant the starting turnip seeds
+sleep 2
+adb shell input tap 1162 584   # water
+sleep 2
 shot 05-field.png
 
 # Backpack
@@ -62,7 +67,7 @@ adb shell input keyevent 4
 sleep 2
 
 # Walk right toward the market and the river
-for _ in 1 2 3 4 5; do adb shell input swipe 375 582 375 582 4000; done
+for _ in 1 2 3 4 5 6; do adb shell input swipe 375 582 375 582 4000; done
 sleep 1
 shot 08-river.png
 

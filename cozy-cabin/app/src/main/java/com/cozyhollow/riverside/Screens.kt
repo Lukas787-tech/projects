@@ -247,7 +247,7 @@ class Screens(private val g: Game) {
         val bw = 320f
         val bh = 66f
         val x = g.vw * 0.5f - bw / 2f
-        var y = g.vh * 0.40f
+        var y = g.vh * 0.44f
         if (g.hasSave()) {
             b(T.CONTINUE, "Continue", 1).set(x, y, bw, bh); y += bh + 20f
         }
@@ -462,11 +462,11 @@ class Screens(private val g: Game) {
         Ui.scrim(c, g.vw, g.vh, 0.34f)
         val cx = g.vw / 2f
         val bob = sin(g.titleT * 0.8f) * 4f
-        Ui.textOut(c, "Riverside", cx, g.vh * 0.20f + bob, 86f, Pal.cream, Pal.woodDeep,
+        Ui.textOut(c, "Riverside", cx, g.vh * 0.15f + bob, 86f, Pal.cream, Pal.woodDeep,
             Paint.Align.CENTER, Ui.display, 11f)
-        Ui.textOut(c, "Hollow", cx, g.vh * 0.20f + 74f + bob, 86f, Pal.gold, Pal.woodDeep,
+        Ui.textOut(c, "Hollow", cx, g.vh * 0.15f + 74f + bob, 86f, Pal.gold, Pal.woodDeep,
             Paint.Align.CENTER, Ui.display, 11f)
-        Ui.text(c, "a small, quiet life by the water", cx, g.vh * 0.20f + 112f + bob, 22f,
+        Ui.text(c, "a small, quiet life by the water", cx, g.vh * 0.15f + 108f + bob, 22f,
             U.withAlpha(Pal.cream, 0.85f), Paint.Align.CENTER)
         drawButtons(c)
         Ui.text(c, "v1.0", g.vw - 18f, g.vh - 16f, 16f, U.withAlpha(Pal.cream, 0.45f), Paint.Align.RIGHT)
