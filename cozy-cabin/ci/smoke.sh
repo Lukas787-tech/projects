@@ -52,46 +52,59 @@ walk_near 1500
 sleep 1
 shot 04-depth.png
 
-# --- over to the field, then work a plot ---
+# --- over to the field ---
 # the camera starts facing north up the valley, so right is east: the field
-# sits about 11 m that way and a couple of metres toward the camera
-walk_right 3200
+# sits about 11 m that way and a couple of metres toward the camera. Two
+# shorter swipes rather than one long one - a swipe over about three seconds
+# is unreliable on the emulator.
+walk_right 2200
+sleep 1
+walk_right 2200
 sleep 1
 walk_near 800
 sleep 1
+shot 05-field.png
+
+# --- work a plot ---
 adb shell input tap 1162 583   # till
 sleep 2
 adb shell input tap 1162 583   # plant
 sleep 2
 adb shell input tap 1162 583   # water
 sleep 2
-shot 05-field.png
+shot 06-worked.png
+
+# If the action button turned out to be Sleep rather than Till, the day
+# summary is now up and every tap below would land on a modal. Dismissing it
+# costs nothing when it is not there: in play that tap just rests the stick.
+adb shell input tap 640 564   # where "Good morning" sits
+sleep 3
 
 # --- backpack ---
 adb shell input tap 1161 425
 sleep 2
-shot 06-backpack.png
+shot 07-backpack.png
 adb shell input keyevent 4
 sleep 2
 
 # --- pause menu ---
 adb shell input tap 1197 83
 sleep 2
-shot 07-pause.png
+shot 08-pause.png
 adb shell input keyevent 4
 sleep 2
 
 # --- on to the market and the river ---
 for _ in 1 2 3 4 5; do walk_right 2600; done
 sleep 1
-shot 08-river.png
+shot 09-river.png
 
 adb shell input tap 1162 583   # fish / shop, whatever is in reach
 sleep 3
-shot 09-action.png
+shot 10-action.png
 
 sleep 6
-shot 10-later.png
+shot 11-later.png
 
 echo "--- process check ---"
 if ! adb shell pidof com.cozyhollow.riverside > /dev/null; then

@@ -427,8 +427,16 @@ class Screens(private val g: Game) {
         b(T.BACK, "Back", 2).set(p[0] + p[2] - 220f, p[1] + p[3] - 96f, 160f, 58f)
     }
 
+    /**
+     * The night panel's box, shared by the layout and the drawing so the
+     * "Good morning" button cannot drift on top of the line above it.
+     */
+    private val sleepTop: Float get() = g.vh * 0.13f
+    private val sleepPanelH = 356f
+
     private fun layoutSleep() {
-        b(T.SLEEP_OK, "Good morning", 1).set(g.vw / 2f - 150f, g.vh * 0.74f, 300f, 66f)
+        b(T.SLEEP_OK, "Good morning", 1)
+            .set(g.vw / 2f - 150f, sleepTop + sleepPanelH - 72f, 300f, 60f)
     }
 
     private fun layoutIntro() {
@@ -904,30 +912,30 @@ class Screens(private val g: Game) {
         Ui.scrim(c, g.vw, g.vh, 0.72f)
         beginPop(c)
         val w = min(g.vw - 160f, 640f)
-        val h = 400f
+        val h = sleepPanelH
         val x = (g.vw - w) / 2f
-        val y = g.vh * 0.18f
+        val y = sleepTop
         Ui.panel(c, x, y, w, h)
         Ui.ribbon(c, g.vw / 2f, y - 18f, 320f, "Good night")
-        Ui.text(c, "Day ${g.st.day - 1} is done", g.vw / 2f, y + 84f, 30f, Pal.ink, Paint.Align.CENTER, Ui.display)
+        Ui.text(c, "Day ${g.st.day - 1} is done", g.vw / 2f, y + 76f, 30f, Pal.ink, Paint.Align.CENTER, Ui.display)
 
         val rows = listOf(
             "Coins earned" to U.formatCoins(g.coinsEarnedToday),
             "Crops ready to pick" to "${g.readyCount}",
             "Tomorrow" to Weather.name(g.st.weather)
         )
-        var ry = y + 146f
+        var ry = y + 140f
         for ((k, v) in rows) {
             Ui.text(c, k, x + 60f, ry, 22f, Pal.inkSoft, Paint.Align.LEFT)
             Ui.text(c, v, x + w - 60f, ry, 24f, Pal.ink, Paint.Align.RIGHT, Ui.display)
-            ry += 46f
+            ry += 44f
         }
         val tip = when {
             g.st.weather == Weather.RAIN -> "Rain tonight - your crops will water themselves."
             g.readyCount > 0 -> "Something is ready in the field."
             else -> "Sleep well."
         }
-        Ui.text(c, tip, g.vw / 2f, y + h - 52f, 19f, Pal.leafDeep, Paint.Align.CENTER)
+        Ui.text(c, tip, g.vw / 2f, y + h - 92f, 19f, Pal.leafDeep, Paint.Align.CENTER)
         drawButtons(c)
         c.restore()
     }

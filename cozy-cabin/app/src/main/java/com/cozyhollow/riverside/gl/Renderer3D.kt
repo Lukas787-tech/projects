@@ -1457,8 +1457,13 @@ class Renderer3D {
         /** Texture repeats per metre. */
         private const val TEXELS = 0.75f
         /** How hard the world curves away toward the horizon. */
-        /** Anything nearer than this stipples away rather than blocking the shot. */
-        private const val NEAR_FADE = 3.4f
+        /**
+         * Anything nearer than this stipples away rather than blocking the shot.
+         * The farmer rides about 9.6 m from the lens, so at this range only
+         * things standing between you and them are ever touched; inside 40% of
+         * it they are gone entirely, and the rest is the fade.
+         */
+        private const val NEAR_FADE = 6.6f
 
         private const val CURVE = 0.0034f
     }
