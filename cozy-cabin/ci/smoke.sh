@@ -124,4 +124,13 @@ fi
 echo "--- our own log lines ---"
 grep -iE "Riverside" logcat.txt | head -30 || true
 
+# Keep a trimmed copy in the screenshots folder, which the workflow commits.
+# Pulling the branch is a far more reliable way to read a stack trace than
+# digging it out of the tail of a GitHub Actions log.
+{
+  echo "run: $(date -u +%FT%TZ)"
+  echo
+  grep -E "Riverside|FATAL EXCEPTION|AndroidRuntime|ANR in" logcat.txt | head -150
+} > "$SHOTS/_logcat.txt" 2>/dev/null || true
+
 exit $fail
