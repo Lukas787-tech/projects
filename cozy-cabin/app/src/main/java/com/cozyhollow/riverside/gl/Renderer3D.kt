@@ -325,8 +325,8 @@ class Renderer3D {
         val shy = if (shake > 0.01f) sin(g.timeMs * 0.045f) * shake * 0.07f else 0f
         Matrix.setLookAtM(
             view, 0,
-            camXm + shx, 4.9f + shy, 18.6f,
-            camXm + shx, 1.7f + shy, -1.6f,
+            camXm + shx, 5.6f + shy, 18.2f,
+            camXm + shx, 1.35f + shy, -2.0f,
             0f, 1f, 0f
         )
         Matrix.multiplyMM(viewProj, 0, proj, 0, view, 0)
