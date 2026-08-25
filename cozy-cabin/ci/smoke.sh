@@ -145,7 +145,7 @@ grep -iE "Riverside" logcat.txt | head -30 || true
 {
   echo "run: $(date -u +%FT%TZ)"
   echo
-  grep -E "Riverside|FATAL EXCEPTION|AndroidRuntime|ANR in" logcat.txt | head -150
+  grep -E "Riverside|FATAL EXCEPTION|AndroidRuntime|ANR in" logcat.txt | head -400
 } > "$SHOTS/_logcat.txt" 2>/dev/null || true
 
 exit $fail

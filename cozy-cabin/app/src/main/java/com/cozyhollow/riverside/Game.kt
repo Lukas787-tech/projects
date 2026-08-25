@@ -124,6 +124,11 @@ class Game(private val ctx: Context, private val host: Host) {
     private var moveX = 0f
     private var moveZ = 0f
 
+    // TEMPORARY: the emulator's swipes move the farmer not at all, and the
+    // input path reads correct, so ask the device instead of guessing.
+    private var diagN = 0
+    private var diagMoves = 0
+
     // ---- floating joystick ----
     private var stickPointer = -1
     var stickBaseX = 0f; private set
@@ -313,6 +318,16 @@ class Game(private val ctx: Context, private val host: Host) {
         // screen up walks away from the camera; screen right walks to the right
         val dirX = if (canWalk) (-moveZ * sy + moveX * cy) else 0f
         val dirZ = if (canWalk) (-moveZ * cy - moveX * sy) else 0f
+        diagN++
+        if (diagN % 90 == 0) {
+            android.util.Log.i(
+                "Riverside",
+                "diag3 mode=" + mode + " stick=" + stickPointer + " moves=" + diagMoves +
+                    " mv=" + moveX + "," + moveZ + " dir=" + dirX + "," + dirZ +
+                    " p=" + player.x + "," + player.z +
+                    " blockedAhead=" + World.blocked(st, player.x + dirX * 0.4f, player.z + dirZ * 0.4f)
+            )
+        }
         player.update(dt, dirX, dirZ, st)
         st.playerX = player.x
         st.playerZ = player.z
@@ -837,6 +852,11 @@ class Game(private val ctx: Context, private val host: Host) {
     }
 
     fun onPointerDown(id: Int, x: Float, y: Float) {
+        android.util.Log.i(
+            "Riverside",
+            "diag3 down id=" + id + " at=" + x + "," + y + " mode=" + mode +
+                " zone=" + inStickZone(x, y) + " vw=" + vw + " vh=" + vh
+        )
         if (id in pActive.indices) { pActive[id] = true; pX[id] = x; pY[id] = y }
         if (screens.onDown(x, y)) return
         if (mode != Mode.PLAY) return
@@ -886,6 +906,10 @@ class Game(private val ctx: Context, private val host: Host) {
     }
 
     fun onPointerMove(id: Int, x: Float, y: Float) {
+        diagMoves++
+        if (diagMoves % 20 == 1) {
+            android.util.Log.i("Riverside", "diag3 move #" + diagMoves + " id=" + id + " at=" + x + "," + y)
+        }
         if (id in pActive.indices && pActive[id]) { pX[id] = x; pY[id] = y }
         if (id == stickPointer) updateStick(x, y)
         if (id == lookPointer) {
