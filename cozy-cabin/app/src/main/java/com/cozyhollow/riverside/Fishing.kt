@@ -49,9 +49,9 @@ class Fishing {
     var progress = 0.28f
     var caughtSize = 0f
 
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val grad = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val fill = Paint()
+    private val grad = Paint()
+    private val stroke = Paint().apply {
         style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
     }
     private val path = Path()
@@ -186,55 +186,6 @@ class Fishing {
     }
 
     // ------------------------------------------------------------ drawing
-
-    /** Line, bobber and ripples, drawn in world space. */
-    fun drawWorld(c: Canvas, rodX: Float, rodY: Float, time: Float) {
-        if (phase == FPhase.IDLE) return
-        val castT = if (phase == FPhase.CAST) U.easeOut(U.clamp01(t / 0.55f)) else 1f
-        val bx = U.lerp(rodX, bobX, castT)
-        val arc = sin(castT * 3.14159f) * 90f
-        val by = U.lerp(rodY, bobY, castT) - arc
-
-        stroke.strokeWidth = 1.8f
-        stroke.color = U.withAlpha(Color.WHITE, 0.55f)
-        path.reset()
-        path.moveTo(rodX, rodY)
-        path.quadTo((rodX + bx) / 2f, (rodY + by) / 2f - 26f - arc * 0.3f, bx, by)
-        c.drawPath(path, stroke)
-
-        if (castT >= 1f) {
-            val bite = phase == FPhase.BITE
-            val dip = if (bite) sin(time * 0.03f) * 5f else sin(time * 0.004f) * 2.6f
-            // ripples
-            stroke.strokeWidth = 2f
-            for (i in 0 until 3) {
-                val ph = ((time * 0.0009f) + i * 0.33f) % 1f
-                stroke.color = U.withAlpha(Pal.foam, (1f - ph) * 0.42f)
-                c.drawOval(rr(bx - 12f - ph * 30f, by + dip - 4f - ph * 8f, bx + 12f + ph * 30f, by + dip + 4f + ph * 8f), stroke)
-            }
-            // bobber
-            fill.color = Color.parseColor("#E4E0D2")
-            c.drawCircle(bx, by + dip, 8f, fill)
-            fill.color = Pal.berry
-            path.reset()
-            path.addArc(rr(bx - 8f, by + dip - 8f, bx + 8f, by + dip + 8f), 180f, 180f)
-            path.close()
-            c.drawPath(path, fill)
-            fill.color = Pal.woodDeep
-            c.drawCircle(bx, by + dip, 2.4f, fill)
-
-            if (bite) {
-                val pop = U.easeBack(U.clamp01(t / 0.22f))
-                fill.color = Pal.cream
-                c.drawCircle(bx, by - 44f, 17f * pop, fill)
-                path.reset()
-                path.moveTo(bx - 6f, by - 30f); path.lineTo(bx + 5f, by - 30f); path.lineTo(bx - 1f, by - 18f)
-                path.close()
-                c.drawPath(path, fill)
-                Ui.text(c, "!", bx, by - 34f, 30f * pop, Pal.berry, Paint.Align.CENTER, Ui.display)
-            }
-        }
-    }
 
     /** The reeling mini-game overlay, drawn in UI space. */
     fun drawUi(c: Canvas, vw: Float, vh: Float, time: Float) {

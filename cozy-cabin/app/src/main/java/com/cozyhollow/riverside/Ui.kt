@@ -40,15 +40,21 @@ class Toast(val text: String, val itemId: String?, val color: Int) {
 
 object Ui {
 
+    /**
+     * The UI is laid out in a virtual space this many units tall, then rasterised
+     * into the low-resolution pixel buffer. Bigger design height = finer UI.
+     */
+    const val DESIGN_H = 480f
+
     val body: Typeface = Typeface.create("sans-serif", Typeface.BOLD)
     val display: Typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD)
 
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val grad = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val fill = Paint()
+    private val grad = Paint()
+    private val stroke = Paint().apply {
         style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
     }
-    val txt = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = body }
+    val txt = Paint().apply { typeface = body }
     private val rf = RectF()
     private val path = Path()
 

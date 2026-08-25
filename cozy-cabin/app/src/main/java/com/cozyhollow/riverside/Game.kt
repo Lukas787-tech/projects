@@ -2,6 +2,8 @@ package com.cozyhollow.riverside
 
 import android.content.Context
 import android.graphics.Canvas
+import com.cozyhollow.riverside.gl.Particles3D
+import com.cozyhollow.riverside.gl.W3
 import android.graphics.Color
 import android.graphics.Paint
 import kotlin.math.abs
@@ -46,10 +48,9 @@ class Game(private val ctx: Context, private val host: Host) {
 
     var st = GameState()
     var settings: Settings = SaveManager.loadSettings(ctx)
-    val scene = Scene()
+    val sky = MutableSkyKey()
     val player = Player()
-    val particles = Particles()
-    val farm = FarmRender()
+    val particles = Particles3D()
     val fishing = Fishing()
     val audio = Audio()
     private val screens = Screens(this)
@@ -57,7 +58,7 @@ class Game(private val ctx: Context, private val host: Host) {
     // ---- view ----
     var scale = 1f
     var vw = 1280f
-    var vh = World.VIEW_H
+    var vh = Ui.DESIGN_H
     var camX = 0f
     var timeMs = 0f
     var fps = 0f
@@ -75,11 +76,14 @@ class Game(private val ctx: Context, private val host: Host) {
     val toasts = ArrayList<Toast>()
     private var coinsAtDayStart = 0
     private var harvestedYesterday = 0
-    private var shakeTree = -1
-    private var shakeAmt = 0f
+    var shakeTreeIndex = -1
+        private set
+    var shakeAmount = 0f
+        private set
     private var pendingAction = AKind.NONE
     private var pendingTarget = -1
-    private var screenShake = 0f
+    var screenShake = 0f
+        private set
     private var fadeOut = 0f
     private var fadeTarget = 0f
     private var sleepPending = false
@@ -109,10 +113,9 @@ class Game(private val ctx: Context, private val host: Host) {
     // ================================================================ setup
 
     fun onResize(pxW: Int, pxH: Int) {
-        scale = pxH / World.VIEW_H
+        scale = pxH / Ui.DESIGN_H
         vw = pxW / scale
-        vh = World.VIEW_H
-        scene.setView(vw, vh)
+        vh = Ui.DESIGN_H
         layoutHud()
     }
 
@@ -212,9 +215,9 @@ class Game(private val ctx: Context, private val host: Host) {
         fadeOut += (fadeTarget - fadeOut) * min(1f, dt * 3.4f)
 
         // sky mood always advances so menus look alive too
-        SkyKeys.at(st.timeMin % 1440f, scene.sky)
-        val wet = if (st.weather == Weather.RAIN) 1f else if (st.weather == Weather.CLOUDY) 1f else 0f
-        scene.sky.applyWeather(st.weather, wet)
+        SkyKeys.at(st.timeMin % 1440f, sky)
+        val wet = if (st.weather == Weather.CLEAR) 0f else 1f
+        sky.applyWeather(st.weather, wet)
         val night = nightAmount()
         audio.mood = night
 
@@ -232,7 +235,7 @@ class Game(private val ctx: Context, private val host: Host) {
         }
 
         particles.update(dt)
-        particles.updateAmbient(dt, camX, vw, night, st.weather, settings.particleScale, player.x)
+        particles.updateAmbient(dt, W3.x(camX), night, st.weather, settings.particleScale)
 
         if (sleepPending && fadeOut > 0.97f) {
             sleepPending = false
@@ -242,10 +245,9 @@ class Game(private val ctx: Context, private val host: Host) {
     }
 
     private fun updateTitle(dt: Float) {
-        // the title screen shows a slow drift across the valley at golden hour
+        // the title screen drifts slowly across the valley at golden hour
         st.timeMin = 1040f + sin(titleT * 0.05f) * 40f
-        camX = 980f + sin(titleT * 0.07f) * 260f
-        camX = camX.coerceIn(0f, max(0f, World.WORLD_W - vw))
+        camX = 1500f + sin(titleT * 0.06f) * 420f
         player.update(dt, 0f)
     }
 
@@ -270,13 +272,13 @@ class Game(private val ctx: Context, private val host: Host) {
 
         // footstep dust
         if (abs(player.vx) > 1f && (timeMs % 260f) < dt * 1000f) {
-            particles.dust(player.x - player.facing * 10f, World.GROUND_Y)
+            particles.dust(player.x - player.facing * 10f)
         }
 
         // ---- tree shake decay ----
-        if (shakeAmt > 0f) {
-            shakeAmt -= dt
-            if (shakeAmt <= 0f) shakeTree = -1
+        if (shakeAmount > 0f) {
+            shakeAmount -= dt
+            if (shakeAmount <= 0f) shakeTreeIndex = -1
         }
 
         // ---- deferred action payload (fires mid-swing) ----
@@ -306,9 +308,14 @@ class Game(private val ctx: Context, private val host: Host) {
     }
 
     private fun followCamera(dt: Float, snap: Boolean) {
-        val target = (player.x - vw * 0.42f + player.facing * 40f)
-            .coerceIn(0f, max(0f, World.WORLD_W - vw))
-        camX = if (snap) target else U.lerp(camX, target, min(1f, dt * 4.6f))
+        val target = (player.x + player.facing * 55f).coerceIn(CAM_MIN, CAM_MAX)
+        camX = if (snap) target else U.lerp(camX, target, min(1f, dt * 4.2f))
+    }
+
+    companion object {
+        /** Keeps the camera from sliding past the ends of the valley. */
+        const val CAM_MIN = 520f
+        const val CAM_MAX = 3760f
     }
 
     fun nightAmount(): Float {
@@ -350,10 +357,10 @@ class Game(private val ctx: Context, private val host: Host) {
         if (abs(x - World.CABIN_DOOR_X) < 96f) {
             a.kind = AKind.SLEEP; a.label = "Sleep"; return a
         }
-        val fi = farm.nearestForage(st, x, 62f)
+        val fi = FarmQuery.nearestForage(st, x, 62f)
         if (fi >= 0) { a.kind = AKind.GATHER; a.label = "Gather"; a.target = fi; a.cost = 1f; return a }
 
-        val pi = farm.nearestPlot(st, x, 46f)
+        val pi = FarmQuery.nearestPlot(st, x, 46f)
         if (pi >= 0) {
             val p = st.plots[pi]
             when {
@@ -365,7 +372,7 @@ class Game(private val ctx: Context, private val host: Host) {
             }
             if (a.kind != AKind.NONE) return a
         }
-        val ti = farm.nearestTree(st, x, 58f)
+        val ti = FarmQuery.nearestTree(st, x, 58f)
         if (ti >= 0) { a.kind = AKind.CHOP; a.label = "Chop"; a.target = ti; a.cost = 5f; return a }
         return a
     }
@@ -430,7 +437,7 @@ class Game(private val ctx: Context, private val host: Host) {
         when (kind) {
             AKind.TILL -> {
                 st.plots[target].tilled = true
-                particles.dust(World.plotX(target), World.GROUND_Y - 6f)
+                particles.dust(World.plotX(target))
                 audio.play(Sfx.TILL); haptic(14)
             }
             AKind.PLANT -> {
@@ -441,7 +448,7 @@ class Game(private val ctx: Context, private val host: Host) {
                 p.cropId = crop.id
                 p.growth = 0f
                 p.watered = st.weather == Weather.RAIN
-                particles.burstHarvest(World.plotX(target), World.GROUND_Y - 14f, Pal.leaf, 6)
+                particles.burstHarvest(World.plotX(target), 0.35f, Pal.leaf, 6)
                 audio.play(Sfx.PLANT); haptic(10)
                 if (st.count(seed) <= 0) pickDefaultSeed()
             }
@@ -452,7 +459,7 @@ class Game(private val ctx: Context, private val host: Host) {
                     val p = st.plots[k]
                     if (p.cropId != null && !p.watered) {
                         p.watered = true
-                        particles.burstWater(World.plotX(k), World.GROUND_Y - 18f)
+                        particles.burstWater(World.plotX(k), 0.30f)
                         n++
                     }
                 }
@@ -476,7 +483,7 @@ class Game(private val ctx: Context, private val host: Host) {
                 st.seenCrops.add(crop.id)
                 harvestedYesterday += amount
                 val item = Catalog.item(crop.produceId)
-                particles.burstHarvest(World.plotX(target), World.GROUND_Y - 26f, item.a, 12)
+                particles.burstHarvest(World.plotX(target), 0.55f, item.a, 12)
                 toast("+$amount ${item.name}", crop.produceId, Pal.ink)
                 audio.play(Sfx.HARVEST); haptic(20)
                 if (crop.regrow && !p.regrown) {
@@ -496,15 +503,15 @@ class Game(private val ctx: Context, private val host: Host) {
                 }
                 st.foragePicked[target] = st.day
                 val item = Catalog.item(spot.itemId)
-                particles.burstHarvest(spot.x, World.GROUND_Y - 20f, item.a, 9)
+                particles.burstHarvest(spot.x, 0.5f, item.a, 9)
                 toast("+1 ${item.name}", spot.itemId, Pal.ink)
                 audio.play(Sfx.HARVEST); haptic(14)
             }
             AKind.CHOP -> {
                 val t = World.trees[target]
-                shakeTree = target
-                shakeAmt = 0.34f
-                particles.burstChop(t.x, World.GROUND_Y - 70f * t.scale)
+                shakeTreeIndex = target
+                shakeAmount = 0.34f
+                particles.burstChop(t.x, 1.7f * t.scale)
                 audio.play(Sfx.CHOP); haptic(22)
                 screenShake = 0.35f
                 val key = target * 13 + st.day
@@ -518,7 +525,7 @@ class Game(private val ctx: Context, private val host: Host) {
                     st.totalChopped++
                     st.treeRegrow[target] = st.day + 3 + (U.hash(key + 9) * 3f).toInt()
                     toast("+$wood Wood", "wood", Pal.ink)
-                    particles.burstHarvest(t.x, World.GROUND_Y - 40f, Pal.woodDark, 14)
+                    particles.burstHarvest(t.x, 1.1f, Pal.woodDark, 14)
                 }
             }
         }
@@ -536,8 +543,8 @@ class Game(private val ctx: Context, private val host: Host) {
         val isNew = st.seenFish.add(id)
         if (isNew) toast("New species: ${Catalog.name(id)}!", id, Pal.goldDeep)
         else toast("+1 ${Catalog.name(id)}", id, Pal.ink)
-        particles.splash(fishing.bobX, World.WATER_Y, 1.4f)
-        particles.hearts(player.x, World.GROUND_Y - 120f, 3)
+        particles.splash(fishing.bobX, 1.4f)
+        particles.hearts(player.x, 1.9f, 3)
     }
 
     // ================================================================ sleep
@@ -613,7 +620,7 @@ class Game(private val ctx: Context, private val host: Host) {
         val gain = Catalog.price(id) * n
         st.earn(gain)
         if (gain > st.biggestSale) st.biggestSale = gain
-        particles.burstCoins(player.x, World.GROUND_Y - 80f, min(10, 3 + n))
+        particles.burstCoins(player.x, 1.3f, min(10, 3 + n))
         toast("+${U.formatCoins(gain)} coins", null, Pal.goldDeep)
         audio.play(Sfx.COIN)
         haptic(12)
@@ -633,7 +640,7 @@ class Game(private val ctx: Context, private val host: Host) {
         if (gain <= 0) { toast("Nothing to sell", null, Pal.inkSoft); audio.play(Sfx.FAIL); return }
         st.earn(gain)
         if (gain > st.biggestSale) st.biggestSale = gain
-        particles.burstCoins(player.x, World.GROUND_Y - 80f, 12)
+        particles.burstCoins(player.x, 1.3f, 12)
         toast("+${U.formatCoins(gain)} coins", null, Pal.goldDeep)
         audio.play(Sfx.COIN); haptic(18)
     }
@@ -660,8 +667,8 @@ class Game(private val ctx: Context, private val host: Host) {
         st.take("stone", next.stone)
         st.cabinLevel = next.level
         st.energy = st.maxEnergy
-        particles.burstHarvest(World.CABIN_X, World.GROUND_Y - 160f, Pal.gold, 22)
-        particles.hearts(World.CABIN_X, World.GROUND_Y - 190f, 5)
+        particles.burstHarvest(World.CABIN_X, 3.2f, Pal.gold, 22)
+        particles.hearts(World.CABIN_X, 3.8f, 5)
         toast("Home upgraded: ${next.name}!", null, Pal.goldDeep)
         audio.play(Sfx.UPGRADE); haptic(40)
         SaveManager.save(ctx, st)
@@ -696,7 +703,7 @@ class Game(private val ctx: Context, private val host: Host) {
         if (st.energy >= st.maxEnergy) { toast("You're not hungry", null, Pal.inkSoft); return }
         if (!st.take(id, 1)) return
         st.energy = min(st.maxEnergy, st.energy + item.food)
-        particles.hearts(player.x, World.GROUND_Y - 110f, 2)
+        particles.hearts(player.x, 1.8f, 2)
         toast("+${item.food} energy", id, Pal.leafDeep)
         audio.play(Sfx.HARVEST)
     }
@@ -823,81 +830,32 @@ class Game(private val ctx: Context, private val host: Host) {
 
     // ================================================================= draw
 
-    fun draw(c: Canvas) {
-        c.save()
-        c.scale(scale, scale)
-        if (screenShake > 0.01f) {
-            c.translate(sin(timeMs * 0.06f) * screenShake * 7f, sin(timeMs * 0.045f) * screenShake * 5f)
-        }
-        drawWorld(c)
+    /** The flat layer: HUD, menus and toasts, rasterised at the pixel resolution. */
+    fun drawUi(c: Canvas) {
         drawOverlays(c)
-        c.restore()
     }
 
-    private fun drawWorld(c: Canvas) {
-        val night = nightAmount()
-        val rain = if (st.weather == Weather.RAIN) 1f else 0f
-
-        scene.drawSky(c)
-        scene.drawStars(c, timeMs)
-        scene.drawSunMoon(c, st.timeMin % 1440f)
-        scene.drawClouds(c, camX, timeMs, settings.quality)
-        scene.drawMountains(c, camX)
-
-        if (settings.extraLayers) {
-            scene.drawForestLayer(c, camX, 0.24f, World.GROUND_Y - 26f, 0.78f, 0.60f, 91, 96f)
-        }
-        scene.drawForestLayer(c, camX, 0.46f, World.GROUND_Y - 8f, 0.95f, 0.34f, 37, 128f)
-
-        scene.drawGround(c, camX, rain)
-
-        scene.drawGroundDetail(c, camX, timeMs)
-
-        c.save()
-        c.translate(-camX, 0f)
-        farm.drawTrees(c, st, scene, timeMs, camX, vw, shakeTree, shakeAmt)
-        scene.drawCabin(c, st.cabinLevel, night, timeMs)
-        farm.drawPlots(c, st, scene, timeMs, camX, vw)
-        scene.drawMarket(c, timeMs, night)
-        farm.drawForage(c, st, scene, timeMs, camX, vw)
-        drawInteractHint(c)
-        player.draw(c, World.GROUND_Y, scene.sky.ambient, scene.sky.ambientStrength * 0.75f)
-        if (fishing.active) {
-            fishing.drawWorld(c, player.rodTipX(), player.rodTipY(World.GROUND_Y), timeMs)
-        }
-        c.restore()
-
-        scene.drawRiver(c, camX, timeMs, settings.quality, rain)
-
-        c.save()
-        c.translate(-camX, 0f)
-        particles.draw(c, camX, vw)
-        c.restore()
-
-        scene.drawForeground(c, camX, settings.quality)
-        scene.drawAmbient(c, 0f)
-    }
-
-    /** Bouncing chevron over whatever the action button will act on. */
-    private fun drawInteractHint(c: Canvas) {
-        if (mode != Mode.PLAY || fishing.active) return
+    /** World x of whatever the action button will act on, or NaN when nothing is. */
+    fun hintTargetX(): Float {
+        if (mode != Mode.PLAY || fishing.active) return Float.NaN
         val a = currentAction()
-        val hx = when (a.kind) {
+        return when (a.kind) {
             AKind.TILL, AKind.PLANT, AKind.WATER, AKind.HARVEST -> World.plotX(a.target)
             AKind.CHOP -> World.trees[a.target].x
             AKind.GATHER -> World.forage[a.target].x
             AKind.SHOP -> World.MARKET_X
             AKind.SLEEP -> World.CABIN_DOOR_X
-            else -> return
+            else -> Float.NaN
         }
-        val hy = when (a.kind) {
-            AKind.CHOP -> World.GROUND_Y - 150f
-            AKind.SHOP -> World.GROUND_Y - 232f
-            AKind.SLEEP -> World.GROUND_Y - 96f
-            AKind.HARVEST -> World.GROUND_Y - 92f
-            else -> World.GROUND_Y - 54f
-        }
-        Ui.hintArrow(c, hx, hy, timeMs, Pal.cream)
+    }
+
+    /** Height in metres at which to float that marker. */
+    fun hintHeight(): Float = when (currentAction().kind) {
+        AKind.CHOP -> 3.8f
+        AKind.SHOP -> 4.6f
+        AKind.SLEEP -> 2.9f
+        AKind.HARVEST -> 1.4f
+        else -> 1.0f
     }
 
     private fun drawOverlays(c: Canvas) {

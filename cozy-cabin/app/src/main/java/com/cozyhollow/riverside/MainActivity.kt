@@ -50,14 +50,23 @@ class MainActivity : Activity(), Game.Host {
         if (hasFocus) goFullscreen()
     }
 
+    override fun onResume() {
+        super.onResume()
+        view.onResume()
+        goFullscreen()
+    }
+
+    override fun onPause() {
+        view.onPause()
+        super.onPause()
+    }
+
     override fun onStart() {
         super.onStart()
         game.onStart()
-        view.startLoop()
     }
 
     override fun onStop() {
-        view.stopLoop()
         game.onStop()
         super.onStop()
     }

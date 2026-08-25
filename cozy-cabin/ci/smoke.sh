@@ -29,45 +29,45 @@ sleep 14
 shot 01-title.png
 
 # Title: "Begin" / "Continue" is the first button, centred at 40% height
-adb shell input tap 640 321
+adb shell input tap 640 338
 sleep 3
 shot 02-letter.png
 
 # Intro letter: "Let's begin"
-adb shell input tap 640 565
+adb shell input tap 640 581
 sleep 4
 shot 03-morning.png
 
 # Hold the right walk pad to stroll toward the field
-adb shell input swipe 250 628 250 628 4000
+adb shell input swipe 375 582 375 582 4000
 sleep 1
 shot 04-walking.png
 
-adb shell input swipe 250 628 250 628 4000
+adb shell input swipe 375 582 375 582 4000
 sleep 1
 shot 05-field.png
 
 # Backpack
-adb shell input tap 1208 537
+adb shell input tap 1162 425
 sleep 2
 shot 06-backpack.png
 adb shell input keyevent 4
 sleep 2
 
 # Pause menu
-adb shell input tap 1225 55
+adb shell input tap 1198 83
 sleep 2
 shot 07-pause.png
 adb shell input keyevent 4
 sleep 2
 
 # Walk right toward the market and the river
-for _ in 1 2 3 4 5; do adb shell input swipe 250 628 250 628 4000; done
+for _ in 1 2 3 4 5; do adb shell input swipe 375 582 375 582 4000; done
 sleep 1
 shot 08-river.png
 
 # Action button (fish / shop / whatever is in reach)
-adb shell input tap 1208 630
+adb shell input tap 1162 584
 sleep 3
 shot 09-action.png
 

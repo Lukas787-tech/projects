@@ -1,0 +1,432 @@
+package com.cozyhollow.riverside.gl
+
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.sin
+
+/** A tiny pixel canvas. Everything the game wears is painted here, texel by texel. */
+class Px(val w: Int, val h: Int) {
+    val p = IntArray(w * h)
+    private var seed = 12345
+
+    fun rnd(): Float {
+        seed = seed * 1664525 + 1013904223
+        return ((seed ushr 8) and 0xFFFF) / 65535f
+    }
+
+    fun seed(s: Int): Px { seed = s or 1; return this }
+
+    fun set(x: Int, y: Int, c: Int) {
+        if (x < 0 || y < 0 || x >= w || y >= h) return
+        p[y * w + x] = c
+    }
+
+    /** Wrapping write, so tiling textures stay seamless. */
+    fun setW(x: Int, y: Int, c: Int) {
+        p[((y % h) + h) % h * w + (((x % w) + w) % w)] = c
+    }
+
+    fun get(x: Int, y: Int): Int = p[((y % h) + h) % h * w + (((x % w) + w) % w)]
+
+    fun fill(c: Int): Px {
+        java.util.Arrays.fill(p, c); return this
+    }
+
+    fun rect(x0: Int, y0: Int, x1: Int, y1: Int, c: Int): Px {
+        for (y in y0..y1) for (x in x0..x1) set(x, y, c)
+        return this
+    }
+
+    fun hline(y: Int, x0: Int, x1: Int, c: Int): Px {
+        for (x in x0..x1) setW(x, y, c); return this
+    }
+
+    fun vline(x: Int, y0: Int, y1: Int, c: Int): Px {
+        for (y in y0..y1) setW(x, y, c); return this
+    }
+
+    /** Scatter [n] single texels of [c] across the whole tile. */
+    fun speckle(n: Int, vararg c: Int): Px {
+        for (i in 0 until n) {
+            val x = (rnd() * w).toInt()
+            val y = (rnd() * h).toInt()
+            setW(x, y, c[(rnd() * c.size).toInt().coerceIn(0, c.size - 1)])
+        }
+        return this
+    }
+
+    /** Soft organic patches, used for moss, clumps of grass and rust. */
+    fun blotch(n: Int, radius: Int, c: Int): Px {
+        for (i in 0 until n) {
+            val cx = (rnd() * w).toInt()
+            val cy = (rnd() * h).toInt()
+            val r = 1 + (rnd() * radius).toInt()
+            for (y in -r..r) for (x in -r..r) {
+                if (x * x + y * y <= r * r && rnd() > 0.28f) setW(cx + x, cy + y, c)
+            }
+        }
+        return this
+    }
+
+    /** Ordered 2x2 dither between two colours. */
+    fun dither(c: Int, chance: Float): Px {
+        for (y in 0 until h) for (x in 0 until w) {
+            if (((x + y) and 1) == 0 && rnd() < chance) setW(x, y, c)
+        }
+        return this
+    }
+}
+
+/**
+ * Every texture in the game, painted procedurally at 32x32 so it stays crisp
+ * under nearest-neighbour magnification and ships as zero asset files.
+ */
+object PixelTex {
+
+    private fun c(hex: String) = android.graphics.Color.parseColor(hex)
+
+    // cohesive cosy palette
+    val grassA = c("#7BB661"); val grassB = c("#6AA455"); val grassC = c("#8CC96F"); val grassD = c("#5C9049")
+    val soilA = c("#8A6242"); val soilB = c("#7A5438"); val soilC = c("#9C7350"); val soilD = c("#63432C")
+    val woodA = c("#C08E58"); val woodB = c("#A87646"); val woodC = c("#D2A472"); val woodD = c("#8A5E36")
+    val barkA = c("#7A5A3E"); val barkB = c("#63482F"); val barkC = c("#8C6B4A")
+    val roofA = c("#B05A46"); val roofB = c("#94473A"); val roofC = c("#C66E56")
+    val roofDarkA = c("#6E4A66"); val roofDarkB = c("#5A3C55")
+    val stoneA = c("#A79C90"); val stoneB = c("#8F857A"); val stoneC = c("#BDB2A6")
+    val waterA = c("#4C93B8"); val waterB = c("#3E7EA2"); val waterC = c("#6BB0CE"); val waterD = c("#2F6A8A")
+    val pineA = c("#3E7A55"); val pineB = c("#336647"); val pineC = c("#4C8F63")
+    val oakA = c("#6BA854"); val oakB = c("#5B9247"); val oakC = c("#7EBE63")
+
+    fun tiling32(build: (Px) -> Unit): Px = Px(32, 32).also(build)
+
+    fun grass(): Px = tiling32 { g ->
+        g.seed(9137).fill(grassA)
+        g.dither(grassB, 0.9f)
+        g.blotch(7, 3, grassC)
+        g.blotch(5, 2, grassD)
+        g.speckle(90, grassC, grassD, grassB)
+        // little blade marks
+        for (i in 0 until 26) {
+            val x = (g.rnd() * 32).toInt(); val y = (g.rnd() * 32).toInt()
+            g.setW(x, y, grassD); g.setW(x, y - 1, grassC)
+        }
+    }
+
+    fun grassDry(): Px = tiling32 { g ->
+        g.seed(4471).fill(c("#9FB863"))
+        g.dither(c("#8CA556"), 0.9f)
+        g.blotch(6, 3, c("#B4CC78"))
+        g.speckle(70, c("#7E9450"), c("#B4CC78"))
+    }
+
+    fun soil(): Px = tiling32 { g ->
+        g.seed(2211).fill(soilA)
+        g.dither(soilB, 0.9f)
+        g.blotch(6, 3, soilC)
+        g.blotch(5, 2, soilD)
+        g.speckle(110, soilC, soilD, stoneB)
+    }
+
+    fun soilTilled(): Px = tiling32 { g ->
+        g.seed(7781).fill(c("#5E4029"))
+        g.dither(c("#523522"), 0.85f)
+        // furrows running along the row
+        for (y in 0 until 32 step 8) {
+            g.hline(y, 0, 31, c("#6E4C31"))
+            g.hline(y + 1, 0, 31, c("#4A3220"))
+        }
+        g.speckle(80, c("#7A5638"), c("#432D1D"))
+    }
+
+    fun soilWet(): Px = tiling32 { g ->
+        g.seed(7781).fill(c("#46301F"))
+        for (y in 0 until 32 step 8) {
+            g.hline(y, 0, 31, c("#553B26"))
+            g.hline(y + 1, 0, 31, c("#372416"))
+        }
+        g.speckle(70, c("#5E4229"), c("#2E1E12"))
+    }
+
+    fun sand(): Px = tiling32 { g ->
+        g.seed(5521).fill(c("#D6C08C"))
+        g.dither(c("#C4AC78"), 0.85f)
+        g.speckle(90, c("#E2D0A2"), c("#B49A66"))
+    }
+
+    /** Horizontal planks with seams and grain. */
+    fun planks(): Px = tiling32 { g ->
+        g.seed(3313).fill(woodA)
+        for (y in 0 until 32) {
+            val band = y / 8
+            val base = when (band) {
+                0 -> woodA; 1 -> woodB; 2 -> woodC; else -> woodA
+            }
+            g.hline(y, 0, 31, base)
+        }
+        for (y in 0 until 32 step 8) {
+            g.hline(y, 0, 31, woodD)
+            g.hline(y + 7, 0, 31, c("#B08050"))
+        }
+        // grain
+        for (i in 0 until 40) {
+            val x = (g.rnd() * 32).toInt()
+            val y = (g.rnd() * 32).toInt()
+            val len = 2 + (g.rnd() * 5).toInt()
+            for (k in 0 until len) g.setW(x + k, y, if (g.rnd() < 0.5f) woodD else woodC)
+        }
+        // nails
+        for (x in intArrayOf(3, 19)) for (y in intArrayOf(3, 11, 19, 27)) g.setW(x, y, c("#6E4A2C"))
+    }
+
+    /** Stacked round logs, for the first cabin. */
+    fun logs(): Px = tiling32 { g ->
+        g.seed(6161).fill(woodB)
+        for (row in 0 until 4) {
+            val y0 = row * 8
+            for (y in y0 until y0 + 8) {
+                val t = (y - y0) / 7f
+                val shade = when {
+                    t < 0.18f -> woodC
+                    t < 0.62f -> woodA
+                    t < 0.86f -> woodB
+                    else -> woodD
+                }
+                g.hline(y, 0, 31, shade)
+            }
+            g.hline(y0 + 7, 0, 31, c("#6E4A2C"))
+        }
+        for (i in 0 until 30) {
+            val x = (g.rnd() * 32).toInt(); val y = (g.rnd() * 32).toInt()
+            g.setW(x, y, if (g.rnd() < 0.5f) woodD else woodC)
+        }
+    }
+
+    /** Scalloped shingles. */
+    fun shingles(a: Int, b: Int, hi: Int): Px = tiling32 { g ->
+        g.seed(8123).fill(a)
+        for (row in 0 until 4) {
+            val y0 = row * 8
+            val off = if (row % 2 == 0) 0 else 4
+            for (y in y0 until y0 + 8) g.hline(y, 0, 31, if (y < y0 + 2) hi else a)
+            for (col in 0 until 4) {
+                val x0 = col * 8 + off
+                g.vline(x0, y0, y0 + 7, b)
+                // rounded bottom of each shingle
+                g.setW(x0 + 1, y0 + 7, b)
+                g.setW(x0 + 7, y0 + 7, b)
+            }
+            g.hline(y0 + 7, 0, 31, b)
+        }
+        g.speckle(50, b, hi)
+    }
+
+    fun stone(): Px = tiling32 { g ->
+        g.seed(1777).fill(stoneB)
+        // cobbles
+        for (row in 0 until 4) {
+            val y0 = row * 8
+            val off = if (row % 2 == 0) 0 else 5
+            for (col in 0 until 3) {
+                val x0 = col * 11 + off
+                for (y in y0 + 1 until y0 + 7) for (x in x0 + 1 until x0 + 10) {
+                    val edge = (x == x0 + 1 || x == x0 + 9 || y == y0 + 1 || y == y0 + 6)
+                    g.setW(x, y, if (edge) stoneB else if (g.rnd() < 0.2f) stoneC else stoneA)
+                }
+            }
+        }
+        g.speckle(60, stoneC, stoneB)
+    }
+
+    fun water(): Px = tiling32 { g ->
+        g.seed(3931).fill(waterA)
+        for (y in 0 until 32) {
+            val s = sin(y * 0.6f) * 3f
+            for (x in 0 until 32) {
+                val v = sin((x + s) * 0.5f) + cos(y * 0.42f)
+                g.setW(x, y, if (v > 0.85f) waterC else if (v > 0f) waterA else if (v > -0.9f) waterB else waterD)
+            }
+        }
+        g.speckle(26, waterC)
+    }
+
+    fun bark(): Px = tiling32 { g ->
+        g.seed(2593).fill(barkA)
+        for (x in 0 until 32) {
+            val col = when ((x / 3) % 3) { 0 -> barkB; 1 -> barkA; else -> barkC }
+            g.vline(x, 0, 31, col)
+        }
+        for (i in 0 until 50) {
+            val x = (g.rnd() * 32).toInt(); val y = (g.rnd() * 32).toInt()
+            val len = 2 + (g.rnd() * 6).toInt()
+            for (k in 0 until len) g.setW(x, y + k, barkB)
+        }
+    }
+
+    fun leaves(a: Int, b: Int, hi: Int): Px = tiling32 { g ->
+        g.seed(4243).fill(a)
+        g.dither(b, 0.95f)
+        g.blotch(9, 3, hi)
+        g.blotch(7, 2, b)
+        for (i in 0 until 60) {
+            val x = (g.rnd() * 32).toInt(); val y = (g.rnd() * 32).toInt()
+            g.setW(x, y, hi); g.setW(x + 1, y + 1, b)
+        }
+    }
+
+    fun pineNeedles(): Px = leaves(pineA, pineB, pineC)
+    fun oakLeaves(): Px = leaves(oakA, oakB, oakC)
+
+    /** Cream and berry awning stripes. */
+    fun awning(): Px = tiling32 { g ->
+        val cream = c("#F2E4CA"); val berry = c("#C4626C")
+        for (x in 0 until 32) g.vline(x, 0, 31, if ((x / 8) % 2 == 0) cream else berry)
+        for (x in 0 until 32 step 8) g.vline(x, 0, 31, c("#D8C8AC"))
+    }
+
+    fun crate(): Px = tiling32 { g ->
+        g.seed(9091).fill(woodB)
+        g.rect(0, 0, 31, 31, woodB)
+        for (y in 0 until 32) g.hline(y, 0, 31, if ((y / 4) % 2 == 0) woodA else woodB)
+        g.rect(0, 0, 2, 31, woodD); g.rect(29, 0, 31, 31, woodD)
+        g.rect(0, 0, 31, 2, woodD); g.rect(0, 29, 31, 31, woodD)
+        g.hline(15, 0, 31, woodD); g.hline(16, 0, 31, woodD)
+        g.speckle(40, woodC, woodD)
+    }
+
+    /** Window: dark frame, warm panes, a cross bar. */
+    fun window(): Px = tiling32 { g ->
+        val frame = c("#6E4A2C"); val glass = c("#9FCDE0"); val glassHi = c("#C6E5F2")
+        g.fill(frame)
+        g.rect(4, 4, 27, 27, glass)
+        for (y in 4..27) for (x in 4..27) if (x - 4 < 27 - y) g.set(x, y, glassHi)
+        g.rect(14, 4, 17, 27, frame)
+        g.rect(4, 14, 27, 17, frame)
+        g.rect(0, 0, 31, 3, frame); g.rect(0, 28, 31, 31, frame)
+    }
+
+    fun windowLit(): Px = tiling32 { g ->
+        val frame = c("#5C3C22"); val glow = c("#FFD98A"); val glowHi = c("#FFF0C4")
+        g.fill(frame)
+        g.rect(4, 4, 27, 27, glow)
+        for (y in 4..27) for (x in 4..27) if (x - 4 < 27 - y) g.set(x, y, glowHi)
+        g.rect(14, 4, 17, 27, frame)
+        g.rect(4, 14, 27, 17, frame)
+        g.rect(0, 0, 31, 3, frame); g.rect(0, 28, 31, 31, frame)
+    }
+
+    fun door(): Px = tiling32 { g ->
+        g.seed(5150).fill(c("#7A5230"))
+        for (x in 0 until 32) g.vline(x, 0, 31, if ((x / 6) % 2 == 0) c("#7A5230") else c("#6B4728"))
+        g.rect(0, 0, 31, 2, c("#5A3A20")); g.rect(0, 29, 31, 31, c("#5A3A20"))
+        g.rect(0, 0, 2, 31, c("#5A3A20")); g.rect(29, 0, 31, 31, c("#5A3A20"))
+        // handle
+        g.rect(24, 15, 26, 18, c("#E8B44A"))
+        g.speckle(30, c("#8C6038"))
+    }
+
+    fun cloth(base: Int, shade: Int): Px = tiling32 { g ->
+        g.seed(base).fill(base)
+        g.dither(shade, 0.7f)
+        g.speckle(40, shade)
+    }
+
+    fun skin(): Px = tiling32 { g ->
+        g.seed(3111).fill(c("#F0C49C"))
+        g.dither(c("#E4B389"), 0.4f)
+    }
+
+    fun straw(): Px = tiling32 { g ->
+        g.seed(6412).fill(c("#E0BE79"))
+        for (y in 0 until 32) g.hline(y, 0, 31, if ((y / 3) % 2 == 0) c("#E0BE79") else c("#CBA765"))
+        g.speckle(70, c("#F0D79A"), c("#B8934F"))
+    }
+
+    fun fur(base: Int, shade: Int): Px = tiling32 { g ->
+        g.seed(base xor 0x5A5A).fill(base)
+        for (i in 0 until 90) {
+            val x = (g.rnd() * 32).toInt(); val y = (g.rnd() * 32).toInt()
+            g.setW(x, y, shade); g.setW(x, y + 1, shade)
+        }
+        g.dither(shade, 0.3f)
+    }
+
+    fun metal(): Px = tiling32 { g ->
+        g.seed(8811).fill(c("#B4BAC2"))
+        g.dither(c("#9AA0A8"), 0.6f)
+        g.speckle(30, c("#D2D8E0"), c("#848A92"))
+    }
+
+    /** Flat colour with a touch of noise so it still reads as painted pixels. */
+    fun solid(color: Int, shade: Int = 0): Px = tiling32 { g ->
+        g.seed(color).fill(color)
+        if (shade != 0) g.dither(shade, 0.35f)
+    }
+
+    /** Vertical gradient strip used for the sky dome. */
+    fun skyRamp(): Px = Px(1, 64).also { g -> g.fill(-1) }
+}
+
+/** Extra sprites that need transparency. */
+object PixelSprites {
+
+    private fun c(hex: String) = android.graphics.Color.parseColor(hex)
+    private const val CLEAR = 0
+
+    /** A soft pixel cloud with alpha. */
+    fun cloud(): Px = Px(32, 16).also { g ->
+        g.seed(7311).fill(CLEAR)
+        val white = c("#FFFFFF")
+        val shade = c("#DCE6EE")
+        fun puff(cx: Int, cy: Int, r: Int) {
+            for (y in -r..r) for (x in -r..r) {
+                if (x * x + y * y <= r * r) g.set(cx + x, cy + y, if (y > r / 2) shade else white)
+            }
+        }
+        puff(9, 10, 5); puff(16, 8, 6); puff(23, 10, 4); puff(13, 11, 4)
+        // flatten the base
+        for (x in 0 until 32) for (y in 13 until 16) g.set(x, y, CLEAR)
+        for (x in 4 until 28) g.set(x, 12, shade)
+    }
+
+    /** The farmer's face, applied as a decal on the front of the head. */
+    fun face(): Px = Px(16, 16).also { g ->
+        g.fill(CLEAR)
+        val ink = c("#3A2A20")
+        val blush = c("#E8907E")
+        g.rect(4, 6, 5, 8, ink)
+        g.rect(10, 6, 11, 8, ink)
+        g.set(4, 6, c("#FFFFFF")); g.set(10, 6, c("#FFFFFF"))
+        g.rect(2, 9, 3, 10, blush)
+        g.rect(12, 9, 13, 10, blush)
+        g.rect(6, 11, 9, 11, ink)
+        g.set(5, 10, ink); g.set(10, 10, ink)
+    }
+
+    /** Pip the shopkeeper's face. */
+    fun foxFace(): Px = Px(16, 16).also { g ->
+        g.fill(CLEAR)
+        val ink = c("#3A2A20")
+        g.rect(3, 5, 4, 7, ink)
+        g.rect(11, 5, 12, 7, ink)
+        g.set(3, 5, c("#FFFFFF")); g.set(11, 5, c("#FFFFFF"))
+        g.rect(7, 9, 8, 10, ink)
+        g.rect(5, 11, 10, 11, ink)
+        g.set(4, 10, ink); g.set(11, 10, ink)
+    }
+
+    /** Simple white square used to tint particles any colour. */
+    fun dot(): Px = Px(4, 4).also { it.fill(c("#FFFFFF")) }
+
+    /** Ripple ring for the fishing bobber and rain on the water. */
+    fun ring(): Px = Px(16, 16).also { g ->
+        g.fill(CLEAR)
+        val w = c("#FFFFFF")
+        for (a in 0 until 64) {
+            val th = a / 64f * 6.2832f
+            val x = (8 + kotlin.math.cos(th) * 6.5f).toInt()
+            val y = (8 + kotlin.math.sin(th) * 6.5f).toInt()
+            g.set(x, y, w)
+        }
+    }
+}

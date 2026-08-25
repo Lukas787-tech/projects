@@ -1,0 +1,969 @@
+package com.cozyhollow.riverside.gl
+
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.PorterDuff
+import android.opengl.GLES20.*
+import android.opengl.GLUtils
+import android.opengl.Matrix
+import com.cozyhollow.riverside.Act
+import com.cozyhollow.riverside.Catalog
+import com.cozyhollow.riverside.FPhase
+import com.cozyhollow.riverside.Game
+import com.cozyhollow.riverside.MutableSkyKey
+import com.cozyhollow.riverside.Tiers
+import com.cozyhollow.riverside.U
+import com.cozyhollow.riverside.Weather
+import com.cozyhollow.riverside.World
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sin
+
+/**
+ * Renders the valley as real 3D geometry into a small offscreen buffer, then
+ * blits that buffer to the display with nearest-neighbour filtering so every
+ * texel lands as a hard pixel.
+ */
+class Renderer3D {
+
+    // ---- programs ----
+    private var worldProg = 0
+    private var skyProg = 0
+    private var blitProg = 0
+    private var uiProg = 0
+
+    private var aPos = 0; private var aNor = 0; private var aUv = 0
+    private var uViewProj = 0; private var uModel = 0; private var uCamXLoc = 0
+    private var uCurve = 0; private var uBaseY = 0
+    private var uSunDir = 0; private var uSunCol = 0; private var uAmbient = 0
+    private var uFog = 0; private var uFogCol = 0; private var uColor = 0; private var uTex = 0
+
+    private var skyAPos = 0
+    private var skyTop = 0; private var skyMid = 0; private var skyHor = 0
+    private var skyStars = 0; private var skySun = 0; private var skySunCol = 0
+    private var skySunGlow = 0; private var skySunSize = 0; private var skyAspect = 0
+
+    private var blitAPos = 0; private var blitTex = 0
+    private var uiAPos = 0; private var uiTexLoc = 0
+
+    private var fullQuad = 0
+
+    // ---- resources ----
+    private var tex: Textures? = null
+    private var prims: Prims? = null
+    private var rt: RenderTarget? = null
+
+    private var grassMesh: Mesh? = null
+    private var bankMesh: Mesh? = null
+    private var bedMesh: Mesh? = null
+    private var waterMesh: Mesh? = null
+    private var barkMesh: Mesh? = null
+    private var pineMesh: Mesh? = null
+    private var oakMesh: Mesh? = null
+    private var tuftMesh: Mesh? = null
+
+    // ---- ui layer ----
+    private var uiBitmap: Bitmap? = null
+    private var uiCanvas: Canvas? = null
+    private var uiTexId = 0
+
+    var rtW = 480; private set
+    var rtH = 270; private set
+    private var screenW = 1; private var screenH = 1
+
+    private val proj = FloatArray(16)
+    private val view = FloatArray(16)
+    private val viewProj = FloatArray(16)
+    private val ms = MStack(24)
+
+    var ready = false; private set
+
+    // ================================================================ setup
+
+    fun onSurfaceCreated() {
+        ready = false
+        worldProg = Gl.program(Shaders.WORLD_VS, Shaders.WORLD_FS)
+        aPos = glGetAttribLocation(worldProg, "aPos")
+        aNor = glGetAttribLocation(worldProg, "aNor")
+        aUv = glGetAttribLocation(worldProg, "aUv")
+        uViewProj = glGetUniformLocation(worldProg, "uViewProj")
+        uModel = glGetUniformLocation(worldProg, "uModel")
+        uCamXLoc = glGetUniformLocation(worldProg, "uCamX")
+        uCurve = glGetUniformLocation(worldProg, "uCurve")
+        uBaseY = glGetUniformLocation(worldProg, "uBaseY")
+        uSunDir = glGetUniformLocation(worldProg, "uSunDir")
+        uSunCol = glGetUniformLocation(worldProg, "uSunCol")
+        uAmbient = glGetUniformLocation(worldProg, "uAmbient")
+        uFog = glGetUniformLocation(worldProg, "uFog")
+        uFogCol = glGetUniformLocation(worldProg, "uFogCol")
+        uColor = glGetUniformLocation(worldProg, "uColor")
+        uTex = glGetUniformLocation(worldProg, "uTex")
+
+        skyProg = Gl.program(Shaders.SKY_VS, Shaders.SKY_FS)
+        skyAPos = glGetAttribLocation(skyProg, "aPos")
+        skyTop = glGetUniformLocation(skyProg, "uTop")
+        skyMid = glGetUniformLocation(skyProg, "uMid")
+        skyHor = glGetUniformLocation(skyProg, "uHorizon")
+        skyStars = glGetUniformLocation(skyProg, "uStars")
+        skySun = glGetUniformLocation(skyProg, "uSun")
+        skySunCol = glGetUniformLocation(skyProg, "uSunCol")
+        skySunGlow = glGetUniformLocation(skyProg, "uSunGlow")
+        skySunSize = glGetUniformLocation(skyProg, "uSunSize")
+        skyAspect = glGetUniformLocation(skyProg, "uAspect")
+
+        blitProg = Gl.program(Shaders.BLIT_VS, Shaders.BLIT_FS)
+        blitAPos = glGetAttribLocation(blitProg, "aPos")
+        blitTex = glGetUniformLocation(blitProg, "uTex")
+
+        uiProg = Gl.program(Shaders.BLIT_VS, Shaders.UI_FS)
+        uiAPos = glGetAttribLocation(uiProg, "aPos")
+        uiTexLoc = glGetUniformLocation(uiProg, "uTex")
+
+        val quad = floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f)
+        val ids = IntArray(1)
+        glGenBuffers(1, ids, 0)
+        fullQuad = ids[0]
+        glBindBuffer(GL_ARRAY_BUFFER, fullQuad)
+        glBufferData(GL_ARRAY_BUFFER, quad.size * 4, Gl.floatBuf(quad), GL_STATIC_DRAW)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+
+        tex = Textures()
+        prims = Prims()
+        buildStatic()
+
+        glEnable(GL_CULL_FACE)
+        glCullFace(GL_BACK)
+        glFrontFace(GL_CCW)
+        ready = true
+    }
+
+    fun onSurfaceChanged(w: Int, h: Int) {
+        screenW = w; screenH = h
+        rtH = 270
+        rtW = (270f * w / h).toInt().coerceIn(300, 760)
+        if (rtW % 2 == 1) rtW++
+        rt?.release()
+        rt = RenderTarget(rtW, rtH)
+
+        uiBitmap?.recycle()
+        val bmp = Bitmap.createBitmap(rtW, rtH, Bitmap.Config.ARGB_8888)
+        uiBitmap = bmp
+        uiCanvas = Canvas(bmp)
+        if (uiTexId != 0) glDeleteTextures(1, intArrayOf(uiTexId), 0)
+        uiTexId = Gl.emptyTexture(rtW, rtH)
+
+        Matrix.perspectiveM(proj, 0, 33f, w.toFloat() / h, 0.4f, 150f)
+    }
+
+    // ============================================================== statics
+
+    private fun buildStatic() {
+        val bankX = W3.BANK_X
+        val bankEnd = W3.BANK_END
+
+        var b = MeshBuilder()
+        b.plane(-6f, bankX, -20f, 8f, 0f, 150, 6, 1f)
+        grassMesh = b.build()
+
+        // the sloped bank, sampled so the curve stays smooth
+        b = MeshBuilder()
+        run {
+            val steps = 10
+            for (i in 0 until steps) {
+                val x0 = U.lerp(bankX, bankEnd, i.toFloat() / steps)
+                val x1 = U.lerp(bankX, bankEnd, (i + 1f) / steps)
+                val y0 = W3.groundHeight(x0)
+                val y1 = W3.groundHeight(x1)
+                val z0 = -20f; val z1 = 8f
+                val nx = -(y1 - y0)
+                val len = kotlin.math.sqrt(nx * nx + (x1 - x0) * (x1 - x0))
+                b.quad(
+                    x0, y0, z1, x1, y1, z1, x1, y1, z0, x0, y0, z0,
+                    nx / len, (x1 - x0) / len, 0f, (x1 - x0), (z1 - z0)
+                )
+            }
+        }
+        bankMesh = b.build()
+
+        b = MeshBuilder()
+        b.plane(bankEnd, 84f, -20f, 8f, W3.BED_Y, 50, 4, 1f)
+        bedMesh = b.build()
+
+        b = MeshBuilder()
+        b.plane(W3.RIVER_X - 1.4f, 84f, -20f, 8f, W3.WATER_Y, 60, 6, 0.5f)
+        waterMesh = b.build()
+
+        buildForest()
+        buildTufts()
+    }
+
+    private fun buildForest() {
+        val bark = MeshBuilder()
+        val pine = MeshBuilder()
+        val oak = MeshBuilder()
+        val rows = floatArrayOf(-7f, -11f, -16f)
+        var seed = 1
+        for (r in rows.indices) {
+            val z = rows[r]
+            val spacing = 1.5f + r * 0.35f
+            var x = -6f
+            while (x < 84f) {
+                seed++
+                val jitter = (U.hash(seed * 31) - 0.5f) * spacing * 0.9f
+                val px = x + jitter
+                x += spacing
+                if (px > W3.BANK_X - 1f && px < 84f && r == 0) continue
+                val s = 0.75f + U.hash(seed * 17) * 0.6f + r * 0.12f
+                val zz = z + (U.hash(seed * 7) - 0.5f) * 2.2f
+                if (U.hash(seed * 53) < 0.62f) {
+                    bark.cylinder(px, 0f, zz, 0.14f * s, 0.11f * s, 1.1f * s, 6, 1f)
+                    pine.cone(px, 0.75f * s, zz, 1.15f * s, 1.7f * s, 7, 0.7f)
+                    pine.cone(px, 1.75f * s, zz, 0.92f * s, 1.5f * s, 7, 0.7f)
+                    pine.cone(px, 2.7f * s, zz, 0.62f * s, 1.25f * s, 7, 0.7f)
+                } else {
+                    bark.cylinder(px, 0f, zz, 0.17f * s, 0.14f * s, 1.5f * s, 6, 1f)
+                    oak.blob(px, 2.35f * s, zz, 1.15f * s, 4, 7, 0.6f)
+                    oak.blob(px - 0.75f * s, 1.85f * s, zz + 0.3f * s, 0.72f * s, 3, 6, 0.6f)
+                    oak.blob(px + 0.8f * s, 2.0f * s, zz - 0.25f * s, 0.66f * s, 3, 6, 0.6f)
+                }
+                if (bark.vertexCount > 28000 || pine.vertexCount > 28000 || oak.vertexCount > 28000) break
+            }
+        }
+        barkMesh = bark.build()
+        pineMesh = pine.build()
+        oakMesh = oak.build()
+    }
+
+    /** Crossed quads of grass scattered over the walkable band. */
+    private fun buildTufts() {
+        val b = MeshBuilder()
+        var seed = 500
+        var i = 0
+        while (i < 1400 && b.vertexCount < 28000) {
+            seed++
+            i++
+            val x = U.hash(seed * 13) * (W3.BANK_X + 4f) - 3f
+            val z = -6f + U.hash(seed * 29) * 11f
+            if (x > W3.BANK_X - 0.4f) continue
+            if (abs(z - W3.WALK_Z) < 0.35f) continue
+            val h = 0.16f + U.hash(seed * 41) * 0.2f
+            val w = 0.16f
+            b.quad(x - w, 0f, z, x + w, 0f, z, x + w, h, z, x - w, h, z, 0f, 0f, 1f, 1f, 1f)
+            b.quad(x, 0f, z - w, x, 0f, z + w, x, h, z + w, x, h, z - w, 1f, 0f, 0f, 1f, 1f)
+        }
+        tuftMesh = b.build()
+    }
+
+    // ================================================================ frame
+
+    private val sunDir = FloatArray(3)
+
+    fun drawFrame(g: Game) {
+        val target = rt ?: return
+        if (!ready) return
+
+        val sky = g.sky
+        val night = g.nightAmount()
+        val camXm = W3.x(g.camX)
+
+        target.bind()
+        glDisable(GL_DEPTH_TEST)
+        glDepthMask(false)
+        glDisable(GL_BLEND)
+        drawSky(g, sky, night)
+
+        glClear(GL_DEPTH_BUFFER_BIT)
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LEQUAL)
+
+        val shake = g.screenShake
+        val shx = if (shake > 0.01f) sin(g.timeMs * 0.06f) * shake * 0.10f else 0f
+        val shy = if (shake > 0.01f) sin(g.timeMs * 0.045f) * shake * 0.07f else 0f
+        Matrix.setLookAtM(
+            view, 0,
+            camXm + shx, 3.45f + shy, 12.4f,
+            camXm + shx, 1.45f + shy, -1.2f,
+            0f, 1f, 0f
+        )
+        Matrix.multiplyMM(viewProj, 0, proj, 0, view, 0)
+
+        glUseProgram(worldProg)
+        glUniformMatrix4fv(uViewProj, 1, false, viewProj, 0)
+        glUniform1f(uCamXLoc, camXm)
+        glUniform1f(uCurve, W3.CURVE)
+        glUniform1i(uTex, 0)
+        glActiveTexture(GL_TEXTURE0)
+
+        // lighting from the clock
+        val day = 1f - night
+        val elev = U.lerp(0.35f, 0.95f, day)
+        val sunT = U.norm(g.st.timeMin % 1440f, 300f, 1170f)
+        sunDir[0] = cos(sunT * 3.1416f) * 0.55f
+        sunDir[1] = elev
+        sunDir[2] = 0.45f
+        val len = kotlin.math.sqrt(sunDir[0] * sunDir[0] + sunDir[1] * sunDir[1] + sunDir[2] * sunDir[2])
+        glUniform3f(uSunDir, sunDir[0] / len, sunDir[1] / len, sunDir[2] / len)
+
+        val sc = 0.30f + 0.62f * day
+        glUniform3f(
+            uSunCol,
+            Color.red(sky.sunColor) / 255f * sc,
+            Color.green(sky.sunColor) / 255f * sc,
+            Color.blue(sky.sunColor) / 255f * sc
+        )
+        val ac = 0.34f + 0.30f * day
+        glUniform3f(
+            uAmbient,
+            U.lerp(Color.red(sky.ambient) / 255f, 1f, 0.30f) * ac,
+            U.lerp(Color.green(sky.ambient) / 255f, 1f, 0.30f) * ac,
+            U.lerp(Color.blue(sky.ambient) / 255f, 1f, 0.30f) * ac
+        )
+        glUniform2f(uFog, 11f, 40f)
+        glUniform3f(
+            uFogCol,
+            Color.red(sky.horizon) / 255f, Color.green(sky.horizon) / 255f, Color.blue(sky.horizon) / 255f
+        )
+        glDepthMask(true)
+
+        drawTerrain(g)
+        drawForest(g)
+        drawCabin(g, night)
+        drawMarket(g, night)
+        drawTrees(g)
+        drawPlots(g)
+        drawForage(g)
+        drawPlayer(g)
+        drawHint(g)
+        if (g.fishing.active) drawBobber(g)
+
+        drawParticles(g)
+
+        drawUiLayer(g)
+
+        // ---- present ----
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
+        glViewport(0, 0, screenW, screenH)
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_BLEND)
+        glUseProgram(blitProg)
+        glActiveTexture(GL_TEXTURE0)
+        glBindTexture(GL_TEXTURE_2D, target.color)
+        glUniform1i(blitTex, 0)
+        drawFullQuad(blitAPos)
+    }
+
+    private fun drawFullQuad(attr: Int) {
+        glBindBuffer(GL_ARRAY_BUFFER, fullQuad)
+        glEnableVertexAttribArray(attr)
+        glVertexAttribPointer(attr, 2, GL_FLOAT, false, 8, 0)
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
+        glDisableVertexAttribArray(attr)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+    }
+
+    private fun drawSky(g: Game, sky: MutableSkyKey, night: Float) {
+        glUseProgram(skyProg)
+        glUniform3f(skyTop, Color.red(sky.top) / 255f, Color.green(sky.top) / 255f, Color.blue(sky.top) / 255f)
+        glUniform3f(skyMid, Color.red(sky.mid) / 255f, Color.green(sky.mid) / 255f, Color.blue(sky.mid) / 255f)
+        glUniform3f(skyHor, Color.red(sky.horizon) / 255f, Color.green(sky.horizon) / 255f, Color.blue(sky.horizon) / 255f)
+        glUniform1f(skyStars, sky.starAlpha)
+        glUniform1f(skyAspect, rtW.toFloat() / rtH)
+
+        val m = g.st.timeMin % 1440f
+        val sunUp = m in 290f..1180f
+        val t = if (sunUp) U.norm(m, 300f, 1170f) else U.norm(if (m > 1140f) m - 1140f else m + 300f, 0f, 600f)
+        val sx = U.lerp(0.13f, 0.87f, t)
+        val sy = 0.30f + sin(t * 3.1416f) * 0.52f
+        glUniform2f(skySun, sx, sy)
+        if (sunUp) {
+            glUniform3f(skySunCol, Color.red(sky.sunColor) / 255f, Color.green(sky.sunColor) / 255f, Color.blue(sky.sunColor) / 255f)
+            glUniform3f(skySunGlow, Color.red(sky.sunGlow) / 255f * 0.5f, Color.green(sky.sunGlow) / 255f * 0.5f, Color.blue(sky.sunGlow) / 255f * 0.5f)
+            glUniform1f(skySunSize, 0.052f)
+        } else {
+            glUniform3f(skySunCol, 0.95f, 0.94f, 0.86f)
+            glUniform3f(skySunGlow, 0.30f, 0.34f, 0.48f)
+            glUniform1f(skySunSize, 0.038f)
+        }
+        drawFullQuad(skyAPos)
+    }
+
+    // ------------------------------------------------------------ drawing
+
+    private fun bindAndDraw(mesh: Mesh?, texId: Int, tintR: Float = 1f, tintG: Float = 1f, tintB: Float = 1f, alpha: Float = 1f) {
+        val m = mesh ?: return
+        glBindTexture(GL_TEXTURE_2D, texId)
+        glUniformMatrix4fv(uModel, 1, false, ms.m, 0)
+        glUniform4f(uColor, tintR, tintG, tintB, alpha)
+        m.bind(aPos, aNor, aUv)
+        m.draw()
+    }
+
+    private fun setBase(y: Float) = glUniform1f(uBaseY, y)
+
+    /** Box helper: centre x/z, base y, size. */
+    private fun box(x: Float, y: Float, z: Float, sx: Float, sy: Float, sz: Float, texId: Int, closed: Boolean = false) {
+        ms.push().translate(x, y, z).scale(sx, sy, sz)
+        bindAndDraw(if (closed) prims?.boxClosed else prims?.box, texId)
+        ms.pop()
+    }
+
+    private fun drawTerrain(g: Game) {
+        setBase(0f)
+        ms.identity()
+        bindAndDraw(grassMesh, tex!!.grass)
+        bindAndDraw(bankMesh, tex!!.sand)
+        if (g.settings.quality > 0) bindAndDraw(tuftMesh, tex!!.leafGreen, 0.86f, 1f, 0.8f)
+        setBase(W3.BED_Y)
+        bindAndDraw(bedMesh, tex!!.sand, 0.8f, 0.78f, 0.7f)
+        setBase(W3.WATER_Y)
+        ms.identity().translate(0f, 0f, 0f)
+        // scroll the water texture by shifting the mesh's UV through the model matrix is
+        // not possible here, so nudge the whole sheet instead: it reads as flow
+        val drift = (g.timeMs * 0.00006f) % 1f
+        ms.identity().translate(0f, sin(g.timeMs * 0.0008f) * 0.012f, drift * 2f - 1f)
+        bindAndDraw(waterMesh, tex!!.water)
+        setBase(0f)
+    }
+
+    private fun drawForest(g: Game) {
+        setBase(0f)
+        ms.identity()
+        bindAndDraw(barkMesh, tex!!.bark)
+        bindAndDraw(pineMesh, tex!!.pine)
+        bindAndDraw(oakMesh, tex!!.oak)
+    }
+
+    private fun drawTrees(g: Game) {
+        val t = tex!!
+        setBase(0f)
+        ms.identity()
+        val camXm = W3.x(g.camX)
+        for (i in 0 until World.TREE_COUNT) {
+            val tr = World.trees[i]
+            val x = W3.x(tr.x)
+            if (abs(x - camXm) > 13f) continue
+            val standing = World.treeStanding(g.st, i)
+            val s = tr.scale
+            if (!standing) {
+                box(x, 0f, W3.TREE_Z, 0.42f * s, 0.34f * s, 0.42f * s, t.bark, closed = false)
+                ms.push().translate(x, 0.34f * s, W3.TREE_Z).scale(0.44f * s, 0.02f, 0.44f * s)
+                bindAndDraw(prims?.flat, t.oak, 0.75f, 0.6f, 0.45f)
+                ms.pop()
+                continue
+            }
+            val shake = if (i == g.shakeTreeIndex && g.shakeAmount > 0f)
+                sin(g.shakeAmount * 46f) * 2.6f * U.clamp01(g.shakeAmount * 3f) else 0f
+            val sway = sin(g.timeMs * 0.0009f + i) * 0.7f
+            ms.push().translate(x, 0f, W3.TREE_Z).rotateZ(shake + sway * 0.3f)
+            if (tr.kind == 0) {
+                ms.push().scale(0.30f * s, 1.5f * s, 0.30f * s)
+                bindAndDraw(prims?.cyl, t.bark); ms.pop()
+                for (k in 0 until 3) {
+                    val cy = (1.0f + k * 1.15f) * s
+                    val cr = (2.5f - k * 0.55f) * s
+                    val ch = (2.1f - k * 0.25f) * s
+                    ms.push().translate(0f, cy, 0f).scale(cr, ch, cr)
+                    bindAndDraw(prims?.cone, t.pine); ms.pop()
+                }
+            } else {
+                ms.push().scale(0.34f * s, 1.9f * s, 0.34f * s)
+                bindAndDraw(prims?.cyl, t.bark); ms.pop()
+                ms.push().translate(0f, 2.9f * s, 0f).scale(2.7f * s, 2.5f * s, 2.5f * s)
+                bindAndDraw(prims?.blob, t.oak); ms.pop()
+                ms.push().translate(-1.0f * s, 2.3f * s, 0.4f * s).scale(1.6f * s, 1.5f * s, 1.5f * s)
+                bindAndDraw(prims?.blob, t.oak); ms.pop()
+                ms.push().translate(1.05f * s, 2.45f * s, -0.35f * s).scale(1.5f * s, 1.4f * s, 1.4f * s)
+                bindAndDraw(prims?.blob, t.oak); ms.pop()
+            }
+            ms.pop()
+        }
+    }
+
+    // ------------------------------------------------------------- cabin
+
+    private fun drawCabin(g: Game, night: Float) {
+        val t = tex!!
+        val x = W3.CABIN_X
+        val z = W3.CABIN_Z
+        val lit = if (night > 0.25f) t.windowLit else t.window
+        val level = g.st.cabinLevel
+        setBase(0f)
+        ms.identity()
+        when (level) {
+            1 -> {
+                box(x, 0f, z, 4.2f, 2.35f, 3.1f, t.logs)
+                roofAt(x, 2.35f, z, 4.8f, 1.5f, 3.7f, t.shingleRed)
+                doorAt(x + 1.2f, z + 1.56f, 1.0f, 1.7f, t.door)
+                windowAt(x - 0.9f, 1.15f, z + 1.56f, 0.9f, 0.9f, lit)
+                box(x + 1.5f, 2.2f, z - 0.6f, 0.5f, 1.5f, 0.5f, t.stone)
+            }
+            2 -> {
+                box(x, 0f, z, 5.4f, 2.7f, 3.5f, t.logs)
+                roofAt(x, 2.7f, z, 6.1f, 1.7f, 4.2f, t.shingleRed)
+                doorAt(x + 1.6f, z + 1.76f, 1.05f, 1.85f, t.door)
+                windowAt(x - 1.5f, 1.35f, z + 1.76f, 0.95f, 0.95f, lit)
+                windowAt(x - 0.1f, 1.35f, z + 1.76f, 0.95f, 0.95f, lit)
+                box(x + 1.9f, 2.5f, z - 0.7f, 0.55f, 1.6f, 0.55f, t.stone)
+                porch(x + 3.6f, z + 0.6f, 2.1f, 2.4f, t)
+            }
+            3 -> {
+                box(x, 0f, z, 6.2f, 0.45f, 4.0f, t.stone)
+                box(x, 0.45f, z, 6.0f, 3.9f, 3.8f, t.planks)
+                box(x, 2.1f, z, 6.1f, 0.18f, 3.9f, t.logs)
+                roofAt(x, 4.35f, z, 6.9f, 2.0f, 4.6f, t.shingleRed)
+                doorAt(x + 1.9f, z + 1.91f, 1.1f, 1.95f, t.door)
+                windowAt(x - 1.8f, 0.95f, z + 1.91f, 1.0f, 1.0f, lit)
+                windowAt(x - 0.3f, 0.95f, z + 1.91f, 1.0f, 1.0f, lit)
+                windowAt(x - 1.8f, 2.75f, z + 1.91f, 1.0f, 1.0f, lit)
+                windowAt(x - 0.3f, 2.75f, z + 1.91f, 1.0f, 1.0f, lit)
+                flowerBox(x - 1.8f, 0.42f, z + 1.98f, t)
+                box(x + 2.2f, 4.0f, z - 0.9f, 0.65f, 2.0f, 0.65f, t.stone)
+                porch(x + 4.0f, z + 0.8f, 2.2f, 2.6f, t)
+            }
+            else -> {
+                box(x, 0f, z, 7.6f, 0.5f, 4.4f, t.stone)
+                box(x, 0.5f, z, 7.4f, 4.5f, 4.2f, t.planks)
+                box(x, 2.4f, z, 7.5f, 0.2f, 4.3f, t.logs)
+                roofAt(x, 5.0f, z, 8.4f, 2.3f, 5.0f, t.shinglePlum)
+                // attic gable
+                box(x - 0.4f, 5.0f, z + 0.9f, 2.0f, 1.2f, 1.6f, t.planks)
+                roofAt(x - 0.4f, 6.2f, z + 0.9f, 2.4f, 0.9f, 2.0f, t.shinglePlum)
+                windowAt(x - 0.4f, 5.35f, z + 1.72f, 0.85f, 0.85f, lit)
+                doorAt(x + 2.3f, z + 2.11f, 1.15f, 2.05f, t.door)
+                windowAt(x - 2.6f, 1.1f, z + 2.11f, 1.05f, 1.05f, lit)
+                windowAt(x - 1.1f, 1.1f, z + 2.11f, 1.05f, 1.05f, lit)
+                windowAt(x + 0.4f, 1.1f, z + 2.11f, 1.05f, 1.05f, lit)
+                windowAt(x - 2.6f, 3.2f, z + 2.11f, 1.05f, 1.05f, lit)
+                windowAt(x - 1.1f, 3.2f, z + 2.11f, 1.05f, 1.05f, lit)
+                flowerBox(x - 2.6f, 0.47f, z + 2.18f, t)
+                flowerBox(x - 1.1f, 0.47f, z + 2.18f, t)
+                box(x + 2.7f, 4.6f, z - 1.0f, 0.8f, 2.2f, 0.8f, t.stone)
+                porch(x + 4.7f, z + 0.9f, 2.6f, 3.0f, t)
+                // weather vane
+                box(x, 7.3f, z, 0.07f, 0.7f, 0.07f, t.metal)
+                box(x + 0.25f, 7.75f, z, 0.5f, 0.16f, 0.05f, t.metal)
+            }
+        }
+        chimneySmoke(g, x, level)
+    }
+
+    private fun roofAt(x: Float, y: Float, z: Float, w: Float, h: Float, d: Float, texId: Int) {
+        ms.push().translate(x, y, z).scale(w, h, d)
+        bindAndDraw(prims?.roof, texId)
+        ms.pop()
+    }
+
+    private fun doorAt(x: Float, z: Float, w: Float, h: Float, texId: Int) {
+        ms.push().translate(x, 0f, z).scale(w, h, 1f)
+        bindAndDraw(prims?.quad, texId)
+        ms.pop()
+    }
+
+    private fun windowAt(x: Float, y: Float, z: Float, w: Float, h: Float, texId: Int) {
+        ms.push().translate(x, y, z).scale(w, h, 1f)
+        bindAndDraw(prims?.quad, texId)
+        ms.pop()
+    }
+
+    private fun porch(x: Float, z: Float, w: Float, d: Float, t: Textures) {
+        box(x, 0f, z, w, 0.22f, d, t.planks, closed = true)
+        box(x - w / 2 + 0.12f, 0.22f, z + d / 2 - 0.12f, 0.16f, 1.9f, 0.16f, t.planks)
+        box(x + w / 2 - 0.12f, 0.22f, z + d / 2 - 0.12f, 0.16f, 1.9f, 0.16f, t.planks)
+        box(x, 2.12f, z, w + 0.2f, 0.18f, d, t.planks)
+        box(x, 0.85f, z + d / 2 - 0.12f, w - 0.1f, 0.1f, 0.1f, t.planks)
+    }
+
+    private fun flowerBox(x: Float, y: Float, z: Float, t: Textures) {
+        box(x, y, z, 0.95f, 0.22f, 0.22f, t.planks, closed = true)
+        for (k in 0 until 4) {
+            val fx = x - 0.33f + k * 0.22f
+            box(fx, y + 0.22f, z, 0.13f, 0.12f, 0.13f, t.leafGreen)
+            box(fx, y + 0.32f, z, 0.1f, 0.09f, 0.1f, t.solid(if (k % 2 == 0) Color.parseColor("#D06A72") else Color.parseColor("#E8B44A")))
+        }
+    }
+
+    private fun chimneySmoke(g: Game, x: Float, level: Int) {
+        val t = tex!!
+        val topY = when (level) { 1 -> 3.7f; 2 -> 4.1f; 3 -> 6.0f; else -> 6.8f }
+        val cx = when (level) { 1 -> x + 1.5f; 2 -> x + 1.9f; 3 -> x + 2.2f; else -> x + 2.7f }
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glDepthMask(false)
+        for (i in 0 until 5) {
+            val ph = ((g.timeMs * 0.00022f) + i * 0.2f) % 1f
+            val a = (1f - ph) * 0.42f
+            val s = 0.25f + ph * 0.8f
+            ms.push().translate(cx + sin(ph * 5f + i) * 0.5f * ph, topY + ph * 2.6f, W3.CABIN_Z)
+                .scale(s, s, s).translate(0f, -0.5f, 0f)
+            bindAndDraw(prims?.quad, t.cloud, 1f, 1f, 1f, a)
+            ms.pop()
+        }
+        glDepthMask(true)
+        glDisable(GL_BLEND)
+    }
+
+    // ------------------------------------------------------------ market
+
+    private fun drawMarket(g: Game, night: Float) {
+        val t = tex!!
+        val x = W3.MARKET_X
+        val z = W3.MARKET_Z
+        setBase(0f)
+        ms.identity()
+        // counter
+        box(x, 0f, z + 0.7f, 5.0f, 1.0f, 0.7f, t.planks, closed = true)
+        box(x, 1.0f, z + 0.7f, 5.3f, 0.12f, 0.95f, t.logs, closed = true)
+        // posts
+        box(x - 2.5f, 0f, z + 0.9f, 0.18f, 2.9f, 0.18f, t.planks)
+        box(x + 2.5f, 0f, z + 0.9f, 0.18f, 2.9f, 0.18f, t.planks)
+        box(x - 2.5f, 0f, z - 0.9f, 0.18f, 2.9f, 0.18f, t.planks)
+        box(x + 2.5f, 0f, z - 0.9f, 0.18f, 2.9f, 0.18f, t.planks)
+        // awning: a shallow gable
+        roofAt(x, 2.9f, z, 5.6f, 0.75f, 2.4f, t.awning)
+        // sign
+        box(x, 3.65f, z, 2.2f, 0.7f, 0.12f, t.planks, closed = true)
+        // crates of produce
+        crateAt(x - 1.5f, 1.12f, z + 0.7f, Color.parseColor("#E08240"), t)
+        crateAt(x - 0.2f, 1.12f, z + 0.7f, Color.parseColor("#D6564C"), t)
+        crateAt(x + 1.1f, 1.12f, z + 0.7f, Color.parseColor("#6FA45A"), t)
+        drawPip(g, x + 1.9f, z - 0.2f)
+    }
+
+    private fun crateAt(x: Float, y: Float, z: Float, produce: Int, t: Textures) {
+        box(x, y, z, 0.62f, 0.5f, 0.55f, t.crate, closed = true)
+        ms.push().translate(x - 0.14f, y + 0.5f, z).scale(0.24f, 0.24f, 0.24f)
+        bindAndDraw(prims?.blob, t.solid(produce)); ms.pop()
+        ms.push().translate(x + 0.15f, y + 0.5f, z + 0.05f).scale(0.21f, 0.21f, 0.21f)
+        bindAndDraw(prims?.blob, t.solid(produce)); ms.pop()
+        ms.push().translate(x, y + 0.66f, z - 0.05f).scale(0.2f, 0.2f, 0.2f)
+        bindAndDraw(prims?.blob, t.solid(produce)); ms.pop()
+    }
+
+    /** Pip the shopkeeper: a small fox built from boxes, bobbing behind the counter. */
+    private fun drawPip(g: Game, x: Float, z: Float) {
+        val t = tex!!
+        val bob = sin(g.timeMs * 0.0022f) * 0.04f
+        ms.push().translate(x, bob, z).rotateY(-18f)
+        box(0f, 0f, 0f, 0.5f, 0.55f, 0.4f, t.foxFur)
+        box(0f, 0.12f, 0.21f, 0.32f, 0.4f, 0.06f, t.foxCream)
+        box(0f, 0.55f, 0.02f, 0.52f, 0.46f, 0.46f, t.foxFur)
+        box(0f, 0.62f, 0.24f, 0.3f, 0.26f, 0.06f, t.foxCream)
+        // ears
+        box(-0.17f, 1.01f, 0.02f, 0.16f, 0.22f, 0.1f, t.foxFur)
+        box(0.17f, 1.01f, 0.02f, 0.16f, 0.22f, 0.1f, t.foxFur)
+        // tail
+        ms.push().translate(0f, 0.18f, -0.3f).rotateX(28f).scale(0.24f, 0.5f, 0.24f)
+        bindAndDraw(prims?.box, t.foxFur); ms.pop()
+        // face decal
+        glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        ms.push().translate(0f, 0.6f, 0.27f).scale(0.46f, 0.46f, 1f)
+        bindAndDraw(prims?.quad, t.foxFace); ms.pop()
+        glDisable(GL_BLEND)
+        ms.pop()
+    }
+
+    // ------------------------------------------------------------ player
+
+    private fun drawPlayer(g: Game) {
+        val t = tex!!
+        val p = g.player
+        val x = W3.x(p.x)
+        val moving = abs(p.vx) > 1f
+        val bob = if (moving) abs(sin(p.walkPhase)) * 0.045f else sin(p.idlePhase * 2.1f) * 0.018f
+        // face the camera when idle, turn into a three-quarter view when walking
+        val yaw = if (moving) p.facing * 62f else p.facing * 22f
+        val legSwing = if (moving) sin(p.walkPhase) * 32f else 0f
+        val armSwing = when (p.action) {
+            Act.SWING -> -70f + sin(U.clamp01(p.actionT / max(p.actionDur, 0.01f)) * 3.1416f) * 120f
+            Act.WATER -> -55f
+            Act.PICK -> -40f * sin(U.clamp01(p.actionT / max(p.actionDur, 0.01f)) * 3.1416f)
+            Act.FISH -> -62f
+            else -> if (moving) sin(p.walkPhase + 3.1416f) * 26f else 0f
+        }
+
+        setBase(0f)
+        ms.identity()
+        ms.push().translate(x, bob, W3.WALK_Z).rotateY(yaw)
+
+        // legs, hung from the hip
+        limb(-0.12f, 0.62f, 0f, 0.19f, 0.62f, 0.2f, legSwing, t.denim)
+        limb(0.12f, 0.62f, 0f, 0.19f, 0.62f, 0.2f, -legSwing, t.denim)
+        box(-0.12f, 0f, 0.03f, 0.22f, 0.12f, 0.28f, t.boot, closed = true)
+        box(0.12f, 0f, 0.03f, 0.22f, 0.12f, 0.28f, t.boot, closed = true)
+
+        // body
+        box(0f, 0.6f, 0f, 0.48f, 0.56f, 0.3f, t.shirt)
+        box(0f, 1.1f, 0f, 0.5f, 0.1f, 0.32f, t.scarf)
+
+        // arms
+        limb(-0.32f, 1.1f, 0f, 0.15f, 0.5f, 0.16f, armSwing, t.shirt)
+        limb(0.32f, 1.1f, 0f, 0.15f, 0.5f, 0.16f, -armSwing * 0.35f, t.shirt)
+
+        // head
+        box(0f, 1.2f, 0f, 0.44f, 0.42f, 0.4f, t.skin)
+        box(0f, 1.5f, 0f, 0.46f, 0.13f, 0.42f, t.hair)
+        box(0f, 1.2f, -0.19f, 0.44f, 0.32f, 0.06f, t.hair)
+        // straw hat
+        box(0f, 1.62f, 0f, 0.78f, 0.06f, 0.74f, t.straw, closed = true)
+        box(0f, 1.66f, 0f, 0.4f, 0.16f, 0.38f, t.straw, closed = true)
+
+        glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        ms.push().translate(0f, 1.24f, 0.21f).scale(0.38f, 0.38f, 1f)
+        bindAndDraw(prims?.quad, t.face); ms.pop()
+        glDisable(GL_BLEND)
+
+        drawTool(g, armSwing, t)
+        ms.pop()
+    }
+
+    /** A limb that swings about a pivot at its top. */
+    private fun limb(px: Float, py: Float, pz: Float, sx: Float, sy: Float, sz: Float, deg: Float, texId: Int) {
+        ms.push().translate(px, py, pz).rotateX(deg).scale(sx, sy, sz).translate(0f, -1f, 0f)
+        bindAndDraw(prims?.box, texId)
+        ms.pop()
+    }
+
+    private fun drawTool(g: Game, armSwing: Float, t: Textures) {
+        val p = g.player
+        if (p.action == Act.NONE || p.action == Act.CHEER) return
+        ms.push().translate(-0.32f, 1.1f, 0f).rotateX(armSwing).translate(0f, -0.5f, 0f)
+        when (p.action) {
+            Act.SWING -> {
+                box(0f, -0.05f, 0.05f, 0.06f, 0.85f, 0.06f, t.bark)
+                ms.push().translate(0f, 0.72f, 0.05f).rotateZ(90f).scale(0.1f, 0.3f, 0.22f)
+                bindAndDraw(prims?.box, t.metal); ms.pop()
+            }
+            Act.WATER -> {
+                box(0f, -0.18f, 0.1f, 0.3f, 0.28f, 0.24f, t.metal, closed = true)
+                box(0.22f, -0.06f, 0.1f, 0.22f, 0.06f, 0.06f, t.metal, closed = true)
+            }
+            Act.FISH -> {
+                ms.push().rotateX(-42f)
+                box(0f, -0.1f, 0f, 0.05f, 1.5f, 0.05f, t.bark)
+                ms.pop()
+            }
+            Act.PICK -> {
+                ms.push().translate(0f, -0.1f, 0.08f).scale(0.18f, 0.18f, 0.18f)
+                bindAndDraw(prims?.blob, t.leafGreen); ms.pop()
+            }
+        }
+        ms.pop()
+    }
+
+    // ------------------------------------------------------- plots & crops
+
+    private fun drawPlots(g: Game) {
+        val t = tex!!
+        val camXm = W3.x(g.camX)
+        val open = g.st.tier.plots
+        setBase(0f)
+        ms.identity()
+        for (i in 0 until World.MAX_PLOTS) {
+            val x = W3.x(World.plotX(i))
+            if (abs(x - camXm) > 12f) continue
+            if (i >= open) continue
+            val plot = g.st.plots[i]
+            if (!plot.tilled) continue
+            box(x, 0f, W3.PLOT_Z, 1.16f, 0.1f, 1.0f, if (plot.watered) t.tilledWet else t.tilled, closed = true)
+            val cropId = plot.cropId ?: continue
+            val crop = Catalog.crops[cropId] ?: continue
+            drawCrop(g, x, crop.id, U.clamp01(plot.growth / crop.days), plot.ready)
+        }
+    }
+
+    private fun drawCrop(g: Game, x: Float, cropId: String, prog: Float, ready: Boolean) {
+        val t = tex!!
+        val item = Catalog.item(cropId)
+        val sway = sin(g.timeMs * 0.0016f + x * 1.7f) * 3.2f * (0.4f + prog)
+        val h = U.lerp(0.12f, 0.95f, U.easeOut(prog))
+        ms.push().translate(x, 0.1f, W3.PLOT_Z).rotateZ(sway)
+        // stem
+        box(0f, 0f, 0f, 0.07f, h, 0.07f, t.leafGreen)
+        // leaves
+        val leaves = if (prog < 0.3f) 2 else 4
+        for (k in 0 until leaves) {
+            val ly = h * (0.25f + k * 0.2f)
+            val dir = if (k % 2 == 0) 1f else -1f
+            ms.push().translate(0f, ly, 0f).rotateZ(dir * 42f).scale(0.34f, 0.06f, 0.2f).translate(dir * 0.5f, 0f, 0f)
+            bindAndDraw(prims?.box, t.leafGreen)
+            ms.pop()
+        }
+        if (ready) {
+            val fruitTex = t.solid(item.a)
+            when (cropId) {
+                "carrot", "turnip" -> {
+                    ms.push().translate(0f, 0.02f, 0f).scale(0.34f, 0.3f, 0.34f)
+                    bindAndDraw(prims?.blob, fruitTex); ms.pop()
+                }
+                "corn" -> {
+                    box(0.14f, h * 0.42f, 0f, 0.16f, 0.4f, 0.16f, fruitTex, closed = true)
+                }
+                "pumpkin" -> {
+                    ms.push().translate(0.24f, 0.2f, 0.1f).scale(0.52f, 0.42f, 0.5f)
+                    bindAndDraw(prims?.blob, fruitTex); ms.pop()
+                }
+                "berry" -> {
+                    for (k in 0 until 4) {
+                        ms.push().translate(-0.16f + k * 0.11f, h * (0.5f + (k % 2) * 0.18f), 0.06f)
+                            .scale(0.14f, 0.14f, 0.14f)
+                        bindAndDraw(prims?.blob, fruitTex); ms.pop()
+                    }
+                }
+                else -> {
+                    ms.push().translate(-0.14f, h * 0.6f, 0.05f).scale(0.24f, 0.24f, 0.24f)
+                    bindAndDraw(prims?.blob, fruitTex); ms.pop()
+                    ms.push().translate(0.15f, h * 0.78f, -0.03f).scale(0.21f, 0.21f, 0.21f)
+                    bindAndDraw(prims?.blob, fruitTex); ms.pop()
+                }
+            }
+        }
+        ms.pop()
+    }
+
+    private fun drawForage(g: Game) {
+        val t = tex!!
+        val camXm = W3.x(g.camX)
+        setBase(0f)
+        ms.identity()
+        for (i in 0 until World.FORAGE_COUNT) {
+            val f = World.forage[i]
+            val x = W3.x(f.x)
+            if (abs(x - camXm) > 12f) continue
+            if (!World.forageAvailable(g.st, i)) continue
+            val item = Catalog.item(f.itemId)
+            val bob = sin(g.timeMs * 0.0022f + i * 1.4f) * 0.03f
+            ms.push().translate(x, 0.02f + bob, W3.WALK_Z - 0.5f).rotateY(g.timeMs * 0.02f % 360f)
+            when (f.itemId) {
+                "mushroom" -> {
+                    box(0f, 0f, 0f, 0.1f, 0.16f, 0.1f, t.solid(Color.parseColor("#F4EAD8")))
+                    ms.push().translate(0f, 0.18f, 0f).scale(0.34f, 0.24f, 0.34f)
+                    bindAndDraw(prims?.blob, t.solid(item.a)); ms.pop()
+                }
+                "flower" -> {
+                    box(0f, 0f, 0f, 0.05f, 0.26f, 0.05f, t.leafGreen)
+                    ms.push().translate(0f, 0.3f, 0f).scale(0.2f, 0.16f, 0.2f)
+                    bindAndDraw(prims?.blob, t.solid(item.a)); ms.pop()
+                }
+                "honey" -> box(0f, 0f, 0f, 0.22f, 0.3f, 0.22f, t.solid(item.a), closed = true)
+                else -> {
+                    ms.push().translate(0f, 0.12f, 0f).scale(0.24f, 0.3f, 0.24f)
+                    bindAndDraw(prims?.blob, t.solid(item.a)); ms.pop()
+                }
+            }
+            ms.pop()
+        }
+    }
+
+    /** A bobbing chevron floating over the thing the action button will act on. */
+    private fun drawHint(g: Game) {
+        val hx = g.hintTargetX()
+        if (hx.isNaN()) return
+        val bob = sin(g.timeMs * 0.006f) * 0.11f
+        setBase(0f)
+        ms.identity().translate(W3.x(hx), g.hintHeight() + 0.55f + bob, W3.PLOT_Z + 0.35f)
+            .rotateZ(180f).scale(0.32f, 0.34f, 0.32f)
+        bindAndDraw(prims?.cone, tex!!.solid(Color.parseColor("#FFF3C0")))
+    }
+
+    private fun drawBobber(g: Game) {
+        val t = tex!!
+        val f = g.fishing
+        if (f.phase == FPhase.IDLE) return
+        val castT = if (f.phase == FPhase.CAST) U.easeOut(U.clamp01(f.t / 0.55f)) else 1f
+        val fromX = W3.x(g.player.x)
+        val toX = W3.x(f.bobX)
+        val bx = U.lerp(fromX, toX, castT)
+        val arc = sin(castT * 3.1416f) * 1.6f
+        val by = U.lerp(1.6f, W3.WATER_Y + 0.08f, castT) + arc
+        val bz = U.lerp(W3.WALK_Z, W3.WALK_Z - 1.6f, castT)
+        val dip = if (f.phase == FPhase.BITE) sin(g.timeMs * 0.03f) * 0.06f else sin(g.timeMs * 0.004f) * 0.02f
+        setBase(0f)
+        ms.identity()
+        ms.push().translate(bx, by + dip, bz).scale(0.16f, 0.16f, 0.16f)
+        bindAndDraw(prims?.blob, t.solid(Color.parseColor("#E4E0D2"))); ms.pop()
+        ms.push().translate(bx, by + dip + 0.07f, bz).scale(0.15f, 0.15f, 0.15f)
+        bindAndDraw(prims?.blob, t.solid(Color.parseColor("#D0707A"))); ms.pop()
+
+        if (castT >= 1f) {
+            glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            glDepthMask(false)
+            for (k in 0 until 3) {
+                val ph = ((g.timeMs * 0.0009f) + k * 0.33f) % 1f
+                val s = 0.3f + ph * 1.1f
+                ms.push().translate(bx, W3.WATER_Y + 0.03f, bz).rotateX(-90f).scale(s, s, s).translate(0f, -0.5f, 0f)
+                bindAndDraw(prims?.quad, t.ring, 1f, 1f, 1f, (1f - ph) * 0.5f)
+                ms.pop()
+            }
+            glDepthMask(true); glDisable(GL_BLEND)
+        }
+    }
+
+    // --------------------------------------------------------- particles
+
+    private fun drawParticles(g: Game) {
+        val t = tex!!
+        val p = g.particles
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glDepthMask(false)
+        setBase(0f)
+        val camXm = W3.x(g.camX)
+        for (i in p.life.indices) {
+            if (p.life[i] <= 0f) continue
+            if (abs(p.px[i] - camXm) > 16f) continue
+            val a = p.alphaOf(i)
+            if (a <= 0.02f) continue
+            val s = p.sizeOf(i)
+            val c = p.col[i]
+            val r = Color.red(c) / 255f; val gg = Color.green(c) / 255f; val bb = Color.blue(c) / 255f
+            when (p.kind[i]) {
+                P3.RING -> {
+                    ms.identity().translate(p.px[i], p.py[i], p.pz[i]).rotateX(-90f)
+                        .scale(s * 2f, s * 2f, s * 2f).translate(0f, -0.5f, 0f)
+                    bindAndDraw(prims?.quad, t.ring, r, gg, bb, a)
+                }
+                P3.RAIN -> {
+                    ms.identity().translate(p.px[i], p.py[i], p.pz[i]).scale(s * 0.5f, s * 7f, s * 0.5f)
+                    bindAndDraw(prims?.quad, t.dot, r, gg, bb, a)
+                }
+                else -> {
+                    ms.identity().translate(p.px[i], p.py[i], p.pz[i])
+                        .scale(s * 2f, s * 2f, s * 2f).translate(0f, -0.5f, 0f)
+                    bindAndDraw(prims?.quad, t.dot, r, gg, bb, a)
+                }
+            }
+        }
+        glDepthMask(true)
+        glDisable(GL_BLEND)
+    }
+
+    // ------------------------------------------------------------- ui pass
+
+    private fun drawUiLayer(g: Game) {
+        val bmp = uiBitmap ?: return
+        val c = uiCanvas ?: return
+        c.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+        val s = rtH / com.cozyhollow.riverside.Ui.DESIGN_H
+        c.save()
+        c.scale(s, s)
+        g.drawUi(c)
+        c.restore()
+
+        glBindTexture(GL_TEXTURE_2D, uiTexId)
+        GLUtils.texSubImage2D(GL_TEXTURE_2D, 0, 0, 0, bmp)
+
+        glDisable(GL_DEPTH_TEST)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glUseProgram(uiProg)
+        glActiveTexture(GL_TEXTURE0)
+        glBindTexture(GL_TEXTURE_2D, uiTexId)
+        glUniform1i(uiTexLoc, 0)
+        drawFullQuad(uiAPos)
+        glDisable(GL_BLEND)
+        glUseProgram(worldProg)
+    }
+}

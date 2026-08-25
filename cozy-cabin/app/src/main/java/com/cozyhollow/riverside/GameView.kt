@@ -1,59 +1,51 @@
 package com.cozyhollow.riverside
 
 import android.content.Context
-import android.graphics.Canvas
-import android.os.Build
+import android.opengl.GLSurfaceView
 import android.view.MotionEvent
-import android.view.SurfaceHolder
-import android.view.SurfaceView
+import com.cozyhollow.riverside.gl.Renderer3D
+import javax.microedition.khronos.egl.EGLConfig
+import javax.microedition.khronos.opengles.GL10
 
-/** SurfaceView with a dedicated render thread running a fixed-ish timestep loop. */
-class GameView(ctx: Context, private val game: Game) :
-    SurfaceView(ctx), SurfaceHolder.Callback, Runnable {
+/** Hosts the GL renderer and marshals touch input onto the render thread. */
+class GameView(ctx: Context, private val game: Game) : GLSurfaceView(ctx) {
 
-    private var thread: Thread? = null
-    @Volatile private var running = false
-    @Volatile private var surfaceReady = false
-
+    private val r3d = Renderer3D()
     private var lastNs = 0L
     private var fpsAccum = 0f
     private var fpsFrames = 0
 
     init {
-        holder.addCallback(this)
-        isFocusable = true
+        setEGLContextClientVersion(2)
+        setEGLConfigChooser(8, 8, 8, 0, 16, 0)
+        preserveEGLContextOnPause = true
+        setRenderer(SceneRenderer())
+        renderMode = RENDERMODE_CONTINUOUSLY
         keepScreenOn = true
+        isFocusable = true
     }
 
-    override fun surfaceCreated(h: SurfaceHolder) {
-        surfaceReady = true
-        startLoop()
-    }
+    private inner class SceneRenderer : GLSurfaceView.Renderer {
 
-    override fun surfaceChanged(h: SurfaceHolder, format: Int, w: Int, hh: Int) {
-        game.onResize(w, hh)
-    }
+        override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+            try {
+                r3d.onSurfaceCreated()
+            } catch (e: Throwable) {
+                android.util.Log.e("Riverside", "GL setup failed", e)
+            }
+            lastNs = System.nanoTime()
+        }
 
-    override fun surfaceDestroyed(h: SurfaceHolder) {
-        surfaceReady = false
-        stopLoop()
-    }
+        override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+            try {
+                r3d.onSurfaceChanged(width, height)
+            } catch (e: Throwable) {
+                android.util.Log.e("Riverside", "GL resize failed", e)
+            }
+            game.onResize(width, height)
+        }
 
-    fun startLoop() {
-        if (running || !surfaceReady) return
-        running = true
-        lastNs = System.nanoTime()
-        thread = Thread(this, "riverside-render").apply { start() }
-    }
-
-    fun stopLoop() {
-        running = false
-        try { thread?.join(900) } catch (_: InterruptedException) { }
-        thread = null
-    }
-
-    override fun run() {
-        while (running) {
+        override fun onDrawFrame(gl: GL10?) {
             val now = System.nanoTime()
             var dt = (now - lastNs) / 1_000_000_000f
             lastNs = now
@@ -64,36 +56,14 @@ class GameView(ctx: Context, private val game: Game) :
             fpsFrames++
             if (fpsAccum >= 0.5f) {
                 game.fps = fpsFrames / fpsAccum
-                fpsAccum = 0f
-                fpsFrames = 0
+                fpsAccum = 0f; fpsFrames = 0
             }
 
             try {
                 game.update(dt)
-            } catch (_: Throwable) {
-            }
-
-            var canvas: Canvas? = null
-            val h = holder
-            try {
-                canvas = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    h.lockHardwareCanvas()
-                } else {
-                    h.lockCanvas()
-                }
-                if (canvas != null) game.draw(canvas)
-            } catch (_: Throwable) {
-            } finally {
-                if (canvas != null) {
-                    try { h.unlockCanvasAndPost(canvas) } catch (_: Throwable) { }
-                }
-            }
-
-            // don't spin faster than the display needs
-            val frameMs = (System.nanoTime() - now) / 1_000_000L
-            val target = 15L
-            if (frameMs < target) {
-                try { Thread.sleep(target - frameMs) } catch (_: InterruptedException) { }
+                r3d.drawFrame(game)
+            } catch (e: Throwable) {
+                android.util.Log.e("Riverside", "frame failed", e)
             }
         }
     }
@@ -104,18 +74,26 @@ class GameView(ctx: Context, private val game: Game) :
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 val i = ev.actionIndex
-                game.onPointerDown(ev.getPointerId(i), ev.getX(i) / s, ev.getY(i) / s)
+                val id = ev.getPointerId(i)
+                val x = ev.getX(i) / s; val y = ev.getY(i) / s
+                queueEvent { game.onPointerDown(id, x, y) }
             }
             MotionEvent.ACTION_MOVE -> {
-                for (i in 0 until ev.pointerCount) {
-                    game.onPointerMove(ev.getPointerId(i), ev.getX(i) / s, ev.getY(i) / s)
+                val n = ev.pointerCount
+                val ids = IntArray(n) { ev.getPointerId(it) }
+                val xs = FloatArray(n) { ev.getX(it) / s }
+                val ys = FloatArray(n) { ev.getY(it) / s }
+                queueEvent {
+                    for (k in 0 until n) game.onPointerMove(ids[k], xs[k], ys[k])
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
                 val i = ev.actionIndex
-                game.onPointerUp(ev.getPointerId(i), ev.getX(i) / s, ev.getY(i) / s)
+                val id = ev.getPointerId(i)
+                val x = ev.getX(i) / s; val y = ev.getY(i) / s
+                queueEvent { game.onPointerUp(id, x, y) }
             }
-            MotionEvent.ACTION_CANCEL -> game.onCancelTouch()
+            MotionEvent.ACTION_CANCEL -> queueEvent { game.onCancelTouch() }
         }
         return true
     }
