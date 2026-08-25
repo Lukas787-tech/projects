@@ -537,6 +537,23 @@ class Renderer3D {
         ms.pop()
     }
 
+    /**
+     * A flat bed, wide and low. The box helper takes its texture density from
+     * the object's height, which is right for a wall and wrong for a slab: a
+     * five-centimetre one gets a single row of texels smeared across the whole
+     * top face, so soil comes out looking like decking. This one measures the
+     * footprint instead.
+     */
+    private fun slab(
+        x: Float, y: Float, z: Float, sx: Float, sy: Float, sz: Float,
+        texId: Int, uvPerM: Float, r: Float = 1f, g: Float = 1f, b: Float = 1f
+    ) {
+        ms.push().translate(x, y, z).scale(sx, sy, sz)
+        uv(sx * uvPerM, sz * uvPerM)
+        bindAndDraw(prims?.boxClosed, texId, r, g, b)
+        ms.pop()
+    }
+
     private fun drawChunks(g: Game) {
         val t = tex ?: return
         val s = scene ?: return
@@ -941,11 +958,10 @@ class Renderer3D {
                 // A bed you have not broken yet: scuffed bare earth, flatter and
                 // a little smaller than a worked one. Without it the field is an
                 // empty pen and there is nothing to tell you where to dig.
-                box(x, y, z, 1.34f, 0.05f, 1.34f, t.soil, closed = true, uvPerM = 0.8f,
-                    r = 0.88f, g = 0.84f, b = 0.76f)
+                slab(x, y, z, 1.34f, 0.05f, 1.34f, t.soil, 1.6f, 0.9f, 0.85f, 0.74f)
                 continue
             }
-            box(x, y, z, 1.5f, 0.14f, 1.5f, if (plot.watered) t.tilledWet else t.tilled, closed = true, uvPerM = 0.8f)
+            slab(x, y, z, 1.5f, 0.14f, 1.5f, if (plot.watered) t.tilledWet else t.tilled, 1.6f)
             val cropId = plot.cropId ?: continue
             val crop = Catalog.crops[cropId] ?: continue
             drawCrop(g, x, y + 0.14f, z, crop.id, U.clamp01(plot.growth / crop.days), plot.ready)

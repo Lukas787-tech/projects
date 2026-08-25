@@ -443,7 +443,9 @@ class Game(private val ctx: Context, private val host: Host) {
         val x = player.x
         val z = player.z
 
-        val pi = FarmQuery.nearestPlot(st, x, z, 1.8f)
+        // a bed is 1.5 m across, so 1.8 m from its centre meant standing almost
+        // on top of it before the button woke up
+        val pi = FarmQuery.nearestPlot(st, x, z, 2.2f)
         if (pi >= 0) {
             val p = st.plots[pi]
             when {
