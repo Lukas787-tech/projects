@@ -12,6 +12,7 @@ class GameView(ctx: Context, private val game: Game) : GLSurfaceView(ctx) {
 
     private val r3d = Renderer3D()
     private var lastNs = 0L
+    private var lastQuality = -1
     private var fpsAccum = 0f
     private var fpsFrames = 0
 
@@ -38,11 +39,12 @@ class GameView(ctx: Context, private val game: Game) : GLSurfaceView(ctx) {
 
         override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
             try {
-                r3d.onSurfaceChanged(width, height)
+                r3d.onSurfaceChanged(width, height, game.settings.quality)
             } catch (e: Throwable) {
                 android.util.Log.e("Riverside", "GL resize failed", e)
             }
             game.onResize(width, height)
+            lastQuality = game.settings.quality
         }
 
         override fun onDrawFrame(gl: GL10?) {
@@ -57,6 +59,17 @@ class GameView(ctx: Context, private val game: Game) : GLSurfaceView(ctx) {
             if (fpsAccum >= 0.5f) {
                 game.fps = fpsFrames / fpsAccum
                 fpsAccum = 0f; fpsFrames = 0
+            }
+
+            // the graphics setting changes the size of the offscreen buffer, so
+            // the renderer has to be told when the player changes it
+            if (game.settings.quality != lastQuality) {
+                lastQuality = game.settings.quality
+                try {
+                    r3d.onQualityChanged(lastQuality)
+                } catch (e: Throwable) {
+                    android.util.Log.e("Riverside", "quality change failed", e)
+                }
             }
 
             try {

@@ -47,6 +47,17 @@ object U {
         return 1f + c3 * (x - 1f).pow(3f) + c1 * (x - 1f).pow(2f)
     }
 
+    /** Interpolates between two angles in degrees the short way round. */
+    fun lerpAngle(from: Float, to: Float, t: Float): Float {
+        var diff = (to - from) % 360f
+        if (diff > 180f) diff -= 360f
+        if (diff < -180f) diff += 360f
+        var r = from + diff * clamp01(t)
+        if (r > 360f) r -= 360f
+        if (r < -360f) r += 360f
+        return r
+    }
+
     fun lerpColor(a: Int, b: Int, t: Float): Int {
         val f = clamp01(t)
         val ia = 1f - f
