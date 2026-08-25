@@ -23,8 +23,8 @@ shot() {
 walk() { adb shell input swipe "$1" "$2" "$3" "$4" "${5:-2500}"; }
 walk_right() { walk 300 560 760 560 "${1:-2500}"; }
 walk_left()  { walk 700 560 240 560 "${1:-2500}"; }
-walk_near()  { walk 300 470 300 700 "${1:-1600}"; }   # toward the camera
-walk_far()   { walk 300 620 300 380 "${1:-1600}"; }   # into the woods
+walk_near()  { walk 300 380 300 660 "${1:-1600}"; }   # toward the camera
+walk_far()   { walk 300 660 300 380 "${1:-1600}"; }   # into the woods
 
 fail=0
 
@@ -48,20 +48,20 @@ sleep 4
 shot 03-morning.png
 
 # --- walk in depth, which is the whole point of the layout ---
-walk_near 1500
+walk_far 1200
 sleep 1
 shot 04-depth.png
+walk_near 1200
+sleep 1
 
 # --- over to the field ---
-# the camera starts facing north up the valley, so right is east: the field
-# sits about 11 m that way and a couple of metres toward the camera. Two
-# shorter swipes rather than one long one - a swipe over about three seconds
-# is unreliable on the emulator.
-walk_right 2200
-sleep 1
-walk_right 2200
-sleep 1
-walk_near 800
+# The camera faces north up the valley, so right is east and the field is
+# about 15 m that way. Stay on the spawn's depth line while crossing: the
+# flower planter by the cabin door sits a couple of metres south of it and
+# a walk straight into it just stops dead. Swipes ramp from the point they
+# land, so each one covers about four metres, not the full nine.
+for _ in 1 2 3 4; do walk_right 2200; sleep 1; done
+walk_near 1200
 sleep 1
 shot 05-field.png
 
