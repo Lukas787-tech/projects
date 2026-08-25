@@ -1460,8 +1460,10 @@ class Renderer3D {
         /**
          * Anything nearer than this stipples away rather than blocking the shot.
          * The farmer rides about 9.6 m from the lens, so at this range only
-         * things standing between you and them are ever touched; inside 40% of
-         * it they are gone entirely, and the rest is the fade.
+         * things standing between you and them are ever touched. The stipple
+         * itself is kept to a narrow band near the far edge - a wide one turns
+         * a fir tree into a screenful of speckle - and everything closer than
+         * that goes completely.
          */
         private const val NEAR_FADE = 6.6f
 

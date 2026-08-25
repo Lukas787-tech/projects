@@ -90,7 +90,7 @@ void main() {
     // walked into cannot fill the screen. A per-pixel threshold turns it into
     // a stipple instead of a hard shell popping in and out.
     if (uNear > 0.0 && vDist < uNear) {
-        float f = clamp((vDist - uNear * 0.4) / (uNear * 0.6), 0.0, 1.0);
+        float f = clamp((vDist - uNear * 0.72) / (uNear * 0.28), 0.0, 1.0);
         float th = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
         if (f <= th) discard;
     }

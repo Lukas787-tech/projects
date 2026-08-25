@@ -25,6 +25,10 @@ walk_right() { walk 300 560 760 560 "${1:-2500}"; }
 walk_left()  { walk 700 560 240 560 "${1:-2500}"; }
 walk_near()  { walk 300 380 300 660 "${1:-1600}"; }   # toward the camera
 walk_far()   { walk 300 660 300 380 "${1:-1600}"; }   # into the woods
+# Crossing the valley on a diagonal, because collision is resolved one axis at
+# a time: a walk straight into a bench stops dead, while a diagonal slides off
+# it and carries on.
+walk_se()    { walk 300 470 760 620 "${1:-2200}"; }
 
 fail=0
 
@@ -60,8 +64,8 @@ sleep 1
 # flower planter by the cabin door sits a couple of metres south of it and
 # a walk straight into it just stops dead. Swipes ramp from the point they
 # land, so each one covers about four metres, not the full nine.
-for _ in 1 2 3 4; do walk_right 2200; sleep 1; done
-walk_near 1200
+for _ in 1 2 3 4; do walk_se 2200; sleep 1; done
+walk_far 900
 sleep 1
 shot 05-field.png
 
