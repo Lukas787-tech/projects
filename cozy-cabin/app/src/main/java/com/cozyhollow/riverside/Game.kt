@@ -172,6 +172,7 @@ class Game(private val ctx: Context, private val host: Host) {
         st = GameState()
         coinsAtDayStart = st.coins
         player.x = st.playerX
+        camX = player.x
         particles.clear()
         selectedSeed = "seed_turnip"
         SaveManager.save(ctx, st)
@@ -184,6 +185,7 @@ class Game(private val ctx: Context, private val host: Host) {
         st = loaded ?: GameState()
         coinsAtDayStart = st.coins
         player.x = st.playerX
+        camX = player.x
         particles.clear()
         pickDefaultSeed()
         setMode(if (st.introDone) Mode.PLAY else Mode.INTRO)
@@ -398,7 +400,7 @@ class Game(private val ctx: Context, private val host: Host) {
                 player.startAction(Act.FISH, 999f)
                 val target = min(player.x + 220f, World.WORLD_W - 90f)
                     .coerceAtLeast(World.RIVER_EDGE + 70f)
-                fishing.cast(player.rodTipX(), player.rodTipY(World.GROUND_Y), target, st.rodLevel, st.weather)
+                fishing.cast(target, st.rodLevel, st.weather)
                 audio.play(Sfx.WATER)
             }
             AKind.PLANT -> {

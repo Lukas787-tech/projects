@@ -32,9 +32,6 @@ class Fishing {
 
     var bobX = 0f
     var bobY = 0f
-    private var castFromX = 0f
-    private var castFromY = 0f
-
     var fishId: String? = null
     private var difficulty = 0.3f
 
@@ -67,8 +64,7 @@ class Fishing {
         phase = FPhase.IDLE; t = 0f; fishId = null
     }
 
-    fun cast(fromX: Float, fromY: Float, targetX: Float, rodLevel: Int, weather: Int) {
-        castFromX = fromX; castFromY = fromY
+    fun cast(targetX: Float, rodLevel: Int, weather: Int) {
         bobX = targetX
         bobY = World.WATER_Y
         phase = FPhase.CAST
