@@ -101,7 +101,10 @@ attribute vec4 aCol;
 uniform mat4 uProj;
 uniform mat4 uView;
 uniform float uCurve;
-uniform float uTime;
+// highp on both sides: the vertex stage defaults to highp and the fragment
+// stage to mediump, and GLSL ES refuses to link a uniform whose precision
+// differs between them.
+uniform highp float uTime;
 uniform vec3 uCamPos;
 uniform vec2 uFog;
 
@@ -141,7 +144,10 @@ uniform vec3 uSkyCol;
 uniform vec3 uSunCol;
 uniform vec3 uSunDir;
 uniform vec3 uFogCol;
-uniform float uTime;
+// highp on both sides: the vertex stage defaults to highp and the fragment
+// stage to mediump, and GLSL ES refuses to link a uniform whose precision
+// differs between them.
+uniform highp float uTime;
 varying vec2 vUv;
 varying vec3 vNormal;
 varying vec3 vView;
