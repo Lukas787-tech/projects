@@ -6,6 +6,7 @@ on:
       - claude/cozy-android-game-oduvvd
     paths:
       - 'cozy-cabin/**'
+      - '!cozy-cabin/screenshots/**'
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
@@ -82,3 +83,73 @@ jobs:
             --title "Riverside Hollow (latest build)" \
             --target "$GITHUB_SHA" \
             --notes-file notes.md
+
+  smoke:
+    name: Emulator smoke test
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: RiversideHollow-apk
+          path: out
+
+      - name: Run the game on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: default
+          arch: x86_64
+          profile: pixel
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -skin 1280x720
+          script: bash cozy-cabin/ci/smoke.sh
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: cozy-cabin/screenshots
+          if-no-files-found: warn
+
+      - name: Commit screenshots back to the branch
+        if: always()
+        run: |
+          if [ -z "$(ls -A cozy-cabin/screenshots 2>/dev/null)" ]; then
+            echo "no screenshots to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f cozy-cabin/screenshots
+          if git diff --cached --quiet; then
+            echo "screenshots unchanged"
+            exit 0
+          fi
+          git commit -m "ci: refresh emulator screenshots"
+          for i in 1 2 3 4; do
+            git pull --rebase origin "${{ github.ref_name }}" && \
+              git push origin "HEAD:${{ github.ref_name }}" && exit 0
+            sleep $((i * 3))
+          done
+          echo "::warning::could not push screenshots"
