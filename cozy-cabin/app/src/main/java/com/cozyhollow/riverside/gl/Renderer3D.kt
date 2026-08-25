@@ -408,7 +408,9 @@ class Renderer3D {
             Color.green(sky.mid) / 255f * fillUp,
             Color.blue(sky.mid) / 255f * fillUp
         )
-        val fillDown = 0.10f + 0.10f * day
+        // enough bounce off the grass that the underside of a bush is dark
+        // rather than a hole cut in the world
+        val fillDown = 0.14f + 0.14f * day
         glUniform3f(uGroundFill, 0.42f * fillDown, 0.52f * fillDown, 0.30f * fillDown)
 
         val fogNear = drawDist * 0.55f
@@ -934,8 +936,15 @@ class Renderer3D {
             val z = World.plotZ(i)
             if (!visible(x, z, 1f, 26f)) continue
             val plot = g.st.plots[i]
-            if (!plot.tilled) continue
             val y = Terrain.height(x, z)
+            if (!plot.tilled) {
+                // A bed you have not broken yet: scuffed bare earth, flatter and
+                // a little smaller than a worked one. Without it the field is an
+                // empty pen and there is nothing to tell you where to dig.
+                box(x, y, z, 1.34f, 0.05f, 1.34f, t.soil, closed = true, uvPerM = 0.8f,
+                    r = 0.88f, g = 0.84f, b = 0.76f)
+                continue
+            }
             box(x, y, z, 1.5f, 0.14f, 1.5f, if (plot.watered) t.tilledWet else t.tilled, closed = true, uvPerM = 0.8f)
             val cropId = plot.cropId ?: continue
             val crop = Catalog.crops[cropId] ?: continue

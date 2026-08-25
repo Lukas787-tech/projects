@@ -56,7 +56,7 @@ void main() {
     float lam = max(dot(n, uSunDir), 0.0);
     float up = n.y * 0.5 + 0.5;
     vec3 fill = mix(uGroundFill, uSkyFill, up);
-    vLight = uSunCol * (lam * 0.82 + 0.18) + fill;
+    vLight = uSunCol * (lam * 0.80 + 0.20) + fill;
 
     vec4 vp = uView * wp;
     float dist = length(vp.xyz);
