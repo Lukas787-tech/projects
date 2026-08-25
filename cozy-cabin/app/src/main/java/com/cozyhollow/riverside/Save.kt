@@ -98,8 +98,8 @@ class GameState {
     var canLevel = 1
     var axeLevel = 1
     var weather = Weather.CLEAR
-    var playerX = World.CABIN_X + 200f
-    var playerZ = World.CABIN_Z + 200f
+    var playerX = World.SPAWN_X
+    var playerZ = World.SPAWN_Z
     var introDone = false
 
     val inv = LinkedHashMap<String, Int>()
@@ -165,6 +165,8 @@ class GameState {
     }
 
     // ---- persistence ----
+    private val spawnTmp = FloatArray(2)
+
     fun toJson(): JSONObject {
         val o = JSONObject()
         o.put("v", 1)
@@ -201,8 +203,21 @@ class GameState {
         canLevel = U.clampI(o.optInt("can", 1), 1, 3)
         axeLevel = U.clampI(o.optInt("axe", 1), 1, 3)
         weather = U.clampI(o.optInt("weather", 0), 0, 2)
-        playerX = o.optDouble("px", (World.CABIN_X + 200f).toDouble()).toFloat()
-        playerZ = o.optDouble("pz", (World.CABIN_Z + 200f).toDouble()).toFloat()
+        // a position from outside the bowl would strand you in empty sky, and
+        // one in the river or up a cliff would strand you just as surely, so
+        // anything the save offers is pulled back onto ground you can stand on
+        Terrain.clampToValley(
+            o.optDouble("px", World.SPAWN_X.toDouble()).toFloat(),
+            o.optDouble("pz", World.SPAWN_Z.toDouble()).toFloat(),
+            spawnTmp
+        )
+        if (Terrain.impassable(spawnTmp[0], spawnTmp[1])) {
+            playerX = World.SPAWN_X
+            playerZ = World.SPAWN_Z
+        } else {
+            playerX = spawnTmp[0]
+            playerZ = spawnTmp[1]
+        }
         introDone = o.optBoolean("intro", false)
         totalEarned = o.optInt("earned", 0)
         totalFish = o.optInt("fishN", 0)

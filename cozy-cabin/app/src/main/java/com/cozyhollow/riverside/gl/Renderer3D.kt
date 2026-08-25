@@ -87,7 +87,6 @@ class Renderer3D {
     private val proj = FloatArray(16)
     private val view = FloatArray(16)
     private val ms = MStack(24)
-    private var diagged = false
     private val eye = FloatArray(3)
     private val fwd = FloatArray(3)
     private val sunDir = FloatArray(3)
@@ -419,26 +418,6 @@ class Renderer3D {
         glUniform1f(uWind, g.windAmount())
         glUniform1f(uEmissive, 0f)
         glUniform1f(uCut, 0.45f)
-
-        if (!diagged) {
-            diagged = true
-            val sc = scene
-            android.util.Log.i(
-                "Riverside",
-                "diag chunks=" + (sc?.chunks?.size ?: -1) +
-                    " ground=" + (sc?.chunks?.count { it.ground != null } ?: -1) +
-                    " bark=" + (sc?.chunks?.count { it.bark != null } ?: -1) +
-                    " water=" + (if (sc?.water != null) 1 else 0) +
-                    " h00=" + Terrain.height(0f, 0f) +
-                    " hSpawn=" + Terrain.height(World.SPAWN_X, World.SPAWN_Z) +
-                    " eye=" + eye[0] + "," + eye[1] + "," + eye[2] +
-                    " fwd=" + fwd[0] + "," + fwd[1] + "," + fwd[2] +
-                    " drawDist=" + drawDist +
-                    " visCabin=" + visible(World.CABIN_X, World.CABIN_Z, 6f, drawDist) +
-                    " visChunk0=" + (sc?.chunks?.firstOrNull()?.let { visible(it.cx, it.cz, 8.6f, drawDist) } ?: false) +
-                    " visAny=" + (sc?.chunks?.count { visible(it.cx, it.cz, 8.6f, drawDist) } ?: -1)
-            )
-        }
 
         drawChunks(g)
         drawShadows(g)
