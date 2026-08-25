@@ -42,7 +42,13 @@ jobs:
         working-directory: cozy-cabin
         run: |
           chmod +x ./gradlew
-          ./gradlew --no-daemon --stacktrace assembleRelease
+          set -o pipefail
+          if ! ./gradlew --no-daemon assembleRelease 2>&1 | tee /tmp/build.log; then
+            echo "===================== COMPILER ERRORS ====================="
+            grep -E "^e: |^error: |Unresolved reference|Type mismatch" /tmp/build.log | head -100 || true
+            echo "==========================================================="
+            exit 1
+          fi
 
       - name: Stage APK
         id: stage
