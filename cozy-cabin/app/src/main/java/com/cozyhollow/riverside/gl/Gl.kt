@@ -2,6 +2,7 @@ package com.cozyhollow.riverside.gl
 
 import android.opengl.GLES20
 import android.opengl.GLES20.*
+import com.cozyhollow.riverside.Terrain
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -433,6 +434,90 @@ class MeshBuilder {
     fun clear() {
         v.clear(); idx.clear(); n = 0
         plain()
+    }
+}
+
+/**
+ * A round contact shadow that follows the ground it falls on.
+ *
+ * A flat quad laid over rolling terrain buries most of itself and leaves a
+ * black crescent sticking out of the hillside. This is a small grid instead,
+ * with every vertex dropped onto the heightmap and lifted a finger's width,
+ * rewritten in place each time it is drawn.
+ */
+class GroundDecal(private val cells: Int = 4) {
+    private val n = cells + 1
+    private val verts = FloatArray(n * n * Mesh.STRIDE)
+    private val buf: FloatBuffer = ByteBuffer.allocateDirect(verts.size * 4)
+        .order(ByteOrder.nativeOrder()).asFloatBuffer()
+    private val vbo = IntArray(1)
+    private val ibo = IntArray(1)
+    private var count = 0
+
+    init {
+        val idx = ShortArray(cells * cells * 6)
+        var k = 0
+        for (j in 0 until cells) {
+            for (i in 0 until cells) {
+                val a = j * n + i
+                val b = a + 1
+                val c = a + n + 1
+                val d = a + n
+                idx[k++] = a.toShort(); idx[k++] = b.toShort(); idx[k++] = c.toShort()
+                idx[k++] = a.toShort(); idx[k++] = c.toShort(); idx[k++] = d.toShort()
+            }
+        }
+        count = idx.size
+
+        glGenBuffers(1, vbo, 0)
+        glBindBuffer(GL_ARRAY_BUFFER, vbo[0])
+        glBufferData(GL_ARRAY_BUFFER, verts.size * 4, null, GL_DYNAMIC_DRAW)
+        glGenBuffers(1, ibo, 0)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo[0])
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx.size * 2, Gl.shortBuf(idx), GL_STATIC_DRAW)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
+    }
+
+    /** Lays the disc over the ground at [cx],[cz] and draws it. */
+    fun draw(cx: Float, cz: Float, r: Float, lift: Float, aPos: Int, aNor: Int, aUv: Int, aCol: Int) {
+        var p = 0
+        for (j in 0 until n) {
+            val tv = j / cells.toFloat()
+            val z = cz + (0.5f - tv) * 2f * r
+            for (i in 0 until n) {
+                val tu = i / cells.toFloat()
+                val x = cx + (tu - 0.5f) * 2f * r
+                verts[p++] = x
+                verts[p++] = Terrain.groundY(x, z) + lift
+                verts[p++] = z
+                verts[p++] = 0f; verts[p++] = 1f; verts[p++] = 0f
+                verts[p++] = tu; verts[p++] = tv
+                verts[p++] = 1f; verts[p++] = 1f; verts[p++] = 1f; verts[p++] = 0f
+            }
+        }
+        buf.position(0); buf.put(verts); buf.position(0)
+
+        glBindBuffer(GL_ARRAY_BUFFER, vbo[0])
+        glBufferSubData(GL_ARRAY_BUFFER, 0, verts.size * 4, buf)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo[0])
+        val stride = Mesh.STRIDE * 4
+        glEnableVertexAttribArray(aPos)
+        glVertexAttribPointer(aPos, 3, GL_FLOAT, false, stride, 0)
+        glEnableVertexAttribArray(aNor)
+        glVertexAttribPointer(aNor, 3, GL_FLOAT, false, stride, 3 * 4)
+        glEnableVertexAttribArray(aUv)
+        glVertexAttribPointer(aUv, 2, GL_FLOAT, false, stride, 6 * 4)
+        if (aCol >= 0) {
+            glEnableVertexAttribArray(aCol)
+            glVertexAttribPointer(aCol, 4, GL_FLOAT, false, stride, 8 * 4)
+        }
+        GLES20.glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, 0)
+    }
+
+    fun release() {
+        glDeleteBuffers(1, vbo, 0)
+        glDeleteBuffers(1, ibo, 0)
     }
 }
 

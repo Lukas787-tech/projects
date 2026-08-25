@@ -355,6 +355,10 @@ class Game(private val ctx: Context, private val host: Host) {
         camTY = Terrain.groundY(player.x, player.z)
         camDist = 9.6f
         camHeight = 5.2f
+        // face north up the valley, so a new day always starts on a known
+        // heading rather than wherever the title screen's slow spin left off
+        camYaw = 0f
+        camYawTarget = 0f
     }
 
     /** The camera follows a step behind, and turns only when you turn it. */

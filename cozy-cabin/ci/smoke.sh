@@ -53,9 +53,11 @@ sleep 1
 shot 04-depth.png
 
 # --- over to the field, then work a plot ---
-walk_right 2600
+# the camera starts facing north up the valley, so right is east: the field
+# sits about 11 m that way and a couple of metres toward the camera
+walk_right 3200
 sleep 1
-walk_far 900
+walk_near 800
 sleep 1
 adb shell input tap 1162 583   # till
 sleep 2

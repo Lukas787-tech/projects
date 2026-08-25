@@ -36,6 +36,7 @@ varying vec2 vUv;
 varying vec3 vLight;
 varying vec3 vTint;
 varying float vFog;
+varying float vDist;
 
 void main() {
     vec4 wp = uModel * vec4(aPos, 1.0);
@@ -63,6 +64,7 @@ void main() {
     vp.y -= uCurve * vp.z * vp.z;
 
     vFog = clamp((dist - uFog.x) / max(uFog.y - uFog.x, 0.001), 0.0, 1.0);
+    vDist = dist;
     vUv = aUv * uUvScale;
     vTint = aCol.rgb;
     gl_Position = uProj * vp;
@@ -76,12 +78,22 @@ uniform vec4 uColor;
 uniform vec3 uFogCol;
 uniform float uEmissive;
 uniform float uCut;
+uniform float uNear;
 varying vec2 vUv;
 varying vec3 vLight;
 varying vec3 vTint;
 varying float vFog;
+varying float vDist;
 
 void main() {
+    // Anything closer than uNear dissolves away, so a tree the camera has
+    // walked into cannot fill the screen. A per-pixel threshold turns it into
+    // a stipple instead of a hard shell popping in and out.
+    if (uNear > 0.0 && vDist < uNear) {
+        float f = vDist / uNear;
+        float th = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
+        if (f < th) discard;
+    }
     vec4 t = texture2D(uTex, vUv);
     if (t.a < uCut) discard;
     vec3 base = t.rgb * uColor.rgb * vTint;

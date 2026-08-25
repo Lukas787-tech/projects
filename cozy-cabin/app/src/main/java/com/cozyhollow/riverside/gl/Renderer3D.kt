@@ -44,7 +44,7 @@ class Renderer3D {
     private var uCurve = 0; private var uTimeLoc = 0; private var uWind = 0; private var uUvScale = 0
     private var uSunDir = 0; private var uSunCol = 0; private var uSkyFill = 0; private var uGroundFill = 0
     private var uFog = 0; private var uFogCol = 0; private var uColor = 0; private var uTex = 0
-    private var uEmissive = 0; private var uCut = 0
+    private var uEmissive = 0; private var uCut = 0; private var uNear = 0
 
     private var wAPos = 0; private var wANor = 0; private var wAUv = 0; private var wACol = 0
     private var wProj = 0; private var wView = 0; private var wCurve = 0; private var wTime = 0
@@ -69,6 +69,7 @@ class Renderer3D {
     private var scene: Scenery? = null
     private var rt: RenderTarget? = null
 
+    private var decal: GroundDecal? = null
     private var fenceMesh: Mesh? = null
     private var deckMesh: Mesh? = null
     private var railMesh: Mesh? = null
@@ -123,6 +124,7 @@ class Renderer3D {
         uTex = glGetUniformLocation(worldProg, "uTex")
         uEmissive = glGetUniformLocation(worldProg, "uEmissive")
         uCut = glGetUniformLocation(worldProg, "uCut")
+        uNear = glGetUniformLocation(worldProg, "uNear")
 
         waterProg = Gl.program(Shaders.WATER_VS, Shaders.WATER_FS)
         wAPos = glGetAttribLocation(waterProg, "aPos")
@@ -177,6 +179,7 @@ class Renderer3D {
 
         tex = Textures()
         prims = Prims()
+        decal = GroundDecal()
         scene = Scenery().also { it.build() }
         buildStructures()
 
@@ -418,14 +421,17 @@ class Renderer3D {
         glUniform1f(uWind, g.windAmount())
         glUniform1f(uEmissive, 0f)
         glUniform1f(uCut, 0.45f)
+        glUniform1f(uNear, 0f)
 
         drawChunks(g)
         drawShadows(g)
+        glUniform1f(uNear, NEAR_FADE)
         drawStructures(g, night)
         drawProps(g, night)
         drawPlots(g)
         drawForage(g)
         drawTrees(g)
+        glUniform1f(uNear, 0f)
         drawCharacters(g)
         if (g.fishing.active) drawBobber(g)
 
@@ -539,6 +545,7 @@ class Renderer3D {
             if (!visible(ch.cx, ch.cz, half, dist)) continue
             bindAndDraw(ch.ground, t.ground)
         }
+        glUniform1f(uNear, NEAR_FADE)
         for (ch in s.chunks) {
             if (!visible(ch.cx, ch.cz, half, dist)) continue
             bindAndDraw(ch.bark, t.bark)
@@ -553,12 +560,17 @@ class Renderer3D {
                 bindAndDraw(ch.flower, t.flowers)
             }
         }
+        glUniform1f(uNear, 0f)
     }
 
     private fun shadowAt(x: Float, z: Float, r: Float, alpha: Float) {
-        val y = Terrain.groundY(x, z) + 0.03f
-        ms.identity().translate(x, y, z).scale(r * 2f, 1f, r * 2f)
-        bindAndDraw(prims?.flat, tex!!.shadow, 0.16f, 0.14f, 0.12f, alpha)
+        val d = decal ?: return
+        ms.identity()
+        glBindTexture(GL_TEXTURE_2D, tex!!.shadow)
+        glUniformMatrix4fv(uModel, 1, false, ms.m, 0)
+        glUniform4f(uColor, 0.16f, 0.14f, 0.12f, alpha)
+        glUniform2f(uUvScale, 1f, 1f)
+        d.draw(x, z, r, 0.05f, aPos, aNor, aUv, aCol)
     }
 
     /** Contact shadows, so nothing looks like it is hovering. */
@@ -1445,6 +1457,9 @@ class Renderer3D {
         /** Texture repeats per metre. */
         private const val TEXELS = 0.75f
         /** How hard the world curves away toward the horizon. */
+        /** Anything nearer than this stipples away rather than blocking the shot. */
+        private const val NEAR_FADE = 3.4f
+
         private const val CURVE = 0.0034f
     }
 }
