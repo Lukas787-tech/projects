@@ -37,7 +37,7 @@ class Renderer3D {
 
     private var aPos = 0; private var aNor = 0; private var aUv = 0
     private var uViewProj = 0; private var uModel = 0; private var uCamXLoc = 0
-    private var uCurve = 0; private var uBaseY = 0
+    private var uCurve = 0; private var uBaseY = 0; private var uUvScale = 0
     private var uSunDir = 0; private var uSunCol = 0; private var uAmbient = 0
     private var uFog = 0; private var uFogCol = 0; private var uColor = 0; private var uTex = 0
 
@@ -65,6 +65,7 @@ class Renderer3D {
     private var oakMesh: Mesh? = null
     private var tuftMesh: Mesh? = null
     private var farShoreMesh: Mesh? = null
+    private var forestShadowMesh: Mesh? = null
 
     // ---- ui layer ----
     private var uiBitmap: Bitmap? = null
@@ -98,6 +99,7 @@ class Renderer3D {
         uCamXLoc = glGetUniformLocation(worldProg, "uCamX")
         uCurve = glGetUniformLocation(worldProg, "uCurve")
         uBaseY = glGetUniformLocation(worldProg, "uBaseY")
+        uUvScale = glGetUniformLocation(worldProg, "uUvScale")
         uSunDir = glGetUniformLocation(worldProg, "uSunDir")
         uSunCol = glGetUniformLocation(worldProg, "uSunCol")
         uAmbient = glGetUniformLocation(worldProg, "uAmbient")
@@ -213,6 +215,7 @@ class Renderer3D {
         val bark = MeshBuilder()
         val pine = MeshBuilder()
         val oak = MeshBuilder()
+        val shade = MeshBuilder()
         val rows = floatArrayOf(-9.5f, -13.5f, -18f)
         var seed = 1
         for (r in rows.indices) {
@@ -228,6 +231,14 @@ class Renderer3D {
                 if (px > W3.BANK_X - 1f && z > FAR_SHORE_Z) continue
                 val s = 0.75f + U.hash(seed * 17) * 0.6f + r * 0.12f
                 val zz = z + (U.hash(seed * 7) - 0.5f) * 2.2f
+                if (shade.vertexCount < 28000) {
+                    val sr = 1.5f * s
+                    shade.quad(
+                        px - sr, 0.02f, zz + sr, px + sr, 0.02f, zz + sr,
+                        px + sr, 0.02f, zz - sr, px - sr, 0.02f, zz - sr,
+                        0f, 1f, 0f, 1f, 1f
+                    )
+                }
                 if (U.hash(seed * 53) < 0.62f) {
                     bark.cylinder(px, 0f, zz, 0.14f * s, 0.11f * s, 1.1f * s, 6, 1f)
                     pine.cone(px, 0.75f * s, zz, 1.15f * s, 1.7f * s, 7, 0.7f)
@@ -245,6 +256,7 @@ class Renderer3D {
         barkMesh = bark.build()
         pineMesh = pine.build()
         oakMesh = oak.build()
+        forestShadowMesh = shade.build()
     }
 
     /** Crossed quads of grass scattered over the walkable band. */
@@ -422,20 +434,36 @@ class Renderer3D {
 
     // ------------------------------------------------------------ drawing
 
+    /** Texture repeats per metre. Keeps texels close to one screen pixel. */
+    private val TEXELS = 0.75f
+    private var uvX = 1f
+    private var uvY = 1f
+
+    /** Sets the UV scale for the next draw only. */
+    private fun uv(a: Float, b: Float) {
+        uvX = a; uvY = b
+    }
+
     private fun bindAndDraw(mesh: Mesh?, texId: Int, tintR: Float = 1f, tintG: Float = 1f, tintB: Float = 1f, alpha: Float = 1f) {
         val m = mesh ?: return
         glBindTexture(GL_TEXTURE_2D, texId)
         glUniformMatrix4fv(uModel, 1, false, ms.m, 0)
         glUniform4f(uColor, tintR, tintG, tintB, alpha)
+        glUniform2f(uUvScale, uvX, uvY)
         m.bind(aPos, aNor, aUv)
         m.draw()
+        uvX = 1f; uvY = 1f
     }
 
     private fun setBase(y: Float) = glUniform1f(uBaseY, y)
 
     /** Box helper: centre x/z, base y, size. */
-    private fun box(x: Float, y: Float, z: Float, sx: Float, sy: Float, sz: Float, texId: Int, closed: Boolean = false) {
+    private fun box(
+        x: Float, y: Float, z: Float, sx: Float, sy: Float, sz: Float,
+        texId: Int, closed: Boolean = false, uvPerM: Float = TEXELS
+    ) {
         ms.push().translate(x, y, z).scale(sx, sy, sz)
+        uv(kotlin.math.max(sx, sz) * uvPerM, sy * uvPerM)
         bindAndDraw(if (closed) prims?.boxClosed else prims?.box, texId)
         ms.pop()
     }
@@ -470,6 +498,8 @@ class Renderer3D {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glDepthMask(false)
         setBase(0f)
+        ms.identity()
+        bindAndDraw(forestShadowMesh, tex!!.shadow, 1f, 1f, 1f, 0.34f)
         val camXm = W3.x(g.camX)
 
         for (i in 0 until World.TREE_COUNT) {
@@ -529,18 +559,22 @@ class Renderer3D {
             ms.push().translate(x, 0f, W3.TREE_Z).rotateZ(shake + sway * 0.3f)
             if (tr.kind == 0) {
                 ms.push().scale(0.30f * s, 1.5f * s, 0.30f * s)
+                uv(1f, 1.5f * s * TEXELS)
                 bindAndDraw(prims?.cyl, t.bark); ms.pop()
                 for (k in 0 until 3) {
                     val cy = (1.0f + k * 1.15f) * s
                     val cr = (2.5f - k * 0.55f) * s
                     val ch = (2.1f - k * 0.25f) * s
                     ms.push().translate(0f, cy, 0f).scale(cr, ch, cr)
+                    uv(cr * TEXELS * 1.6f, ch * TEXELS)
                     bindAndDraw(prims?.cone, t.pine); ms.pop()
                 }
             } else {
                 ms.push().scale(0.34f * s, 1.9f * s, 0.34f * s)
+                uv(1f, 1.9f * s * TEXELS)
                 bindAndDraw(prims?.cyl, t.bark); ms.pop()
                 ms.push().translate(0f, 2.9f * s, 0f).scale(2.7f * s, 2.5f * s, 2.5f * s)
+                uv(2.7f * s * TEXELS, 2.5f * s * TEXELS)
                 bindAndDraw(prims?.blob, t.oak); ms.pop()
                 ms.push().translate(-1.0f * s, 2.3f * s, 0.4f * s).scale(1.6f * s, 1.5f * s, 1.5f * s)
                 bindAndDraw(prims?.blob, t.oak); ms.pop()
@@ -621,6 +655,8 @@ class Renderer3D {
 
     private fun roofAt(x: Float, y: Float, z: Float, w: Float, h: Float, d: Float, texId: Int) {
         ms.push().translate(x, y, z).scale(w, h, d)
+        val slope = kotlin.math.sqrt(h * h + (d * 0.5f) * (d * 0.5f))
+        uv(w * TEXELS, slope * TEXELS)
         bindAndDraw(prims?.roof, texId)
         ms.pop()
     }
@@ -693,8 +729,10 @@ class Renderer3D {
         // awning: a proper pitched canopy with a valance along the front
         roofAt(x, 2.45f, z + 0.05f, 4.9f, 1.0f, 2.3f, t.awning)
         box(x, 2.1f, z + 1.18f, 4.9f, 0.35f, 0.1f, t.awning, closed = true)
-        // sign, hung in front of the awning where it can be read
-        box(x, 2.95f, z + 1.35f, 2.0f, 0.62f, 0.12f, t.planks, closed = true)
+        // sign standing above the ridge on two little posts
+        box(x - 0.7f, 3.45f, z, 0.1f, 0.3f, 0.1f, t.planks)
+        box(x + 0.7f, 3.45f, z, 0.1f, 0.3f, 0.1f, t.planks)
+        box(x, 3.72f, z, 2.1f, 0.62f, 0.14f, t.planks, closed = true)
         // crates of produce
         crateAt(x - 1.4f, 0.94f, z + 0.7f, Color.parseColor("#E08240"), t)
         crateAt(x - 0.15f, 0.94f, z + 0.7f, Color.parseColor("#D6564C"), t)
@@ -703,7 +741,7 @@ class Renderer3D {
     }
 
     private fun crateAt(x: Float, y: Float, z: Float, produce: Int, t: Textures) {
-        box(x, y, z, 0.62f, 0.5f, 0.55f, t.crate, closed = true)
+        box(x, y, z, 0.62f, 0.5f, 0.55f, t.crate, closed = true, uvPerM = 1.7f)
         ms.push().translate(x - 0.14f, y + 0.5f, z).scale(0.24f, 0.24f, 0.24f)
         bindAndDraw(prims?.blob, t.solid(produce)); ms.pop()
         ms.push().translate(x + 0.15f, y + 0.5f, z + 0.05f).scale(0.21f, 0.21f, 0.21f)

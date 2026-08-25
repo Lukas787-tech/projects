@@ -94,7 +94,7 @@ object PixelTex {
     val roofA = c("#B05A46"); val roofB = c("#94473A"); val roofC = c("#C66E56")
     val roofDarkA = c("#6E4A66"); val roofDarkB = c("#5A3C55")
     val stoneA = c("#A79C90"); val stoneB = c("#8F857A"); val stoneC = c("#BDB2A6")
-    val waterA = c("#4C93B8"); val waterB = c("#3E7EA2"); val waterC = c("#6BB0CE"); val waterD = c("#2F6A8A")
+    val waterA = c("#4A8AAB"); val waterB = c("#3E7896"); val waterC = c("#5F9FBC"); val waterD = c("#2F6580")
     val pineA = c("#3E7A55"); val pineB = c("#336647"); val pineC = c("#4C8F63")
     val oakA = c("#6BA854"); val oakB = c("#5B9247"); val oakC = c("#7EBE63")
 

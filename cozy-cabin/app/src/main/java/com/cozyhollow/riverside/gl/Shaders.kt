@@ -18,6 +18,7 @@ uniform mat4 uModel;
 uniform float uCamX;
 uniform float uCurve;
 uniform float uBaseY;
+uniform vec2 uUvScale;
 
 uniform vec3 uSunDir;
 uniform vec3 uSunCol;
@@ -53,7 +54,7 @@ void main() {
 
     vec4 clip = uViewProj * wp;
     vFog = clamp((abs(dx) - uFog.x) / max(uFog.y - uFog.x, 0.001), 0.0, 1.0);
-    vUv = aUv;
+    vUv = aUv * uUvScale;
     gl_Position = clip;
 }
 """
