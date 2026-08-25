@@ -169,7 +169,7 @@ class Renderer3D {
         val bankEnd = W3.BANK_END
 
         var b = MeshBuilder()
-        b.plane(-6f, bankX, -24f, 8f, 0f, 150, 7, 1f)
+        b.plane(-6f, bankX, -24f, 16f, 0f, 150, 8, 1f)
         grassMesh = b.build()
 
         // the sloped bank, sampled so the curve stays smooth
@@ -181,7 +181,7 @@ class Renderer3D {
                 val x1 = U.lerp(bankX, bankEnd, (i + 1f) / steps)
                 val y0 = W3.groundHeight(x0)
                 val y1 = W3.groundHeight(x1)
-                val z0 = FAR_SHORE_Z; val z1 = 8f
+                val z0 = FAR_SHORE_Z; val z1 = 16f
                 val nx = -(y1 - y0)
                 val len = kotlin.math.sqrt(nx * nx + (x1 - x0) * (x1 - x0))
                 b.quad(
@@ -193,11 +193,11 @@ class Renderer3D {
         bankMesh = b.build()
 
         b = MeshBuilder()
-        b.plane(bankEnd, 88f, FAR_SHORE_Z, 8f, W3.BED_Y, 50, 4, 1f)
+        b.plane(bankEnd, 88f, FAR_SHORE_Z, 16f, W3.BED_Y, 50, 5, 1f)
         bedMesh = b.build()
 
         b = MeshBuilder()
-        b.plane(W3.RIVER_X - 1.4f, 88f, FAR_SHORE_Z, 8f, W3.WATER_Y, 60, 5, 0.34f)
+        b.plane(W3.RIVER_X - 1.4f, 88f, FAR_SHORE_Z, 16f, W3.WATER_Y, 60, 6, 0.34f)
         waterMesh = b.build()
 
         // land on the far side of the water, so the river reads as a river
@@ -213,11 +213,11 @@ class Renderer3D {
         val bark = MeshBuilder()
         val pine = MeshBuilder()
         val oak = MeshBuilder()
-        val rows = floatArrayOf(-7f, -11f, -16f)
+        val rows = floatArrayOf(-9.5f, -13.5f, -18f)
         var seed = 1
         for (r in rows.indices) {
             val z = rows[r]
-            val spacing = 1.5f + r * 0.35f
+            val spacing = 2.3f + r * 0.5f
             var x = -6f
             while (x < 84f) {
                 seed++
@@ -476,22 +476,22 @@ class Renderer3D {
             val tr = World.trees[i]
             val x = W3.x(tr.x)
             if (abs(x - camXm) > 15f) continue
-            if (World.treeStanding(g.st, i)) shadowAt(x, W3.TREE_Z, 1.5f * tr.scale, 0.34f)
-            else shadowAt(x, W3.TREE_Z, 0.45f * tr.scale, 0.30f)
+            if (World.treeStanding(g.st, i)) shadowAt(x, W3.TREE_Z, 1.35f * tr.scale, 0.46f)
+            else shadowAt(x, W3.TREE_Z, 0.4f * tr.scale, 0.42f)
         }
         val lvl = g.st.cabinLevel
         if (abs(W3.CABIN_X - camXm) < 18f) {
-            shadowAt(W3.CABIN_X, W3.CABIN_Z, 3.0f + lvl * 0.45f, 0.30f)
+            shadowAt(W3.CABIN_X, W3.CABIN_Z, 2.7f + lvl * 0.4f, 0.44f)
         }
-        if (abs(W3.MARKET_X - camXm) < 18f) shadowAt(W3.MARKET_X, W3.MARKET_Z + 0.2f, 3.2f, 0.30f)
+        if (abs(W3.MARKET_X - camXm) < 18f) shadowAt(W3.MARKET_X, W3.MARKET_Z + 0.2f, 2.8f, 0.44f)
 
         for (i in 0 until World.FORAGE_COUNT) {
             val f = World.forage[i]
             val x = W3.x(f.x)
             if (abs(x - camXm) > 13f) continue
-            if (World.forageAvailable(g.st, i)) shadowAt(x, W3.WALK_Z - 0.5f, 0.22f, 0.34f)
+            if (World.forageAvailable(g.st, i)) shadowAt(x, W3.WALK_Z - 0.5f, 0.24f, 0.46f)
         }
-        shadowAt(W3.x(g.player.x), W3.WALK_Z, 0.42f, 0.42f)
+        shadowAt(W3.x(g.player.x), W3.WALK_Z, 0.40f, 0.58f)
 
         glDepthMask(true)
         glDisable(GL_BLEND)
@@ -682,23 +682,24 @@ class Renderer3D {
         val z = W3.MARKET_Z
         setBase(0f)
         ms.identity()
-        // counter
-        box(x, 0f, z + 0.7f, 5.0f, 1.0f, 0.7f, t.planks, closed = true)
-        box(x, 1.0f, z + 0.7f, 5.3f, 0.12f, 0.95f, t.logs, closed = true)
+        // counter, low enough that the shopkeeper reads over it
+        box(x, 0f, z + 0.7f, 4.6f, 0.82f, 0.7f, t.planks, closed = true)
+        box(x, 0.82f, z + 0.7f, 4.9f, 0.12f, 0.95f, t.logs, closed = true)
         // posts
-        box(x - 2.5f, 0f, z + 0.9f, 0.18f, 2.9f, 0.18f, t.planks)
-        box(x + 2.5f, 0f, z + 0.9f, 0.18f, 2.9f, 0.18f, t.planks)
-        box(x - 2.5f, 0f, z - 0.9f, 0.18f, 2.9f, 0.18f, t.planks)
-        box(x + 2.5f, 0f, z - 0.9f, 0.18f, 2.9f, 0.18f, t.planks)
-        // awning: a shallow gable
-        roofAt(x, 2.9f, z, 5.6f, 0.75f, 2.4f, t.awning)
-        // sign
-        box(x, 3.65f, z, 2.2f, 0.7f, 0.12f, t.planks, closed = true)
+        box(x - 2.3f, 0f, z + 0.9f, 0.18f, 2.45f, 0.18f, t.planks)
+        box(x + 2.3f, 0f, z + 0.9f, 0.18f, 2.45f, 0.18f, t.planks)
+        box(x - 2.3f, 0f, z - 0.8f, 0.18f, 2.45f, 0.18f, t.planks)
+        box(x + 2.3f, 0f, z - 0.8f, 0.18f, 2.45f, 0.18f, t.planks)
+        // awning: a proper pitched canopy with a valance along the front
+        roofAt(x, 2.45f, z + 0.05f, 4.9f, 1.0f, 2.3f, t.awning)
+        box(x, 2.1f, z + 1.18f, 4.9f, 0.35f, 0.1f, t.awning, closed = true)
+        // sign, hung in front of the awning where it can be read
+        box(x, 2.95f, z + 1.35f, 2.0f, 0.62f, 0.12f, t.planks, closed = true)
         // crates of produce
-        crateAt(x - 1.5f, 1.12f, z + 0.7f, Color.parseColor("#E08240"), t)
-        crateAt(x - 0.2f, 1.12f, z + 0.7f, Color.parseColor("#D6564C"), t)
-        crateAt(x + 1.1f, 1.12f, z + 0.7f, Color.parseColor("#6FA45A"), t)
-        drawPip(g, x + 1.9f, z - 0.2f)
+        crateAt(x - 1.4f, 0.94f, z + 0.7f, Color.parseColor("#E08240"), t)
+        crateAt(x - 0.15f, 0.94f, z + 0.7f, Color.parseColor("#D6564C"), t)
+        crateAt(x + 1.1f, 0.94f, z + 0.7f, Color.parseColor("#6FA45A"), t)
+        drawPip(g, x + 1.8f, z - 0.35f)
     }
 
     private fun crateAt(x: Float, y: Float, z: Float, produce: Int, t: Textures) {
@@ -715,7 +716,7 @@ class Renderer3D {
     private fun drawPip(g: Game, x: Float, z: Float) {
         val t = tex!!
         val bob = sin(g.timeMs * 0.0022f) * 0.04f
-        ms.push().translate(x, bob, z).rotateY(-18f)
+        ms.push().translate(x, bob, z).rotateY(-18f).scale(1.32f, 1.32f, 1.32f)
         box(0f, 0f, 0f, 0.5f, 0.55f, 0.4f, t.foxFur)
         box(0f, 0.12f, 0.21f, 0.32f, 0.4f, 0.06f, t.foxCream)
         box(0f, 0.55f, 0.02f, 0.52f, 0.46f, 0.46f, t.foxFur)
