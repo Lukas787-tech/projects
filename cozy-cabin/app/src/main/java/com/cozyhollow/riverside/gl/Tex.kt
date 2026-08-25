@@ -101,13 +101,12 @@ object PixelTex {
     fun tiling32(build: (Px) -> Unit): Px = Px(32, 32).also(build)
 
     fun grass(): Px = tiling32 { g ->
+        // kept low-contrast on purpose: strong blotches at a 1 m repeat read as
+        // an obvious checkerboard once the ground stretches to the horizon
         g.seed(9137).fill(grassA)
-        g.dither(grassB, 0.9f)
-        g.blotch(7, 3, grassC)
-        g.blotch(5, 2, grassD)
-        g.speckle(90, grassC, grassD, grassB)
-        // little blade marks
-        for (i in 0 until 26) {
+        g.dither(grassB, 0.55f)
+        g.speckle(150, grassB, grassC)
+        for (i in 0 until 34) {
             val x = (g.rnd() * 32).toInt(); val y = (g.rnd() * 32).toInt()
             g.setW(x, y, grassD); g.setW(x, y - 1, grassC)
         }
@@ -149,9 +148,9 @@ object PixelTex {
     }
 
     fun sand(): Px = tiling32 { g ->
-        g.seed(5521).fill(c("#D6C08C"))
-        g.dither(c("#C4AC78"), 0.85f)
-        g.speckle(90, c("#E2D0A2"), c("#B49A66"))
+        g.seed(5521).fill(c("#C9B189"))
+        g.dither(c("#BCA47C"), 0.7f)
+        g.speckle(80, c("#D4BE98"), c("#AB9370"))
     }
 
     /** Horizontal planks with seams and grain. */
@@ -241,13 +240,13 @@ object PixelTex {
     fun water(): Px = tiling32 { g ->
         g.seed(3931).fill(waterA)
         for (y in 0 until 32) {
-            val s = sin(y * 0.6f) * 3f
+            val s = sin(y * 0.42f) * 2.2f
             for (x in 0 until 32) {
-                val v = sin((x + s) * 0.5f) + cos(y * 0.42f)
-                g.setW(x, y, if (v > 0.85f) waterC else if (v > 0f) waterA else if (v > -0.9f) waterB else waterD)
+                val v = sin((x + s) * 0.34f) + cos(y * 0.3f) * 0.7f
+                g.setW(x, y, if (v > 1.15f) waterC else if (v > -0.2f) waterA else waterB)
             }
         }
-        g.speckle(26, waterC)
+        g.speckle(18, waterC)
     }
 
     fun bark(): Px = tiling32 { g ->
@@ -413,6 +412,46 @@ object PixelSprites {
         g.rect(7, 9, 8, 10, ink)
         g.rect(5, 11, 10, 11, ink)
         g.set(4, 10, ink); g.set(11, 10, ink)
+    }
+
+    /** A clump of grass blades on transparency, for the ground detail quads. */
+    fun blade(): Px = Px(16, 16).also { g ->
+        g.seed(2027).fill(CLEAR)
+        val a = c("#6FA855"); val b = c("#5C9147"); val hi = c("#87C067")
+        fun stalk(x: Int, h: Int, col: Int) {
+            for (y in 0 until h) {
+                val yy = 15 - y
+                val lean = (y * x) % 3 - 1
+                g.set(x + lean * (y / 6), yy, if (y > h - 3) hi else col)
+            }
+        }
+        stalk(3, 9, b); stalk(6, 13, a); stalk(9, 11, hi); stalk(12, 8, b)
+        stalk(7, 15, a)
+    }
+
+    private val BAYER = intArrayOf(
+        0, 8, 2, 10,
+        12, 4, 14, 6,
+        3, 11, 1, 9,
+        15, 7, 13, 5
+    )
+
+    /**
+     * Ground shadow. The falloff is an ordered dither rather than an alpha ramp,
+     * because the world shader alpha-tests at 0.4 and would clip a soft edge away.
+     */
+    fun shadow(): Px = Px(32, 32).also { g ->
+        g.fill(CLEAR)
+        val dark = 0xFF000000.toInt()
+        for (y in 0 until 32) for (x in 0 until 32) {
+            val dx = (x - 15.5f) / 15.5f
+            val dy = (y - 15.5f) / 15.5f
+            val d = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (d >= 1f) continue
+            val density = (1f - d) * 1.35f
+            val threshold = (BAYER[(y and 3) * 4 + (x and 3)] + 0.5f) / 16f
+            if (density > threshold) g.set(x, y, dark)
+        }
     }
 
     /** Simple white square used to tint particles any colour. */

@@ -40,6 +40,8 @@ class Textures {
     val leafGreen = up(PixelTex.solid(Color.parseColor("#6FA45A"), Color.parseColor("#5C9049")))
     val white = up(PixelTex.solid(Color.WHITE), true)
 
+    val blade = up(PixelSprites.blade(), repeat = false)
+    val shadow = up(PixelSprites.shadow(), repeat = false)
     val cloud = up(PixelSprites.cloud(), repeat = false)
     val face = up(PixelSprites.face(), repeat = false)
     val foxFace = up(PixelSprites.foxFace(), repeat = false)

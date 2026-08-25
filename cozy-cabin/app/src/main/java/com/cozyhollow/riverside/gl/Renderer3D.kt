@@ -64,6 +64,7 @@ class Renderer3D {
     private var pineMesh: Mesh? = null
     private var oakMesh: Mesh? = null
     private var tuftMesh: Mesh? = null
+    private var farShoreMesh: Mesh? = null
 
     // ---- ui layer ----
     private var uiBitmap: Bitmap? = null
@@ -73,6 +74,9 @@ class Renderer3D {
     var rtW = 480; private set
     var rtH = 270; private set
     private var screenW = 1; private var screenH = 1
+
+    /** Where the water stops and the far bank begins. */
+    private val FAR_SHORE_Z = -12.5f
 
     private val proj = FloatArray(16)
     private val view = FloatArray(16)
@@ -165,7 +169,7 @@ class Renderer3D {
         val bankEnd = W3.BANK_END
 
         var b = MeshBuilder()
-        b.plane(-6f, bankX, -20f, 8f, 0f, 150, 6, 1f)
+        b.plane(-6f, bankX, -24f, 8f, 0f, 150, 7, 1f)
         grassMesh = b.build()
 
         // the sloped bank, sampled so the curve stays smooth
@@ -177,7 +181,7 @@ class Renderer3D {
                 val x1 = U.lerp(bankX, bankEnd, (i + 1f) / steps)
                 val y0 = W3.groundHeight(x0)
                 val y1 = W3.groundHeight(x1)
-                val z0 = -20f; val z1 = 8f
+                val z0 = FAR_SHORE_Z; val z1 = 8f
                 val nx = -(y1 - y0)
                 val len = kotlin.math.sqrt(nx * nx + (x1 - x0) * (x1 - x0))
                 b.quad(
@@ -189,12 +193,17 @@ class Renderer3D {
         bankMesh = b.build()
 
         b = MeshBuilder()
-        b.plane(bankEnd, 84f, -20f, 8f, W3.BED_Y, 50, 4, 1f)
+        b.plane(bankEnd, 88f, FAR_SHORE_Z, 8f, W3.BED_Y, 50, 4, 1f)
         bedMesh = b.build()
 
         b = MeshBuilder()
-        b.plane(W3.RIVER_X - 1.4f, 84f, -20f, 8f, W3.WATER_Y, 60, 6, 0.5f)
+        b.plane(W3.RIVER_X - 1.4f, 88f, FAR_SHORE_Z, 8f, W3.WATER_Y, 60, 5, 0.34f)
         waterMesh = b.build()
+
+        // land on the far side of the water, so the river reads as a river
+        b = MeshBuilder()
+        b.plane(bankX - 6f, 88f, -24f, FAR_SHORE_Z + 0.4f, 0f, 60, 4, 1f)
+        farShoreMesh = b.build()
 
         buildForest()
         buildTufts()
@@ -215,7 +224,8 @@ class Renderer3D {
                 val jitter = (U.hash(seed * 31) - 0.5f) * spacing * 0.9f
                 val px = x + jitter
                 x += spacing
-                if (px > W3.BANK_X - 1f && px < 84f && r == 0) continue
+                // rows in front of the far shore must not stand in the river
+                if (px > W3.BANK_X - 1f && z > FAR_SHORE_Z) continue
                 val s = 0.75f + U.hash(seed * 17) * 0.6f + r * 0.12f
                 val zz = z + (U.hash(seed * 7) - 0.5f) * 2.2f
                 if (U.hash(seed * 53) < 0.62f) {
@@ -249,10 +259,23 @@ class Renderer3D {
             val z = -6f + U.hash(seed * 29) * 11f
             if (x > W3.BANK_X - 0.4f) continue
             if (abs(z - W3.WALK_Z) < 0.35f) continue
-            val h = 0.16f + U.hash(seed * 41) * 0.2f
-            val w = 0.16f
-            b.quad(x - w, 0f, z, x + w, 0f, z, x + w, h, z, x - w, h, z, 0f, 0f, 1f, 1f, 1f)
-            b.quad(x, 0f, z - w, x, 0f, z + w, x, h, z + w, x, h, z - w, 1f, 0f, 0f, 1f, 1f)
+            val h = 0.22f + U.hash(seed * 41) * 0.26f
+            val w = 0.17f
+            val ang = U.hash(seed * 61) * 3.1416f
+            val cx0 = kotlin.math.cos(ang) * w
+            val cz0 = kotlin.math.sin(ang) * w
+            val cx1 = kotlin.math.cos(ang + 1.5708f) * w
+            val cz1 = kotlin.math.sin(ang + 1.5708f) * w
+            b.quad(
+                x - cx0, 0f, z - cz0, x + cx0, 0f, z + cz0,
+                x + cx0, h, z + cz0, x - cx0, h, z - cz0,
+                -cz0, 0f, cx0, 1f, 1f
+            )
+            b.quad(
+                x - cx1, 0f, z - cz1, x + cx1, 0f, z + cz1,
+                x + cx1, h, z + cz1, x - cx1, h, z - cz1,
+                -cz1, 0f, cx1, 1f, 1f
+            )
         }
         tuftMesh = b.build()
     }
@@ -290,8 +313,8 @@ class Renderer3D {
         val shy = if (shake > 0.01f) sin(g.timeMs * 0.045f) * shake * 0.07f else 0f
         Matrix.setLookAtM(
             view, 0,
-            camXm + shx, 3.45f + shy, 12.4f,
-            camXm + shx, 1.45f + shy, -1.2f,
+            camXm + shx, 4.9f + shy, 18.6f,
+            camXm + shx, 1.7f + shy, -1.6f,
             0f, 1f, 0f
         )
         Matrix.multiplyMM(viewProj, 0, proj, 0, view, 0)
@@ -313,21 +336,21 @@ class Renderer3D {
         val len = kotlin.math.sqrt(sunDir[0] * sunDir[0] + sunDir[1] * sunDir[1] + sunDir[2] * sunDir[2])
         glUniform3f(uSunDir, sunDir[0] / len, sunDir[1] / len, sunDir[2] / len)
 
-        val sc = 0.30f + 0.62f * day
+        val sc = 0.42f + 0.68f * day
         glUniform3f(
             uSunCol,
             Color.red(sky.sunColor) / 255f * sc,
             Color.green(sky.sunColor) / 255f * sc,
             Color.blue(sky.sunColor) / 255f * sc
         )
-        val ac = 0.34f + 0.30f * day
+        val ac = 0.26f + 0.24f * day
         glUniform3f(
             uAmbient,
             U.lerp(Color.red(sky.ambient) / 255f, 1f, 0.30f) * ac,
             U.lerp(Color.green(sky.ambient) / 255f, 1f, 0.30f) * ac,
             U.lerp(Color.blue(sky.ambient) / 255f, 1f, 0.30f) * ac
         )
-        glUniform2f(uFog, 11f, 40f)
+        glUniform2f(uFog, 16f, 52f)
         glUniform3f(
             uFogCol,
             Color.red(sky.horizon) / 255f, Color.green(sky.horizon) / 255f, Color.blue(sky.horizon) / 255f
@@ -335,6 +358,7 @@ class Renderer3D {
         glDepthMask(true)
 
         drawTerrain(g)
+        drawShadows(g)
         drawForest(g)
         drawCabin(g, night)
         drawMarket(g, night)
@@ -420,8 +444,9 @@ class Renderer3D {
         setBase(0f)
         ms.identity()
         bindAndDraw(grassMesh, tex!!.grass)
+        bindAndDraw(farShoreMesh, tex!!.grass)
         bindAndDraw(bankMesh, tex!!.sand)
-        if (g.settings.quality > 0) bindAndDraw(tuftMesh, tex!!.leafGreen, 0.86f, 1f, 0.8f)
+        if (g.settings.quality > 0) bindAndDraw(tuftMesh, tex!!.blade)
         setBase(W3.BED_Y)
         bindAndDraw(bedMesh, tex!!.sand, 0.8f, 0.78f, 0.7f)
         setBase(W3.WATER_Y)
@@ -432,6 +457,44 @@ class Renderer3D {
         ms.identity().translate(0f, sin(g.timeMs * 0.0008f) * 0.012f, drift * 2f - 1f)
         bindAndDraw(waterMesh, tex!!.water)
         setBase(0f)
+    }
+
+    private fun shadowAt(x: Float, z: Float, r: Float, alpha: Float) {
+        ms.identity().translate(x, 0.018f, z).scale(r * 2f, 1f, r * 2f)
+        bindAndDraw(prims?.flat, tex!!.shadow, 1f, 1f, 1f, alpha)
+    }
+
+    /** Contact shadows: without them everything looks like it is hovering. */
+    private fun drawShadows(g: Game) {
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glDepthMask(false)
+        setBase(0f)
+        val camXm = W3.x(g.camX)
+
+        for (i in 0 until World.TREE_COUNT) {
+            val tr = World.trees[i]
+            val x = W3.x(tr.x)
+            if (abs(x - camXm) > 15f) continue
+            if (World.treeStanding(g.st, i)) shadowAt(x, W3.TREE_Z, 1.5f * tr.scale, 0.34f)
+            else shadowAt(x, W3.TREE_Z, 0.45f * tr.scale, 0.30f)
+        }
+        val lvl = g.st.cabinLevel
+        if (abs(W3.CABIN_X - camXm) < 18f) {
+            shadowAt(W3.CABIN_X, W3.CABIN_Z, 3.0f + lvl * 0.45f, 0.30f)
+        }
+        if (abs(W3.MARKET_X - camXm) < 18f) shadowAt(W3.MARKET_X, W3.MARKET_Z + 0.2f, 3.2f, 0.30f)
+
+        for (i in 0 until World.FORAGE_COUNT) {
+            val f = World.forage[i]
+            val x = W3.x(f.x)
+            if (abs(x - camXm) > 13f) continue
+            if (World.forageAvailable(g.st, i)) shadowAt(x, W3.WALK_Z - 0.5f, 0.22f, 0.34f)
+        }
+        shadowAt(W3.x(g.player.x), W3.WALK_Z, 0.42f, 0.42f)
+
+        glDepthMask(true)
+        glDisable(GL_BLEND)
     }
 
     private fun drawForest(g: Game) {
@@ -680,7 +743,7 @@ class Renderer3D {
         val moving = abs(p.vx) > 1f
         val bob = if (moving) abs(sin(p.walkPhase)) * 0.045f else sin(p.idlePhase * 2.1f) * 0.018f
         // face the camera when idle, turn into a three-quarter view when walking
-        val yaw = if (moving) p.facing * 62f else p.facing * 22f
+        val yaw = if (moving) p.facing * 58f else p.facing * 30f
         val legSwing = if (moving) sin(p.walkPhase) * 32f else 0f
         val armSwing = when (p.action) {
             Act.SWING -> -70f + sin(U.clamp01(p.actionT / max(p.actionDur, 0.01f)) * 3.1416f) * 120f
@@ -701,12 +764,12 @@ class Renderer3D {
         box(0.12f, 0f, 0.03f, 0.22f, 0.12f, 0.28f, t.boot, closed = true)
 
         // body
-        box(0f, 0.6f, 0f, 0.48f, 0.56f, 0.3f, t.shirt)
+        box(0f, 0.6f, 0f, 0.44f, 0.56f, 0.3f, t.shirt)
         box(0f, 1.1f, 0f, 0.5f, 0.1f, 0.32f, t.scarf)
 
         // arms
-        limb(-0.32f, 1.1f, 0f, 0.15f, 0.5f, 0.16f, armSwing, t.shirt)
-        limb(0.32f, 1.1f, 0f, 0.15f, 0.5f, 0.16f, -armSwing * 0.35f, t.shirt)
+        limb(-0.30f, 1.1f, 0f, 0.16f, 0.5f, 0.17f, armSwing, t.shirt)
+        limb(0.30f, 1.1f, 0f, 0.16f, 0.5f, 0.17f, -armSwing * 0.35f, t.shirt)
 
         // head
         box(0f, 1.2f, 0f, 0.44f, 0.42f, 0.4f, t.skin)
@@ -735,7 +798,7 @@ class Renderer3D {
     private fun drawTool(g: Game, armSwing: Float, t: Textures) {
         val p = g.player
         if (p.action == Act.NONE || p.action == Act.CHEER) return
-        ms.push().translate(-0.32f, 1.1f, 0f).rotateX(armSwing).translate(0f, -0.5f, 0f)
+        ms.push().translate(-0.30f, 1.1f, 0f).rotateX(armSwing).translate(0f, -0.5f, 0f)
         when (p.action) {
             Act.SWING -> {
                 box(0f, -0.05f, 0.05f, 0.06f, 0.85f, 0.06f, t.bark)
