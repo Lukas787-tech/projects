@@ -65,7 +65,7 @@ sleep 1
 # a walk straight into it just stops dead. Swipes ramp from the point they
 # land, so each one covers about four metres, not the full nine.
 for _ in 1 2 3 4; do walk_se 2200; sleep 1; done
-walk_far 1500
+walk_far 1800
 sleep 1
 shot 05-field.png
 
