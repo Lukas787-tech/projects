@@ -90,8 +90,19 @@ class Renderer3D {
     private val ms = MStack(24)
     private val eye = FloatArray(3)
     private val fwd = FloatArray(3)
+
+    /** How far the lens sits from the farmer, which is what the near fade follows. */
+    private var camToTarget = 10f
     private val sunDir = FloatArray(3)
     private val castTmp = FloatArray(2)
+
+    /**
+     * Everything between the lens and the farmer stipples away rather than
+     * blocking the shot, so the fade has to reach as far as they stand - which
+     * changes when you sit down or cast a line. It stops just short of them,
+     * so a tree beside the farmer stays solid while one in front does not.
+     */
+    private val nearFade: Float get() = max(3f, camToTarget - 1.2f)
 
     /** How far scenery is drawn, and where the fog swallows it. */
     private val drawDist: Float get() = when (quality) { 0 -> 34f; 1 -> 44f; else -> 52f }
@@ -335,6 +346,7 @@ class Renderer3D {
         fwd[0] = tx - ex; fwd[1] = (ty + 1.15f) - ey; fwd[2] = tz - ez
         val len = sqrt(fwd[0] * fwd[0] + fwd[1] * fwd[1] + fwd[2] * fwd[2]).coerceAtLeast(1e-4f)
         fwd[0] /= len; fwd[1] /= len; fwd[2] /= len
+        camToTarget = len
     }
 
     /** Rough frustum test: is a sphere at (x,z) worth drawing? */
@@ -427,7 +439,7 @@ class Renderer3D {
 
         drawChunks(g)
         drawShadows(g)
-        glUniform1f(uNear, NEAR_FADE)
+        glUniform1f(uNear, nearFade)
         drawStructures(g, night)
         drawProps(g, night)
         drawPlots(g)
@@ -564,7 +576,7 @@ class Renderer3D {
             if (!visible(ch.cx, ch.cz, half, dist)) continue
             bindAndDraw(ch.ground, t.ground)
         }
-        glUniform1f(uNear, NEAR_FADE)
+        glUniform1f(uNear, nearFade)
         for (ch in s.chunks) {
             if (!visible(ch.cx, ch.cz, half, dist)) continue
             bindAndDraw(ch.bark, t.bark)
@@ -1482,16 +1494,6 @@ class Renderer3D {
         /** Texture repeats per metre. */
         private const val TEXELS = 0.75f
         /** How hard the world curves away toward the horizon. */
-        /**
-         * Anything nearer than this stipples away rather than blocking the shot.
-         * The farmer rides about 9.6 m from the lens, so at this range only
-         * things standing between you and them are ever touched. The stipple
-         * itself is kept to a narrow band near the far edge - a wide one turns
-         * a fir tree into a screenful of speckle - and everything closer than
-         * that goes completely.
-         */
-        private const val NEAR_FADE = 6.6f
-
         private const val CURVE = 0.0034f
     }
 }
