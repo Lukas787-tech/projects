@@ -87,11 +87,14 @@ varying float vDist;
 
 void main() {
     // Anything closer than uNear dissolves away, so a tree the camera has
-    // walked into cannot fill the screen. A per-pixel threshold turns it into
-    // a stipple instead of a hard shell popping in and out.
+    // walked into cannot fill the screen. The threshold is interleaved
+    // gradient noise rather than white noise: it spreads evenly instead of
+    // clumping, so the edge reads as a fine screen rather than as dirt on the
+    // lens. The band is narrow and sits at the far edge - everything nearer
+    // than that is simply gone.
     if (uNear > 0.0 && vDist < uNear) {
-        float f = clamp((vDist - uNear * 0.72) / (uNear * 0.28), 0.0, 1.0);
-        float th = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
+        float f = clamp((vDist - uNear * 0.85) / (uNear * 0.15), 0.0, 1.0);
+        float th = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
         if (f <= th) discard;
     }
     vec4 t = texture2D(uTex, vUv);
