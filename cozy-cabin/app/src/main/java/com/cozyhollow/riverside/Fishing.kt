@@ -31,7 +31,6 @@ class Fishing {
     private var waitFor = 0f
 
     var bobX = 0f
-    var bobY = 0f
     var fishId: String? = null
     private var difficulty = 0.3f
 
@@ -66,7 +65,6 @@ class Fishing {
 
     fun cast(targetX: Float, rodLevel: Int, weather: Int) {
         bobX = targetX
-        bobY = World.WATER_Y
         phase = FPhase.CAST
         t = 0f
         val speedUp = 1f - (rodLevel - 1) * 0.16f
