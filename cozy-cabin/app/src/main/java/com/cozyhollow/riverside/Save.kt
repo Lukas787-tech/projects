@@ -98,7 +98,8 @@ class GameState {
     var canLevel = 1
     var axeLevel = 1
     var weather = Weather.CLEAR
-    var playerX = World.CABIN_X + 140f
+    var playerX = World.CABIN_X + 200f
+    var playerZ = World.CABIN_Z + 200f
     var introDone = false
 
     val inv = LinkedHashMap<String, Int>()
@@ -170,7 +171,8 @@ class GameState {
         o.put("coins", coins).put("day", day).put("time", timeMin.toDouble())
         o.put("energy", energy.toDouble()).put("cabin", cabinLevel)
         o.put("rod", rodLevel).put("can", canLevel).put("axe", axeLevel)
-        o.put("weather", weather).put("px", playerX.toDouble()).put("intro", introDone)
+        o.put("weather", weather).put("px", playerX.toDouble())
+        o.put("pz", playerZ.toDouble()).put("intro", introDone)
         o.put("earned", totalEarned).put("fishN", totalFish)
         o.put("harvestN", totalHarvest).put("chopN", totalChopped).put("bigSale", biggestSale)
 
@@ -199,7 +201,8 @@ class GameState {
         canLevel = U.clampI(o.optInt("can", 1), 1, 3)
         axeLevel = U.clampI(o.optInt("axe", 1), 1, 3)
         weather = U.clampI(o.optInt("weather", 0), 0, 2)
-        playerX = o.optDouble("px", (World.CABIN_X + 140f).toDouble()).toFloat()
+        playerX = o.optDouble("px", (World.CABIN_X + 200f).toDouble()).toFloat()
+        playerZ = o.optDouble("pz", (World.CABIN_Z + 200f).toDouble()).toFloat()
         introDone = o.optBoolean("intro", false)
         totalEarned = o.optInt("earned", 0)
         totalFish = o.optInt("fishN", 0)

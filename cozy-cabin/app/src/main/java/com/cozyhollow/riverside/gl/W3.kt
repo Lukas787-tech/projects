@@ -10,18 +10,17 @@ object W3 {
 
     fun x(worldX: Float): Float = worldX * M
 
+    /** World depth units to metres. */
+    fun z(worldZ: Float): Float = worldZ * M
+
     val RIVER_X: Float get() = World.RIVER_EDGE * M
     val CABIN_X: Float get() = World.CABIN_X * M
+    val CABIN_Z: Float get() = World.CABIN_Z * M
     val MARKET_X: Float get() = World.MARKET_X * M
+    val MARKET_Z: Float get() = World.MARKET_Z * M
 
     /** How hard the valley wraps around its cylinder. */
     const val CURVE = 0.0105f
-
-    const val WALK_Z = 0.55f
-    const val CABIN_Z = -2.0f
-    const val MARKET_Z = -1.7f
-    const val PLOT_Z = -1.85f
-    const val TREE_Z = -2.9f
 
     const val WATER_Y = -0.28f
     const val BED_Y = -0.85f

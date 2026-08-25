@@ -37,7 +37,7 @@ class Renderer3D {
 
     private var aPos = 0; private var aNor = 0; private var aUv = 0
     private var uViewProj = 0; private var uModel = 0; private var uCamXLoc = 0
-    private var uCurve = 0; private var uBaseY = 0; private var uUvScale = 0
+    private var uCurve = 0; private var uBaseY = 0; private var uUvScale = 0; private var uTimeLoc = 0; private var uWave = 0
     private var uSunDir = 0; private var uSunCol = 0; private var uAmbient = 0
     private var uFog = 0; private var uFogCol = 0; private var uColor = 0; private var uTex = 0
 
@@ -66,6 +66,11 @@ class Renderer3D {
     private var tuftMesh: Mesh? = null
     private var farShoreMesh: Mesh? = null
     private var forestShadowMesh: Mesh? = null
+    private var pathMesh: Mesh? = null
+    private var fenceMesh: Mesh? = null
+    private var rockMesh: Mesh? = null
+    private var bushMesh: Mesh? = null
+    private var flowerMesh: Mesh? = null
 
     // ---- ui layer ----
     private var uiBitmap: Bitmap? = null
@@ -78,6 +83,8 @@ class Renderer3D {
 
     /** Where the water stops and the far bank begins. */
     private val FAR_SHORE_Z = -12.5f
+
+    private val EMPTY_STATE = com.cozyhollow.riverside.GameState()
 
     private val proj = FloatArray(16)
     private val view = FloatArray(16)
@@ -100,6 +107,8 @@ class Renderer3D {
         uCurve = glGetUniformLocation(worldProg, "uCurve")
         uBaseY = glGetUniformLocation(worldProg, "uBaseY")
         uUvScale = glGetUniformLocation(worldProg, "uUvScale")
+        uTimeLoc = glGetUniformLocation(worldProg, "uTime")
+        uWave = glGetUniformLocation(worldProg, "uWave")
         uSunDir = glGetUniformLocation(worldProg, "uSunDir")
         uSunCol = glGetUniformLocation(worldProg, "uSunCol")
         uAmbient = glGetUniformLocation(worldProg, "uAmbient")
@@ -209,6 +218,124 @@ class Renderer3D {
 
         buildForest()
         buildTufts()
+        buildPath()
+        buildFence()
+        buildProps()
+    }
+
+    /** A worn dirt track running the length of the valley. */
+    private fun buildPath() {
+        val b = MeshBuilder()
+        val steps = 90
+        val x0 = 3f
+        val x1 = W3.BANK_X - 0.6f
+        var travelled = 0f
+        for (i in 0 until steps) {
+            val ax = U.lerp(x0, x1, i.toFloat() / steps)
+            val bx = U.lerp(x0, x1, (i + 1f) / steps)
+            val az = 3.6f + sin(ax * 0.16f) * 0.75f + sin(ax * 0.41f) * 0.3f
+            val bz = 3.6f + sin(bx * 0.16f) * 0.75f + sin(bx * 0.41f) * 0.3f
+            val aw = 0.78f + sin(ax * 0.9f) * 0.1f
+            val bw = 0.78f + sin(bx * 0.9f) * 0.1f
+            val seg = kotlin.math.sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az))
+            b.quad(
+                ax, 0.014f, az + aw, bx, 0.014f, bz + bw,
+                bx, 0.014f, bz - bw, ax, 0.014f, az - aw,
+                0f, 1f, 0f,
+                seg * 0.75f, aw * 2f * 0.75f, travelled * 0.75f, 0f
+            )
+            travelled += seg
+        }
+        pathMesh = b.build()
+    }
+
+    /** A low rail fence along the back and sides of the field. */
+    private fun buildFence() {
+        val b = MeshBuilder()
+        val x0 = W3.x(World.plotX(0)) - 1.0f
+        val x1 = W3.x(World.plotX(World.PLOT_COLS - 1)) + 1.0f
+        val z0 = W3.z(World.plotZ(0)) - 1.0f
+        val z1 = W3.z(World.plotZ(World.MAX_PLOTS - 1)) + 1.0f
+
+        fun post(px: Float, pz: Float) {
+            b.box(px, 0f, pz, 0.12f, 0.82f, 0.12f, 0.75f, top = true, bottom = false)
+        }
+        fun railX(ax: Float, bx: Float, pz: Float, y: Float) {
+            b.box((ax + bx) / 2f, y, pz, bx - ax, 0.09f, 0.07f, 0.75f, top = true, bottom = true)
+        }
+        fun railZ(px: Float, az: Float, bz: Float, y: Float) {
+            b.box(px, y, (az + bz) / 2f, 0.07f, 0.09f, bz - az, 0.75f, top = true, bottom = true)
+        }
+
+        var x = x0
+        while (x <= x1 + 0.01f) { post(x, z0); x += 1.25f }
+        railX(x0, x1, z0, 0.32f); railX(x0, x1, z0, 0.60f)
+
+        var z = z0
+        while (z <= z1 - 1.6f) { post(x0, z); post(x1, z); z += 1.25f }
+        railZ(x0, z0, z1 - 1.6f, 0.32f); railZ(x0, z0, z1 - 1.6f, 0.60f)
+        railZ(x1, z0, z1 - 1.6f, 0.32f); railZ(x1, z0, z1 - 1.6f, 0.60f)
+        fenceMesh = b.build()
+    }
+
+    /** Rocks, bushes and wildflowers scattered over the walkable valley. */
+    private fun buildProps() {
+        val rocks = MeshBuilder()
+        val bushes = MeshBuilder()
+        val flowers = MeshBuilder()
+        var seed = 3000
+        var placed = 0
+        while (placed < 420 && seed < 9000) {
+            seed++
+            val wx = 130f + U.hash(seed * 19) * 3180f
+            val wz = World.Z_MIN + U.hash(seed * 37) * (World.Z_MAX - World.Z_MIN)
+            val x = W3.x(wx)
+            val z = W3.z(wz)
+            // keep clear of the field, the buildings and the path
+            if (World.blocked(EMPTY_STATE, wx, wz)) continue
+            if (kotlin.math.abs(z - 3.6f) < 1.5f) continue
+            if (wx > World.FARM_X0 - 200f && wx < World.plotX(World.PLOT_COLS - 1) + 200f &&
+                wz > World.FARM_Z0 - 200f && wz < World.plotZ(World.MAX_PLOTS - 1) + 200f) continue
+            placed++
+            val roll = U.hash(seed * 53)
+            when {
+                roll < 0.18f -> {
+                    val r = 0.16f + U.hash(seed * 7) * 0.22f
+                    rocks.blob(x, r * 0.45f, z, r, 3, 6, 0.75f)
+                }
+                roll < 0.44f -> {
+                    val r = 0.30f + U.hash(seed * 11) * 0.3f
+                    bushes.blob(x, r * 0.72f, z, r, 4, 7, 0.75f)
+                    if (U.hash(seed * 13) < 0.5f) {
+                        bushes.blob(x + r * 0.7f, r * 0.5f, z + r * 0.3f, r * 0.6f, 3, 6, 0.75f)
+                    }
+                }
+                else -> {
+                    val q = (U.hash(seed * 23) * 4f).toInt().coerceIn(0, 3)
+                    val u0 = (q % 2) * 0.5f
+                    val v0 = (q / 2) * 0.5f
+                    val w = 0.14f
+                    val h = 0.28f + U.hash(seed * 29) * 0.1f
+                    val ang = U.hash(seed * 31) * 3.1416f
+                    val cx0 = cos(ang) * w; val cz0 = sin(ang) * w
+                    val cx1 = cos(ang + 1.5708f) * w; val cz1 = sin(ang + 1.5708f) * w
+                    flowers.quad(
+                        x - cx0, 0f, z - cz0, x + cx0, 0f, z + cz0,
+                        x + cx0, h, z + cz0, x - cx0, h, z - cz0,
+                        -cz0, 0f, cx0, 0.5f, 0.5f, u0, v0
+                    )
+                    flowers.quad(
+                        x - cx1, 0f, z - cz1, x + cx1, 0f, z + cz1,
+                        x + cx1, h, z + cz1, x - cx1, h, z - cz1,
+                        -cz1, 0f, cx1, 0.5f, 0.5f, u0, v0
+                    )
+                }
+            }
+            if (rocks.vertexCount > 26000 || bushes.vertexCount > 26000 || flowers.vertexCount > 26000) break
+        }
+        rockMesh = rocks.build()
+        bushMesh = bushes.build()
+        flowerMesh = flowers.build()
     }
 
     private fun buildForest() {
@@ -270,7 +397,6 @@ class Renderer3D {
             val x = U.hash(seed * 13) * (W3.BANK_X + 4f) - 3f
             val z = -6f + U.hash(seed * 29) * 11f
             if (x > W3.BANK_X - 0.4f) continue
-            if (abs(z - W3.WALK_Z) < 0.35f) continue
             val h = 0.22f + U.hash(seed * 41) * 0.26f
             val w = 0.17f
             val ang = U.hash(seed * 61) * 3.1416f
@@ -320,13 +446,14 @@ class Renderer3D {
         glDepthFunc(GL_LEQUAL)
         glDepthMask(true)
 
+        val camZm = W3.z(g.camZ)
         val shake = g.screenShake
         val shx = if (shake > 0.01f) sin(g.timeMs * 0.06f) * shake * 0.10f else 0f
         val shy = if (shake > 0.01f) sin(g.timeMs * 0.045f) * shake * 0.07f else 0f
         Matrix.setLookAtM(
             view, 0,
-            camXm + shx, 5.6f + shy, 18.2f,
-            camXm + shx, 1.35f + shy, -2.0f,
+            camXm + shx, 5.6f + shy, 18.2f + camZm,
+            camXm + shx, 1.35f + shy, -2.0f + camZm,
             0f, 1f, 0f
         )
         Matrix.multiplyMM(viewProj, 0, proj, 0, view, 0)
@@ -363,15 +490,19 @@ class Renderer3D {
             U.lerp(Color.blue(sky.ambient) / 255f, 1f, 0.30f) * ac
         )
         glUniform2f(uFog, 16f, 52f)
+        glUniform1f(uTimeLoc, (g.timeMs * 0.001f) % 6283f)
+        glUniform1f(uWave, 0f)
         glUniform3f(
             uFogCol,
             Color.red(sky.horizon) / 255f, Color.green(sky.horizon) / 255f, Color.blue(sky.horizon) / 255f
         )
         glDepthMask(true)
 
+        drawClouds(g)
         drawTerrain(g)
         drawShadows(g)
         drawForest(g)
+        drawProps(g)
         drawCabin(g, night)
         drawMarket(g, night)
         drawTrees(g)
@@ -474,6 +605,8 @@ class Renderer3D {
         bindAndDraw(grassMesh, tex!!.grass)
         bindAndDraw(farShoreMesh, tex!!.grass)
         bindAndDraw(bankMesh, tex!!.sand)
+        uv(1f, 1f)
+        bindAndDraw(pathMesh, tex!!.soil)
         if (g.settings.quality > 0) bindAndDraw(tuftMesh, tex!!.blade)
         setBase(W3.BED_Y)
         bindAndDraw(bedMesh, tex!!.sand, 0.8f, 0.78f, 0.7f)
@@ -482,8 +615,10 @@ class Renderer3D {
         // scroll the water texture by shifting the mesh's UV through the model matrix is
         // not possible here, so nudge the whole sheet instead: it reads as flow
         val drift = (g.timeMs * 0.00006f) % 1f
-        ms.identity().translate(0f, sin(g.timeMs * 0.0008f) * 0.012f, drift * 2f - 1f)
+        ms.identity().translate(0f, 0f, drift * 2f - 1f)
+        glUniform1f(uWave, 0.045f)
         bindAndDraw(waterMesh, tex!!.water)
+        glUniform1f(uWave, 0f)
         setBase(0f)
     }
 
@@ -506,8 +641,9 @@ class Renderer3D {
             val tr = World.trees[i]
             val x = W3.x(tr.x)
             if (abs(x - camXm) > 15f) continue
-            if (World.treeStanding(g.st, i)) shadowAt(x, W3.TREE_Z, 1.35f * tr.scale, 0.46f)
-            else shadowAt(x, W3.TREE_Z, 0.4f * tr.scale, 0.42f)
+            val tz = W3.z(tr.z)
+            if (World.treeStanding(g.st, i)) shadowAt(x, tz, 1.35f * tr.scale, 0.46f)
+            else shadowAt(x, tz, 0.4f * tr.scale, 0.42f)
         }
         val lvl = g.st.cabinLevel
         if (abs(W3.CABIN_X - camXm) < 18f) {
@@ -519,9 +655,9 @@ class Renderer3D {
             val f = World.forage[i]
             val x = W3.x(f.x)
             if (abs(x - camXm) > 13f) continue
-            if (World.forageAvailable(g.st, i)) shadowAt(x, W3.WALK_Z - 0.5f, 0.24f, 0.46f)
+            if (World.forageAvailable(g.st, i)) shadowAt(x, W3.z(f.z), 0.24f, 0.46f)
         }
-        shadowAt(W3.x(g.player.x), W3.WALK_Z, 0.40f, 0.58f)
+        shadowAt(W3.x(g.player.x), W3.z(g.player.z), 0.40f, 0.58f)
 
         glDepthMask(true)
         glDisable(GL_BLEND)
@@ -535,6 +671,47 @@ class Renderer3D {
         bindAndDraw(oakMesh, tex!!.oak)
     }
 
+    /** Cloud billboards, drawn flat (no world curve) so they read as distant sky. */
+    private fun drawClouds(g: Game) {
+        if (g.settings.quality < 1) return
+        val t = tex!!
+        glDisable(GL_DEPTH_TEST)
+        glDepthMask(false)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glUniform1f(uCurve, 0f)
+        setBase(0f)
+        val camXm = W3.x(g.camX)
+        val n = if (g.settings.quality >= 2) 13 else 8
+        val span = 96f
+        for (i in 0 until n) {
+            val speed = 0.55f + U.hash(i * 11 + 5) * 0.5f
+            var off = (U.hash(i * 37 + 3) * span + g.timeMs * 0.00006f * speed * span) % span
+            if (off < 0f) off += span
+            val x = camXm + off - span * 0.5f
+            val y = 13f + U.hash(i * 61 + 5) * 10f
+            val z = -46f - U.hash(i * 29 + 9) * 20f
+            val sc = 8f + U.hash(i * 53 + 7) * 10f
+            val a = 0.5f + U.hash(i * 17 + 1) * 0.3f
+            ms.identity().translate(x, y, z).scale(sc, sc * 0.5f, 1f).translate(0f, -0.5f, 0f)
+            bindAndDraw(prims?.quad, t.cloud, 1f, 1f, 1f, a)
+        }
+        glUniform1f(uCurve, W3.CURVE)
+        glDisable(GL_BLEND)
+        glDepthMask(true)
+        glEnable(GL_DEPTH_TEST)
+    }
+
+    private fun drawProps(g: Game) {
+        val t = tex!!
+        setBase(0f)
+        ms.identity()
+        bindAndDraw(fenceMesh, t.planks)
+        bindAndDraw(rockMesh, t.stone)
+        bindAndDraw(bushMesh, t.oak, 0.9f, 1f, 0.86f)
+        if (g.settings.quality > 0) bindAndDraw(flowerMesh, t.flowers)
+    }
+
     private fun drawTrees(g: Game) {
         val t = tex!!
         setBase(0f)
@@ -546,9 +723,10 @@ class Renderer3D {
             if (abs(x - camXm) > 13f) continue
             val standing = World.treeStanding(g.st, i)
             val s = tr.scale
+            val tz = W3.z(tr.z)
             if (!standing) {
-                box(x, 0f, W3.TREE_Z, 0.42f * s, 0.34f * s, 0.42f * s, t.bark, closed = false)
-                ms.push().translate(x, 0.34f * s, W3.TREE_Z).scale(0.44f * s, 0.02f, 0.44f * s)
+                box(x, 0f, tz, 0.42f * s, 0.34f * s, 0.42f * s, t.bark, closed = false)
+                ms.push().translate(x, 0.34f * s, tz).scale(0.44f * s, 0.02f, 0.44f * s)
                 bindAndDraw(prims?.flat, t.oak, 0.75f, 0.6f, 0.45f)
                 ms.pop()
                 continue
@@ -556,7 +734,7 @@ class Renderer3D {
             val shake = if (i == g.shakeTreeIndex && g.shakeAmount > 0f)
                 sin(g.shakeAmount * 46f) * 2.6f * U.clamp01(g.shakeAmount * 3f) else 0f
             val sway = sin(g.timeMs * 0.0009f + i) * 0.7f
-            ms.push().translate(x, 0f, W3.TREE_Z).rotateZ(shake + sway * 0.3f)
+            ms.push().translate(x, 0f, tz).rotateZ(shake + sway * 0.3f)
             if (tr.kind == 0) {
                 ms.push().scale(0.30f * s, 1.5f * s, 0.30f * s)
                 uv(1f, 1.5f * s * TEXELS)
@@ -779,10 +957,9 @@ class Renderer3D {
         val t = tex!!
         val p = g.player
         val x = W3.x(p.x)
-        val moving = abs(p.vx) > 1f
+        val moving = p.moving
         val bob = if (moving) abs(sin(p.walkPhase)) * 0.045f else sin(p.idlePhase * 2.1f) * 0.018f
-        // face the camera when idle, turn into a three-quarter view when walking
-        val yaw = if (moving) p.facing * 58f else p.facing * 30f
+        val yaw = p.yaw
         val legSwing = if (moving) sin(p.walkPhase) * 32f else 0f
         val armSwing = when (p.action) {
             Act.SWING -> -70f + sin(U.clamp01(p.actionT / max(p.actionDur, 0.01f)) * 3.1416f) * 120f
@@ -794,7 +971,7 @@ class Renderer3D {
 
         setBase(0f)
         ms.identity()
-        ms.push().translate(x, bob, W3.WALK_Z).rotateY(yaw)
+        ms.push().translate(x, bob, W3.z(p.z)).rotateY(yaw)
 
         // legs, hung from the hip
         limb(-0.12f, 0.62f, 0f, 0.19f, 0.62f, 0.2f, legSwing, t.denim)
@@ -875,19 +1052,20 @@ class Renderer3D {
             if (i >= open) continue
             val plot = g.st.plots[i]
             if (!plot.tilled) continue
-            box(x, 0f, W3.PLOT_Z, 1.2f, 0.14f, 1.05f, if (plot.watered) t.tilledWet else t.tilled, closed = true)
+            val pz = W3.z(World.plotZ(i))
+            box(x, 0f, pz, 1.2f, 0.14f, 1.05f, if (plot.watered) t.tilledWet else t.tilled, closed = true)
             val cropId = plot.cropId ?: continue
             val crop = Catalog.crops[cropId] ?: continue
-            drawCrop(g, x, crop.id, U.clamp01(plot.growth / crop.days), plot.ready)
+            drawCrop(g, x, pz, crop.id, U.clamp01(plot.growth / crop.days), plot.ready)
         }
     }
 
-    private fun drawCrop(g: Game, x: Float, cropId: String, prog: Float, ready: Boolean) {
+    private fun drawCrop(g: Game, x: Float, zm: Float, cropId: String, prog: Float, ready: Boolean) {
         val t = tex!!
         val item = Catalog.item(cropId)
         val sway = sin(g.timeMs * 0.0016f + x * 1.7f) * 3.2f * (0.4f + prog)
         val h = U.lerp(0.30f, 1.05f, U.easeOut(prog))
-        ms.push().translate(x, 0.1f, W3.PLOT_Z).rotateZ(sway)
+        ms.push().translate(x, 0.14f, zm).rotateZ(sway)
         // stem
         box(0f, 0f, 0f, 0.07f, h, 0.07f, t.leafGreen)
         // leaves
@@ -943,7 +1121,7 @@ class Renderer3D {
             if (!World.forageAvailable(g.st, i)) continue
             val item = Catalog.item(f.itemId)
             val bob = sin(g.timeMs * 0.0022f + i * 1.4f) * 0.03f
-            ms.push().translate(x, 0.02f + bob, W3.WALK_Z - 0.5f).rotateY(g.timeMs * 0.02f % 360f)
+            ms.push().translate(x, 0.02f + bob, W3.z(f.z)).rotateY(g.timeMs * 0.02f % 360f)
             when (f.itemId) {
                 "mushroom" -> {
                     box(0f, 0f, 0f, 0.1f, 0.16f, 0.1f, t.solid(Color.parseColor("#F4EAD8")))
@@ -971,7 +1149,7 @@ class Renderer3D {
         if (hx.isNaN()) return
         val bob = sin(g.timeMs * 0.006f) * 0.11f
         setBase(0f)
-        ms.identity().translate(W3.x(hx), g.hintHeight() + 0.55f + bob, W3.PLOT_Z + 0.35f)
+        ms.identity().translate(W3.x(hx), g.hintHeight() + 0.55f + bob, W3.z(g.hintTargetZ()))
             .rotateZ(180f).scale(0.32f, 0.34f, 0.32f)
         bindAndDraw(prims?.cone, tex!!.solid(Color.parseColor("#FFF3C0")))
     }
@@ -986,7 +1164,8 @@ class Renderer3D {
         val bx = U.lerp(fromX, toX, castT)
         val arc = sin(castT * 3.1416f) * 1.6f
         val by = U.lerp(1.6f, W3.WATER_Y + 0.08f, castT) + arc
-        val bz = U.lerp(W3.WALK_Z, W3.WALK_Z - 1.6f, castT)
+        val pz = W3.z(g.player.z)
+        val bz = U.lerp(pz, pz - 1.6f, castT)
         val dip = if (f.phase == FPhase.BITE) sin(g.timeMs * 0.03f) * 0.06f else sin(g.timeMs * 0.004f) * 0.02f
         setBase(0f)
         ms.identity()

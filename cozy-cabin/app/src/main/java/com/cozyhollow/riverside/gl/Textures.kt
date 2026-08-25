@@ -41,6 +41,7 @@ class Textures {
     val white = up(PixelTex.solid(Color.WHITE), true)
 
     val blade = up(PixelSprites.blade(), repeat = false)
+    val flowers = up(PixelSprites.flowers(), repeat = false)
     val shadow = up(PixelSprites.shadow(), repeat = false)
     val cloud = up(PixelSprites.cloud(), repeat = false)
     val face = up(PixelSprites.face(), repeat = false)

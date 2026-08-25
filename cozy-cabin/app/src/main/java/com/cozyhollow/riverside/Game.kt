@@ -60,6 +60,7 @@ class Game(private val ctx: Context, private val host: Host) {
     var vw = 1280f
     var vh = Ui.DESIGN_H
     var camX = 0f
+    var camZ = 0f
     var timeMs = 0f
     var fps = 0f
 
@@ -90,8 +91,6 @@ class Game(private val ctx: Context, private val host: Host) {
     var dayBanner = 0f
 
     // ---- HUD buttons ----
-    val bLeft = Btn(100, "").also { it.style = 3 }
-    val bRight = Btn(101, "").also { it.style = 3 }
     val bAction = Btn(102, "").also { it.style = 3 }
     val bBag = Btn(103, "").also { it.style = 3 }
     val bMenu = Btn(104, "").also { it.style = 3 }
@@ -102,7 +101,19 @@ class Game(private val ctx: Context, private val host: Host) {
     private val pActive = BooleanArray(12)
     private val pX = FloatArray(12)
     private val pY = FloatArray(12)
-    private var moveDir = 0f
+    private var moveX = 0f
+    private var moveZ = 0f
+
+    // ---- floating joystick ----
+    private var stickPointer = -1
+    var stickBaseX = 0f; private set
+    var stickBaseY = 0f; private set
+    var stickKnobX = 0f; private set
+    var stickKnobY = 0f; private set
+    val stickActive: Boolean get() = stickPointer >= 0
+    var stickHomeX = 0f; private set
+    var stickHomeY = 0f; private set
+    val stickRadius = 78f
     private var anyHold = false
 
     init {
@@ -128,8 +139,8 @@ class Game(private val ctx: Context, private val host: Host) {
         val moveBaseX = if (south) vw - pad - moveR * 2f - 200f else pad
         val actBaseX = if (south) pad + 30f else vw - pad - bigR
 
-        bLeft.set(moveBaseX, vh - pad - moveR * 2f, moveR * 2f, moveR * 2f)
-        bRight.set(moveBaseX + moveR * 2f + 26f, vh - pad - moveR * 2f, moveR * 2f, moveR * 2f)
+        stickHomeX = if (south) vw - pad - moveR - 40f else pad + moveR + 40f
+        stickHomeY = vh - pad - moveR - 20f
         bAction.set(actBaseX, vh - pad - bigR - 12f, bigR, bigR)
         bBag.set(actBaseX + (bigR - 62f) / 2f, vh - pad - bigR - 96f, 62f, 62f)
         bSeed.set(actBaseX - 96f, vh - pad - bigR - 4f, 84f, 56f)
@@ -172,6 +183,7 @@ class Game(private val ctx: Context, private val host: Host) {
         st = GameState()
         coinsAtDayStart = st.coins
         player.x = st.playerX
+        player.z = st.playerZ
         camX = player.x
         particles.clear()
         selectedSeed = "seed_turnip"
@@ -185,6 +197,7 @@ class Game(private val ctx: Context, private val host: Host) {
         st = loaded ?: GameState()
         coinsAtDayStart = st.coins
         player.x = st.playerX
+        player.z = st.playerZ
         camX = player.x
         particles.clear()
         pickDefaultSeed()
@@ -198,6 +211,7 @@ class Game(private val ctx: Context, private val host: Host) {
 
     fun quitToTitle() {
         st.playerX = player.x
+        st.playerZ = player.z
         SaveManager.save(ctx, st)
         fishing.cancel()
         setMode(Mode.TITLE)
@@ -250,11 +264,11 @@ class Game(private val ctx: Context, private val host: Host) {
         // the title screen drifts slowly across the valley at golden hour
         st.timeMin = 1040f + sin(titleT * 0.05f) * 40f
         camX = 1500f + sin(titleT * 0.06f) * 420f
-        player.update(dt, 0f)
+        player.update(dt, 0f, 0f, st)
     }
 
     private fun updatePaused(dt: Float) {
-        player.update(dt, 0f)
+        player.update(dt, 0f, 0f, st)
         followCamera(dt, snap = false)
     }
 
@@ -267,14 +281,15 @@ class Game(private val ctx: Context, private val host: Host) {
         }
 
         // ---- movement ----
-        val dir = if (fishing.active || screens.blocksInput()) 0f else moveDir
-        player.update(dt, dir)
+        val canWalk = !(fishing.active || screens.blocksInput())
+        player.update(dt, if (canWalk) moveX else 0f, if (canWalk) moveZ else 0f, st)
         st.playerX = player.x
+        st.playerZ = player.z
         followCamera(dt, snap = false)
 
         // footstep dust
-        if (abs(player.vx) > 1f && (timeMs % 260f) < dt * 1000f) {
-            particles.dust(player.x - player.facing * 10f)
+        if (player.moving && (timeMs % 260f) < dt * 1000f) {
+            particles.dust(player.x, player.z)
         }
 
         // ---- tree shake decay ----
@@ -304,14 +319,19 @@ class Game(private val ctx: Context, private val host: Host) {
         }
 
         // ---- energy trickle when idle & rested ----
-        if (st.energy < st.maxEnergy && abs(player.vx) < 1f && !player.busy) {
+        if (st.energy < st.maxEnergy && !player.moving && !player.busy) {
             st.energy = min(st.maxEnergy, st.energy + dt * 0.35f)
         }
     }
 
+    /** Camera tracks x fully and drifts a little with depth, so moving back reads. */
     private fun followCamera(dt: Float, snap: Boolean) {
-        val target = (player.x + player.facing * 55f).coerceIn(CAM_MIN, CAM_MAX)
-        camX = if (snap) target else U.lerp(camX, target, min(1f, dt * 4.2f))
+        val target = (player.x + player.facing * 45f).coerceIn(CAM_MIN, CAM_MAX)
+        val targetZ = player.z * 0.30f
+        if (snap) { camX = target; camZ = targetZ } else {
+            camX = U.lerp(camX, target, min(1f, dt * 4.2f))
+            camZ = U.lerp(camZ, targetZ, min(1f, dt * 3.2f))
+        }
     }
 
     companion object {
@@ -349,20 +369,21 @@ class Game(private val ctx: Context, private val host: Host) {
             return a
         }
         val x = player.x
+        val z = player.z
 
-        if (x >= World.RIVER_EDGE - 150f) {
+        if (x >= World.RIVER_EDGE - 190f) {
             a.kind = AKind.FISH; a.label = "Fish"; a.cost = 3f; return a
         }
-        if (abs(x - World.MARKET_X) < 150f) {
+        if (abs(x - World.MARKET_X) < 210f && abs(z - World.MARKET_Z) < 190f) {
             a.kind = AKind.SHOP; a.label = "Market"; return a
         }
-        if (abs(x - World.CABIN_DOOR_X) < 96f) {
+        if (abs(x - World.CABIN_DOOR_X) < 150f && abs(z - World.CABIN_DOOR_Z) < 130f) {
             a.kind = AKind.SLEEP; a.label = "Sleep"; return a
         }
-        val fi = FarmQuery.nearestForage(st, x, 62f)
+        val fi = FarmQuery.nearestForage(st, x, z, 78f)
         if (fi >= 0) { a.kind = AKind.GATHER; a.label = "Gather"; a.target = fi; a.cost = 1f; return a }
 
-        val pi = FarmQuery.nearestPlot(st, x, 46f)
+        val pi = FarmQuery.nearestPlot(st, x, z, 72f)
         if (pi >= 0) {
             val p = st.plots[pi]
             when {
@@ -374,7 +395,7 @@ class Game(private val ctx: Context, private val host: Host) {
             }
             if (a.kind != AKind.NONE) return a
         }
-        val ti = FarmQuery.nearestTree(st, x, 58f)
+        val ti = FarmQuery.nearestTree(st, x, z, 78f)
         if (ti >= 0) { a.kind = AKind.CHOP; a.label = "Chop"; a.target = ti; a.cost = 5f; return a }
         return a
     }
@@ -439,7 +460,7 @@ class Game(private val ctx: Context, private val host: Host) {
         when (kind) {
             AKind.TILL -> {
                 st.plots[target].tilled = true
-                particles.dust(World.plotX(target))
+                particles.dust(World.plotX(target), World.plotZ(target))
                 audio.play(Sfx.TILL); haptic(14)
             }
             AKind.PLANT -> {
@@ -450,7 +471,7 @@ class Game(private val ctx: Context, private val host: Host) {
                 p.cropId = crop.id
                 p.growth = 0f
                 p.watered = st.weather == Weather.RAIN
-                particles.burstHarvest(World.plotX(target), 0.35f, Pal.leaf, 6)
+                particles.burstHarvest(World.plotX(target), World.plotZ(target), 0.35f, Pal.leaf, 6)
                 audio.play(Sfx.PLANT); haptic(10)
                 if (st.count(seed) <= 0) pickDefaultSeed()
             }
@@ -461,7 +482,7 @@ class Game(private val ctx: Context, private val host: Host) {
                     val p = st.plots[k]
                     if (p.cropId != null && !p.watered) {
                         p.watered = true
-                        particles.burstWater(World.plotX(k), 0.30f)
+                        particles.burstWater(World.plotX(k), World.plotZ(k), 0.30f)
                         n++
                     }
                 }
@@ -485,7 +506,7 @@ class Game(private val ctx: Context, private val host: Host) {
                 st.seenCrops.add(crop.id)
                 harvestedYesterday += amount
                 val item = Catalog.item(crop.produceId)
-                particles.burstHarvest(World.plotX(target), 0.55f, item.a, 12)
+                particles.burstHarvest(World.plotX(target), World.plotZ(target), 0.55f, item.a, 12)
                 toast("+$amount ${item.name}", crop.produceId, Pal.ink)
                 audio.play(Sfx.HARVEST); haptic(20)
                 if (crop.regrow && !p.regrown) {
@@ -505,7 +526,7 @@ class Game(private val ctx: Context, private val host: Host) {
                 }
                 st.foragePicked[target] = st.day
                 val item = Catalog.item(spot.itemId)
-                particles.burstHarvest(spot.x, 0.5f, item.a, 9)
+                particles.burstHarvest(spot.x, spot.z, 0.5f, item.a, 9)
                 toast("+1 ${item.name}", spot.itemId, Pal.ink)
                 audio.play(Sfx.HARVEST); haptic(14)
             }
@@ -513,7 +534,7 @@ class Game(private val ctx: Context, private val host: Host) {
                 val t = World.trees[target]
                 shakeTreeIndex = target
                 shakeAmount = 0.34f
-                particles.burstChop(t.x, 1.7f * t.scale)
+                particles.burstChop(t.x, t.z, 1.7f * t.scale)
                 audio.play(Sfx.CHOP); haptic(22)
                 screenShake = 0.35f
                 val key = target * 13 + st.day
@@ -527,7 +548,7 @@ class Game(private val ctx: Context, private val host: Host) {
                     st.totalChopped++
                     st.treeRegrow[target] = st.day + 3 + (U.hash(key + 9) * 3f).toInt()
                     toast("+$wood Wood", "wood", Pal.ink)
-                    particles.burstHarvest(t.x, 1.1f, Pal.woodDark, 14)
+                    particles.burstHarvest(t.x, t.z, 1.1f, Pal.woodDark, 14)
                 }
             }
         }
@@ -545,8 +566,8 @@ class Game(private val ctx: Context, private val host: Host) {
         val isNew = st.seenFish.add(id)
         if (isNew) toast("New species: ${Catalog.name(id)}!", id, Pal.goldDeep)
         else toast("+1 ${Catalog.name(id)}", id, Pal.ink)
-        particles.splash(fishing.bobX, 1.4f)
-        particles.hearts(player.x, 1.9f, 3)
+        particles.splash(fishing.bobX, player.z, 1.4f)
+        particles.hearts(player.x, player.z, 1.9f, 3)
     }
 
     // ================================================================ sleep
@@ -589,7 +610,9 @@ class Game(private val ctx: Context, private val host: Host) {
         coinsAtDayStart = st.coins
         chopCounter.clear()
         player.x = World.CABIN_DOOR_X
+        player.z = World.CABIN_DOOR_Z
         st.playerX = player.x
+        st.playerZ = player.z
         followCamera(0f, snap = true)
         SaveManager.save(ctx, st)
         setMode(Mode.SLEEP)
@@ -622,7 +645,7 @@ class Game(private val ctx: Context, private val host: Host) {
         val gain = Catalog.price(id) * n
         st.earn(gain)
         if (gain > st.biggestSale) st.biggestSale = gain
-        particles.burstCoins(player.x, 1.3f, min(10, 3 + n))
+        particles.burstCoins(player.x, player.z, 1.3f, min(10, 3 + n))
         toast("+${U.formatCoins(gain)} coins", null, Pal.goldDeep)
         audio.play(Sfx.COIN)
         haptic(12)
@@ -642,7 +665,7 @@ class Game(private val ctx: Context, private val host: Host) {
         if (gain <= 0) { toast("Nothing to sell", null, Pal.inkSoft); audio.play(Sfx.FAIL); return }
         st.earn(gain)
         if (gain > st.biggestSale) st.biggestSale = gain
-        particles.burstCoins(player.x, 1.3f, 12)
+        particles.burstCoins(player.x, player.z, 1.3f, 12)
         toast("+${U.formatCoins(gain)} coins", null, Pal.goldDeep)
         audio.play(Sfx.COIN); haptic(18)
     }
@@ -669,8 +692,8 @@ class Game(private val ctx: Context, private val host: Host) {
         st.take("stone", next.stone)
         st.cabinLevel = next.level
         st.energy = st.maxEnergy
-        particles.burstHarvest(World.CABIN_X, 3.2f, Pal.gold, 22)
-        particles.hearts(World.CABIN_X, 3.8f, 5)
+        particles.burstHarvest(World.CABIN_X, World.CABIN_Z, 3.2f, Pal.gold, 22)
+        particles.hearts(World.CABIN_X, World.CABIN_Z, 3.8f, 5)
         toast("Home upgraded: ${next.name}!", null, Pal.goldDeep)
         audio.play(Sfx.UPGRADE); haptic(40)
         SaveManager.save(ctx, st)
@@ -705,7 +728,7 @@ class Game(private val ctx: Context, private val host: Host) {
         if (st.energy >= st.maxEnergy) { toast("You're not hungry", null, Pal.inkSoft); return }
         if (!st.take(id, 1)) return
         st.energy = min(st.maxEnergy, st.energy + item.food)
-        particles.hearts(player.x, 1.8f, 2)
+        particles.hearts(player.x, player.z, 1.8f, 2)
         toast("+${item.food} energy", id, Pal.leafDeep)
         audio.play(Sfx.HARVEST)
     }
@@ -748,7 +771,7 @@ class Game(private val ctx: Context, private val host: Host) {
 
     private fun clearPointers() {
         for (i in pActive.indices) pActive[i] = false
-        moveDir = 0f
+        releaseStick()
         anyHold = false
     }
 
@@ -762,24 +785,53 @@ class Game(private val ctx: Context, private val host: Host) {
         if (bBag.hit(x, y)) { bBag.press = 1f; return }
         if (bSeed.hit(x, y)) { bSeed.press = 1f; return }
         if (bAction.hit(x, y)) { bAction.press = 1f; return }
-        if (bLeft.hit(x, y)) { bLeft.press = 1f; return }
-        if (bRight.hit(x, y)) { bRight.press = 1f; return }
-        // tapping the world walks there
-        if (!fishing.active && y < vh - 160f) {
-            walkTarget = camX + x
+        // anywhere on the walking half of the screen drops the stick under your thumb
+        if (stickPointer < 0 && inStickZone(x, y)) {
+            stickPointer = id
+            stickBaseX = x.coerceIn(stickRadius + 12f, vw - stickRadius - 12f)
+            stickBaseY = y.coerceIn(stickRadius + 12f, vh - stickRadius - 12f)
+            stickKnobX = stickBaseX
+            stickKnobY = stickBaseY
+            moveX = 0f; moveZ = 0f
         }
     }
 
-    private var walkTarget = Float.NaN
+    /** The half of the screen given over to walking, clear of the HUD buttons. */
+    private fun inStickZone(x: Float, y: Float): Boolean {
+        if (y < 150f) return false
+        return if (settings.southpaw) x > vw * 0.5f else x < vw * 0.5f
+    }
+
+    private fun updateStick(x: Float, y: Float) {
+        var dx = x - stickBaseX
+        var dy = y - stickBaseY
+        val len = kotlin.math.sqrt(dx * dx + dy * dy)
+        if (len > stickRadius) {
+            dx = dx / len * stickRadius
+            dy = dy / len * stickRadius
+        }
+        stickKnobX = stickBaseX + dx
+        stickKnobY = stickBaseY + dy
+        // a small dead zone stops the farmer twitching when your thumb rests
+        val mag = kotlin.math.sqrt(dx * dx + dy * dy) / stickRadius
+        if (mag < 0.16f) {
+            moveX = 0f; moveZ = 0f
+        } else {
+            moveX = dx / stickRadius
+            moveZ = dy / stickRadius
+        }
+    }
 
     fun onPointerMove(id: Int, x: Float, y: Float) {
         if (id in pActive.indices && pActive[id]) { pX[id] = x; pY[id] = y }
+        if (id == stickPointer) updateStick(x, y)
         recomputePointers()
         screens.onMove(x, y)
     }
 
     fun onPointerUp(id: Int, x: Float, y: Float) {
         if (id in pActive.indices) pActive[id] = false
+        if (id == stickPointer) releaseStick()
         recomputePointers()
         if (screens.onUp(x, y)) return
         if (mode != Mode.PLAY) return
@@ -788,35 +840,23 @@ class Game(private val ctx: Context, private val host: Host) {
         else if (bSeed.hit(x, y) && bSeed.press > 0f) cycleSeed()
         else if (bAction.hit(x, y) && bAction.press > 0f) tryAction()
         for (b in hudButtons) b.press = 0f
-        bLeft.press = 0f; bRight.press = 0f
+    }
+
+    private fun releaseStick() {
+        stickPointer = -1
+        moveX = 0f; moveZ = 0f
     }
 
     fun onCancelTouch() {
         clearPointers()
         for (b in hudButtons) b.press = 0f
-        bLeft.press = 0f; bRight.press = 0f
         screens.onCancel()
     }
 
     private fun recomputePointers() {
-        var dir = 0f
         var hold = false
-        for (i in pActive.indices) {
-            if (!pActive[i]) continue
-            hold = true
-            if (bLeft.hit(pX[i], pY[i])) dir -= 1f
-            if (bRight.hit(pX[i], pY[i])) dir += 1f
-        }
-        moveDir = dir.coerceIn(-1f, 1f)
-        if (moveDir != 0f) walkTarget = Float.NaN
+        for (i in pActive.indices) if (pActive[i]) { hold = true; break }
         anyHold = hold
-        bLeft.press = if (moveDir < 0f) 1f else 0f
-        bRight.press = if (moveDir > 0f) 1f else 0f
-        // walk-to-tap
-        if (moveDir == 0f && !walkTarget.isNaN()) {
-            val d = walkTarget - player.x
-            moveDir = if (abs(d) < 14f) { walkTarget = Float.NaN; 0f } else if (d > 0) 1f else -1f
-        }
     }
 
     fun onBack(): Boolean {
@@ -848,6 +888,19 @@ class Game(private val ctx: Context, private val host: Host) {
             AKind.SHOP -> World.MARKET_X
             AKind.SLEEP -> World.CABIN_DOOR_X
             else -> Float.NaN
+        }
+    }
+
+    /** World z of the same target. */
+    fun hintTargetZ(): Float {
+        val a = currentAction()
+        return when (a.kind) {
+            AKind.TILL, AKind.PLANT, AKind.WATER, AKind.HARVEST -> World.plotZ(a.target)
+            AKind.CHOP -> World.trees[a.target].z
+            AKind.GATHER -> World.forage[a.target].z
+            AKind.SHOP -> World.MARKET_Z
+            AKind.SLEEP -> World.CABIN_DOOR_Z
+            else -> 0f
         }
     }
 
@@ -926,9 +979,8 @@ class Game(private val ctx: Context, private val host: Host) {
 
         if (mode != Mode.PLAY) return
 
-        // ---- move pad ----
-        drawRoundBtn(c, bLeft, -1, 0.74f)
-        drawRoundBtn(c, bRight, 1, 0.74f)
+        // ---- walking stick ----
+        drawStick(c)
 
         // ---- action ----
         val a = currentAction()
@@ -977,33 +1029,36 @@ class Game(private val ctx: Context, private val host: Host) {
         menuGlyph(c, bMenu.cx, bMenu.cy + bMenu.press * 5f)
     }
 
-    private fun drawRoundBtn(c: Canvas, b: Btn, dir: Int, alpha: Float) {
-        b.accent = U.shade(Pal.woodDeep, 1.25f)
-        b.label = ""
-        Ui.button(c, b, alpha + b.press * 0.22f)
-        val cx = b.cx + dir * 4f
-        val cy = b.cy + b.press * 5f
-        val w = 17f
-        val h = 24f
-        glyphPaint.style = Paint.Style.STROKE
-        glyphPaint.strokeWidth = 9f
-        glyphPaint.strokeCap = Paint.Cap.ROUND
-        glyphPaint.strokeJoin = Paint.Join.ROUND
-        glyphPaint.color = U.withAlpha(Pal.shadow, 0.32f)
-        chevron(c, cx, cy + 3f, w, h, dir)
-        glyphPaint.color = Pal.cream
-        chevron(c, cx, cy, w, h, dir)
+    /** Floating thumbstick: rests in a corner, jumps to wherever you press. */
+    private fun drawStick(c: Canvas) {
+        val bx = if (stickActive) stickBaseX else stickHomeX
+        val by = if (stickActive) stickBaseY else stickHomeY
+        val kx = if (stickActive) stickKnobX else stickHomeX
+        val ky = if (stickActive) stickKnobY else stickHomeY
+        val a = if (stickActive) 1f else 0.5f
+
         glyphPaint.style = Paint.Style.FILL
-    }
+        glyphPaint.color = U.withAlpha(Pal.shadow, 0.26f * a)
+        c.drawCircle(bx, by + 4f, stickRadius, glyphPaint)
+        glyphPaint.color = U.withAlpha(U.shade(Pal.woodDeep, 1.15f), 0.62f * a)
+        c.drawCircle(bx, by, stickRadius, glyphPaint)
+        glyphPaint.color = U.withAlpha(Pal.woodDeep, 0.5f * a)
+        c.drawCircle(bx, by, stickRadius - 7f, glyphPaint)
 
-    private val glyphPath = android.graphics.Path()
+        // four little pips so it reads as a direction pad
+        glyphPaint.color = U.withAlpha(Pal.cream, 0.32f * a)
+        val pip = stickRadius - 20f
+        c.drawCircle(bx, by - pip, 4f, glyphPaint)
+        c.drawCircle(bx, by + pip, 4f, glyphPaint)
+        c.drawCircle(bx - pip, by, 4f, glyphPaint)
+        c.drawCircle(bx + pip, by, 4f, glyphPaint)
 
-    private fun chevron(c: Canvas, cx: Float, cy: Float, w: Float, h: Float, dir: Int) {
-        glyphPath.reset()
-        glyphPath.moveTo(cx - dir * w * 0.5f, cy - h * 0.5f)
-        glyphPath.lineTo(cx + dir * w * 0.5f, cy)
-        glyphPath.lineTo(cx - dir * w * 0.5f, cy + h * 0.5f)
-        c.drawPath(glyphPath, glyphPaint)
+        glyphPaint.color = U.withAlpha(Pal.shadow, 0.3f * a)
+        c.drawCircle(kx, ky + 5f, 34f, glyphPaint)
+        glyphPaint.color = U.withAlpha(Pal.cream, 0.94f * a)
+        c.drawCircle(kx, ky, 33f, glyphPaint)
+        glyphPaint.color = U.withAlpha(U.shade(Pal.wood, 1.05f), 0.95f * a)
+        c.drawCircle(kx, ky, 25f, glyphPaint)
     }
 
     private val glyphPaint = Paint(Paint.ANTI_ALIAS_FLAG)

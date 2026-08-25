@@ -454,6 +454,35 @@ object PixelSprites {
         }
     }
 
+    /** Four wildflowers on one sheet; each baked flower samples a quadrant. */
+    fun flowers(): Px = Px(32, 32).also { g ->
+        val stem = c("#5C9147")
+        val heads = intArrayOf(c("#E8A0C0"), c("#F2D45A"), c("#C9A9E8"), c("#F0F0E2"))
+        val cores = intArrayOf(c("#F2D45A"), c("#E8963C"), c("#F2D45A"), c("#F2D45A"))
+        g.fill(CLEAR)
+        for (q in 0 until 4) {
+            val ox = (q % 2) * 16
+            val oy = (q / 2) * 16
+            // stem
+            for (y in 9 until 16) g.set(ox + 8, oy + y, stem)
+            g.set(ox + 7, oy + 12, stem)
+            g.set(ox + 10, oy + 11, stem)
+            // petals
+            val h = heads[q]
+            for (d in intArrayOf(-3, 0, 3)) {
+                g.set(ox + 8 + d, oy + 4, h)
+                g.set(ox + 8 + d, oy + 5, h)
+            }
+            for (dy in intArrayOf(-3, 0, 3)) {
+                g.set(ox + 5, oy + 7 + dy, h)
+                g.set(ox + 11, oy + 7 + dy, h)
+            }
+            for (y in 5 until 10) for (x in 6 until 11) g.set(ox + x, oy + y, h)
+            g.set(ox + 8, oy + 7, cores[q])
+            g.set(ox + 7, oy + 7, cores[q])
+        }
+    }
+
     /** Simple white square used to tint particles any colour. */
     fun dot(): Px = Px(4, 4).also { it.fill(c("#FFFFFF")) }
 

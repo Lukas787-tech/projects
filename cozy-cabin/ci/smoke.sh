@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Boots the game on an emulator, drives the UI through its main screens and
-# captures a screenshot of each, then fails if anything crashed.
+# Boots the game on an emulator, drives it around the valley in both axes and
+# captures a screenshot of each screen, then fails if anything crashed.
 set -uo pipefail
 
 SHOTS=cozy-cabin/screenshots
@@ -14,11 +14,17 @@ shot() {
   if [ "$bytes" -lt 5000 ]; then echo "::warning::$1 looks empty"; fi
 }
 
+# The floating stick drops wherever you press, so a swipe = press then lean.
+walk() { adb shell input swipe "$1" "$2" "$3" "$4" "${5:-2500}"; }
+walk_right() { walk 300 560 760 560 "${1:-2500}"; }
+walk_left()  { walk 700 560 240 560 "${1:-2500}"; }
+walk_near()  { walk 300 470 300 700 "${1:-1600}"; }   # toward the camera
+walk_far()   { walk 300 620 300 380 "${1:-1600}"; }   # into the woods
+
 fail=0
 
 echo "--- display info ---"
 adb shell wm size
-adb shell wm density
 
 echo "--- install ---"
 adb install -r -t out/RiversideHollow.apk || { echo "install failed"; exit 1; }
@@ -28,51 +34,52 @@ adb shell am start -W -n com.cozyhollow.riverside/.MainActivity
 sleep 14
 shot 01-title.png
 
-# Title: "Begin" / "Continue" is the first button, centred at 40% height
-adb shell input tap 640 338
+adb shell input tap 640 366     # Begin
 sleep 3
 shot 02-letter.png
 
-# Intro letter: "Let's begin"
-adb shell input tap 640 581
+adb shell input tap 640 581     # Let's begin
 sleep 4
 shot 03-morning.png
 
-# Stroll right until we are standing at the first field plot
-adb shell input swipe 375 582 375 582 1300
+# --- walk in depth, which is the whole point of the layout ---
+walk_near 1500
 sleep 1
-shot 04-walking.png
+shot 04-depth.png
 
-# Till, plant and water it: this is the only path that exercises crop rendering
-adb shell input tap 1162 584   # till
+# --- over to the field, then work a plot ---
+walk_right 2600
+sleep 1
+walk_far 900
+sleep 1
+adb shell input tap 1162 583   # till
 sleep 2
-adb shell input tap 1162 584   # plant the starting turnip seeds
+adb shell input tap 1162 583   # plant
 sleep 2
-adb shell input tap 1162 584   # water
+adb shell input tap 1162 583   # water
 sleep 2
 shot 05-field.png
 
-# Backpack
-adb shell input tap 1162 425
+# --- backpack ---
+adb shell input tap 1161 425
 sleep 2
 shot 06-backpack.png
 adb shell input keyevent 4
 sleep 2
 
-# Pause menu
-adb shell input tap 1198 83
+# --- pause menu ---
+adb shell input tap 1197 83
 sleep 2
 shot 07-pause.png
 adb shell input keyevent 4
 sleep 2
 
-# Walk right toward the market and the river
-for _ in 1 2 3 4 5 6; do adb shell input swipe 375 582 375 582 4000; done
+# --- on to the market and the river ---
+for _ in 1 2 3 4 5; do walk_right 2600; done
 sleep 1
 shot 08-river.png
 
-# Action button (fish / shop / whatever is in reach)
-adb shell input tap 1162 584
+adb shell input tap 1162 583   # fish / shop, whatever is in reach
 sleep 3
 shot 09-action.png
 
@@ -98,6 +105,6 @@ if grep -qi "ANR in com.cozyhollow" logcat.txt; then
 fi
 
 echo "--- our own log lines ---"
-grep -i "cozyhollow\|riverside" logcat.txt | grep -vi "^--------" | head -40 || true
+grep -iE "Riverside" logcat.txt | head -30 || true
 
 exit $fail

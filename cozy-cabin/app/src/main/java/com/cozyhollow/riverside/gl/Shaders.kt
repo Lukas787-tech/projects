@@ -19,6 +19,8 @@ uniform float uCamX;
 uniform float uCurve;
 uniform float uBaseY;
 uniform vec2 uUvScale;
+uniform float uTime;
+uniform float uWave;
 
 uniform vec3 uSunDir;
 uniform vec3 uSunCol;
@@ -31,6 +33,12 @@ varying float vFog;
 
 void main() {
     vec4 wp = uModel * vec4(aPos, 1.0);
+
+    // gentle swell, only ever switched on for the water surface
+    if (uWave > 0.0001) {
+        wp.y += sin(wp.x * 1.15 + uTime * 1.7) * uWave
+              + sin(wp.z * 0.9 - uTime * 1.1) * uWave * 0.7;
+    }
 
     // --- cylindrical world bend ---
     float dx = wp.x - uCamX;
