@@ -32,7 +32,8 @@ object World {
     const val PLOT_COLS = 4
     const val FARM_X0 = 1840f
     const val PLOT_DX = 122f
-    const val FARM_Z0 = -120f
+    /** Row 0 sits at the front, nearest the path; later rows extend backwards. */
+    const val FARM_Z0 = 150f
     const val PLOT_DZ = 116f
 
     /**
@@ -71,7 +72,10 @@ object World {
     )
 
     /** Nothing scatters inside the field or on top of a building. */
-    private val fieldArea = Box(FARM_X0 - 140f, FARM_Z0 - 130f, plotX(PLOT_COLS - 1) + 140f, plotZ(MAX_PLOTS - 1) + 130f)
+    private val fieldArea = Box(
+        FARM_X0 - 140f, FARM_Z0 - (MAX_PLOTS / PLOT_COLS - 1) * PLOT_DZ - 130f,
+        plotX(PLOT_COLS - 1) + 140f, FARM_Z0 + 130f
+    )
 
     private fun freeSpot(x: Float, z: Float): Boolean {
         if (fieldArea.contains(x, z)) return false
@@ -125,7 +129,7 @@ object World {
     }
 
     fun plotX(index: Int): Float = FARM_X0 + (index % PLOT_COLS) * PLOT_DX
-    fun plotZ(index: Int): Float = FARM_Z0 + (index / PLOT_COLS) * PLOT_DZ
+    fun plotZ(index: Int): Float = FARM_Z0 - (index / PLOT_COLS) * PLOT_DZ
 
     /** True if this spot is inside something you cannot walk through. */
     fun blocked(st: GameState, x: Float, z: Float): Boolean {

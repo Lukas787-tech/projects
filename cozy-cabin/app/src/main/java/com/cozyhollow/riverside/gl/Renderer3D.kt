@@ -254,8 +254,11 @@ class Renderer3D {
         val b = MeshBuilder()
         val x0 = W3.x(World.plotX(0)) - 1.0f
         val x1 = W3.x(World.plotX(World.PLOT_COLS - 1)) + 1.0f
-        val z0 = W3.z(World.plotZ(0)) - 1.0f
-        val z1 = W3.z(World.plotZ(World.MAX_PLOTS - 1)) + 1.0f
+        // rows run back from the path, so take the extremes rather than assume order
+        val za = W3.z(World.plotZ(0))
+        val zb = W3.z(World.plotZ(World.MAX_PLOTS - 1))
+        val z0 = kotlin.math.min(za, zb) - 1.0f
+        val z1 = kotlin.math.max(za, zb) + 1.0f
 
         fun post(px: Float, pz: Float) {
             b.box(px, 0f, pz, 0.12f, 0.82f, 0.12f, 0.75f, top = true, bottom = false)
