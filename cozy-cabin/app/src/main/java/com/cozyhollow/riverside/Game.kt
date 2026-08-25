@@ -383,7 +383,7 @@ class Game(private val ctx: Context, private val host: Host) {
         val fi = FarmQuery.nearestForage(st, x, z, 78f)
         if (fi >= 0) { a.kind = AKind.GATHER; a.label = "Gather"; a.target = fi; a.cost = 1f; return a }
 
-        val pi = FarmQuery.nearestPlot(st, x, z, 72f)
+        val pi = FarmQuery.nearestPlot(st, x, z, 100f)
         if (pi >= 0) {
             val p = st.plots[pi]
             when {
@@ -1035,30 +1035,32 @@ class Game(private val ctx: Context, private val host: Host) {
         val by = if (stickActive) stickBaseY else stickHomeY
         val kx = if (stickActive) stickKnobX else stickHomeX
         val ky = if (stickActive) stickKnobY else stickHomeY
-        val a = if (stickActive) 1f else 0.5f
+        val a = if (stickActive) 1f else 0.34f
+        val r = if (stickActive) stickRadius else stickRadius * 0.72f
 
         glyphPaint.style = Paint.Style.FILL
-        glyphPaint.color = U.withAlpha(Pal.shadow, 0.26f * a)
-        c.drawCircle(bx, by + 4f, stickRadius, glyphPaint)
-        glyphPaint.color = U.withAlpha(U.shade(Pal.woodDeep, 1.15f), 0.62f * a)
-        c.drawCircle(bx, by, stickRadius, glyphPaint)
-        glyphPaint.color = U.withAlpha(Pal.woodDeep, 0.5f * a)
-        c.drawCircle(bx, by, stickRadius - 7f, glyphPaint)
+        glyphPaint.color = U.withAlpha(Pal.shadow, 0.22f * a)
+        c.drawCircle(bx, by + 4f, r, glyphPaint)
+        glyphPaint.color = U.withAlpha(U.shade(Pal.woodDeep, 1.15f), 0.55f * a)
+        c.drawCircle(bx, by, r, glyphPaint)
+        glyphPaint.color = U.withAlpha(Pal.woodDeep, 0.45f * a)
+        c.drawCircle(bx, by, r - 7f, glyphPaint)
 
         // four little pips so it reads as a direction pad
         glyphPaint.color = U.withAlpha(Pal.cream, 0.32f * a)
-        val pip = stickRadius - 20f
+        val pip = r - 18f
         c.drawCircle(bx, by - pip, 4f, glyphPaint)
         c.drawCircle(bx, by + pip, 4f, glyphPaint)
         c.drawCircle(bx - pip, by, 4f, glyphPaint)
         c.drawCircle(bx + pip, by, 4f, glyphPaint)
 
+        val kr = if (stickActive) 33f else 24f
         glyphPaint.color = U.withAlpha(Pal.shadow, 0.3f * a)
-        c.drawCircle(kx, ky + 5f, 34f, glyphPaint)
+        c.drawCircle(kx, ky + 5f, kr + 1f, glyphPaint)
         glyphPaint.color = U.withAlpha(Pal.cream, 0.94f * a)
-        c.drawCircle(kx, ky, 33f, glyphPaint)
+        c.drawCircle(kx, ky, kr, glyphPaint)
         glyphPaint.color = U.withAlpha(U.shade(Pal.wood, 1.05f), 0.95f * a)
-        c.drawCircle(kx, ky, 25f, glyphPaint)
+        c.drawCircle(kx, ky, kr * 0.76f, glyphPaint)
     }
 
     private val glyphPaint = Paint(Paint.ANTI_ALIAS_FLAG)

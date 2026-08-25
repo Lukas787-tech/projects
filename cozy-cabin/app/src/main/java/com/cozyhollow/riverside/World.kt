@@ -35,7 +35,7 @@ object World {
     const val FARM_Z0 = -120f
     const val PLOT_DZ = 116f
 
-    const val TREE_COUNT = 30
+    const val TREE_COUNT = 22
     const val FORAGE_COUNT = 20
 
     // zones
@@ -66,9 +66,10 @@ object World {
 
     private fun freeSpot(x: Float, z: Float): Boolean {
         if (fieldArea.contains(x, z)) return false
-        for (s in solids) if (Box(s.x0 - 80f, s.z0 - 80f, s.x1 + 80f, s.z1 + 80f).contains(x, z)) return false
-        // keep the front strip clear so there is always a way past
-        if (z > 170f && x > 900f && x < 3200f) return false
+        // a generous apron round the buildings, or trees swallow the cabin
+        for (s in solids) if (Box(s.x0 - 260f, s.z0 - 230f, s.x1 + 260f, s.z1 + 230f).contains(x, z)) return false
+        // keep the path and the strip in front of it clear
+        if (z > 130f) return false
         return true
     }
 
@@ -82,7 +83,7 @@ object World {
             if (!freeSpot(x, z)) continue
             var tooClose = false
             for (t in treeList) {
-                if (kotlin.math.abs(t.x - x) < 95f && kotlin.math.abs(t.z - z) < 95f) { tooClose = true; break }
+                if (kotlin.math.abs(t.x - x) < 155f && kotlin.math.abs(t.z - z) < 130f) { tooClose = true; break }
             }
             if (tooClose) continue
             val kind = if (U.hash(seed * 53 + 11) < 0.5f) 0 else 1
