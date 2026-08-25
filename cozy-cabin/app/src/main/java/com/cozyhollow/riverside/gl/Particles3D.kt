@@ -1,6 +1,7 @@
 package com.cozyhollow.riverside.gl
 
 import android.graphics.Color
+import com.cozyhollow.riverside.Terrain
 import com.cozyhollow.riverside.U
 import com.cozyhollow.riverside.Weather
 import kotlin.math.cos
@@ -16,13 +17,17 @@ object P3 {
     const val COIN = 6
     const val RING = 7
     const val HEART = 8
+    const val BUTTERFLY = 9
+    const val POLLEN = 10
 }
 
 /**
- * Pooled 3D particles drawn as camera-facing pixel squares. Positions are in
- * metres; callers that think in gameplay world units convert with [W3.x].
+ * Pooled particles, all in metres. The ambient ones — pollen turning in the
+ * afternoon light, butterflies, drifting leaves, fireflies after dark, rain —
+ * are spawned in a ring around wherever you are standing, so the valley always
+ * has something small moving in it without paying for the whole map.
  */
-class Particles3D(private val cap: Int = 700) {
+class Particles3D(private val cap: Int = 800) {
 
     val px = FloatArray(cap)
     val py = FloatArray(cap)
@@ -39,6 +44,8 @@ class Particles3D(private val cap: Int = 700) {
     private var rainAcc = 0f
     private var leafAcc = 0f
     private var flyAcc = 0f
+    private var pollenAcc = 0f
+    private var flutterAcc = 0f
     private var rng = 0x51ED2701
 
     private fun rnd(): Float {
@@ -70,120 +77,156 @@ class Particles3D(private val cap: Int = 700) {
 
     // ------------------------------------------------------------- bursts
 
-    fun burstHarvest(worldX: Float, worldZ: Float, heightM: Float, color: Int, n: Int) {
-        val x = W3.x(worldX)
-        val z = W3.z(worldZ)
+    fun burstHarvest(x: Float, z: Float, height: Float, color: Int, n: Int) {
+        val y = Terrain.groundY(x, z) + height
         for (k in 0 until n) {
             val a = rnd() * 6.2832f
             val sp = 0.9f + rnd() * 1.9f
-            spawn(P3.CHUNK, x, heightM, z, cos(a) * sp, 1.6f + rnd() * 1.6f, sin(a) * sp * 0.5f,
+            spawn(P3.CHUNK, x, y, z, cos(a) * sp, 1.6f + rnd() * 1.6f, sin(a) * sp,
                 0.75f, 0.075f + rnd() * 0.06f, color)
         }
         for (k in 0 until n / 2) {
-            spawn(P3.SPARK, x + (rnd() - 0.5f) * 0.7f, heightM + rnd() * 0.5f, z,
+            spawn(P3.SPARK, x + (rnd() - 0.5f) * 0.7f, y + rnd() * 0.5f, z + (rnd() - 0.5f) * 0.7f,
                 0f, 0.7f, 0f, 0.6f, 0.05f, Color.parseColor("#FFF3C0"))
         }
     }
 
-    fun burstCoins(worldX: Float, worldZ: Float, heightM: Float, n: Int) {
-        val x = W3.x(worldX)
-        val z = W3.z(worldZ)
+    fun burstCoins(x: Float, z: Float, height: Float, n: Int) {
+        val y = Terrain.groundY(x, z) + height
         for (k in 0 until n) {
-            spawn(P3.COIN, x, heightM, z, (rnd() - 0.5f) * 2.4f, 2.8f + rnd() * 1.6f,
-                (rnd() - 0.5f) * 0.7f, 1.0f, 0.13f, Color.parseColor("#E8B44A"))
+            spawn(P3.COIN, x, y, z, (rnd() - 0.5f) * 2.4f, 2.8f + rnd() * 1.6f,
+                (rnd() - 0.5f) * 2.4f, 1.0f, 0.13f, Color.parseColor("#E8B44A"))
         }
     }
 
-    fun burstChop(worldX: Float, worldZ: Float, heightM: Float) {
-        val x = W3.x(worldX)
-        val z = W3.z(worldZ) + 0.4f
+    fun burstChop(x: Float, z: Float, height: Float) {
+        val y = Terrain.groundY(x, z) + height
         for (k in 0 until 14) {
             val a = rnd() * 6.2832f
             val sp = 1.1f + rnd() * 2.2f
-            spawn(P3.CHUNK, x, heightM, z, cos(a) * sp, 1.4f + rnd() * 1.8f,
-                sin(a) * sp * 0.5f, 0.8f, 0.07f + rnd() * 0.05f, Color.parseColor("#A87646"))
+            spawn(P3.CHUNK, x, y, z, cos(a) * sp, 1.4f + rnd() * 1.8f,
+                sin(a) * sp, 0.8f, 0.07f + rnd() * 0.05f, Color.parseColor("#A87646"))
         }
     }
 
-    fun burstWater(worldX: Float, worldZ: Float, heightM: Float) {
-        val x = W3.x(worldX)
-        val z = W3.z(worldZ)
+    fun burstWater(x: Float, z: Float, height: Float) {
+        val y = Terrain.groundY(x, z) + height
         for (k in 0 until 16) {
             val a = rnd() * 6.2832f
-            spawn(P3.CHUNK, x + (rnd() - 0.5f) * 0.5f, heightM, z,
-                cos(a) * 0.7f, 1.1f + rnd() * 0.9f, sin(a) * 0.4f,
+            spawn(P3.CHUNK, x + (rnd() - 0.5f) * 0.5f, y, z + (rnd() - 0.5f) * 0.5f,
+                cos(a) * 0.7f, 1.1f + rnd() * 0.9f, sin(a) * 0.7f,
                 0.55f, 0.045f, Color.parseColor("#9FD4E8"))
         }
     }
 
-    fun splash(worldX: Float, worldZ: Float, strength: Float) {
-        val x = W3.x(worldX)
-        val z = W3.z(worldZ)
+    fun splash(x: Float, z: Float, strength: Float) {
+        val y = Terrain.WATER_Y
         for (k in 0 until (12 * strength).toInt().coerceAtLeast(5)) {
             val a = rnd() * 6.2832f
             val sp = (0.8f + rnd() * 1.6f) * strength
-            spawn(P3.CHUNK, x, W3.WATER_Y, z,
-                cos(a) * sp, 1.8f + rnd() * 1.4f, sin(a) * sp * 0.6f,
+            spawn(P3.CHUNK, x, y, z, cos(a) * sp, 1.8f + rnd() * 1.4f, sin(a) * sp,
                 0.7f, 0.05f + rnd() * 0.04f, Color.parseColor("#EAF7FB"))
         }
-        spawn(P3.RING, x, W3.WATER_Y + 0.02f, z, 0f, 0f, 0f, 0.7f, 0.35f, Color.WHITE)
+        spawn(P3.RING, x, y + 0.03f, z, 0f, 0f, 0f, 0.7f, 0.4f, Color.WHITE)
     }
 
-    fun hearts(worldX: Float, worldZ: Float, heightM: Float, n: Int) {
-        val x = W3.x(worldX)
-        val z = W3.z(worldZ)
+    fun hearts(x: Float, z: Float, height: Float, n: Int) {
+        val y = Terrain.groundY(x, z) + height
         for (k in 0 until n) {
-            spawn(P3.HEART, x + (rnd() - 0.5f) * 0.5f, heightM, z,
+            spawn(P3.HEART, x + (rnd() - 0.5f) * 0.5f, y, z + (rnd() - 0.5f) * 0.5f,
                 (rnd() - 0.5f) * 0.4f, 1.0f, 0f, 1.4f, 0.14f, Color.parseColor("#D06A72"))
         }
     }
 
-    fun dust(worldX: Float, worldZ: Float) {
-        val x = W3.x(worldX)
-        val z = W3.z(worldZ)
+    fun dust(x: Float, z: Float) {
+        val y = Terrain.groundY(x, z) + 0.04f
         for (k in 0 until 4) {
-            spawn(P3.CHUNK, x + (rnd() - 0.5f) * 0.3f, 0.04f, z,
-                (rnd() - 0.5f) * 0.8f, 0.5f + rnd() * 0.4f, (rnd() - 0.5f) * 0.4f,
+            spawn(P3.CHUNK, x + (rnd() - 0.5f) * 0.3f, y, z + (rnd() - 0.5f) * 0.3f,
+                (rnd() - 0.5f) * 0.8f, 0.5f + rnd() * 0.4f, (rnd() - 0.5f) * 0.8f,
                 0.45f, 0.06f, Color.parseColor("#C9B08C"))
         }
     }
 
     // ------------------------------------------------------------ ambient
 
-    fun updateAmbient(dt: Float, camXm: Float, night: Float, weather: Int, quality: Float) {
+    private fun ringPos(cx: Float, cz: Float, radius: Float, out: FloatArray) {
+        val a = rnd() * 6.2832f
+        val d = sqrt01() * radius
+        out[0] = cx + cos(a) * d
+        out[1] = cz + sin(a) * d
+    }
+
+    private fun sqrt01(): Float {
+        val r = rnd()
+        return kotlin.math.sqrt(r)
+    }
+
+    private val tmp = FloatArray(2)
+
+    fun updateAmbient(dt: Float, cx: Float, cz: Float, night: Float, weather: Int, quality: Float) {
+        val day = 1f - night
+
         if (weather == Weather.RAIN) {
-            rainAcc += dt * 120f * quality
+            rainAcc += dt * 150f * quality
             while (rainAcc >= 1f) {
                 rainAcc -= 1f
-                spawn(
-                    P3.RAIN, camXm + (rnd() - 0.5f) * 26f, 9f + rnd() * 3f,
-                    -12f + rnd() * 18f, -1.6f, -16f, 0f, 1.1f, 0.05f,
-                    Color.parseColor("#CFE4F2")
-                )
+                ringPos(cx, cz, 16f, tmp)
+                spawn(P3.RAIN, tmp[0], 11f + rnd() * 3f, tmp[1], -0.8f, -17f, 0f, 1.1f, 0.05f,
+                    Color.parseColor("#CFE4F2"))
             }
         }
-        leafAcc += dt * 2.2f * quality
+
+        // leaves turning loose from the canopy
+        leafAcc += dt * 2.6f * quality
         while (leafAcc >= 1f) {
             leafAcc -= 1f
-            val x = camXm + (rnd() - 0.5f) * 22f
-            if (x > W3.RIVER_X) continue
+            ringPos(cx, cz, 15f, tmp)
+            if (Terrain.isWater(tmp[0], tmp[1])) continue
             val hue = when ((rnd() * 3f).toInt()) {
                 0 -> Color.parseColor("#D9A05B")
                 1 -> Color.parseColor("#C4703F")
                 else -> Color.parseColor("#8FBF6F")
             }
-            spawn(P3.LEAF, x, 3.5f + rnd() * 3f, -7f + rnd() * 12f, -0.3f, -0.55f, 0f, 7f, 0.09f, hue)
+            spawn(P3.LEAF, tmp[0], Terrain.height(tmp[0], tmp[1]) + 3f + rnd() * 3.5f, tmp[1],
+                -0.35f, -0.5f, 0.2f, 7.5f, 0.09f, hue)
         }
-        if (night > 0.35f) {
-            flyAcc += dt * 3f * quality
+
+        if (day > 0.4f) {
+            // motes of pollen hanging in the light
+            pollenAcc += dt * 7f * quality
+            while (pollenAcc >= 1f) {
+                pollenAcc -= 1f
+                ringPos(cx, cz, 11f, tmp)
+                spawn(
+                    P3.POLLEN, tmp[0], Terrain.height(tmp[0], tmp[1]) + 0.4f + rnd() * 2.2f, tmp[1],
+                    (rnd() - 0.5f) * 0.25f, 0.06f + rnd() * 0.1f, (rnd() - 0.5f) * 0.25f,
+                    6f, 0.035f, Color.parseColor("#FFF4CC")
+                )
+            }
+            // and a butterfly or two over the meadow
+            flutterAcc += dt * 0.5f * quality
+            while (flutterAcc >= 1f) {
+                flutterAcc -= 1f
+                ringPos(cx, cz, 9f, tmp)
+                if (Terrain.isWater(tmp[0], tmp[1])) continue
+                val hue = if (rnd() < 0.5f) Color.parseColor("#F2D45A") else Color.parseColor("#E8A0C0")
+                spawn(
+                    P3.BUTTERFLY, tmp[0], Terrain.height(tmp[0], tmp[1]) + 0.7f + rnd() * 0.8f, tmp[1],
+                    (rnd() - 0.5f) * 0.9f, 0f, (rnd() - 0.5f) * 0.9f, 9f, 0.09f, hue
+                )
+            }
+        }
+
+        if (night > 0.3f) {
+            flyAcc += dt * 4.5f * quality
             while (flyAcc >= 1f) {
                 flyAcc -= 1f
-                val x = 2f + rnd() * 17f
-                if (kotlin.math.abs(x - camXm) > 12f) continue
+                ringPos(cx, cz, 12f, tmp)
+                if (Terrain.isWater(tmp[0], tmp[1])) continue
                 spawn(
-                    P3.FIREFLY, x, 0.6f + rnd() * 2.2f, -6f + rnd() * 10f,
-                    (rnd() - 0.5f) * 0.4f, (rnd() - 0.5f) * 0.3f, (rnd() - 0.5f) * 0.3f,
-                    5f, 0.055f, Color.parseColor("#DFF59A")
+                    P3.FIREFLY, tmp[0], Terrain.height(tmp[0], tmp[1]) + 0.4f + rnd() * 1.8f, tmp[1],
+                    (rnd() - 0.5f) * 0.4f, (rnd() - 0.5f) * 0.25f, (rnd() - 0.5f) * 0.4f,
+                    6f, 0.055f, Color.parseColor("#DFF59A")
                 )
             }
         }
@@ -197,23 +240,33 @@ class Particles3D(private val cap: Int = 700) {
             when (kind[i]) {
                 P3.RAIN -> {
                     px[i] += vx[i] * dt; py[i] += vy[i] * dt; pz[i] += vz[i] * dt
-                    val groundY = if (px[i] > W3.RIVER_X) W3.WATER_Y else 0f
+                    val groundY = Terrain.surfaceY(px[i], pz[i])
                     if (py[i] <= groundY) {
                         life[i] = 0f
-                        if (rnd() < 0.35f) {
-                            spawn(P3.RING, px[i], groundY + 0.02f, pz[i], 0f, 0f, 0f, 0.35f, 0.14f, Color.WHITE)
+                        if (rnd() < 0.3f) {
+                            spawn(P3.RING, px[i], groundY + 0.03f, pz[i], 0f, 0f, 0f, 0.35f, 0.16f, Color.WHITE)
                         }
                     }
                 }
                 P3.LEAF -> {
                     px[i] += (vx[i] + sin(life[i] * 2.2f) * 0.5f) * dt
                     py[i] += vy[i] * dt
-                    if (py[i] <= 0.05f) life[i] = 0f
+                    pz[i] += (vz[i] + cos(life[i] * 1.7f) * 0.35f) * dt
+                    if (py[i] <= Terrain.surfaceY(px[i], pz[i]) + 0.04f) life[i] = 0f
                 }
-                P3.FIREFLY -> {
+                P3.FIREFLY, P3.POLLEN -> {
                     px[i] += (vx[i] + sin(life[i] * 1.7f + i) * 0.3f) * dt
-                    py[i] += (vy[i] + cos(life[i] * 2.1f + i) * 0.25f) * dt
-                    pz[i] += vz[i] * dt
+                    py[i] += (vy[i] + cos(life[i] * 2.1f + i) * 0.2f) * dt
+                    pz[i] += (vz[i] + cos(life[i] * 1.3f + i) * 0.3f) * dt
+                }
+                P3.BUTTERFLY -> {
+                    // a lazy figure of eight, dipping and rising
+                    val t = maxLife[i] - life[i]
+                    px[i] += (vx[i] + sin(t * 1.9f) * 0.55f) * dt
+                    pz[i] += (vz[i] + cos(t * 1.3f) * 0.55f) * dt
+                    py[i] += sin(t * 4.5f) * 0.5f * dt
+                    val floor = Terrain.surfaceY(px[i], pz[i]) + 0.35f
+                    if (py[i] < floor) py[i] = floor
                 }
                 P3.RING -> { /* expands in place */ }
                 P3.HEART -> {
@@ -225,8 +278,9 @@ class Particles3D(private val cap: Int = 700) {
                     px[i] += vx[i] * dt
                     py[i] += vy[i] * dt
                     pz[i] += vz[i] * dt
-                    if (py[i] < 0.02f) {
-                        py[i] = 0.02f
+                    val floor = Terrain.surfaceY(px[i], pz[i]) + 0.02f
+                    if (py[i] < floor) {
+                        py[i] = floor
                         vy[i] = -vy[i] * 0.32f
                         vx[i] *= 0.55f; vz[i] *= 0.55f
                     }
@@ -238,8 +292,10 @@ class Particles3D(private val cap: Int = 700) {
     fun alphaOf(i: Int): Float {
         val t = life[i] / maxLife[i]
         return when (kind[i]) {
-            P3.RAIN -> 0.65f
+            P3.RAIN -> 0.6f
             P3.RING -> t * 0.75f
+            P3.POLLEN -> U.clamp01(t * 2.4f) * U.clamp01((1f - t) * 6f) * 0.55f
+            P3.BUTTERFLY -> U.clamp01(t * 3f) * U.clamp01((1f - t) * 8f)
             P3.FIREFLY -> {
                 val pulse = sin(life[i] * 5.4f + i)
                 U.clamp01(t * 1.8f) * (0.35f + 0.65f * pulse * pulse)
@@ -249,8 +305,8 @@ class Particles3D(private val cap: Int = 700) {
     }
 
     fun sizeOf(i: Int): Float = when (kind[i]) {
-        P3.RING -> size[i] * (0.4f + (1f - life[i] / maxLife[i]) * 2.4f)
-        P3.RAIN -> size[i]
+        P3.RING -> size[i] * (0.4f + (1f - life[i] / maxLife[i]) * 2.6f)
+        P3.BUTTERFLY -> size[i] * (0.85f + 0.3f * sin((maxLife[i] - life[i]) * 16f))
         else -> size[i]
     }
 }

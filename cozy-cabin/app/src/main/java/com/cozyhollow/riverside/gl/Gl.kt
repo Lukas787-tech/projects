@@ -50,8 +50,7 @@ object Gl {
         return p
     }
 
-    /** Uploads an ARGB pixel array as a crisp, tiling, unfiltered texture. */
-    fun texture(pixels: IntArray, w: Int, h: Int, repeat: Boolean = true): Int {
+    private fun pixelBuffer(pixels: IntArray, w: Int, h: Int): ByteBuffer {
         val buf = ByteBuffer.allocateDirect(w * h * 4).order(ByteOrder.nativeOrder())
         for (p in pixels) {
             buf.put(((p shr 16) and 0xFF).toByte())   // R
@@ -60,6 +59,18 @@ object Gl {
             buf.put(((p ushr 24) and 0xFF).toByte())  // A
         }
         buf.position(0)
+        return buf
+    }
+
+    /**
+     * Uploads an ARGB pixel array.
+     *
+     * [mip] builds a mip chain and samples it with a nearest base level: the
+     * texels stay hard up close, which is the whole look, but ground stretching
+     * away to the treeline stops boiling into noise.
+     */
+    fun texture(pixels: IntArray, w: Int, h: Int, repeat: Boolean = true, mip: Boolean = false): Int {
+        val buf = pixelBuffer(pixels, w, h)
         val ids = IntArray(1)
         glGenTextures(1, ids, 0)
         glBindTexture(GL_TEXTURE_2D, ids[0])
@@ -67,34 +78,40 @@ object Gl {
         val wrap = if (repeat) GL_REPEAT else GL_CLAMP_TO_EDGE
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+        if (mip) {
+            glGenerateMipmap(GL_TEXTURE_2D)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR)
+        } else {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+        }
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glBindTexture(GL_TEXTURE_2D, 0)
         return ids[0]
     }
 
-    fun emptyTexture(w: Int, h: Int): Int {
+    fun emptyTexture(w: Int, h: Int, smooth: Boolean = false): Int {
         val ids = IntArray(1)
         glGenTextures(1, ids, 0)
         glBindTexture(GL_TEXTURE_2D, ids[0])
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, null)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+        val f = if (smooth) GL_LINEAR else GL_NEAREST
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, f)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, f)
         glBindTexture(GL_TEXTURE_2D, 0)
         return ids[0]
     }
 }
 
-/** Offscreen colour+depth target the whole world is rendered into at low res. */
-class RenderTarget(val w: Int, val h: Int) {
+/** Offscreen colour+depth target the whole world is rendered into. */
+class RenderTarget(val w: Int, val h: Int, smooth: Boolean = false) {
     val fbo: Int
     val color: Int
     private val depth: Int
 
     init {
-        color = Gl.emptyTexture(w, h)
+        color = Gl.emptyTexture(w, h, smooth)
         val rb = IntArray(1)
         glGenRenderbuffers(1, rb, 0)
         depth = rb[0]
@@ -127,7 +144,10 @@ class RenderTarget(val w: Int, val h: Int) {
 }
 
 /**
- * Interleaved position(3) / normal(3) / uv(2) mesh in a static VBO.
+ * Interleaved position(3) / normal(3) / uv(2) / colour+sway(4) mesh in a VBO.
+ *
+ * The fourth channel of the colour is how much the wind moves this vertex: 0
+ * for tree trunks and roof beams, up near 1 for the tip of a blade of grass.
  */
 class Mesh(verts: FloatArray, indices: ShortArray) {
     private val vbo = IntArray(1)
@@ -137,28 +157,30 @@ class Mesh(verts: FloatArray, indices: ShortArray) {
     init {
         glGenBuffers(1, vbo, 0)
         glBindBuffer(GL_ARRAY_BUFFER, vbo[0])
-        val vb = Gl.floatBuf(verts)
-        glBufferData(GL_ARRAY_BUFFER, verts.size * 4, vb, GL_STATIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, verts.size * 4, Gl.floatBuf(verts), GL_STATIC_DRAW)
 
         glGenBuffers(1, ibo, 0)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo[0])
-        val ib = Gl.shortBuf(indices)
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size * 2, ib, GL_STATIC_DRAW)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size * 2, Gl.shortBuf(indices), GL_STATIC_DRAW)
 
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
     }
 
-    fun bind(aPos: Int, aNor: Int, aUv: Int) {
+    fun bind(aPos: Int, aNor: Int, aUv: Int, aCol: Int) {
         glBindBuffer(GL_ARRAY_BUFFER, vbo[0])
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo[0])
-        val stride = 8 * 4
+        val stride = STRIDE * 4
         glEnableVertexAttribArray(aPos)
         glVertexAttribPointer(aPos, 3, GL_FLOAT, false, stride, 0)
         glEnableVertexAttribArray(aNor)
         glVertexAttribPointer(aNor, 3, GL_FLOAT, false, stride, 3 * 4)
         glEnableVertexAttribArray(aUv)
         glVertexAttribPointer(aUv, 2, GL_FLOAT, false, stride, 6 * 4)
+        if (aCol >= 0) {
+            glEnableVertexAttribArray(aCol)
+            glVertexAttribPointer(aCol, 4, GL_FLOAT, false, stride, 8 * 4)
+        }
     }
 
     fun draw() {
@@ -169,20 +191,51 @@ class Mesh(verts: FloatArray, indices: ShortArray) {
         glDeleteBuffers(1, vbo, 0)
         glDeleteBuffers(1, ibo, 0)
     }
+
+    companion object {
+        const val STRIDE = 12
+    }
 }
 
 /** Accumulates geometry, then bakes it into a [Mesh]. */
 class MeshBuilder {
-    private val v = ArrayList<Float>(4096)
-    private val idx = ArrayList<Short>(4096)
+    private val v = ArrayList<Float>(8192)
+    private val idx = ArrayList<Short>(8192)
     private var n = 0
 
+    private var cr = 1f
+    private var cg = 1f
+    private var cb = 1f
+    private var cs = 0f
+
     val isEmpty: Boolean get() = idx.isEmpty()
+
+    /** Vertex count, so callers can split before crossing the 16-bit index limit. */
+    val vertexCount: Int get() = n
+
+    /** Tint and wind weight applied to every vertex from here on. */
+    fun color(r: Float, g: Float, b: Float, sway: Float = 0f): MeshBuilder {
+        cr = r; cg = g; cb = b; cs = sway
+        return this
+    }
+
+    fun tint(argb: Int, sway: Float = 0f): MeshBuilder = color(
+        ((argb shr 16) and 0xFF) / 255f,
+        ((argb shr 8) and 0xFF) / 255f,
+        (argb and 0xFF) / 255f,
+        sway
+    )
+
+    /** Multiplies the current tint, for cheap per-object variation. */
+    fun shade(f: Float): MeshBuilder = color(cr * f, cg * f, cb * f, cs)
+
+    fun plain(): MeshBuilder = color(1f, 1f, 1f, 0f)
 
     fun vertex(x: Float, y: Float, z: Float, nx: Float, ny: Float, nz: Float, u: Float, tv: Float) {
         v.add(x); v.add(y); v.add(z)
         v.add(nx); v.add(ny); v.add(nz)
         v.add(u); v.add(tv)
+        v.add(cr); v.add(cg); v.add(cb); v.add(cs)
         n++
     }
 
@@ -217,13 +270,9 @@ class MeshBuilder {
         val x0 = cx - sx / 2f; val x1 = cx + sx / 2f
         val y0 = cy; val y1 = cy + sy
         val z0 = cz - sz / 2f; val z1 = cz + sz / 2f
-        // front (+z)
         quad(x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1, 0f, 0f, 1f, sx * tile, sy * tile)
-        // back (-z)
         quad(x1, y0, z0, x0, y0, z0, x0, y1, z0, x1, y1, z0, 0f, 0f, -1f, sx * tile, sy * tile)
-        // right (+x)
         quad(x1, y0, z1, x1, y0, z0, x1, y1, z0, x1, y1, z1, 1f, 0f, 0f, sz * tile, sy * tile)
-        // left (-x)
         quad(x0, y0, z0, x0, y0, z1, x0, y1, z1, x0, y1, z0, -1f, 0f, 0f, sz * tile, sy * tile)
         if (top) quad(x0, y1, z1, x1, y1, z1, x1, y1, z0, x0, y1, z0, 0f, 1f, 0f, sx * tile, sz * tile)
         if (bottom) quad(x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1, 0f, -1f, 0f, sx * tile, sz * tile)
@@ -237,13 +286,11 @@ class MeshBuilder {
         val x0 = cx - width / 2f; val x1 = cx + width / 2f
         val z0 = cz - depth / 2f; val z1 = cz + depth / 2f
         val apex = baseY + height
-        // two sloped faces
         val slopeLen = kotlin.math.sqrt((depth / 2f) * (depth / 2f) + height * height)
         quad(x0, baseY, z1, x1, baseY, z1, x1, apex, cz, x0, apex, cz,
             0f, height, depth / 2f, width * tile, slopeLen * tile)
         quad(x1, baseY, z0, x0, baseY, z0, x0, apex, cz, x1, apex, cz,
             0f, height, -depth / 2f, width * tile, slopeLen * tile)
-        // gable ends
         val b = n
         vertex(x1, baseY, z0, 1f, 0f, 0f, 0f, 0f)
         vertex(x1, baseY, z1, 1f, 0f, 0f, depth * tile, 0f)
@@ -325,7 +372,7 @@ class MeshBuilder {
         }
     }
 
-    /** Subdivided horizontal plane, so world curvature bends it smoothly. */
+    /** Flat horizontal plane, subdivided. */
     fun plane(
         x0: Float, x1: Float, z0: Float, z1: Float, y: Float,
         divX: Int, divZ: Int, tile: Float = 1f
@@ -350,6 +397,33 @@ class MeshBuilder {
         }
     }
 
+    /** A pair of crossed upright quads — grass tufts, flowers, reeds. */
+    fun cross(x: Float, y: Float, z: Float, w: Float, h: Float, ang: Float, sway: Float, u0: Float = 0f, v0: Float = 0f, uw: Float = 1f, vh: Float = 1f) {
+        val cx0 = kotlin.math.cos(ang) * w
+        val cz0 = kotlin.math.sin(ang) * w
+        val cx1 = kotlin.math.cos(ang + 1.5708f) * w
+        val cz1 = kotlin.math.sin(ang + 1.5708f) * w
+        val keepR = cr; val keepG = cg; val keepB = cb
+        // roots pinned, tips loose, so the whole tuft bends instead of sliding
+        color(keepR, keepG, keepB, 0f)
+        val b0 = n
+        vertex(x - cx0, y, z - cz0, -cz0, 0.4f, cx0, u0, v0 + vh)
+        vertex(x + cx0, y, z + cz0, -cz0, 0.4f, cx0, u0 + uw, v0 + vh)
+        color(keepR, keepG, keepB, sway)
+        vertex(x + cx0, y + h, z + cz0, -cz0, 0.4f, cx0, u0 + uw, v0)
+        vertex(x - cx0, y + h, z - cz0, -cz0, 0.4f, cx0, u0, v0)
+        tri(b0, b0 + 1, b0 + 2); tri(b0, b0 + 2, b0 + 3)
+        color(keepR, keepG, keepB, 0f)
+        val b1 = n
+        vertex(x - cx1, y, z - cz1, -cz1, 0.4f, cx1, u0, v0 + vh)
+        vertex(x + cx1, y, z + cz1, -cz1, 0.4f, cx1, u0 + uw, v0 + vh)
+        color(keepR, keepG, keepB, sway)
+        vertex(x + cx1, y + h, z + cz1, -cz1, 0.4f, cx1, u0 + uw, v0)
+        vertex(x - cx1, y + h, z - cz1, -cz1, 0.4f, cx1, u0, v0)
+        tri(b1, b1 + 1, b1 + 2); tri(b1, b1 + 2, b1 + 3)
+        color(keepR, keepG, keepB, sway)
+    }
+
     fun build(): Mesh {
         val verts = FloatArray(v.size) { v[it] }
         val ind = ShortArray(idx.size) { idx[it] }
@@ -358,10 +432,8 @@ class MeshBuilder {
 
     fun clear() {
         v.clear(); idx.clear(); n = 0
+        plain()
     }
-
-    /** Vertex count, so callers can split before crossing the 16-bit index limit. */
-    val vertexCount: Int get() = n
 }
 
 internal object U2 {

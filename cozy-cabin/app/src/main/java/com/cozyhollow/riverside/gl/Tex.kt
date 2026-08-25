@@ -362,6 +362,123 @@ object PixelTex {
         if (shade != 0) g.dither(shade, 0.35f)
     }
 
+
+    fun tiling64(build: (Px) -> Unit): Px = Px(64, 64).also(build)
+
+    /**
+     * Ground detail, painted as light and shade only.
+     *
+     * Every square metre of the hollow samples this one tile and takes its
+     * colour from the vertex instead: meadow green, dry gold on the ridges,
+     * sand at the waterline, packed earth along the track. One texture, a
+     * hundred moods, and the blends between them are smooth because they
+     * happen in the vertex colour rather than between two tiling textures.
+     */
+    fun ground(): Px = tiling64 { g ->
+        g.seed(9137).fill(c("#B9B9B9"))
+        g.dither(c("#ACACAC"), 0.6f)
+        g.blotch(14, 5, c("#C4C4C4"))
+        g.blotch(11, 4, c("#A4A4A4"))
+        g.speckle(420, c("#CFCFCF"), c("#9C9C9C"), c("#C0C0C0"))
+        // little tufts, so close ground has something to catch the light
+        for (i in 0 until 90) {
+            val x = (g.rnd() * 64).toInt(); val y = (g.rnd() * 64).toInt()
+            g.setW(x, y, c("#D2D2D2")); g.setW(x, y - 1, c("#DCDCDC"))
+            g.setW(x + 1, y, c("#A8A8A8"))
+        }
+    }
+
+    /** Leaf mass in luminance only, so one tile serves pine, oak and blossom. */
+    fun leafPlain(): Px = tiling64 { g ->
+        g.seed(4243).fill(c("#BEBEBE"))
+        g.dither(c("#ADADAD"), 0.9f)
+        g.blotch(16, 4, c("#D2D2D2"))
+        g.blotch(14, 3, c("#9E9E9E"))
+        for (i in 0 until 220) {
+            val x = (g.rnd() * 64).toInt(); val y = (g.rnd() * 64).toInt()
+            g.setW(x, y, c("#DADADA")); g.setW(x + 1, y + 1, c("#9A9A9A"))
+        }
+    }
+
+    /** Birch: pale bark with the dark dashes. */
+    fun barkBirch(): Px = tiling64 { g ->
+        g.seed(1913).fill(c("#E4DED2"))
+        g.dither(c("#D6CFC0"), 0.5f)
+        for (i in 0 until 26) {
+            val x = (g.rnd() * 64).toInt(); val y = (g.rnd() * 64).toInt()
+            val len = 3 + (g.rnd() * 7).toInt()
+            for (k in 0 until len) {
+                g.setW(x + k, y, c("#4A4038"))
+                if (g.rnd() < 0.4f) g.setW(x + k, y + 1, c("#6B5F52"))
+            }
+        }
+        g.speckle(90, c("#C9C0B0"), c("#F2EDE2"))
+    }
+
+    /** Weathered granite for boulders and the hillside outcrops. */
+    fun rock(): Px = tiling64 { g ->
+        g.seed(6607).fill(c("#9A958C"))
+        g.dither(c("#8B867E"), 0.75f)
+        g.blotch(10, 6, c("#A8A399"))
+        g.blotch(8, 4, c("#7C776F"))
+        // fractures
+        for (i in 0 until 14) {
+            var x = (g.rnd() * 64).toInt()
+            var y = (g.rnd() * 64).toInt()
+            for (k in 0 until 10 + (g.rnd() * 14).toInt()) {
+                g.setW(x, y, c("#6E6A63"))
+                if (g.rnd() < 0.6f) x += 1 else y += 1
+            }
+        }
+        // a little moss where the rain sits
+        g.blotch(5, 3, c("#7E9464"))
+        g.speckle(120, c("#B2ADA3"), c("#75706A"))
+    }
+
+    /** Straw thatch for the market roof and the beehives. */
+    fun thatch(): Px = tiling64 { g ->
+        g.seed(4816).fill(c("#C9A867"))
+        for (y in 0 until 64) {
+            val band = (y / 8) % 2
+            g.hline(y, 0, 63, if (band == 0) c("#C9A867") else c("#B8975A"))
+        }
+        for (i in 0 until 260) {
+            val x = (g.rnd() * 64).toInt(); val y = (g.rnd() * 64).toInt()
+            val len = 2 + (g.rnd() * 5).toInt()
+            val col = if (g.rnd() < 0.5f) c("#DCC084") else c("#9E8049")
+            for (k in 0 until len) g.setW(x, y + k, col)
+        }
+        for (y in 0 until 64 step 8) g.hline(y, 0, 63, c("#8E7342"))
+    }
+
+    /** Lantern glass: warm, and drawn unlit by the shader when the sun is up. */
+    fun lanternGlass(): Px = tiling32 { g ->
+        g.seed(2277).fill(c("#FFD98A"))
+        g.dither(c("#FFC85A"), 0.4f)
+        g.blotch(4, 4, c("#FFF0C4"))
+    }
+
+    /** Planks worn smooth by boots: the bridge, the jetty, the porch. */
+    fun plankWorn(): Px = tiling64 { g ->
+        g.seed(3313).fill(c("#B08A5E"))
+        for (y in 0 until 64) {
+            val band = y / 16
+            val base = when (band) {
+                0 -> c("#B08A5E"); 1 -> c("#A07C52"); 2 -> c("#BC9668"); else -> c("#A88252")
+            }
+            g.hline(y, 0, 63, base)
+        }
+        for (y in 0 until 64 step 16) {
+            g.hline(y, 0, 63, c("#7C5E3C"))
+            g.hline(y + 15, 0, 63, c("#C6A278"))
+        }
+        for (i in 0 until 120) {
+            val x = (g.rnd() * 64).toInt(); val y = (g.rnd() * 64).toInt()
+            val len = 3 + (g.rnd() * 9).toInt()
+            for (k in 0 until len) g.setW(x + k, y, if (g.rnd() < 0.5f) c("#95744C") else c("#C2A078"))
+        }
+    }
+
     /** Vertical gradient strip used for the sky dome. */
     fun skyRamp(): Px = Px(1, 64).also { g -> g.fill(-1) }
 }
@@ -480,6 +597,96 @@ object PixelSprites {
             for (y in 5 until 10) for (x in 6 until 11) g.set(ox + x, oy + y, h)
             g.set(ox + 8, oy + 7, cores[q])
             g.set(ox + 7, oy + 7, cores[q])
+        }
+    }
+
+
+    /** A soft round shadow with a real alpha ramp. */
+    fun softShadow(): Px = Px(32, 32).also { g ->
+        g.fill(CLEAR)
+        for (y in 0 until 32) for (x in 0 until 32) {
+            val dx = (x - 15.5f) / 15.5f
+            val dy = (y - 15.5f) / 15.5f
+            val d = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (d >= 1f) continue
+            val a = ((1f - d) * (1f - d) * 235f).toInt().coerceIn(0, 255)
+            g.set(x, y, (a shl 24))
+        }
+    }
+
+    /** Warm halo for lanterns, the campfire and fireflies. */
+    fun glow(): Px = Px(32, 32).also { g ->
+        g.fill(CLEAR)
+        for (y in 0 until 32) for (x in 0 until 32) {
+            val dx = (x - 15.5f) / 15.5f
+            val dy = (y - 15.5f) / 15.5f
+            val d = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (d >= 1f) continue
+            val f = (1f - d)
+            val a = (f * f * f * 255f).toInt().coerceIn(0, 255)
+            g.set(x, y, (a shl 24) or 0xFFFFFF)
+        }
+    }
+
+    /** Reeds and rushes for the water's edge. */
+    fun reed(): Px = Px(16, 16).also { g ->
+        g.seed(3771).fill(CLEAR)
+        val a = c("#7FA35C"); val b = c("#6A8C4C"); val tip = c("#A8B96A")
+        fun stalk(x: Int, h: Int, col: Int) {
+            for (y in 0 until h) {
+                val yy = 15 - y
+                val lean = if (y > h - 5) (y - h + 5) / 2 else 0
+                g.set(x + lean, yy, if (y > h - 3) tip else col)
+            }
+        }
+        stalk(3, 14, a); stalk(6, 16, b); stalk(9, 12, a); stalk(12, 15, b)
+    }
+
+    /** A fern frond, for the shade under the trees. */
+    fun fern(): Px = Px(16, 16).also { g ->
+        g.fill(CLEAR)
+        val a = c("#5F8F4C"); val b = c("#4E7A3E")
+        for (y in 2 until 16) g.set(8, y, b)
+        for (k in 0 until 6) {
+            val y = 3 + k * 2
+            val w = 6 - k
+            for (x in 0 until w) {
+                g.set(8 - 1 - x, y + x / 2, a)
+                g.set(8 + 1 + x, y + x / 2, a)
+            }
+        }
+    }
+
+    /** A lily pad, sat flat on the pond. */
+    fun lilypad(): Px = Px(16, 16).also { g ->
+        g.fill(CLEAR)
+        val a = c("#4E8C52"); val hi = c("#63A664")
+        for (y in 0 until 16) for (x in 0 until 16) {
+            val dx = (x - 7.5f) / 7.5f
+            val dy = (y - 7.5f) / 7.5f
+            if (dx * dx + dy * dy > 1f) continue
+            // the notch
+            if (dx > 0f && kotlin.math.abs(dy) < 0.22f) continue
+            g.set(x, y, if (dy < -0.1f) hi else a)
+        }
+    }
+
+
+    /**
+     * One sheet holding the four ground details: a grass tuft, a clump of
+     * reeds, a fern and a lily pad. Scenery draws thousands of these, so they
+     * share a texture and a mesh instead of costing a draw call each.
+     */
+    fun detailSheet(): Px = Px(32, 32).also { g ->
+        g.fill(CLEAR)
+        val cells = arrayOf(blade(), reed(), fern(), lilypad())
+        for (q in 0 until 4) {
+            val ox = (q % 2) * 16
+            val oy = (q / 2) * 16
+            val src = cells[q]
+            for (y in 0 until 16) for (x in 0 until 16) {
+                g.set(ox + x, oy + y, src.p[y * 16 + x])
+            }
         }
     }
 

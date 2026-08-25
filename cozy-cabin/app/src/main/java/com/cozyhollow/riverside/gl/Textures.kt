@@ -5,21 +5,30 @@ import android.graphics.Color
 /** All GL textures, painted at startup by [PixelTex]. */
 class Textures {
 
-    private fun up(px: Px, repeat: Boolean = true) = Gl.texture(px.p, px.w, px.h, repeat)
+    private fun up(px: Px, repeat: Boolean = true, mip: Boolean = false) =
+        Gl.texture(px.p, px.w, px.h, repeat, mip)
 
-    val grass = up(PixelTex.grass())
-    val grassDry = up(PixelTex.grassDry())
-    val soil = up(PixelTex.soil())
-    val tilled = up(PixelTex.soilTilled())
-    val tilledWet = up(PixelTex.soilWet())
-    val sand = up(PixelTex.sand())
-    val planks = up(PixelTex.planks())
+    /** Anything that tiles over metres of ground gets a mip chain. */
+    private fun land(px: Px) = up(px, repeat = true, mip = true)
+
+    val ground = land(PixelTex.ground())
+    val grass = land(PixelTex.grass())
+    val soil = land(PixelTex.soil())
+    val tilled = land(PixelTex.soilTilled())
+    val tilledWet = land(PixelTex.soilWet())
+    val sand = land(PixelTex.sand())
+    val rock = land(PixelTex.rock())
+    val planks = land(PixelTex.planks())
+    val plankWorn = land(PixelTex.plankWorn())
     val logs = up(PixelTex.logs())
+    val thatch = land(PixelTex.thatch())
     val shingleRed = up(PixelTex.shingles(PixelTex.roofA, PixelTex.roofB, PixelTex.roofC))
     val shinglePlum = up(PixelTex.shingles(PixelTex.roofDarkA, PixelTex.roofDarkB, Color.parseColor("#7E5675")))
-    val stone = up(PixelTex.stone())
-    val water = up(PixelTex.water())
+    val stone = land(PixelTex.stone())
+    val water = up(PixelTex.water(), repeat = true, mip = true)
     val bark = up(PixelTex.bark())
+    val barkBirch = up(PixelTex.barkBirch())
+    val leaf = land(PixelTex.leafPlain())
     val pine = up(PixelTex.pineNeedles())
     val oak = up(PixelTex.oakLeaves())
     val window = up(PixelTex.window(), repeat = false)
@@ -27,6 +36,7 @@ class Textures {
     val door = up(PixelTex.door(), repeat = false)
     val awning = up(PixelTex.awning())
     val crate = up(PixelTex.crate())
+    val lantern = up(PixelTex.lanternGlass())
     val shirt = up(PixelTex.cloth(Color.parseColor("#6F9FD8"), Color.parseColor("#5A85BC")))
     val denim = up(PixelTex.cloth(Color.parseColor("#7C6A56"), Color.parseColor("#6A5A48")))
     val scarf = up(PixelTex.cloth(Color.parseColor("#D0707A"), Color.parseColor("#B45C66")))
@@ -40,16 +50,21 @@ class Textures {
     val leafGreen = up(PixelTex.solid(Color.parseColor("#6FA45A"), Color.parseColor("#5C9049")))
     val white = up(PixelTex.solid(Color.WHITE), true)
 
+    val detail = up(PixelSprites.detailSheet(), repeat = false)
     val blade = up(PixelSprites.blade(), repeat = false)
     val flowers = up(PixelSprites.flowers(), repeat = false)
-    val shadow = up(PixelSprites.shadow(), repeat = false)
+    val reed = up(PixelSprites.reed(), repeat = false)
+    val fern = up(PixelSprites.fern(), repeat = false)
+    val lilypad = up(PixelSprites.lilypad(), repeat = false)
+    val shadow = up(PixelSprites.softShadow(), repeat = false)
+    val glow = up(PixelSprites.glow(), repeat = false)
     val cloud = up(PixelSprites.cloud(), repeat = false)
     val face = up(PixelSprites.face(), repeat = false)
     val foxFace = up(PixelSprites.foxFace(), repeat = false)
     val dot = up(PixelSprites.dot(), repeat = false)
     val ring = up(PixelSprites.ring(), repeat = false)
 
-    /** Crop produce colours get their own tiny solid textures. */
+    /** Produce colours get their own tiny solid textures, made on demand. */
     private val cropTex = HashMap<Int, Int>()
 
     fun solid(color: Int): Int = cropTex.getOrPut(color) {
