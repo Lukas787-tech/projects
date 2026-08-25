@@ -106,7 +106,7 @@ float hash21(vec2 p) {
 }
 
 void main() {
-    float t = 1.0 - vUv.y;
+    float t = vUv.y;
     vec3 col;
     if (t < 0.55) {
         col = mix(uHorizon, uMid, t / 0.55);

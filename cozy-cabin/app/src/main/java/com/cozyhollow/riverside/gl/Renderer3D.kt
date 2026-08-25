@@ -270,14 +270,20 @@ class Renderer3D {
         val camXm = W3.x(g.camX)
 
         target.bind()
+        // clear depth while writes are still enabled - glDepthMask(false) makes
+        // glClear(GL_DEPTH_BUFFER_BIT) a silent no-op and everything then fails
+        // the depth test against an uninitialised buffer
+        glDepthMask(true)
+        glClear(GL_DEPTH_BUFFER_BIT)
+
         glDisable(GL_DEPTH_TEST)
         glDepthMask(false)
         glDisable(GL_BLEND)
         drawSky(g, sky, night)
 
-        glClear(GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LEQUAL)
+        glDepthMask(true)
 
         val shake = g.screenShake
         val shx = if (shake > 0.01f) sin(g.timeMs * 0.06f) * shake * 0.10f else 0f

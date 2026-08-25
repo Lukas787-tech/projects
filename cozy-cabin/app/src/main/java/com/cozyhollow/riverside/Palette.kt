@@ -77,7 +77,7 @@ object SkyKeys {
         ambientStrength = 0.30f,
         sunColor = Color.parseColor("#FFE3B0"),
         sunGlow = Color.parseColor("#F6B678"),
-        starAlpha = 0.25f,
+        starAlpha = 0.10f,
         haze = 0.33f
     )
     val morning = SkyKey(
