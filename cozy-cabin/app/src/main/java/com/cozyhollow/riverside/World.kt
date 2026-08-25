@@ -8,7 +8,7 @@ package com.cozyhollow.riverside
 object World {
 
     const val VIEW_H = 720f
-    const val GROUND_Y = 468f
+    const val GROUND_Y = 516f
     const val WORLD_W = 4200f
     const val WALK_MIN = 96f
     const val WALK_MAX = 3390f
@@ -16,7 +16,7 @@ object World {
     const val CABIN_X = 1250f
     const val MARKET_X = 3068f
     const val RIVER_EDGE = 3420f
-    const val WATER_Y = 500f
+    const val WATER_Y = 550f
 
     const val FARM_START = 1636f
     const val PLOT_SPACING = 76f

@@ -68,13 +68,20 @@ object U {
         return Color.argb(Color.alpha(color), r, g, b)
     }
 
-    /** Deterministic hash -> 0..1, used to scatter scenery without storing it. */
+    /**
+     * Deterministic hash -> 0..1, used to scatter scenery without storing it.
+     * A murmur3 finaliser: the naive xorshift this replaced returned nearly
+     * linear values for small consecutive seeds, which made every scattered
+     * thing in the game line up in visible diagonal rows.
+     */
     fun hash(seed: Int): Float {
-        var x = seed
-        x = x xor (x shl 13)
-        x = x xor (x ushr 17)
-        x = x xor (x shl 5)
-        return ((x and 0x7FFFFFFF).toFloat() / 0x7FFFFFFF.toFloat())
+        var h = seed * 374761393 - 1640531527
+        h = h xor (h ushr 16)
+        h *= -2048144789
+        h = h xor (h ushr 13)
+        h *= -1028477387
+        h = h xor (h ushr 16)
+        return (h ushr 8).toFloat() / 16777216f
     }
 
     fun hash2(a: Int, b: Int): Float = hash(a * 73856093 xor b * 19349663)

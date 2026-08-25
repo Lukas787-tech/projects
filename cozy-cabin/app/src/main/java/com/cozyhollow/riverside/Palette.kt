@@ -67,7 +67,7 @@ object SkyKeys {
         sunColor = Color.parseColor("#F2F0DC"),
         sunGlow = Color.parseColor("#9FB6E8"),
         starAlpha = 1f,
-        haze = 0.34f
+        haze = 0.30f
     )
     val dawn = SkyKey(
         top = Color.parseColor("#4E5C99"),
@@ -78,7 +78,7 @@ object SkyKeys {
         sunColor = Color.parseColor("#FFE3B0"),
         sunGlow = Color.parseColor("#F6B678"),
         starAlpha = 0.25f,
-        haze = 0.44f
+        haze = 0.33f
     )
     val morning = SkyKey(
         top = Color.parseColor("#79B7E4"),
@@ -89,7 +89,7 @@ object SkyKeys {
         sunColor = Color.parseColor("#FFF6D8"),
         sunGlow = Color.parseColor("#FFE9A8"),
         starAlpha = 0f,
-        haze = 0.30f
+        haze = 0.23f
     )
     val noon = SkyKey(
         top = Color.parseColor("#5FA9DF"),
@@ -100,7 +100,7 @@ object SkyKeys {
         sunColor = Color.parseColor("#FFFBE6"),
         sunGlow = Color.parseColor("#FFF0B4"),
         starAlpha = 0f,
-        haze = 0.24f
+        haze = 0.17f
     )
     val golden = SkyKey(
         top = Color.parseColor("#6E8FC8"),
@@ -111,7 +111,7 @@ object SkyKeys {
         sunColor = Color.parseColor("#FFE2A6"),
         sunGlow = Color.parseColor("#FF9E5E"),
         starAlpha = 0f,
-        haze = 0.40f
+        haze = 0.30f
     )
     val dusk = SkyKey(
         top = Color.parseColor("#2E3A6B"),
@@ -122,7 +122,7 @@ object SkyKeys {
         sunColor = Color.parseColor("#FFD8A8"),
         sunGlow = Color.parseColor("#E8724E"),
         starAlpha = 0.5f,
-        haze = 0.42f
+        haze = 0.32f
     )
 
     /** Interpolate the sky for a given minute of the day (0..1440). */
@@ -178,7 +178,9 @@ class MutableSkyKey {
     /** Tint a scenery colour by distance so far layers melt into the sky. */
     fun aerial(color: Int, distance: Float): Int {
         val washed = U.lerpColor(color, horizon, haze * distance)
-        return U.lerpColor(washed, ambient, ambientStrength * (1f - distance * 0.35f))
+        // the global wash in Scene.drawAmbient already tints everything once,
+        // so keep this second pass gentle or the whole frame goes grey
+        return U.lerpColor(washed, ambient, ambientStrength * 0.6f * (1f - distance * 0.35f))
     }
 }
 

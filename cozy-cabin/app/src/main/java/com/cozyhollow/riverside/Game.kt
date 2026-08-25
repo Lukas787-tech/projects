@@ -118,7 +118,7 @@ class Game(private val ctx: Context, private val host: Host) {
 
     private fun layoutHud() {
         val pad = 26f
-        val bigR = 92f
+        val bigR = 106f
         val moveR = 66f
         val south = settings.southpaw
 
@@ -967,8 +967,8 @@ class Game(private val ctx: Context, private val host: Host) {
         if (mode != Mode.PLAY) return
 
         // ---- move pad ----
-        drawRoundBtn(c, bLeft, "<", 0.5f)
-        drawRoundBtn(c, bRight, ">", 0.5f)
+        drawRoundBtn(c, bLeft, -1, 0.74f)
+        drawRoundBtn(c, bRight, 1, 0.74f)
 
         // ---- action ----
         val a = currentAction()
@@ -1017,26 +1017,55 @@ class Game(private val ctx: Context, private val host: Host) {
         menuGlyph(c, bMenu.cx, bMenu.cy + bMenu.press * 5f)
     }
 
-    private fun drawRoundBtn(c: Canvas, b: Btn, glyph: String, alpha: Float) {
+    private fun drawRoundBtn(c: Canvas, b: Btn, dir: Int, alpha: Float) {
         b.accent = U.shade(Pal.woodDeep, 1.25f)
         b.label = ""
-        Ui.button(c, b, alpha + b.press * 0.3f)
-        Ui.textOut(c, glyph, b.cx, b.cy + 16f + b.press * 5f, 46f, Pal.cream,
-            U.withAlpha(Pal.shadow, 0.5f), Paint.Align.CENTER, Ui.body, 4f, 0.9f)
+        Ui.button(c, b, alpha + b.press * 0.22f)
+        val cx = b.cx + dir * 4f
+        val cy = b.cy + b.press * 5f
+        val w = 17f
+        val h = 24f
+        glyphPaint.style = Paint.Style.STROKE
+        glyphPaint.strokeWidth = 9f
+        glyphPaint.strokeCap = Paint.Cap.ROUND
+        glyphPaint.strokeJoin = Paint.Join.ROUND
+        glyphPaint.color = U.withAlpha(Pal.shadow, 0.32f)
+        chevron(c, cx, cy + 3f, w, h, dir)
+        glyphPaint.color = Pal.cream
+        chevron(c, cx, cy, w, h, dir)
+        glyphPaint.style = Paint.Style.FILL
+    }
+
+    private val glyphPath = android.graphics.Path()
+
+    private fun chevron(c: Canvas, cx: Float, cy: Float, w: Float, h: Float, dir: Int) {
+        glyphPath.reset()
+        glyphPath.moveTo(cx - dir * w * 0.5f, cy - h * 0.5f)
+        glyphPath.lineTo(cx + dir * w * 0.5f, cy)
+        glyphPath.lineTo(cx - dir * w * 0.5f, cy + h * 0.5f)
+        c.drawPath(glyphPath, glyphPaint)
     }
 
     private val glyphPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     private fun bagGlyph(c: Canvas, x: Float, y: Float) {
-        glyphPaint.style = Paint.Style.FILL
-        glyphPaint.color = Pal.cream
-        c.drawRoundRect(x - 15f, y - 9f, x + 15f, y + 15f, 5f, 5f, glyphPaint)
         glyphPaint.style = Paint.Style.STROKE
-        glyphPaint.strokeWidth = 3.4f
-        c.drawArc(x - 9f, y - 20f, x + 9f, y - 2f, 180f, 180f, false, glyphPaint)
+        glyphPaint.strokeWidth = 3.2f
+        glyphPaint.strokeCap = Paint.Cap.ROUND
+        glyphPaint.color = Pal.cream
+        // shoulder straps
+        c.drawArc(x - 11f, y - 21f, x + 11f, y - 1f, 200f, 140f, false, glyphPaint)
         glyphPaint.style = Paint.Style.FILL
+        // body
+        c.drawRoundRect(x - 15f, y - 11f, x + 15f, y + 16f, 7f, 7f, glyphPaint)
+        // flap
         glyphPaint.color = Pal.woodDeep
-        c.drawCircle(x, y + 3f, 3.4f, glyphPaint)
+        c.drawRoundRect(x - 15f, y - 11f, x + 15f, y + 2f, 7f, 7f, glyphPaint)
+        glyphPaint.color = Pal.cream
+        c.drawRoundRect(x - 15f, y + 4f, x + 15f, y + 16f, 6f, 6f, glyphPaint)
+        // buckle
+        glyphPaint.color = Pal.gold
+        c.drawRoundRect(x - 4f, y - 1f, x + 4f, y + 7f, 2.4f, 2.4f, glyphPaint)
     }
 
     private fun menuGlyph(c: Canvas, x: Float, y: Float) {

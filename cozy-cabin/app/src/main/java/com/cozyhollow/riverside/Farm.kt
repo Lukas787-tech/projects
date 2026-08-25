@@ -35,14 +35,14 @@ class FarmRender {
                 // a quiet marker showing where the field can grow
                 if (i < open + 4) {
                     stroke.strokeWidth = 2f
-                    stroke.color = U.withAlpha(Pal.woodDeep, 0.22f)
+                    stroke.color = U.withAlpha(Pal.woodDeep, 0.11f)
                     c.drawRoundRect(rr(x - 30f, gy - 9f, x + 30f, gy + 9f), 6f, 6f, stroke)
                 }
                 continue
             }
             if (!p.tilled) {
                 stroke.strokeWidth = 2.2f
-                stroke.color = U.withAlpha(Pal.soilDark, 0.30f)
+                stroke.color = U.withAlpha(Pal.soilDark, 0.16f)
                 c.drawRoundRect(rr(x - 30f, gy - 9f, x + 30f, gy + 9f), 6f, 6f, stroke)
                 continue
             }

@@ -437,8 +437,12 @@ class Screens(private val g: Game) {
 
     // ================================================================= draw
 
+    /** Item slots are drawn as tiles by their screen, so skip them here. */
     private fun drawButtons(c: Canvas, alpha: Float = 1f) {
-        for (btn in btns) Ui.button(c, btn, alpha)
+        for (btn in btns) {
+            if (btn.tag >= T.ITEM && btn.tag < T.ITEM + 200) continue
+            Ui.button(c, btn, alpha)
+        }
     }
 
     private fun pop(): Float = U.easeBack(U.clamp01(g.modeT))

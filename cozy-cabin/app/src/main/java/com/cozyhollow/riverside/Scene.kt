@@ -270,6 +270,15 @@ class Scene {
         fill.color = U.withAlpha(sky.ambient, sky.ambientStrength * 0.85f)
         c.drawRect(0f, gy, vw, vh, fill)
 
+        // strata bands give the cross-section some geology instead of flat brown
+        val depth = vh - gy
+        fill.color = U.withAlpha(U.shade(Pal.soilDark, 0.86f), 0.35f)
+        c.drawRect(0f, gy + depth * 0.34f, vw, gy + depth * 0.40f, fill)
+        fill.color = U.withAlpha(U.shade(Pal.soil, 1.12f), 0.20f)
+        c.drawRect(0f, gy + depth * 0.56f, vw, gy + depth * 0.63f, fill)
+        fill.color = U.withAlpha(U.shade(Pal.soilDark, 0.7f), 0.28f)
+        c.drawRect(0f, gy + depth * 0.78f, vw, vh, fill)
+
         // pebbles + roots scattered deterministically in world space
         val startI = ((camX - 60f) / 54f).toInt()
         val endI = ((camX + vw + 60f) / 54f).toInt()
@@ -295,10 +304,10 @@ class Scene {
         var i = startI
         while (i <= endI) {
             val wx = i * 54f
-            for (k in 0 until 5) {
-                val sx = wx + k * 11f + U.hash(i * 91 + k) * 8f - camX
+            for (k in 0 until 3) {
+                val sx = wx + k * 18f + U.hash(i * 91 + k) * 14f - camX
                 if (sx < -6f || sx > vw + 6f) continue
-                val hh = 6f + U.hash(i * 17 + k * 5) * 9f
+                val hh = 4f + U.hash(i * 17 + k * 5) * 11f
                 c.drawLine(sx, gy + 2f, sx + (U.hash(i + k * 3) - 0.5f) * 5f, gy - hh, stroke)
             }
             i++
@@ -332,23 +341,26 @@ class Scene {
         }
     }
 
-    /** Blurred bushes at the very front for depth. */
+    /**
+     * A whisper of out-of-focus growth along the very bottom edge. Kept low and
+     * translucent: heavy dark bushes here swallow the river and the buttons.
+     */
     fun drawForeground(c: Canvas, camX: Float, quality: Int) {
         if (quality < 1) return
         val off = camX * 1.22f
-        val spacing = 340f
+        val spacing = 300f
         val first = ((off - 200f) / spacing).toInt()
         val last = ((off + vw + 200f) / spacing).toInt()
+        val col = U.withAlpha(U.shade(sky.aerial(Pal.leafDeep, 0.06f), 0.86f), 0.42f)
         for (i in first..last) {
-            val x = i * spacing + U.hash(i * 43 + 9) * 190f - off
-            if (x < -250f || x > vw + 250f) continue
-            val col = U.withAlpha(U.shade(sky.aerial(Pal.leafDeep, 0.0f), 0.42f), 0.92f)
+            val x = i * spacing + U.hash(i * 43 + 9) * 210f - off
+            if (x < -220f || x > vw + 220f) continue
             fill.color = col
-            val y = vh + 30f
-            val s = 1.1f + U.hash(i * 71 + 3) * 0.7f
-            c.drawCircle(x - 70f * s, y - 60f * s, 78f * s, fill)
-            c.drawCircle(x + 10f * s, y - 82f * s, 92f * s, fill)
-            c.drawCircle(x + 92f * s, y - 54f * s, 70f * s, fill)
+            val y = vh + 62f
+            val s = 0.85f + U.hash(i * 71 + 3) * 0.5f
+            c.drawCircle(x - 58f * s, y - 34f * s, 56f * s, fill)
+            c.drawCircle(x + 8f * s, y - 50f * s, 66f * s, fill)
+            c.drawCircle(x + 76f * s, y - 30f * s, 50f * s, fill)
         }
     }
 
@@ -360,13 +372,21 @@ class Scene {
         val wy = World.WATER_Y
         val left = kotlin.math.max(edge, -20f)
 
-        // bank slope from grass down to the water
+        // bank: a soft shoulder of soil with the grass rolling over the lip
         fill.color = sky.aerial(Pal.soil, 0.05f)
         path.reset()
-        path.moveTo(edge - 46f, World.GROUND_Y)
-        path.lineTo(edge + 26f, wy + 6f)
-        path.lineTo(edge + 26f, vh)
-        path.lineTo(edge - 46f, vh)
+        path.moveTo(edge - 110f, World.GROUND_Y)
+        path.quadTo(edge - 10f, World.GROUND_Y + 6f, edge + 54f, wy + 14f)
+        path.lineTo(edge + 54f, vh)
+        path.lineTo(edge - 110f, vh)
+        path.close()
+        c.drawPath(path, fill)
+        fill.color = sky.aerial(Pal.grassMid, 0.05f)
+        path.reset()
+        path.moveTo(edge - 110f, World.GROUND_Y)
+        path.quadTo(edge - 16f, World.GROUND_Y + 4f, edge + 40f, wy + 2f)
+        path.lineTo(edge + 40f, wy + 16f)
+        path.quadTo(edge - 16f, World.GROUND_Y + 20f, edge - 110f, World.GROUND_Y + 16f)
         path.close()
         c.drawPath(path, fill)
 
@@ -783,7 +803,7 @@ class Scene {
     /** A single wash of colour + vignette that binds the frame together. */
     fun drawAmbient(c: Canvas, extraDark: Float) {
         fill.shader = null
-        fill.color = U.withAlpha(sky.ambient, sky.ambientStrength * 0.55f + extraDark * 0.25f)
+        fill.color = U.withAlpha(sky.ambient, sky.ambientStrength * 0.30f + extraDark * 0.25f)
         c.drawRect(0f, 0f, vw, vh, fill)
         grad.shader = RadialGradient(
             vw * 0.5f, vh * 0.48f, kotlin.math.max(vw, vh) * 0.74f,

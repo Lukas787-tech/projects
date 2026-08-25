@@ -210,7 +210,9 @@ object Ui {
             IconDraw.draw(c, Catalog.item(icon), b.x + 6f + isz * 0.62f, b.y + dy + b.h / 2f, isz, fill)
             textOut(c, b.label, b.x + isz + 14f, ty, b.h * 0.34f, labelColor, outlineColor, Paint.Align.LEFT, body, 4f, a)
         } else if (b.label.isNotEmpty()) {
-            val fs = if (b.style == 3) b.h * 0.44f else kotlin.math.min(b.h * 0.42f, 28f)
+            var fs = if (b.style == 3) b.h * 0.42f else kotlin.math.min(b.h * 0.42f, 28f)
+            val maxW = b.w - (if (b.style == 3) 20f else 16f)
+            while (fs > 11f && measure(b.label, fs) > maxW) fs -= 1f
             textOut(c, b.label, b.cx, ty, fs, labelColor, outlineColor, Paint.Align.CENTER, body, 4f, a)
         }
         b.sub?.let {
