@@ -233,8 +233,8 @@ class Renderer3D {
         for (i in 0 until steps) {
             val ax = U.lerp(x0, x1, i.toFloat() / steps)
             val bx = U.lerp(x0, x1, (i + 1f) / steps)
-            val az = 3.6f + sin(ax * 0.16f) * 0.75f + sin(ax * 0.41f) * 0.3f
-            val bz = 3.6f + sin(bx * 0.16f) * 0.75f + sin(bx * 0.41f) * 0.3f
+            val az = 4.35f + sin(ax * 0.16f) * 0.7f + sin(ax * 0.41f) * 0.28f
+            val bz = 4.35f + sin(bx * 0.16f) * 0.7f + sin(bx * 0.41f) * 0.28f
             val aw = 0.78f + sin(ax * 0.9f) * 0.1f
             val bw = 0.78f + sin(bx * 0.9f) * 0.1f
             val seg = kotlin.math.sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az))
@@ -296,9 +296,8 @@ class Renderer3D {
             val z = W3.z(wz)
             // keep clear of the field, the buildings and the path
             if (World.blocked(EMPTY_STATE, wx, wz)) continue
-            if (kotlin.math.abs(z - 3.6f) < 1.5f) continue
-            if (wx > World.FARM_X0 - 200f && wx < World.plotX(World.PLOT_COLS - 1) + 200f &&
-                wz > World.FARM_Z0 - 200f && wz < World.plotZ(World.MAX_PLOTS - 1) + 200f) continue
+            if (kotlin.math.abs(z - 4.35f) < 1.5f) continue
+            if (World.inField(wx, wz, 70f)) continue
             placed++
             val roll = U.hash(seed * 53)
             when {

@@ -77,8 +77,17 @@ object World {
         plotX(PLOT_COLS - 1) + 140f, FARM_Z0 + 130f
     )
 
+    /**
+     * Inside the fenced field, plus an optional margin. Both the world scatter and
+     * the renderer's prop scatter go through this: keeping two copies of the bounds
+     * is how bushes ended up growing between the furrows.
+     */
+    fun inField(x: Float, z: Float, margin: Float = 0f): Boolean =
+        x > fieldArea.x0 - margin && x < fieldArea.x1 + margin &&
+            z > fieldArea.z0 - margin && z < fieldArea.z1 + margin
+
     private fun freeSpot(x: Float, z: Float): Boolean {
-        if (fieldArea.contains(x, z)) return false
+        if (inField(x, z)) return false
         // a generous apron round the buildings, or trees swallow the cabin
         for (s in solids) if (Box(s.x0 - 260f, s.z0 - 230f, s.x1 + 260f, s.z1 + 230f).contains(x, z)) return false
         // keep the path and the strip in front of it clear
