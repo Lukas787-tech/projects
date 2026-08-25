@@ -875,7 +875,7 @@ class Renderer3D {
             if (i >= open) continue
             val plot = g.st.plots[i]
             if (!plot.tilled) continue
-            box(x, 0f, W3.PLOT_Z, 1.16f, 0.1f, 1.0f, if (plot.watered) t.tilledWet else t.tilled, closed = true)
+            box(x, 0f, W3.PLOT_Z, 1.2f, 0.14f, 1.05f, if (plot.watered) t.tilledWet else t.tilled, closed = true)
             val cropId = plot.cropId ?: continue
             val crop = Catalog.crops[cropId] ?: continue
             drawCrop(g, x, crop.id, U.clamp01(plot.growth / crop.days), plot.ready)
@@ -886,7 +886,7 @@ class Renderer3D {
         val t = tex!!
         val item = Catalog.item(cropId)
         val sway = sin(g.timeMs * 0.0016f + x * 1.7f) * 3.2f * (0.4f + prog)
-        val h = U.lerp(0.12f, 0.95f, U.easeOut(prog))
+        val h = U.lerp(0.30f, 1.05f, U.easeOut(prog))
         ms.push().translate(x, 0.1f, W3.PLOT_Z).rotateZ(sway)
         // stem
         box(0f, 0f, 0f, 0.07f, h, 0.07f, t.leafGreen)
@@ -895,7 +895,7 @@ class Renderer3D {
         for (k in 0 until leaves) {
             val ly = h * (0.25f + k * 0.2f)
             val dir = if (k % 2 == 0) 1f else -1f
-            ms.push().translate(0f, ly, 0f).rotateZ(dir * 42f).scale(0.34f, 0.06f, 0.2f).translate(dir * 0.5f, 0f, 0f)
+            ms.push().translate(0f, ly, 0f).rotateZ(dir * 42f).scale(0.42f, 0.075f, 0.24f).translate(dir * 0.5f, 0f, 0f)
             bindAndDraw(prims?.box, t.leafGreen)
             ms.pop()
         }

@@ -20,7 +20,7 @@ object W3 {
     const val WALK_Z = 0.55f
     const val CABIN_Z = -2.0f
     const val MARKET_Z = -1.7f
-    const val PLOT_Z = -0.45f
+    const val PLOT_Z = -1.15f
     const val TREE_Z = -2.9f
 
     const val WATER_Y = -0.28f
