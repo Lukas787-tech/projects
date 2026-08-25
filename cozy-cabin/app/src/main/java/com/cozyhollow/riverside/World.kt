@@ -35,8 +35,17 @@ object World {
     const val FARM_Z0 = -120f
     const val PLOT_DZ = 116f
 
-    const val TREE_COUNT = 22
-    const val FORAGE_COUNT = 20
+    /**
+     * How many we *try* to place. Scatter rejects crowded or occupied spots, so
+     * the real counts are [TREE_COUNT] and [FORAGE_COUNT], read off the arrays.
+     * Indexing by the target instead of the array size is how the whole frame
+     * once ended up black.
+     */
+    private const val TREE_TARGET = 26
+    private const val FORAGE_TARGET = 20
+
+    val TREE_COUNT: Int get() = trees.size
+    val FORAGE_COUNT: Int get() = forage.size
 
     // zones
     const val Z_FOREST = 0
@@ -74,16 +83,16 @@ object World {
     }
 
     init {
-        val treeList = ArrayList<Tree>(TREE_COUNT)
+        val treeList = ArrayList<Tree>(TREE_TARGET)
         var seed = 7
-        while (treeList.size < TREE_COUNT && seed < 4000) {
+        while (treeList.size < TREE_TARGET && seed < 12000) {
             seed++
-            val x = 150f + U.hash(seed * 31 + 7) * 1600f
+            val x = 150f + U.hash(seed * 31 + 7) * 2500f
             val z = Z_MIN + 40f + U.hash(seed * 17 + 3) * (Z_MAX - Z_MIN - 90f)
             if (!freeSpot(x, z)) continue
             var tooClose = false
             for (t in treeList) {
-                if (kotlin.math.abs(t.x - x) < 155f && kotlin.math.abs(t.z - z) < 130f) { tooClose = true; break }
+                if (kotlin.math.abs(t.x - x) < 128f && kotlin.math.abs(t.z - z) < 108f) { tooClose = true; break }
             }
             if (tooClose) continue
             val kind = if (U.hash(seed * 53 + 11) < 0.5f) 0 else 1
@@ -93,16 +102,16 @@ object World {
         trees = treeList.toTypedArray()
 
         val kinds = arrayOf("mushroom", "acorn", "flower", "mushroom", "flower", "honey")
-        val forageList = ArrayList<ForageSpot>(FORAGE_COUNT)
+        val forageList = ArrayList<ForageSpot>(FORAGE_TARGET)
         seed = 500
-        while (forageList.size < FORAGE_COUNT && seed < 5000) {
+        while (forageList.size < FORAGE_TARGET && seed < 14000) {
             seed++
             val x = 160f + U.hash(seed * 73 + 19) * 3050f
             val z = Z_MIN + 50f + U.hash(seed * 29 + 13) * (Z_MAX - Z_MIN - 100f)
             if (!freeSpot(x, z)) continue
             var tooClose = false
             for (f in forageList) {
-                if (kotlin.math.abs(f.x - x) < 130f && kotlin.math.abs(f.z - z) < 90f) { tooClose = true; break }
+                if (kotlin.math.abs(f.x - x) < 115f && kotlin.math.abs(f.z - z) < 80f) { tooClose = true; break }
             }
             if (tooClose) continue
             for (t in trees) {

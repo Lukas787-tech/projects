@@ -637,7 +637,7 @@ class Renderer3D {
         bindAndDraw(forestShadowMesh, tex!!.shadow, 1f, 1f, 1f, 0.34f)
         val camXm = W3.x(g.camX)
 
-        for (i in 0 until World.TREE_COUNT) {
+        for (i in World.trees.indices) {
             val tr = World.trees[i]
             val x = W3.x(tr.x)
             if (abs(x - camXm) > 15f) continue
@@ -651,7 +651,7 @@ class Renderer3D {
         }
         if (abs(W3.MARKET_X - camXm) < 18f) shadowAt(W3.MARKET_X, W3.MARKET_Z + 0.2f, 2.8f, 0.44f)
 
-        for (i in 0 until World.FORAGE_COUNT) {
+        for (i in World.forage.indices) {
             val f = World.forage[i]
             val x = W3.x(f.x)
             if (abs(x - camXm) > 13f) continue
@@ -717,7 +717,7 @@ class Renderer3D {
         setBase(0f)
         ms.identity()
         val camXm = W3.x(g.camX)
-        for (i in 0 until World.TREE_COUNT) {
+        for (i in World.trees.indices) {
             val tr = World.trees[i]
             val x = W3.x(tr.x)
             if (abs(x - camXm) > 13f) continue
@@ -1114,7 +1114,7 @@ class Renderer3D {
         val camXm = W3.x(g.camX)
         setBase(0f)
         ms.identity()
-        for (i in 0 until World.FORAGE_COUNT) {
+        for (i in World.forage.indices) {
             val f = World.forage[i]
             val x = W3.x(f.x)
             if (abs(x - camXm) > 12f) continue

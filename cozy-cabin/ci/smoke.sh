@@ -6,12 +6,17 @@ set -uo pipefail
 SHOTS=cozy-cabin/screenshots
 mkdir -p "$SHOTS"
 
+blank=0
 shot() {
   adb exec-out screencap -p > "$SHOTS/$1"
   local bytes
   bytes=$(stat -c%s "$SHOTS/$1")
   echo "captured $1 (${bytes} bytes)"
-  if [ "$bytes" -lt 5000 ]; then echo "::warning::$1 looks empty"; fi
+  # a real frame of this game compresses to 30-200 KB; a blank one to about 5 KB
+  if [ "$bytes" -lt 15000 ]; then
+    echo "::error::$1 is blank ($bytes bytes) - the game drew nothing"
+    blank=$((blank + 1))
+  fi
 }
 
 # The floating stick drops wherever you press, so a swipe = press then lean.
@@ -92,8 +97,20 @@ if ! adb shell pidof com.cozyhollow.riverside > /dev/null; then
   fail=1
 fi
 
+if [ "$blank" -gt 0 ]; then
+  echo "::error::$blank screenshot(s) came back blank"
+  fail=1
+fi
+
 echo "--- crash check ---"
 adb logcat -d > logcat.txt
+# an exception inside the render loop is swallowed by the GL thread's try/catch,
+# so it never becomes a FATAL EXCEPTION - it just silently stops drawing
+if grep -q "Riverside: frame failed\|Riverside: GL setup failed\|Riverside: GL resize failed" logcat.txt; then
+  echo "::error::the render loop threw"
+  grep -A 12 "Riverside: frame failed\|Riverside: GL setup failed" logcat.txt | head -40
+  fail=1
+fi
 if grep -q "FATAL EXCEPTION" logcat.txt; then
   echo "::error::FATAL EXCEPTION in logcat"
   grep -A 40 "FATAL EXCEPTION" logcat.txt | head -80
