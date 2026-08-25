@@ -64,15 +64,21 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APK_SIZE: ${{ steps.stage.outputs.size }}
         run: |
           TAG="riverside-hollow-latest"
+          {
+            echo "Cosy side-view farming game for Android."
+            echo ""
+            echo "**Install:** download \`RiversideHollow.apk\` below, open it on your phone,"
+            echo "and allow installs from your browser or files app when Android asks."
+            echo ""
+            echo "Requires Android 7.0 (API 24) or newer. APK size: ${APK_SIZE}."
+            echo ""
+            echo "Built from commit \`${GITHUB_SHA}\`."
+          } > notes.md
           gh release delete "$TAG" --yes --cleanup-tag || true
           gh release create "$TAG" out/RiversideHollow.apk \
             --title "Riverside Hollow (latest build)" \
             --target "$GITHUB_SHA" \
-            --notes "Cosy side-view farming game for Android.
-
-**Install:** download \`RiversideHollow.apk\` below, open it on your phone and allow installs from your browser/files app when prompted.
-
-Requires Android 7.0 (API 24) or newer. APK size: ${{ steps.stage.outputs.size }}.
-Built from commit \`$GITHUB_SHA\`."
+            --notes-file notes.md
