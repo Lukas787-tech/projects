@@ -27,6 +27,13 @@ reachable, which is why the pure-Kotlin parts could still be verified — see
 On any machine with normal access to `dl.google.com`, `./gradlew assembleDebug` is expected to work
 from a clean checkout with no further setup.
 
+**To get an APK without a local Android SDK**, use the bundled CI workflow
+(`.github/workflows/expense-split-android.yml`). GitHub Actions runners can reach Google's Maven
+repository, so on every push to `main` or a `claude/**` branch — or on demand via *Actions → 
+ExpenseSplit Android → Run workflow* — it runs the unit tests, runs lint, assembles the debug APK
+and uploads it as the `expensesplit-debug-apk` artifact. Test and lint reports are uploaded even
+when a step fails, which is where to look for the first-build fixes described below.
+
 ---
 
 ## What has been verified
@@ -46,13 +53,21 @@ Two of those tests caught a real bug during development: `MILK 1L` and `milk 1 l
 different keys, which would have made price history silently miss matches across stores. Fixed in
 `ItemNameNormalizer`.
 
-Additionally checked by static analysis over the full source tree (110 Kotlin files):
+Additionally checked by static analysis over the full source tree (121 Kotlin files). These target
+the mistakes that stop a build outright — Room and Hilt both fail at annotation-processing time, so
+a wrong column name or a missing binding is a hard failure rather than a warning:
 
-- every `R.string` / `R.plurals` / `R.drawable` / `R.color` / `R.xml` / `R.style` / `R.mipmap`
-  reference in Kotlin **and** XML resolves to a declared resource,
-- all seven locales define the same 370 keys with identical positional format specifiers
-  (`%1$s`, `%2$d`, …) — a mismatch there is a guaranteed runtime crash,
-- every internal `com.expensesplit.app.*` import resolves to a declared symbol.
+- **Room** — every table and column referenced by a `@Query` exists on the entity it belongs to,
+  and every projection POJO's fields are satisfied by an aliased output column (the classic
+  "cannot figure out how to read this field from a cursor" error),
+- **Hilt** — all 42 injection sites resolve against the 15 `@Provides` bindings and 37
+  `@Inject` constructors; no missing binding,
+- **Resources** — every `R.string` / `R.plurals` / `R.drawable` / `R.color` / `R.xml` / `R.style` /
+  `R.mipmap` reference in Kotlin **and** XML resolves to a declared resource,
+- **Localisation** — all seven locales define the same 370 keys with identical positional format
+  specifiers (`%1$s`, `%2$d`, …); a mismatch there is a guaranteed runtime crash,
+- **Imports** — every internal `com.expensesplit.app.*` import resolves to a declared symbol, and
+  all 58 Material icon references have a matching import.
 
 **Not verified:** the Android-specific code — Compose UI, Room's generated DAOs, Hilt's generated
 components, WorkManager, CameraX and ML Kit integration — has never been through a compiler.
