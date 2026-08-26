@@ -1,6 +1,7 @@
 package com.expensesplit.app.notifications
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -66,6 +67,12 @@ class Notifier @Inject constructor(
         manager.createNotificationChannels(channels)
     }
 
+    /**
+     * Suppressed deliberately: [canPost] performs the POST_NOTIFICATIONS check on the line above,
+     * and the call is additionally wrapped in runCatching. Lint's dataflow cannot follow the
+     * permission check through a helper function, so it flags a call that is in fact guarded twice.
+     */
+    @SuppressLint("MissingPermission")
     fun notify(
         channelId: String,
         notificationId: Int,
