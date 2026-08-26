@@ -77,31 +77,22 @@ walk_far 2000
 sleep 1
 shot 04-depth.png
 
-# --- up the valley to Pip's market, then its four tabs ---
-# with an eastward nudge between the long legs: anything he does run into stops
-# him dead, and a step sideways is enough to get round it
+# --- a long walk up the valley ---
+# This exercises movement over distance and the far end of the map. It aims for
+# Pip's market, and how close it gets varies: props stop a walk dead rather
+# than sliding round them, so a couple of metres of drift early on turns into a
+# different destination. The market's four tabs are, as a result, the one part
+# of the interface these screenshots have never caught.
 for _ in 1 2 3 4 5; do walk_far 2200; sleep 1; done
-# the counter is west of the line he comes up on, and the river is east of it
-for _ in 1 2 3 4; do walk_left 1200; sleep 1; act; done
+for _ in 1 2 3; do walk_left 1000; sleep 1; act; done
 sleep 2
-shot 05-shop-seeds.png
-adb shell input tap 504 168    # Tools tab
-sleep 2
-shot 06-shop-tools.png
-adb shell input tap 760 168    # Sell tab
-sleep 2
-shot 07-shop-sell.png
-adb shell input tap 1016 168   # Home tab
-sleep 2
-shot 08-shop-home.png
-adb shell input keyevent 4
-sleep 2
+shot 05-valley.png
 
 # --- back down the valley to the field, and work a plot ---
 for _ in 1 2 3 4 5 6; do walk_se 2200; sleep 1; done
 walk_near 1200
 sleep 1
-shot 09-field.png
+shot 06-field.png
 act; act; act
 walk_left 900
 sleep 1
@@ -109,7 +100,7 @@ act; act; act
 walk_far 700
 sleep 1
 act; act; act
-shot 10-worked.png
+shot 07-worked.png
 
 # If the action button turned out to be Sleep rather than Till, the day
 # summary is now up and every tap below would land on a modal. Dismissing it
@@ -120,18 +111,18 @@ sleep 3
 # --- backpack ---
 adb shell input tap 1161 425
 sleep 2
-shot 11-backpack.png
+shot 08-backpack.png
 adb shell input keyevent 4
 sleep 2
 
 # --- pause menu, and the two screens hanging off it ---
 adb shell input tap 1197 83
 sleep 2
-shot 12-pause.png
+shot 09-pause.png
 
 adb shell input tap 640 400   # Journal
 sleep 2
-shot 13-journal.png
+shot 10-journal.png
 adb shell input keyevent 4    # back goes straight to play, not to the menu
 sleep 2
 
@@ -139,21 +130,21 @@ adb shell input tap 1197 83
 sleep 2
 adb shell input tap 640 500   # Settings
 sleep 2
-shot 14-settings.png
+shot 11-settings.png
 adb shell input keyevent 4
 sleep 2
 
 # --- on to the river ---
 for _ in 1 2 3 4 5; do walk_right 2600; done
 sleep 1
-shot 15-river.png
+shot 12-river.png
 
 adb shell input tap 1162 583   # fish / shop, whatever is in reach
 sleep 3
-shot 16-action.png
+shot 13-action.png
 
 sleep 6
-shot 17-later.png
+shot 14-later.png
 
 echo "--- process check ---"
 if ! adb shell pidof com.cozyhollow.riverside > /dev/null; then
