@@ -465,9 +465,11 @@ class Screens(private val g: Game) {
             b(T.QUALITY + i, arrayOf("Cosy", "Balanced", "Lush")[i], if (g.settings.quality == i) 1 else 2)
                 .set(lx + 170f + i * (qw + 14f), p[1] + setRows[2] - 22f, qw, 44f)
         }
-        b(T.TOG_FPS).set(lx + 170f, p[1] + setRows[3] - 22f, 68f, 44f)
-        b(T.TOG_HAPTIC).set(lx + 170f, p[1] + setRows[4] - 22f, 68f, 44f)
-        b(T.TOG_SOUTH).set(lx + 170f, p[1] + setRows[5] - 22f, 68f, 44f)
+        // further right than the sliders: "Left-handed layout" ran under its own
+        // toggle at the sliders' column
+        b(T.TOG_FPS).set(lx + 250f, p[1] + setRows[3] - 22f, 68f, 44f)
+        b(T.TOG_HAPTIC).set(lx + 250f, p[1] + setRows[4] - 22f, 68f, 44f)
+        b(T.TOG_SOUTH).set(lx + 250f, p[1] + setRows[5] - 22f, 68f, 44f)
         val by = p[1] + p[3] - 64f
         if (confirmReset) {
             b(T.RESET_YES, "Erase", 4).set(g.vw / 2f - 210f, by, 180f, 52f)

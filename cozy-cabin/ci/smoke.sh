@@ -29,8 +29,11 @@ walk_far()   { walk 300 660 300 380 "${1:-1600}"; }   # into the woods
 # a time: a walk straight into a bench stops dead, while a diagonal slides off
 # it and carries on.
 walk_se()    { walk 300 470 760 620 "${1:-2200}"; }
-# north-west, up the valley to the market, passing east of the cabin
-walk_nw()    { walk 700 620 240 470 "${1:-2200}"; }
+# Mostly north with a little west in it, up the valley to the market. The
+# stick reads the swipe's shape, so a wide shallow one walks west with barely
+# any north in it - which is how an earlier version of this ended up at the
+# pond.
+walk_nw()    { walk 520 660 380 400 "${1:-2200}"; }
 
 fail=0
 
@@ -113,8 +116,7 @@ adb shell input keyevent 4
 sleep 2
 
 # --- up to Pip's market: north past the cabin, then the four tabs ---
-for _ in 1 2 3 4; do walk_nw 2200; sleep 1; done
-for _ in 1 2 3; do walk_far 2200; sleep 1; done
+for _ in 1 2 3 4 5 6; do walk_nw 2200; sleep 1; done
 adb shell input tap 1162 583   # Market
 sleep 3
 shot 11-shop-seeds.png
