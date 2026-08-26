@@ -81,6 +81,9 @@ shot 05-field.png
 # tilled, planted and watered the button reads "Growing" and does nothing.
 act() { adb shell input tap 1162 583; sleep 2; }
 act; act; act
+walk_left 900
+sleep 1
+act; act; act
 walk_far 700
 sleep 1
 act; act; act
@@ -122,6 +125,7 @@ sleep 2
 for _ in 1 2 3 4; do walk_nw 2200; sleep 1; done
 # same idea: try the counter from several points along the last stretch
 for _ in 1 2 3 4 5; do walk_nw 1400; sleep 1; act; done
+for _ in 1 2 3 4; do walk_far 1200; sleep 1; act; done
 sleep 2
 shot 11-shop-seeds.png
 adb shell input tap 504 168    # Tools tab
