@@ -75,12 +75,15 @@ sleep 1
 shot 05-field.png
 
 # --- work a plot ---
-adb shell input tap 1162 583   # till
-sleep 2
-adb shell input tap 1162 583   # plant
-sleep 2
-adb shell input tap 1162 583   # water
-sleep 2
+# Where a swipe puts you varies by a metre or two between runs, so press the
+# action button through a couple of positions rather than betting the whole
+# farming path on one guessed spot. Extra presses cost nothing: with the bed
+# tilled, planted and watered the button reads "Growing" and does nothing.
+act() { adb shell input tap 1162 583; sleep 2; }
+act; act; act
+walk_far 700
+sleep 1
+act; act; act
 shot 06-worked.png
 
 # If the action button turned out to be Sleep rather than Till, the day
@@ -116,9 +119,10 @@ adb shell input keyevent 4
 sleep 2
 
 # --- up to Pip's market: north past the cabin, then the four tabs ---
-for _ in 1 2 3 4 5 6; do walk_nw 2200; sleep 1; done
-adb shell input tap 1162 583   # Market
-sleep 3
+for _ in 1 2 3 4; do walk_nw 2200; sleep 1; done
+# same idea: try the counter from several points along the last stretch
+for _ in 1 2 3 4 5; do walk_nw 1400; sleep 1; act; done
+sleep 2
 shot 11-shop-seeds.png
 adb shell input tap 504 168    # Tools tab
 sleep 2
