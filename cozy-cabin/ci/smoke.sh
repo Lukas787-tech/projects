@@ -5,6 +5,9 @@ set -uo pipefail
 
 SHOTS=cozy-cabin/screenshots
 mkdir -p "$SHOTS"
+# start from a clean set: renumbering the run has more than once left orphans
+# from the old numbering sitting in the folder, committed and stale
+rm -f "$SHOTS"/*.png
 
 blank=0
 shot() {
