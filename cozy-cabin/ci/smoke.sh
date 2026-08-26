@@ -56,30 +56,45 @@ adb shell input tap 640 581     # Let's begin
 sleep 4
 shot 03-morning.png
 
+# Where a swipe puts you varies by a metre or two between runs, so press the
+# action button through a few positions rather than betting a whole path on
+# one guessed spot. Extra presses cost nothing: the button does nothing when
+# nothing is in reach.
+act() { adb shell input tap 1162 583; sleep 2; }
+
 # --- walk in depth, which is the whole point of the layout ---
-walk_far 1200
+# This doubles as the first leg to the market. The spawn is a fixed point and
+# the camera starts facing north, so a route measured from here lands where it
+# says it will - which routes measured from wherever the last leg finished did
+# not: they reached the pond one run and the woods behind the stall the next.
+walk_right 1800     # east, clear of the campfire and the signpost
+sleep 1
+walk_far 2000
 sleep 1
 shot 04-depth.png
+
+# --- up the valley to Pip's market, then its four tabs ---
+for _ in 1 2 3; do walk_far 2000; sleep 1; done
+for _ in 1 2 3; do walk_far 1200; sleep 1; act; done
+sleep 2
+shot 05-shop-seeds.png
+adb shell input tap 504 168    # Tools tab
+sleep 2
+shot 06-shop-tools.png
+adb shell input tap 760 168    # Sell tab
+sleep 2
+shot 07-shop-sell.png
+adb shell input tap 1016 168   # Home tab
+sleep 2
+shot 08-shop-home.png
+adb shell input keyevent 4
+sleep 2
+
+# --- back down the valley to the field, and work a plot ---
+for _ in 1 2 3 4 5 6; do walk_se 2200; sleep 1; done
 walk_near 1200
 sleep 1
-
-# --- over to the field ---
-# The camera faces north up the valley, so right is east and the field is
-# about 15 m that way. Stay on the spawn's depth line while crossing: the
-# flower planter by the cabin door sits a couple of metres south of it and
-# a walk straight into it just stops dead. Swipes ramp from the point they
-# land, so each one covers about four metres, not the full nine.
-for _ in 1 2 3 4; do walk_se 2200; sleep 1; done
-walk_far 1800
-sleep 1
-shot 05-field.png
-
-# --- work a plot ---
-# Where a swipe puts you varies by a metre or two between runs, so press the
-# action button through a couple of positions rather than betting the whole
-# farming path on one guessed spot. Extra presses cost nothing: with the bed
-# tilled, planted and watered the button reads "Growing" and does nothing.
-act() { adb shell input tap 1162 583; sleep 2; }
+shot 09-field.png
 act; act; act
 walk_left 900
 sleep 1
@@ -87,7 +102,7 @@ act; act; act
 walk_far 700
 sleep 1
 act; act; act
-shot 06-worked.png
+shot 10-worked.png
 
 # If the action button turned out to be Sleep rather than Till, the day
 # summary is now up and every tap below would land on a modal. Dismissing it
@@ -98,18 +113,18 @@ sleep 3
 # --- backpack ---
 adb shell input tap 1161 425
 sleep 2
-shot 07-backpack.png
+shot 11-backpack.png
 adb shell input keyevent 4
 sleep 2
 
 # --- pause menu, and the two screens hanging off it ---
 adb shell input tap 1197 83
 sleep 2
-shot 08-pause.png
+shot 12-pause.png
 
 adb shell input tap 640 400   # Journal
 sleep 2
-shot 09-journal.png
+shot 13-journal.png
 adb shell input keyevent 4    # back goes straight to play, not to the menu
 sleep 2
 
@@ -117,28 +132,7 @@ adb shell input tap 1197 83
 sleep 2
 adb shell input tap 640 500   # Settings
 sleep 2
-shot 10-settings.png
-adb shell input keyevent 4
-sleep 2
-
-# --- up to Pip's market: north past the cabin, then the four tabs ---
-# West out of the field first, then straight up the valley: two runs of
-# diagonals put him at the pond one time and past the stall into the woods the
-# next, and a diagonal's drift compounds over six swipes.
-for _ in 1 2 3 4 5 6; do walk_far 2000; sleep 1; done
-for _ in 1 2 3 4; do walk_left 1500; sleep 1; act; done
-for _ in 1 2 3; do walk_left 800; sleep 1; act; done
-sleep 2
-shot 11-shop-seeds.png
-adb shell input tap 504 168    # Tools tab
-sleep 2
-shot 12-shop-tools.png
-adb shell input tap 760 168    # Sell tab
-sleep 2
-shot 13-shop-sell.png
-adb shell input tap 1016 168   # Home tab
-sleep 2
-shot 14-shop-home.png
+shot 14-settings.png
 adb shell input keyevent 4
 sleep 2
 
