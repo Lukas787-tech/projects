@@ -854,8 +854,13 @@ class Game(private val ctx: Context, private val host: Host) {
         if (bAction.hit(x, y)) { bAction.press = 1f; return }
         if (stickPointer < 0 && inStickZone(x, y)) {
             stickPointer = id
-            stickBaseX = x.coerceIn(stickRadius + 12f, vw - stickRadius - 12f)
-            stickBaseY = y.coerceIn(stickRadius + 12f, vh - stickRadius - 12f)
+            // The stick drops exactly where the thumb lands, uncorrected. It
+            // used to be pulled a stick's radius clear of the screen edges,
+            // which meant a press low down started life already leaning: put
+            // your thumb near the bottom and the farmer walked away from you
+            // before you had moved it at all.
+            stickBaseX = x
+            stickBaseY = y
             stickKnobX = stickBaseX
             stickKnobY = stickBaseY
             moveX = 0f; moveZ = 0f

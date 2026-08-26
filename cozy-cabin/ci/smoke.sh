@@ -23,8 +23,8 @@ shot() {
 walk() { adb shell input swipe "$1" "$2" "$3" "$4" "${5:-2500}"; }
 walk_right() { walk 300 560 760 560 "${1:-2500}"; }
 walk_left()  { walk 700 560 240 560 "${1:-2500}"; }
-walk_near()  { walk 300 380 300 660 "${1:-1600}"; }   # toward the camera
-walk_far()   { walk 300 660 300 380 "${1:-1600}"; }   # into the woods
+walk_near()  { walk 300 340 300 620 "${1:-1600}"; }   # toward the camera
+walk_far()   { walk 300 620 300 340 "${1:-1600}"; }   # into the woods
 # Crossing the valley on a diagonal, because collision is resolved one axis at
 # a time: a walk straight into a bench stops dead, while a diagonal slides off
 # it and carries on.
