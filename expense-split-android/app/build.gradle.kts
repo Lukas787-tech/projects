@@ -1,3 +1,7 @@
+// Imported explicitly: inside the `android { }` block, a bare `java` resolves to Gradle's own
+// java extension rather than the java.* package, so `java.util.Properties` will not compile there.
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -44,7 +48,7 @@ android {
         create("release") {
             val propsFile = rootProject.file("keystore.properties")
             if (propsFile.exists()) {
-                val props = java.util.Properties().apply { propsFile.inputStream().use { load(it) } }
+                val props = Properties().apply { propsFile.inputStream().use { load(it) } }
                 storeFile = rootProject.file(props.getProperty("storeFile"))
                 storePassword = props.getProperty("storePassword")
                 keyAlias = props.getProperty("keyAlias")
