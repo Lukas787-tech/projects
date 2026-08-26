@@ -77,22 +77,11 @@ walk_far 2000
 sleep 1
 shot 04-depth.png
 
-# --- a long walk up the valley ---
-# This exercises movement over distance and the far end of the map. It aims for
-# Pip's market, and how close it gets varies: props stop a walk dead rather
-# than sliding round them, so a couple of metres of drift early on turns into a
-# different destination. The market's four tabs are, as a result, the one part
-# of the interface these screenshots have never caught.
-for _ in 1 2 3 4 5; do walk_far 2200; sleep 1; done
-for _ in 1 2 3; do walk_left 1000; sleep 1; act; done
-sleep 2
-shot 05-valley.png
-
-# --- back down the valley to the field, and work a plot ---
-for _ in 1 2 3 4 5 6; do walk_se 2200; sleep 1; done
+# --- east to the field, and work a plot ---
+for _ in 1 2 3 4; do walk_se 2200; sleep 1; done
 walk_near 1200
 sleep 1
-shot 06-field.png
+shot 05-field.png
 act; act; act
 walk_left 900
 sleep 1
@@ -100,7 +89,7 @@ act; act; act
 walk_far 700
 sleep 1
 act; act; act
-shot 07-worked.png
+shot 06-worked.png
 
 # If the action button turned out to be Sleep rather than Till, the day
 # summary is now up and every tap below would land on a modal. Dismissing it
@@ -111,18 +100,18 @@ sleep 3
 # --- backpack ---
 adb shell input tap 1161 425
 sleep 2
-shot 08-backpack.png
+shot 07-backpack.png
 adb shell input keyevent 4
 sleep 2
 
 # --- pause menu, and the two screens hanging off it ---
 adb shell input tap 1197 83
 sleep 2
-shot 09-pause.png
+shot 08-pause.png
 
 adb shell input tap 640 400   # Journal
 sleep 2
-shot 10-journal.png
+shot 09-journal.png
 adb shell input keyevent 4    # back goes straight to play, not to the menu
 sleep 2
 
@@ -130,9 +119,20 @@ adb shell input tap 1197 83
 sleep 2
 adb shell input tap 640 500   # Settings
 sleep 2
-shot 11-settings.png
+shot 10-settings.png
 adb shell input keyevent 4
 sleep 2
+
+# --- a long walk up the valley ---
+# This exercises movement over distance and the far end of the map. It aims for
+# Pip's market, and how close it gets varies: props stop a walk dead rather
+# than sliding round them, so a couple of metres of drift early on turns into a
+# different destination. The market's four tabs are, as a result, the one part
+# of the interface these screenshots have never caught.
+for _ in 1 2 3 4 5; do walk_far 2200; sleep 1; done
+for _ in 1 2 3; do walk_left 1000; sleep 1; act; done
+sleep 2
+shot 11-valley.png
 
 # --- on to the river ---
 for _ in 1 2 3 4 5; do walk_right 2600; done
