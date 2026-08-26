@@ -9,30 +9,21 @@ is for currency exchange rates.
 
 ---
 
-## Build status — please read first
+## Getting the APK
 
-**The APK could not be produced in the environment this project was generated in.**
+CI builds and uploads a working debug APK on every push:
+**Actions → ExpenseSplit Android → latest run → Artifacts → `expensesplit-debug-apk`.**
 
-This session's network egress policy blocks `dl.google.com` (HTTP 403 on CONNECT).
-`maven.google.com` redirects there, so both of the following are unreachable:
+Install it with `adb install app-debug.apk`, or copy it to a device and open it (you will need to
+allow installs from unknown sources). It is a debug build, so its application id is
+`com.expensesplit.app.debug` and it installs alongside any release build.
 
-- the Android SDK and command-line tools,
-- Google's Maven repository, which hosts the Android Gradle Plugin, AndroidX, Jetpack Compose,
-  Room, Hilt's Android artifacts, CameraX and ML Kit.
-
-Without those, no Android module can be configured, let alone compiled. Maven Central *is*
-reachable, which is why the pure-Kotlin parts could still be verified — see
-[What has been verified](#what-has-been-verified).
-
-On any machine with normal access to `dl.google.com`, `./gradlew assembleDebug` is expected to work
-from a clean checkout with no further setup.
-
-**To get an APK without a local Android SDK**, use the bundled CI workflow
-(`.github/workflows/expense-split-android.yml`). GitHub Actions runners can reach Google's Maven
-repository, so on every push to `main` or a `claude/**` branch — or on demand via *Actions → 
-ExpenseSplit Android → Run workflow* — it runs the unit tests, runs lint, assembles the debug APK
-and uploads it as the `expensesplit-debug-apk` artifact. Test and lint reports are uploaded even
-when a step fails, which is where to look for the first-build fixes described below.
+The APK could not be produced in the environment this project was generated in: that session's
+egress policy blocked `dl.google.com` (HTTP 403), and `maven.google.com` redirects there, making
+both the Android SDK and Google's Maven repository — which host the Android Gradle Plugin, AndroidX,
+Compose, Room, Hilt, CameraX and ML Kit — unreachable. GitHub Actions runners have no such
+restriction, which is why CI is the build path. Locally, `./gradlew assembleDebug` works normally
+once you have an Android SDK.
 
 ---
 
@@ -69,10 +60,19 @@ a wrong column name or a missing binding is a hard failure rather than a warning
 - **Imports** — every internal `com.expensesplit.app.*` import resolves to a declared symbol, and
   all 58 Material icon references have a matching import.
 
-**Not verified:** the Android-specific code — Compose UI, Room's generated DAOs, Hilt's generated
-components, WorkManager, CameraX and ML Kit integration — has never been through a compiler.
-Expect to fix some import- and API-level mistakes on the first real build. `SearchQueryBuilderTest`
-is written but was not run, because it needs `androidx.sqlite`.
+The Android-specific code has since been compiled and tested for real in CI: `kspDebugKotlin`
+(Room DAOs and Hilt components), `compileDebugKotlin`, `testDebugUnitTest` and `assembleDebug` all
+pass. `SearchQueryBuilderTest` — the one test that needs `androidx.sqlite` and so could not run
+locally — runs there too.
+
+Getting there took four fixes the static checks could not have caught, all found by the first real
+builds: `java.util.Properties` shadowed by Gradle's `java` extension inside the `android { }` block;
+an AGP flag removed in 8.0; `args += collection` being ambiguous in Kotlin; `LazyListScope.items`
+being an extension that cannot be called through a qualified name; and a `PaddingValues` overload
+that does not exist.
+
+Lint still reports findings. It runs after the APK is assembled and does not block the build, since
+a style finding is not a reason to withhold a build that compiles and passes its tests.
 
 ---
 
