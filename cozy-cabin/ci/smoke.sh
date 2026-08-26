@@ -67,15 +67,17 @@ act() { adb shell input tap 1162 583; sleep 2; }
 # the camera starts facing north, so a route measured from here lands where it
 # says it will - which routes measured from wherever the last leg finished did
 # not: they reached the pond one run and the woods behind the stall the next.
-walk_right 1800     # east, clear of the campfire and the signpost
+# far enough east to clear the log pile stacked against the cabin's east wall,
+# which a walk straight up the valley runs into and stops at
+walk_right 2600
 sleep 1
 walk_far 2000
 sleep 1
 shot 04-depth.png
 
 # --- up the valley to Pip's market, then its four tabs ---
-for _ in 1 2 3; do walk_far 2000; sleep 1; done
-for _ in 1 2 3; do walk_far 1200; sleep 1; act; done
+for _ in 1 2 3 4 5; do walk_far 2200; sleep 1; done
+for _ in 1 2 3 4; do walk_far 1200; sleep 1; act; done
 sleep 2
 shot 05-shop-seeds.png
 adb shell input tap 504 168    # Tools tab
