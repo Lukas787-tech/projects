@@ -460,7 +460,9 @@ class Game(private val ctx: Context, private val host: Host) {
         val fi = FarmQuery.nearestForage(st, x, z, 1.7f)
         if (fi >= 0) { a.kind = AKind.GATHER; a.label = "Gather"; a.target = fi; return a }
 
-        if (dist2(x, z, World.MARKET_X, World.MARKET_Z + 1.8f) < 3.4f * 3.4f) {
+        // the stall is over five metres wide, so a tight circle round one point
+        // in front of it meant hunting for the exact spot to stand
+        if (dist2(x, z, World.MARKET_X, World.MARKET_Z + 1.8f) < 4.6f * 4.6f) {
             a.kind = AKind.SHOP; a.label = "Market"; return a
         }
         if (dist2(x, z, World.CABIN_DOOR_X, World.CABIN_DOOR_Z) < 2.4f * 2.4f) {
