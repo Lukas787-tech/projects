@@ -5,40 +5,52 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- back hill -->
+    <!-- snowy back slope -->
     <path
-        android:fillColor="#7FB06F"
-        android:pathData="M18,74 C30,58 44,56 54,64 C64,56 80,58 92,74 Z" />
+        android:fillColor="#C4D2E8"
+        android:pathData="M14,76 C30,58 44,56 54,64 C64,56 80,58 94,76 Z" />
 
-    <!-- pine tree left -->
-    <path android:fillColor="#3F7A55" android:pathData="M32,68 L26,68 L32,56 L28,56 L34,44 L40,56 L36,56 L42,68 L36,68 Z" />
-    <path android:fillColor="#8A5C3B" android:pathData="M32.6,67 h2.8 v7 h-2.8 Z" />
+    <!-- snow-laden pine, left -->
+    <path android:fillColor="#2E5A4E" android:pathData="M32,70 L25,70 L32,57 L28,57 L34,45 L40,57 L36,57 L43,70 L36,70 Z" />
+    <path android:fillColor="#E8EEF8" android:pathData="M34,45 L38.4,53.8 L34,52 L29.6,53.8 Z" />
+    <path android:fillColor="#E8EEF8" android:pathData="M34,55 L40,65.4 L34,63 L28,65.4 Z" />
+    <path android:fillColor="#4A3E34" android:pathData="M32.6,69 h2.8 v7 h-2.8 Z" />
 
-    <!-- cabin body -->
-    <path android:fillColor="#C98A55" android:pathData="M44,60 h28 v18 h-28 Z" />
-    <path android:fillColor="#B87A48" android:pathData="M44,66 h28 v2 h-28 Z M44,72 h28 v2 h-28 Z" />
+    <!-- log cabin body -->
+    <path android:fillColor="#8E6C48" android:pathData="M44,60 h28 v18 h-28 Z" />
+    <path android:fillColor="#6E5236" android:pathData="M44,66 h28 v1.6 h-28 Z M44,72 h28 v1.6 h-28 Z" />
 
-    <!-- roof -->
-    <path android:fillColor="#8C4A3A" android:pathData="M40,61 L58,46 L76,61 Z" />
-    <path android:fillColor="#A85A46" android:pathData="M43,60.4 L58,48 L73,60.4 Z" />
+    <!-- dark roof, heavy with snow -->
+    <path android:fillColor="#23212F" android:pathData="M39,62 L58,45 L77,62 Z" />
+    <path android:fillColor="#E8EEF8" android:pathData="M42.5,60 L58,47.2 L73.5,60 L69,60 L58,50.8 L47,60 Z" />
 
     <!-- door -->
-    <path android:fillColor="#6E4630" android:pathData="M54,68 h8 v10 h-8 Z" />
-    <path android:fillColor="#F2C46A" android:pathData="M55.2,69.2 h5.6 v8.8 h-5.6 Z" />
+    <path android:fillColor="#4A3A2E" android:pathData="M54,68 h8 v10 h-8 Z" />
 
-    <!-- window -->
-    <path android:fillColor="#FFD98A" android:pathData="M46.5,63 h5.5 v5.5 h-5.5 Z" />
-    <path android:fillColor="#8C4A3A" android:pathData="M48.8,63 h0.9 v5.5 h-0.9 Z M46.5,65.2 h5.5 v0.9 h-5.5 Z" />
+    <!-- the window: the one warm thing in the whole icon -->
+    <path android:fillColor="#FFA83E" android:pathData="M45.5,62.5 h7 v7 h-7 Z" />
+    <path android:fillColor="#FFE7B4" android:pathData="M46.8,63.8 h4.4 v4.4 h-4.4 Z" />
+    <path android:fillColor="#23212F" android:pathData="M48.6,62.5 h0.9 v7 h-0.9 Z M45.5,65.6 h7 v0.9 h-7 Z" />
 
-    <!-- chimney + smoke -->
-    <path android:fillColor="#7E5142" android:pathData="M68,50 h5 v9 h-5 Z" />
-    <path android:fillColor="#FFFFFF" android:fillAlpha="0.75" android:pathData="M70.5,48 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
-    <path android:fillColor="#FFFFFF" android:fillAlpha="0.55" android:pathData="M75,42 m-2.2,0 a2.2,2.2 0 1,0 4.4,0 a2.2,2.2 0 1,0 -4.4,0 Z" />
+    <!-- light spilling out onto the snow -->
+    <path android:fillColor="#FFA83E" android:fillAlpha="0.32" android:pathData="M45.5,69.5 L52.5,69.5 L58,82 L40,82 Z" />
 
-    <!-- river -->
-    <path android:fillColor="#6FB2D2" android:pathData="M16,80 h76 v6 h-76 Z" />
-    <path android:fillColor="#A7D8EC" android:pathData="M22,82 h14 v1.6 h-14 Z M46,84 h16 v1.6 h-16 Z M70,82 h14 v1.6 h-14 Z" />
+    <!-- stone chimney and smoke -->
+    <path android:fillColor="#6E7280" android:pathData="M67,49 h5 v10 h-5 Z" />
+    <path android:fillColor="#E8EEF8" android:pathData="M66.4,47.6 h6.2 v2 h-6.2 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.55" android:pathData="M70,43 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.38" android:pathData="M75,36.5 m-2.2,0 a2.2,2.2 0 1,0 4.4,0 a2.2,2.2 0 1,0 -4.4,0 Z" />
 
-    <!-- ground -->
-    <path android:fillColor="#8FBF6F" android:pathData="M16,77 h76 v3.2 h-76 Z" />
+    <!-- the frozen creek -->
+    <path android:fillColor="#6E9CBE" android:pathData="M14,82 h80 v6 h-80 Z" />
+    <path android:fillColor="#CFE2F2" android:pathData="M20,84 h14 v1.6 h-14 Z M44,86 h16 v1.6 h-16 Z M68,84 h14 v1.6 h-14 Z" />
+
+    <!-- fresh snow along the bank -->
+    <path android:fillColor="#E8EEF8" android:pathData="M14,78.6 h80 v3.6 h-80 Z" />
+
+    <!-- falling flakes -->
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.9" android:pathData="M22,40 m-1.6,0 a1.6,1.6 0 1,0 3.2,0 a1.6,1.6 0 1,0 -3.2,0 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.7" android:pathData="M86,52 m-1.4,0 a1.4,1.4 0 1,0 2.8,0 a1.4,1.4 0 1,0 -2.8,0 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.6" android:pathData="M18,60 m-1.2,0 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0 Z" />
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.8" android:pathData="M90,34 m-1.3,0 a1.3,1.3 0 1,0 2.6,0 a1.3,1.3 0 1,0 -2.6,0 Z" />
 </vector>

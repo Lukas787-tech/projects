@@ -66,11 +66,15 @@ object Gl {
     /**
      * Uploads an ARGB pixel array.
      *
-     * [mip] builds a mip chain and samples it with a nearest base level: the
-     * texels stay hard up close, which is the whole look, but ground stretching
-     * away to the treeline stops boiling into noise.
+     * [smooth] picks linear filtering, which is the default here: the winter
+     * look wants soft matte surfaces described by light rather than hard
+     * texels. [mip] builds a mip chain as well, so ground stretching away to
+     * the treeline stops boiling into noise.
      */
-    fun texture(pixels: IntArray, w: Int, h: Int, repeat: Boolean = true, mip: Boolean = false): Int {
+    fun texture(
+        pixels: IntArray, w: Int, h: Int,
+        repeat: Boolean = true, mip: Boolean = false, smooth: Boolean = true
+    ): Int {
         val buf = pixelBuffer(pixels, w, h)
         val ids = IntArray(1)
         glGenTextures(1, ids, 0)
@@ -81,11 +85,14 @@ object Gl {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap)
         if (mip) {
             glGenerateMipmap(GL_TEXTURE_2D)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR)
+            glTexParameteri(
+                GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                if (smooth) GL_LINEAR_MIPMAP_LINEAR else GL_NEAREST_MIPMAP_LINEAR
+            )
         } else {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, if (smooth) GL_LINEAR else GL_NEAREST)
         }
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, if (smooth) GL_LINEAR else GL_NEAREST)
         glBindTexture(GL_TEXTURE_2D, 0)
         return ids[0]
     }

@@ -1,84 +1,124 @@
-# Riverside Hollow
+# Frostfall Hollow
 
-A cosy, side-view farming game for Android. You inherit a leaning cabin between
-the woods and the river: till the field, plant and water crops, chop wood,
-forage, fish, sell your haul to Pip at the market, and slowly upgrade your home
-from a little cabin into a manor.
+A cosy winter survival game for Android. You have a leaning log cabin, a stove
+that draws well once it gets going, an axe in the block outside, and a pond
+that has been frozen thick since November. Keep the fire in, and everything
+else — the glasshouse, the feeders, the hole in the ice — is only there because
+it is nice to have something to do.
+
+There is no way to lose. The cold never kills you; at its worst it slows your
+walk and points you at the nearest fire. Nothing rots, no fish gets away, the
+clock cannot run out, and the days go on for as long as you want them to.
 
 ## Download
 
-Grab `RiversideHollow.apk` from the
-[latest release](../../releases/tag/riverside-hollow-latest), open it on your
+Grab `FrostfallHollow.apk` from the
+[latest release](../../releases/tag/frostfall-hollow-latest), open it on your
 phone, and allow installs from your browser when Android asks. Requires Android
 7.0 or newer.
 
 ## What's in it
 
-- **Side-view valley** — forest, cabin, field, market and river along one clean
-  scrolling map.
-- **Farming** — six crops, some of which regrow. Water them, or let the rain do
-  it for you.
-- **Fishing** — cast, wait for the bob to dip, hook it, then keep the fish in
-  the basket while you reel. Seven species, gated by time of day and weather.
-- **Foraging & wood** — mushrooms, flowers, honey and acorns respawn daily;
-  trees regrow a few days after felling.
-- **A home you upgrade** — four visually distinct tiers, each unlocking more
-  field plots, energy and bag space.
-- **Day/night, weather, seasons of mood** — a continuous sky that moves through
-  dawn, noon, golden hour and starlight, plus clear, cloudy and rainy days.
-- **Full menus** — title, backpack, market (seeds/tools/sell/home), journal with
-  a species collection and run stats, settings and a day-summary screen.
-- **Settings** — music and sound volume, three graphics presets, frame counter,
-  vibration, and a left-handed control layout.
+- **A winter homestead** — cabin, porch, woodshed, chopping block, the truck
+  that has not started since October, a tyre on a rope, a frozen creek with a
+  plank bridge, a wide pond you can walk out onto, and a steam vent up in the
+  rocks that never freezes.
+- **A cabin you go inside.** Not a menu — a room. Walk up to the stove to cook,
+  the hearth to stoke the fire, the bench to make things, the shelf for the
+  journal, the chair to sit and watch it snow through the window, and the cat
+  on the boards in front of the fire.
+- **Warmth**, which is the only pressure in the game and can be switched off
+  entirely in Settings. It drains outdoors, faster at night and in a blizzard,
+  and comes straight back at any fire, in the steam vent, or out of a hot mug.
+- **Firewood** — fell a tree, split the logs at the block, feed the stove. A
+  warm night is worth having; a cold one only costs you a slightly slower
+  morning.
+- **Cooking** — nine things off the stove, from pine needle tea to firepepper
+  chilli, each worth a different amount of warmth and a different length of
+  lingering glow afterwards.
+- **Ice fishing** — cut a hole, drop a line, wait. Seven species, gated by the
+  clock and the weather, and the big ones come up hardest when the sky closes
+  in.
+- **A glasshouse** — the only green thing left in the valley, lit from inside
+  so it sits in the snow like a lantern with vegetables in it. Six winter crops.
+- **Feeding the wildlife** — fill the bird feeder and the chickadees find it at
+  once; leave hay in the trough and two deer come out of the pines.
+- **Decorating** — a dozen things to buy and hang up indoors, none of which do
+  anything at all. That is the point of them.
+- **A short blue day** — the sun clears the ridge around 7:40 and is gone by
+  16:40, so most of a day is blue hour or dark, and every window in the valley
+  is lit for most of it. Clear nights sometimes bring the aurora.
+- **Weather** — crisp and clear, overcast, snowfall, and blizzards that turn
+  the whole world into drifting white.
 
 ## How it's built
 
-Kotlin on OpenGL ES 2.0. The valley is real 3D geometry filmed from a fixed
-side-on camera, and the whole frame is rendered into a 480x270 buffer that is
-blitted up to the display with nearest-neighbour filtering, so every texel lands
-as a hard pixel instead of a blurry one.
-
-The vertex shader bends the world around a horizontal cylinder centred on the
-camera, which is where Animal Crossing's curved horizon comes from; objects are
-counter-rotated by the local slope so they stand upright on that curve rather
-than leaning with it.
+Kotlin on OpenGL ES 2.0. The hollow is real 3D geometry on a real heightfield,
+filmed by a high, narrow lens from well back, so the yard reads as a lit
+diorama rather than a platform game.
 
 **There are no asset files in this project at all.** Every texture is painted
-procedurally, texel by texel, at 32x32 - planks, logs, roof shingles, cobbles,
-bark, pine needles, water, fox fur, straw. Every mesh is assembled at runtime
-from box, cylinder, cone and blob primitives. Every sound is generated by a
-small built-in software synth writing PCM to an AudioTrack. That is why the APK
-is under two megabytes.
+procedurally, texel by texel, and then softened — snow, packed track, ice,
+log walls, slate, glass, rust, knitting, fur. Every mesh is assembled at runtime
+from boxes, cylinders, cones and blobs. Every sound, including the wind, is
+generated by a small built-in software synth writing PCM to an AudioTrack.
+That is why the APK is a couple of megabytes.
+
+Three things carry the winter look:
+
+**Warm point lights.** Every lit window, lantern, brazier and fire in the world
+registers with a light set each frame; the best four for the current viewpoint
+are packed into two `vec4` arrays and pooled onto the snow per fragment. Cold
+blue everywhere, and small pools of orange around the places people are — that
+is the whole picture, and doing it per fragment rather than per vertex is the
+difference between a soft pool of light and a blocky stain across four
+triangles.
+
+**A snow load mesh.** Every pine tier, boulder and fallen log gets a second,
+slightly larger shell of white geometry laid over its top half. It costs one
+extra draw call per chunk and it is the difference between "a green forest with
+a white floor" and an actual snowy wood.
+
+**A split-tone grade.** Shadows go hard blue and highlights stay warm, over a
+cheap four-tap bloom so every window and every flame bleeds into the dark
+around it.
 
 ```
 cozy-cabin/
   app/src/main/java/com/cozyhollow/riverside/
     MainActivity.kt   Activity, fullscreen, vibration
     GameView.kt       GLSurfaceView host, touch marshalling
-    Game.kt           state machine, world sim, contextual actions, HUD
-    Screens.kt        title, pause, bag, market, journal, settings, sleep
-    Fishing.kt        casting and the reeling mini-game
-    Audio.kt          software synth: generative music + SFX
-    Items.kt          item/crop/fish catalogue + procedural icons
-    Save.kt           save state, cabin tiers, tool upgrades, settings
-    World.kt          static layout of the valley
-    Player.kt         movement and animation state
+    Game.kt           state machine, world sim, warmth, contextual actions, HUD
+    Interior.kt       the room's layout, furniture and decorations
+    Screens.kt        title, pause, bag, stall, stove/bench, decorating,
+                      journal, settings, night
+    Fishing.kt        cutting a hole and the long wait
+    Audio.kt          software synth: generative music, wind bed, sfx
+    Items.kt          item/crop/fish/recipe catalogue + procedural icons
+    Save.kt           save state, cabin tiers, gear, settings
+    World.kt          static layout of the homestead
+    Player.kt         movement, snow drag, animation state
     Farm.kt           proximity queries
     Ui.kt / Palette.kt / Util.kt
     gl/
-      Renderer3D.kt   the frame: terrain, buildings, trees, characters, UI
-      Shaders.kt      world curvature, lighting, fog, sky, blit
-      Gl.kt           shader/buffer/texture helpers, mesh builder
-      Prims.kt        unit box, cylinder, cone, blob, quad, roof
-      Tex.kt          every texture, painted pixel by pixel
+      Renderer3D.kt   the frame: sky, snow, ice, buildings, actors, effects
+      Buildings.kt    cabin, glasshouse, stall, woodshed, ice hut, fences
+      Props3D.kt      the truck, the swing, the snowman, the feeders, the fire
+      Actors.kt       you, Pip, Mitten, the deer, the chickadees
+      Room3D.kt       the cabin interior
+      Lights.kt       the warm light set and how it picks four
+      Shaders.kt      world lighting, ice, sky and aurora, split-tone blit
+      Scenery.kt      the snowfield, the pines, the snow load, the ice sheet
+      Tex.kt          every texture, painted pixel by pixel then blurred
       Textures.kt     texture registry
-      Particles3D.kt  rain, leaves, fireflies, harvest bursts, coins
-      W3.kt           world-unit to metre mapping, matrix stack
+      Prims.kt        unit box, cylinder, cone, blob, quad, roof
+      DrawCtx.kt      the shared drawing kit every part of the world uses
+      Particles3D.kt  snow, ground drift, embers, breath, steam, footprints
+      Gl.kt / W3.kt   shader/buffer/texture helpers, mesh builder, matrices
 ```
 
-The HUD and menus are rasterised on the CPU at the same low resolution with
-antialiasing switched off, then composited as a texture, so the interface is
-pixel art too rather than crisp vector overlaid on a pixel world.
+The HUD and menus are rasterised on the CPU and composited on top at their own
+resolution, so the text stays crisp over the soft world underneath.
 
 ## Building it yourself
 

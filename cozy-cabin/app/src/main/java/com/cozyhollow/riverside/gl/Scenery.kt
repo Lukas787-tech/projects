@@ -9,13 +9,18 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * The hollow, baked once into static geometry.
+ * The hollow in winter, baked once into static geometry.
  *
- * The map is cut into square chunks. Each one owns its patch of ground plus
- * everything rooted in it — trunks, canopies, boulders, tufts, wildflowers —
- * batched by material, so a frame is a couple of dozen draws rather than one
- * per tree. Nothing here moves except in the wind, and the wind lives in the
- * vertex shader, which is why all of this can be uploaded once and forgotten.
+ * The map is cut into square chunks. Each one owns its patch of snow plus
+ * everything rooted in it — trunks, boughs, boulders, dead bracken, the snow
+ * sitting on all of it — batched by material, so a frame is a couple of dozen
+ * draws rather than one per tree.
+ *
+ * The snow load is its own mesh. Every pine tier, every boulder and every
+ * fallen log gets a second, slightly larger shell of white geometry laid over
+ * its top half. That is the trick the whole look rests on: it costs one extra
+ * draw call per chunk and it is the difference between "a green forest with a
+ * white floor" and an actual snowy wood.
  */
 class SceneChunk(val ix: Int, val iz: Int) {
     val x0 = -Terrain.HALF + ix * Scenery.CHUNK
@@ -32,10 +37,12 @@ class SceneChunk(val ix: Int, val iz: Int) {
     var rock: Mesh? = null
     var detail: Mesh? = null
     var flower: Mesh? = null
+    /** Everything white that is sitting on top of something else. */
+    var snow: Mesh? = null
 
     fun release() {
         ground?.release(); bark?.release(); leaf?.release()
-        rock?.release(); detail?.release(); flower?.release()
+        rock?.release(); detail?.release(); flower?.release(); snow?.release()
     }
 }
 
@@ -48,12 +55,12 @@ class PlantSpot(
     val scale: Float,
     val seed: Int
 ) {
-    /** Roughly how far the canopy throws its shade. */
+    /** Roughly how far the crown reaches. */
     val shade: Float get() = when (kind) {
-        0 -> 1.7f * scale
-        1 -> 2.2f * scale
-        2 -> 1.4f * scale
-        else -> 1.8f * scale
+        0 -> 1.8f * scale
+        1 -> 2.0f * scale
+        2 -> 1.3f * scale
+        else -> 1.5f * scale
     }
 }
 
@@ -63,39 +70,37 @@ class Scenery {
         const val CHUNK = 11.5f
         val GRID = (Terrain.HALF * 2f / CHUNK).toInt()
         /** Ground vertices per chunk edge. */
-        const val DIV = 16
+        const val DIV = 18
 
-        // ---- ground tints, multiplied into the neutral ground texture ----
-        private const val MEADOW_R = 0.60f; private const val MEADOW_G = 0.86f; private const val MEADOW_B = 0.44f
-        private const val DARK_R = 0.44f; private const val DARK_G = 0.68f; private const val DARK_B = 0.38f
-        private const val DRY_R = 0.86f; private const val DRY_G = 0.84f; private const val DRY_B = 0.48f
-        private const val SAND_R = 1.05f; private const val SAND_G = 0.94f; private const val SAND_B = 0.68f
-        private const val PATH_R = 0.82f; private const val PATH_G = 0.64f; private const val PATH_B = 0.44f
-        private const val ROCK_R = 0.72f; private const val ROCK_G = 0.70f; private const val ROCK_B = 0.66f
+        // ---- ground tints, multiplied into the neutral snow texture ----
+        private const val SNOW_R = 1.00f; private const val SNOW_G = 1.02f; private const val SNOW_B = 1.08f
+        private const val SHADE_R = 0.76f; private const val SHADE_G = 0.84f; private const val SHADE_B = 1.02f
+        private const val PACK_R = 0.80f; private const val PACK_G = 0.82f; private const val PACK_B = 0.92f
+        private const val BANK_R = 0.66f; private const val BANK_G = 0.70f; private const val BANK_B = 0.80f
+        private const val ROCK_R = 0.52f; private const val ROCK_G = 0.55f; private const val ROCK_B = 0.64f
+        private const val MUD_R = 0.44f; private const val MUD_G = 0.40f; private const val MUD_B = 0.38f
+        private const val LITTER_R = 0.86f; private const val LITTER_G = 0.86f; private const val LITTER_B = 0.90f
     }
 
     val chunks = ArrayList<SceneChunk>(GRID * GRID)
-    var water: Mesh? = null
+    var ice: Mesh? = null
         private set
 
     fun build() {
         release()
-        // First decide where every tree stands, then bake the ground — that way
-        // the woods can lay their own shade into the grass instead of the frame
-        // paying for a shadow decal under each of a thousand trunks.
         for (iz in 0 until GRID) for (ix in 0 until GRID) chunks.add(SceneChunk(ix, iz))
         for (ch in chunks) scatterTrees(ch)
         for (ch in chunks) {
             buildGround(ch)
             buildPlants(ch)
         }
-        buildWater()
+        buildIce()
     }
 
     private fun chunkAt(ix: Int, iz: Int): SceneChunk? =
         if (ix < 0 || iz < 0 || ix >= GRID || iz >= GRID) null else chunks[iz * GRID + ix]
 
-    /** How much canopy hangs over this spot, 0..1. */
+    /** How much crown hangs over this spot, 0..1. */
     private fun canopyShade(x: Float, z: Float): Float {
         val ix = ((x + Terrain.HALF) / CHUNK).toInt()
         val iz = ((z + Terrain.HALF) / CHUNK).toInt()
@@ -123,8 +128,8 @@ class Scenery {
             val x = ch.x0 + U.hash(s * 7 + 1) * CHUNK
             val z = ch.z0 + U.hash(s * 13 + 5) * CHUNK
             val r = sqrt(x * x + z * z)
-            // dense on the rim, thinning toward the meadow you live in
-            val want = U.smoothRange(r, 16f, 34f) * 0.85f + 0.04f
+            // dense on the rim, thinning toward the yard you live in
+            val want = U.smoothRange(r, 15f, 33f) * 0.88f + 0.04f
             if (U.hash(s * 29 + 3) > want) continue
             if (!plantable(x, z, 1.7f)) continue
             if (Terrain.steepness(x, z) > 0.62f) continue
@@ -142,48 +147,61 @@ class Scenery {
     fun release() {
         for (c in chunks) c.release()
         chunks.clear()
-        water?.release()
-        water = null
+        ice?.release()
+        ice = null
     }
 
     // ------------------------------------------------------------- ground
 
-    /** Colour of the soil at a point: meadow, sand, track, dry ridge or rock. */
-    private fun groundTint(x: Float, z: Float, h: Float, steepness: Float, out: FloatArray) {
+    /**
+     * Colour of the ground at a point.
+     *
+     * Snow is not white. It is white in the sun and lavender-blue everywhere
+     * else, and the whole scene depends on the difference between those two
+     * being large. So the tint reads the aspect of the slope: ground tilted
+     * toward the low southern sun gets the bright end, ground tilted away gets
+     * the cold end, and every hollow between drifts fills with blue.
+     */
+    private fun groundTint(x: Float, z: Float, h: Float, steepness: Float, aspect: Float, out: FloatArray) {
         val patch = U.noise(x * 0.11f + 3f, 21) * 0.5f + U.noise(z * 0.13f + 7f, 33) * 0.5f
-        var r = U.lerp(DARK_R, MEADOW_R, patch)
-        var g = U.lerp(DARK_G, MEADOW_G, patch)
-        var b = U.lerp(DARK_B, MEADOW_B, patch)
+        // aspect: 1 facing the sun, 0 facing away
+        val sun = U.clamp01(aspect * 0.7f + 0.35f + (patch - 0.5f) * 0.18f)
+        var r = U.lerp(SHADE_R, SNOW_R, sun)
+        var g = U.lerp(SHADE_G, SNOW_G, sun)
+        var b = U.lerp(SHADE_B, SNOW_B, sun)
 
-        // sun-bleached grass up on the ridges
-        val dry = U.smoothRange(h, 1.6f, 5.5f)
-        r = U.lerp(r, DRY_R, dry * 0.7f)
-        g = U.lerp(g, DRY_G, dry * 0.7f)
-        b = U.lerp(b, DRY_B, dry * 0.7f)
+        // needle litter and bare ground under the thick of the wood
+        val under = canopyShade(x, z)
+        r = U.lerp(r, LITTER_R, under * 0.5f)
+        g = U.lerp(g, LITTER_G, under * 0.5f)
+        b = U.lerp(b, LITTER_B, under * 0.5f)
 
-        // bare rock wherever the hill is too steep to hold soil
-        val steep = U.smoothRange(steepness, 0.45f, 0.85f)
+        // bare rock wherever the hill is too steep to hold snow
+        val steep = U.smoothRange(steepness, 0.40f, 0.80f)
         r = U.lerp(r, ROCK_R, steep)
         g = U.lerp(g, ROCK_G, steep)
         b = U.lerp(b, ROCK_B, steep)
 
-        // the worn track
+        // the trodden track
         val dp = World.distToPath(x, z)
-        val onPath = 1f - U.smoothRange(dp, 0.7f, 1.9f)
-        r = U.lerp(r, PATH_R, onPath)
-        g = U.lerp(g, PATH_G, onPath)
-        b = U.lerp(b, PATH_B, onPath)
+        val onPath = 1f - U.smoothRange(dp, 0.6f, 1.8f)
+        r = U.lerp(r, PACK_R, onPath)
+        g = U.lerp(g, PACK_G, onPath)
+        b = U.lerp(b, PACK_B, onPath)
 
-        // sand at the waterline
-        val sand = Terrain.sandiness(x, z)
-        r = U.lerp(r, SAND_R, sand)
-        g = U.lerp(g, SAND_G, sand)
-        b = U.lerp(b, SAND_B, sand)
+        // scoured shingle right at the edge of the ice
+        val bank = Terrain.shoreline(x, z)
+        r = U.lerp(r, BANK_R, bank * 0.85f)
+        g = U.lerp(g, BANK_G, bank * 0.85f)
+        b = U.lerp(b, BANK_B, bank * 0.85f)
 
-        // and a little shade in the hollows, which reads as damp ground
-        val damp = 1f - U.smoothRange(h - Terrain.WATER_Y, 0.4f, 2.0f)
-        val f = U.lerp(1f, 0.84f, damp * 0.6f)
-        out[0] = r * f; out[1] = g * f; out[2] = b * f
+        // nothing holds snow round the steam vent
+        val warm = Terrain.springWarmth(x, z)
+        r = U.lerp(r, MUD_R, warm)
+        g = U.lerp(g, MUD_G, warm)
+        b = U.lerp(b, MUD_B, warm)
+
+        out[0] = r; out[1] = g; out[2] = b
     }
 
     private val tintTmp = FloatArray(3)
@@ -216,10 +234,12 @@ class Scenery {
                 val len = sqrt(nx * nx + ny * ny + nz * nz).coerceAtLeast(1e-4f)
                 nx /= len; ny /= len; nz /= len
                 val slope = U.clamp01(sqrt(dx * dx + dz * dz) / (2f * step) * 0.9f)
-                groundTint(x, z, y, slope, tintTmp)
-                val shade = 1f - canopyShade(x, z) * 0.42f
-                b.color(tintTmp[0] * shade, tintTmp[1] * shade, tintTmp[2] * shade, 0f)
-                b.vertex(x, y, z, nx, ny, nz, x * 0.5f, z * 0.5f)
+                // the winter sun sits low in the south-west, so that is the
+                // direction a drift catches the light from
+                val aspect = U.clamp01((nx * -0.62f + nz * 0.42f) * 1.6f + 0.5f)
+                groundTint(x, z, y, slope, aspect, tintTmp)
+                b.color(tintTmp[0], tintTmp[1], tintTmp[2], 0f)
+                b.vertex(x, y, z, nx, ny, nz, x * 0.35f, z * 0.35f)
             }
         }
         val rowLen = DIV + 1
@@ -233,14 +253,15 @@ class Scenery {
         ch.ground = b.build()
     }
 
-    // -------------------------------------------------------------- water
+    // ---------------------------------------------------------------- ice
 
     /**
-     * One surface for the river and the pond together: a quad wherever the
+     * One sheet for the creek and the pond together: a quad wherever the
      * ground is cut below the water table, with the depth written into the
-     * vertex colour so the shader can shade the shallows and foam the edges.
+     * vertex colour so the shader can darken the middle and drift snow onto
+     * the edges.
      */
-    private fun buildWater() {
+    private fun buildIce() {
         val b = MeshBuilder()
         val step = 1.15f
         val n = (Terrain.HALF * 2f / step).toInt()
@@ -250,15 +271,13 @@ class Scenery {
                 val z = -Terrain.HALF + iz * step
                 val x1 = x + step
                 val z1 = z + step
-                // include cells that only just reach the water, so the surface
-                // slides under the bank instead of stopping short of it
-                val d00 = Terrain.WATER_Y - Terrain.height(x, z)
-                val d10 = Terrain.WATER_Y - Terrain.height(x1, z)
-                val d01 = Terrain.WATER_Y - Terrain.height(x, z1)
-                val d11 = Terrain.WATER_Y - Terrain.height(x1, z1)
-                if (d00 < -0.35f && d10 < -0.35f && d01 < -0.35f && d11 < -0.35f) continue
-                val y = Terrain.WATER_Y
-                fun depth(d: Float) = U.clamp01(d / 1.1f)
+                val d00 = Terrain.ICE_Y - Terrain.height(x, z)
+                val d10 = Terrain.ICE_Y - Terrain.height(x1, z)
+                val d01 = Terrain.ICE_Y - Terrain.height(x, z1)
+                val d11 = Terrain.ICE_Y - Terrain.height(x1, z1)
+                if (d00 < -0.30f && d10 < -0.30f && d01 < -0.30f && d11 < -0.30f) continue
+                val y = Terrain.ICE_Y
+                fun depth(d: Float) = U.clamp01(d / 1.15f)
                 val base = b.vertexCount
                 b.color(depth(d00), 0f, 0f, 0f)
                 b.vertex(x, y, z1 - step, 0f, 1f, 0f, x * 0.25f, z * 0.25f)
@@ -274,7 +293,7 @@ class Scenery {
             }
             if (b.vertexCount > 60000) break
         }
-        water = if (b.isEmpty) null else b.build()
+        ice = if (b.isEmpty) null else b.build()
     }
 
     // ------------------------------------------------------------- plants
@@ -285,6 +304,7 @@ class Scenery {
         val rock = MeshBuilder()
         val detail = MeshBuilder()
         val flower = MeshBuilder()
+        val snow = MeshBuilder()
 
         val baseSeed = (ch.ix * 73856093) xor (ch.iz * 19349663)
         var tries: Int
@@ -292,15 +312,15 @@ class Scenery {
         // ---- trees ----
         for (t in ch.plants) {
             when (t.kind) {
-                0 -> pine(bark, leaf, t.x, t.y, t.z, t.scale, t.seed)
-                1 -> oak(bark, leaf, t.x, t.y, t.z, t.scale, t.seed)
-                2 -> birch(bark, leaf, t.x, t.y, t.z, t.scale, t.seed)
-                else -> blossom(bark, leaf, t.x, t.y, t.z, t.scale, t.seed)
+                0 -> snowPine(bark, leaf, snow, t.x, t.y, t.z, t.scale, t.seed)
+                1 -> bareOak(bark, snow, t.x, t.y, t.z, t.scale, t.seed)
+                2 -> bareBirch(bark, snow, t.x, t.y, t.z, t.scale, t.seed)
+                else -> snag(bark, snow, t.x, t.y, t.z, t.scale, t.seed)
             }
-            if (bark.vertexCount > 22000 || leaf.vertexCount > 40000) break
+            if (bark.vertexCount > 24000 || leaf.vertexCount > 40000 || snow.vertexCount > 34000) break
         }
 
-        // ---- bushes, boulders and fallen logs ----
+        // ---- boulders, buried bushes and fallen logs ----
         tries = 0
         while (tries < 150) {
             tries++
@@ -311,36 +331,41 @@ class Scenery {
             val y = Terrain.height(x, z)
             val roll = U.hash(s * 23 + 4)
             when {
-                roll < 0.34f -> {
+                roll < 0.30f -> {
+                    // a bush under its own weight of snow: the green barely shows
                     val rr = 0.34f + U.hash(s * 31) * 0.34f
                     val tone = 0.82f + U.hash(s * 37) * 0.3f
-                    leaf.color(0.40f * tone, 0.60f * tone, 0.30f * tone, 0.035f)
-                    leaf.blob(x, y + rr * 0.66f, z, rr, 4, 7, 1.1f)
-                    if (U.hash(s * 43) < 0.55f) {
-                        leaf.blob(x + rr * 0.8f, y + rr * 0.5f, z + rr * 0.35f, rr * 0.68f, 3, 6, 1.1f)
+                    leaf.color(0.34f * tone, 0.52f * tone, 0.44f * tone, 0.02f)
+                    leaf.blob(x, y + rr * 0.62f, z, rr, 4, 7, 1.1f)
+                    snow.color(1.02f, 1.04f, 1.10f, 0f)
+                    snow.blob(x, y + rr * 0.86f, z, rr * 0.86f, 3, 7, 1f)
+                }
+                roll < 0.60f -> {
+                    val rr = 0.28f + U.hash(s * 53) * 0.55f
+                    val tone = 0.78f + U.hash(s * 59) * 0.24f
+                    rock.color(tone, tone, tone * 1.06f, 0f)
+                    rock.blob(x, y + rr * 0.30f, z, rr, 3, 6, 0.8f)
+                    // a cap of snow on the top half
+                    snow.color(1.0f, 1.03f, 1.10f, 0f)
+                    snow.blob(x, y + rr * 0.48f, z, rr * 0.90f, 2, 6, 0.8f)
+                    if (rr > 0.55f) {
+                        rock.color(tone, tone, tone * 1.06f, 0f)
+                        rock.blob(x + rr * 0.7f, y + rr * 0.18f, z - rr * 0.4f, rr * 0.5f, 3, 6, 0.8f)
                     }
                 }
-                roll < 0.62f -> {
-                    val rr = 0.28f + U.hash(s * 53) * 0.55f
-                    val tone = 0.86f + U.hash(s * 59) * 0.26f
-                    rock.color(tone, tone, tone * 0.98f, 0f)
-                    rock.blob(x, y + rr * 0.34f, z, rr, 3, 6, 0.8f)
-                    if (rr > 0.55f) rock.blob(x + rr * 0.7f, y + rr * 0.2f, z - rr * 0.4f, rr * 0.5f, 3, 6, 0.8f)
-                }
                 roll < 0.72f && Terrain.steepness(x, z) < 0.3f -> {
-                    // a fallen log, mossy on top
                     val len = 1.4f + U.hash(s * 61) * 1.6f
                     val ang = U.hash(s * 67) * 3.1416f
                     bark.color(0.86f, 0.82f, 0.78f, 0f)
                     logAt(bark, x, y + 0.18f, z, len, 0.19f, ang)
-                    leaf.color(0.40f, 0.58f, 0.32f, 0.02f)
-                    leaf.blob(x, y + 0.34f, z, 0.16f, 3, 5, 1f)
+                    snow.color(1.0f, 1.03f, 1.10f, 0f)
+                    logAt(snow, x, y + 0.26f, z, len * 0.96f, 0.17f, ang)
                 }
             }
-            if (rock.vertexCount > 20000 || leaf.vertexCount > 44000) break
+            if (rock.vertexCount > 20000 || snow.vertexCount > 34000) break
         }
 
-        // ---- ground detail: tufts, ferns, reeds, lily pads ----
+        // ---- ground detail: dead tufts, reeds through the ice edge, twigs ----
         tries = 0
         while (tries < 430) {
             tries++
@@ -349,50 +374,47 @@ class Scenery {
             val z = ch.z0 + U.hash(s * 5 + 3) * CHUNK
             val h = Terrain.height(x, z)
             val ang = U.hash(s * 71) * 3.1416f
-            if (h < Terrain.WATER_Y - 0.65f) {
-                // deep water: a lily pad, only on the still pond
-                val dp = sqrt((x - World.POND_X) * (x - World.POND_X) + (z - World.POND_Z) * (z - World.POND_Z))
-                if (dp < Terrain.POND_R && U.hash(s * 79) < 0.16f) {
-                    val rr = 0.30f + U.hash(s * 83) * 0.22f
-                    detail.color(0.92f, 1f, 0.9f, 0f)
-                    flatSprite(detail, x, Terrain.WATER_Y + 0.035f, z, rr, ang, 0.5f, 0.5f)
+            if (h < Terrain.ICE_Y - 0.55f) continue
+            if (h < Terrain.ICE_Y + 0.30f) {
+                // frozen into the edge of the sheet: dry reeds, snapped short
+                if (U.hash(s * 89) < 0.42f) {
+                    detail.color(0.94f, 0.92f, 0.86f, 0.10f)
+                    detail.cross(
+                        x, Terrain.ICE_Y, z, 0.24f, 0.42f + U.hash(s * 97) * 0.34f, ang,
+                        0.10f, 0.5f, 0f, 0.5f, 0.5f
+                    )
                 }
                 continue
             }
-            if (h < Terrain.WATER_Y + 0.35f) {
-                // the water's edge: rushes
-                if (U.hash(s * 89) < 0.5f) {
-                    detail.color(0.88f, 1.0f, 0.78f, 0.14f)
-                    detail.cross(x, h, z, 0.26f, 0.55f + U.hash(s * 97) * 0.4f, ang, 0.14f, 0.5f, 0f, 0.5f, 0.5f)
-                }
-                continue
-            }
-            if (World.distToPath(x, z) < 0.9f) continue
-            if (World.inField(x, z, 0.4f)) continue
+            if (World.distToPath(x, z) < 0.8f) continue
+            if (World.inGlasshouse(x, z, 0.6f)) continue
             if (Terrain.steepness(x, z) > 0.72f) continue
-            val shade = 0.82f + U.hash(s * 101) * 0.36f
+            val shade = 0.86f + U.hash(s * 101) * 0.3f
             val roll = U.hash(s * 103)
-            if (roll < 0.14f) {
-                // a fern, in the greener shade
-                detail.color(0.86f * shade, 1.02f * shade, 0.78f * shade, 0.07f)
-                detail.cross(x, h, z, 0.30f, 0.42f + U.hash(s * 107) * 0.2f, ang, 0.07f, 0f, 0.5f, 0.5f, 0.5f)
-            } else if (roll < 0.24f) {
-                // wildflowers, in patches rather than sprinkled evenly
+            // most of the ground cover is buried; only the tallest stems show
+            if (roll < 0.10f) {
+                detail.color(0.90f * shade, 0.88f * shade, 0.84f * shade, 0.06f)
+                detail.cross(x, h, z, 0.28f, 0.34f + U.hash(s * 107) * 0.2f, ang, 0.06f, 0f, 0.5f, 0.5f, 0.5f)
+            } else if (roll < 0.17f) {
+                // winterberry, in patches rather than sprinkled evenly
                 val patch = U.noise(x * 0.22f, 5) * 0.5f + U.noise(z * 0.19f + 2f, 9) * 0.5f
-                if (patch > 0.52f) {
+                if (patch > 0.55f) {
                     val q = (U.hash(s * 109) * 4f).toInt().coerceIn(0, 3)
-                    flower.color(1f, 1f, 1f, 0.10f)
+                    flower.color(1f, 1f, 1f, 0.08f)
                     flower.cross(
-                        x, h, z, 0.17f, 0.32f + U.hash(s * 113) * 0.12f, ang, 0.10f,
+                        x, h, z, 0.18f, 0.34f + U.hash(s * 113) * 0.12f, ang, 0.08f,
                         (q % 2) * 0.5f, (q / 2) * 0.5f, 0.5f, 0.5f
                     )
                 }
-            } else {
-                val tall = if (U.hash(s * 127) < 0.25f) 1.5f else 1f
-                detail.color(0.74f * shade, 1.0f * shade, 0.56f * shade, 0.13f)
-                detail.cross(x, h - 0.03f, z, 0.22f * tall, (0.30f + U.hash(s * 131) * 0.22f) * tall, ang, 0.13f, 0f, 0f, 0.5f, 0.5f)
+            } else if (roll < 0.34f) {
+                val tall = if (U.hash(s * 127) < 0.3f) 1.4f else 1f
+                detail.color(0.92f * shade, 0.90f * shade, 0.86f * shade, 0.11f)
+                detail.cross(
+                    x, h - 0.03f, z, 0.20f * tall, (0.24f + U.hash(s * 131) * 0.20f) * tall, ang,
+                    0.11f, 0f, 0f, 0.5f, 0.5f
+                )
             }
-            if (detail.vertexCount > 34000 || flower.vertexCount > 20000) break
+            if (detail.vertexCount > 30000 || flower.vertexCount > 18000) break
         }
 
         ch.bark = if (bark.isEmpty) null else bark.build()
@@ -400,44 +422,43 @@ class Scenery {
         ch.rock = if (rock.isEmpty) null else rock.build()
         ch.detail = if (detail.isEmpty) null else detail.build()
         ch.flower = if (flower.isEmpty) null else flower.build()
+        ch.snow = if (snow.isEmpty) null else snow.build()
     }
 
-    /** True where a plant may take root: dry land, off the track, clear of home. */
+    /** True where a plant may take root: off the ice, off the track, clear of home. */
     private fun plantable(x: Float, z: Float, clearance: Float): Boolean {
         val h = Terrain.height(x, z)
-        if (h < Terrain.WATER_Y + 0.4f) return false
+        if (h < Terrain.ICE_Y + 0.35f) return false
         if (World.distToPath(x, z) < 1.5f + clearance * 0.4f) return false
-        if (World.inField(x, z, 2.0f)) return false
+        if (World.inGlasshouse(x, z, 2.4f)) return false
         if (Terrain.onBridge(x, z)) return false
+        if (Terrain.springWarmth(x, z) > 0.04f) return false
         for (s in World.solids) {
-            if (x > s.x0 - 3f && x < s.x1 + 3f && z > s.z0 - 3f && z < s.z1 + 3f) return false
+            if (x > s.x0 - 2.6f && x < s.x1 + 2.6f && z > s.z0 - 2.6f && z < s.z1 + 2.6f) return false
         }
         for (p in World.props) {
-            if (abs(p.x - x) < 2.0f && abs(p.z - z) < 2.0f) return false
+            if (abs(p.x - x) < 2.2f && abs(p.z - z) < 2.2f) return false
         }
         for (t in World.trees) {
             if (abs(t.x - x) < 2.2f && abs(t.z - z) < 2.2f) return false
         }
-        if (Terrain.onBridge(x, z)) return false
         for (f in World.forage) {
             if (abs(f.x - x) < 1.2f && abs(f.z - z) < 1.2f) return false
         }
-        // leave the fire circle, the bench and the front yard open
-        if (abs(x - World.FIRE_X) < 3f && abs(z - World.FIRE_Z) < 3f) return false
+        // leave the fire circle and the front yard open
+        if (abs(x - World.FIRE_X) < 3.2f && abs(z - World.FIRE_Z) < 3.2f) return false
         return true
     }
 
-    /** Which tree grows here: pines up high, blossom by the water, oak between. */
+    /** Which tree grows here: pines up high and everywhere, bare hardwood low down. */
     private fun pickSpecies(x: Float, z: Float, seed: Int): Int {
         val h = Terrain.height(x, z)
         val roll = U.hash(seed * 149 + 11)
-        val nearWater = Terrain.sandiness(x, z) > 0.25f
-        if (nearWater && roll < 0.35f) return 3
-        if (h > 3.5f) return if (roll < 0.78f) 0 else 2
+        if (h > 3.5f) return if (roll < 0.86f) 0 else 3
         return when {
-            roll < 0.34f -> 0
-            roll < 0.74f -> 1
-            roll < 0.90f -> 2
+            roll < 0.56f -> 0
+            roll < 0.78f -> 1
+            roll < 0.93f -> 2
             else -> 3
         }
     }
@@ -454,7 +475,6 @@ class Scenery {
             val a1 = (i + 1) * step
             val y0 = cos(a0) * r; val o0 = sin(a0) * r
             val y1 = cos(a1) * r; val o1 = sin(a1) * r
-            // offset perpendicular to the log's axis
             val px = -sin(ang); val pz = cos(ang)
             val v = b.vertexCount
             b.vertex(x - dx + px * o0, y + y0, z - dz + pz * o0, px * o0, y0, pz * o0, 0f, 0f)
@@ -465,69 +485,136 @@ class Scenery {
         }
     }
 
-    /** A sprite lying flat on the ground or the water — lily pads, puddles. */
-    private fun flatSprite(b: MeshBuilder, x: Float, y: Float, z: Float, r: Float, ang: Float, u0: Float, v0: Float) {
-        val c = cos(ang) * r
-        val s = sin(ang) * r
-        val v = b.vertexCount
-        b.vertex(x - c + s, y, z - s - c, 0f, 1f, 0f, u0, v0 + 0.5f)
-        b.vertex(x + c + s, y, z + s - c, 0f, 1f, 0f, u0 + 0.5f, v0 + 0.5f)
-        b.vertex(x + c - s, y, z + s + c, 0f, 1f, 0f, u0 + 0.5f, v0)
-        b.vertex(x - c - s, y, z - s + c, 0f, 1f, 0f, u0, v0)
-        b.tri(v, v + 2, v + 1); b.tri(v, v + 3, v + 2)
+    /** One tapering limb, aimed by two angles. Used to build a bare crown. */
+    private fun limb(
+        b: MeshBuilder, x: Float, y: Float, z: Float,
+        len: Float, r0: Float, r1: Float, yaw: Float, lean: Float
+    ): FloatArray {
+        val up = cos(lean)
+        val out = sin(lean)
+        val dx = cos(yaw) * out
+        val dz = sin(yaw) * out
+        val seg = 4
+        val step = (Math.PI * 2.0 / seg).toFloat()
+        // a frame perpendicular to the limb, near enough for a four-sided stick
+        val px = -sin(yaw); val pz = cos(yaw)
+        val qx = -cos(yaw) * up; val qy = out; val qz = -sin(yaw) * up
+        for (i in 0 until seg) {
+            val a0 = i * step
+            val a1 = (i + 1) * step
+            val c0 = cos(a0); val s0 = sin(a0)
+            val c1 = cos(a1); val s1 = sin(a1)
+            val v = b.vertexCount
+            fun put(t: Float, c: Float, s: Float, rr: Float, u: Float) {
+                val ox = (px * c + qx * s) * rr
+                val oy = (qy * s) * rr
+                val oz = (pz * c + qz * s) * rr
+                b.vertex(
+                    x + dx * len * t + ox, y + up * len * t + oy, z + dz * len * t + oz,
+                    ox, oy + 0.2f, oz, u, t * len
+                )
+            }
+            put(0f, c0, s0, r0, 0f)
+            put(0f, c1, s1, r0, r0 * 3f)
+            put(1f, c1, s1, r1, r0 * 3f)
+            put(1f, c0, s0, r1, 0f)
+            b.tri(v, v + 1, v + 2); b.tri(v, v + 2, v + 3)
+        }
+        return floatArrayOf(x + dx * len, y + up * len, z + dz * len)
     }
 
     // ------------------------------------------------------------- species
 
-    private fun pine(bark: MeshBuilder, leaf: MeshBuilder, x: Float, y: Float, z: Float, s: Float, seed: Int) {
+    /**
+     * A snow-laden pine. Four tiers of dark needles, each with a wider, flatter
+     * white cone sitting a hand's width above it, so the branch reads as bowed
+     * under the weight.
+     */
+    private fun snowPine(
+        bark: MeshBuilder, leaf: MeshBuilder, snow: MeshBuilder,
+        x: Float, y: Float, z: Float, s: Float, seed: Int
+    ) {
         val tone = 0.86f + U.hash(seed * 151) * 0.28f
-        bark.color(0.74f, 0.66f, 0.60f, 0f)
+        bark.color(0.72f, 0.66f, 0.62f, 0f)
         bark.cylinder(x, y - 0.1f, z, 0.20f * s, 0.13f * s, 1.5f * s, 6, 1f)
-        leaf.color(0.30f * tone, 0.52f * tone, 0.34f * tone, 0.03f)
         val tiers = 4
         for (k in 0 until tiers) {
             val cy = y + (0.8f + k * 0.95f) * s
             val cr = (1.5f - k * 0.28f) * s
             val chh = (1.7f - k * 0.16f) * s
+            leaf.color(0.34f * tone, 0.56f * tone, 0.48f * tone, 0.025f)
             leaf.cone(x, cy, z, cr, chh, 8, 0.9f)
+            // the load: a little wider at the base, much shallower
+            snow.color(1.0f, 1.03f, 1.10f, 0.01f)
+            snow.cone(x, cy + chh * 0.30f, z, cr * 0.94f, chh * 0.62f, 8, 0.8f)
+        }
+        // and a cap right on the leader
+        snow.color(1.02f, 1.05f, 1.12f, 0f)
+        snow.cone(x, y + (0.8f + tiers * 0.95f) * s - 0.2f * s, z, 0.42f * s, 0.7f * s, 6, 0.8f)
+    }
+
+    /** A bare hardwood: a short trunk and a fan of limbs, snow along the top. */
+    private fun bareOak(
+        bark: MeshBuilder, snow: MeshBuilder,
+        x: Float, y: Float, z: Float, s: Float, seed: Int
+    ) {
+        bark.color(0.62f, 0.56f, 0.52f, 0f)
+        bark.cylinder(x, y - 0.1f, z, 0.26f * s, 0.18f * s, 1.7f * s, 6, 1f)
+        val top = y + 1.6f * s
+        val n = 4 + (U.hash(seed * 157) * 2f).toInt()
+        for (i in 0 until n) {
+            val yaw = (i.toFloat() / n) * 6.2832f + U.hash(seed * 163 + i) * 0.8f
+            val lean = 0.42f + U.hash(seed * 167 + i) * 0.36f
+            bark.color(0.60f, 0.55f, 0.52f, 0.012f)
+            val tip = limb(bark, x, top, z, 1.5f * s, 0.14f * s, 0.07f * s, yaw, lean)
+            // the same limb again, a little thinner and a little higher: the
+            // snow lying along the top of the branch
+            snow.color(1.0f, 1.03f, 1.10f, 0.012f)
+            limb(snow, x, top + 0.06f * s, z, 1.42f * s, 0.10f * s, 0.05f * s, yaw, lean)
+            // a couple of forks off each limb
+            for (k in 0 until 2) {
+                val yaw2 = yaw + (if (k == 0) 0.55f else -0.5f) + U.hash(seed * 173 + i * 3 + k) * 0.3f
+                val lean2 = lean * 0.6f + 0.12f
+                bark.color(0.58f, 0.54f, 0.51f, 0.03f)
+                limb(bark, tip[0], tip[1], tip[2], 1.0f * s, 0.06f * s, 0.02f * s, yaw2, lean2)
+            }
         }
     }
 
-    private fun oak(bark: MeshBuilder, leaf: MeshBuilder, x: Float, y: Float, z: Float, s: Float, seed: Int) {
-        val tone = 0.88f + U.hash(seed * 157) * 0.3f
-        val autumn = U.hash(seed * 163) < 0.16f
-        bark.color(0.80f, 0.72f, 0.62f, 0f)
-        bark.cylinder(x, y - 0.1f, z, 0.24f * s, 0.17f * s, 1.9f * s, 6, 1f)
-        // a couple of limbs, so the canopy has something holding it up
-        bark.cylinder(x, y + 1.4f * s, z, 0.09f * s, 0.06f * s, 0.9f * s, 5, 1f)
-        if (autumn) leaf.color(0.98f * tone, 0.62f * tone, 0.26f * tone, 0.055f)
-        else leaf.color(0.46f * tone, 0.74f * tone, 0.34f * tone, 0.055f)
-        leaf.blob(x, y + 2.9f * s, z, 1.55f * s, 4, 8, 0.8f)
-        leaf.blob(x - 1.0f * s, y + 2.35f * s, z + 0.45f * s, 0.95f * s, 3, 7, 0.8f)
-        leaf.blob(x + 1.05f * s, y + 2.5f * s, z - 0.4f * s, 0.9f * s, 3, 7, 0.8f)
-        leaf.blob(x + 0.2f * s, y + 3.7f * s, z + 0.2f * s, 0.8f * s, 3, 7, 0.8f)
-    }
-
-    private fun birch(bark: MeshBuilder, leaf: MeshBuilder, x: Float, y: Float, z: Float, s: Float, seed: Int) {
-        val tone = 0.9f + U.hash(seed * 167) * 0.26f
+    /** A birch: pale, thin, upright, almost nothing left on it. */
+    private fun bareBirch(
+        bark: MeshBuilder, snow: MeshBuilder,
+        x: Float, y: Float, z: Float, s: Float, seed: Int
+    ) {
         // pale tint on the shared bark tile: birch without a second draw call
-        bark.color(1.34f, 1.28f, 1.18f, 0f)
-        bark.cylinder(x, y - 0.1f, z, 0.14f * s, 0.10f * s, 2.4f * s, 6, 1f)
-        leaf.color(0.62f * tone, 0.84f * tone, 0.42f * tone, 0.075f)
-        leaf.blob(x, y + 3.0f * s, z, 1.05f * s, 4, 7, 0.9f)
-        leaf.blob(x - 0.55f * s, y + 2.5f * s, z + 0.3f * s, 0.72f * s, 3, 6, 0.9f)
-        leaf.blob(x + 0.5f * s, y + 3.5f * s, z - 0.25f * s, 0.66f * s, 3, 6, 0.9f)
+        bark.color(1.42f, 1.40f, 1.36f, 0f)
+        bark.cylinder(x, y - 0.1f, z, 0.14f * s, 0.09f * s, 2.6f * s, 6, 1f)
+        val top = y + 2.4f * s
+        val n = 3 + (U.hash(seed * 179) * 2f).toInt()
+        for (i in 0 until n) {
+            val yaw = (i.toFloat() / n) * 6.2832f + U.hash(seed * 181 + i) * 1.1f
+            val lean = 0.30f + U.hash(seed * 191 + i) * 0.30f
+            bark.color(1.30f, 1.28f, 1.26f, 0.03f)
+            val tip = limb(bark, x, top - U.hash(seed * 193 + i) * 0.8f * s, z, 1.2f * s, 0.06f * s, 0.02f * s, yaw, lean)
+            snow.color(1.0f, 1.03f, 1.10f, 0.02f)
+            snow.blob(tip[0], tip[1], tip[2], 0.09f * s, 2, 5, 1f)
+        }
     }
 
-    private fun blossom(bark: MeshBuilder, leaf: MeshBuilder, x: Float, y: Float, z: Float, s: Float, seed: Int) {
-        val pink = U.hash(seed * 173) < 0.6f
-        bark.color(0.70f, 0.60f, 0.56f, 0f)
-        bark.cylinder(x, y - 0.1f, z, 0.19f * s, 0.13f * s, 1.5f * s, 6, 1f)
-        bark.cylinder(x + 0.25f * s, y + 1.2f * s, z, 0.08f * s, 0.05f * s, 0.8f * s, 5, 1f)
-        if (pink) leaf.color(1.15f, 0.72f, 0.82f, 0.07f)
-        else leaf.color(1.12f, 1.02f, 0.86f, 0.07f)
-        leaf.blob(x, y + 2.3f * s, z, 1.25f * s, 4, 8, 0.85f)
-        leaf.blob(x - 0.85f * s, y + 1.95f * s, z + 0.35f * s, 0.8f * s, 3, 7, 0.85f)
-        leaf.blob(x + 0.8f * s, y + 2.1f * s, z - 0.3f * s, 0.72f * s, 3, 7, 0.85f)
+    /** A dead snag: a broken trunk with two stubs and a hat of snow. */
+    private fun snag(
+        bark: MeshBuilder, snow: MeshBuilder,
+        x: Float, y: Float, z: Float, s: Float, seed: Int
+    ) {
+        val h = 1.6f + U.hash(seed * 197) * 1.4f
+        bark.color(0.54f, 0.50f, 0.48f, 0f)
+        bark.cylinder(x, y - 0.1f, z, 0.28f * s, 0.20f * s, h * s, 6, 1f)
+        for (k in 0 until 2) {
+            val yaw = U.hash(seed * 199 + k) * 6.2832f
+            bark.color(0.52f, 0.49f, 0.47f, 0.015f)
+            limb(bark, x, y + h * s * 0.62f, z, 0.8f * s, 0.09f * s, 0.04f * s, yaw, 0.9f)
+        }
+        snow.color(1.0f, 1.03f, 1.10f, 0f)
+        snow.blob(x, y + h * s, z, 0.24f * s, 2, 6, 1f)
     }
 }

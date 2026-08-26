@@ -23,6 +23,16 @@ object Sfx {
     const val PLANT = 11
     const val BITE = 12
     const val TILL = 13
+    const val STEP = 14
+    const val DOOR = 15
+    const val FIRE = 16
+    const val COOK = 17
+    const val CRAFT = 18
+    const val SIP = 19
+    const val PURR = 20
+    const val BIRD = 21
+    const val DRILL = 22
+    const val SLED = 23
 }
 
 /**
@@ -60,6 +70,11 @@ class Audio {
     /** 0 = day, 1 = night. Shifts the generative music down an octave. */
     @Volatile var mood = 0f
     @Volatile var muted = false
+    /** Indoors the music warms up and the wind is shut outside. */
+    @Volatile var indoors = false
+    /** How hard it is blowing, 0..1. Drives the wind bed. */
+    @Volatile var wind = 0.2f
+    private var windAcc = 0
 
     private val lock = Any()
     private var rngState = 0x2F6E2B1
@@ -200,8 +215,21 @@ class Audio {
     // -------------------------------------------------------------- music
 
     private fun scheduleMusic() {
+        // The wind is part of the score, not a sound effect: a slow bed of
+        // filtered noise that rises with the weather and drops away the moment
+        // you shut the cabin door behind you.
+        windAcc++
+        if (windAcc % 2 == 0 && !muted) {
+            val w = if (indoors) wind * 0.22f else wind
+            if (w > 0.03f) {
+                voice(150f + rnd() * 260f, 0.05f + w * 0.13f, 0.9f, 0.55f, W_NOISE, true)
+                if (w > 0.4f && rnd() < 0.5f) {
+                    voice(90f + rnd() * 120f, 0.04f + w * 0.10f, 1.4f, 0.42f, W_NOISE, true)
+                }
+            }
+        }
         if (musicVol <= 0.001f || muted) { beatIndex++; return }
-        val octave = if (mood > 0.5f) 0.5f else 1f
+        val octave = if (mood > 0.5f && !indoors) 0.5f else 1f
         val b = beatIndex % 16
 
         // soft pad on the downbeat of each bar
@@ -288,6 +316,58 @@ class Audio {
                     voice(196f, 0.22f, 0.35f, 1.3f, W_SINE, false)
                     voice(261.63f, 0.18f, 0.5f, 1.2f, W_SINE, false)
                     voice(392f, 0.14f, 0.7f, 1.1f, W_SINE, false)
+                }
+                // a boot going through the crust: a short, dry, high crunch
+                Sfx.STEP -> {
+                    voice(1400f + rnd() * 700f, 0.09f, 0.001f, 60f, W_NOISE, false)
+                    voice(320f, 0.05f, 0.002f, 44f, W_NOISE, false)
+                }
+                Sfx.DOOR -> {
+                    voice(180f, 0.22f, 0.02f, 9f, W_TRI, false, -0.3f)
+                    voice(90f, 0.20f, 0.10f, 7f, W_SINE, false)
+                    voice(2200f, 0.06f, 0.004f, 34f, W_NOISE, false)
+                }
+                // the fire catching: a rush of noise that settles into a crackle
+                Sfx.FIRE -> {
+                    voice(700f, 0.16f, 0.10f, 3.2f, W_NOISE, false)
+                    voice(300f, 0.12f, 0.20f, 2.4f, W_NOISE, false)
+                    voice(140f, 0.14f, 0.06f, 5f, W_SINE, false, 0.2f)
+                }
+                Sfx.COOK -> {
+                    voice(392f, 0.20f, 0.01f, 8f, W_TRI, false)
+                    voice(523.25f, 0.20f, 0.12f, 7f, W_TRI, false)
+                    voice(659.25f, 0.18f, 0.24f, 6f, W_SINE, false)
+                    voice(900f, 0.10f, 0.05f, 4f, W_NOISE, false)
+                }
+                Sfx.CRAFT -> {
+                    voice(260f, 0.26f, 0.002f, 26f, W_NOISE, false)
+                    voice(180f, 0.22f, 0.09f, 22f, W_TRI, false, -0.4f)
+                    voice(520f, 0.14f, 0.18f, 16f, W_SINE, false)
+                }
+                // a sip: warm, round, and over almost before it starts
+                Sfx.SIP -> {
+                    voice(330f, 0.18f, 0.05f, 7f, W_SINE, false, 0.35f)
+                    voice(495f, 0.12f, 0.12f, 6f, W_SINE, false)
+                }
+                Sfx.PURR -> {
+                    voice(58f, 0.30f, 0.25f, 1.4f, W_TRI, false)
+                    voice(87f, 0.18f, 0.30f, 1.3f, W_SINE, false)
+                }
+                Sfx.BIRD -> {
+                    voice(2400f, 0.14f, 0.004f, 26f, W_SINE, false, -0.8f)
+                    voice(2000f, 0.13f, 0.09f, 24f, W_SINE, false, -0.6f)
+                    voice(2600f, 0.12f, 0.17f, 22f, W_SINE, false, -0.9f)
+                }
+                // the auger going through a foot of ice
+                Sfx.DRILL -> {
+                    voice(220f, 0.20f, 0.14f, 3.0f, W_NOISE, false)
+                    voice(160f, 0.16f, 0.02f, 3.6f, W_TRI, false, 0.5f)
+                    voice(900f, 0.10f, 0.30f, 5f, W_NOISE, false)
+                }
+                Sfx.SLED -> {
+                    voice(400f, 0.20f, 0.05f, 1.6f, W_NOISE, false)
+                    voice(240f, 0.16f, 0.10f, 1.4f, W_SINE, false, -0.35f)
+                    voice(1200f, 0.10f, 0.4f, 2.2f, W_NOISE, false)
                 }
             }
         }

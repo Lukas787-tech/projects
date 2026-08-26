@@ -1,4 +1,4 @@
-name: Build Riverside Hollow APK
+name: Build Frostfall Hollow APK
 
 on:
   push:
@@ -56,15 +56,15 @@ jobs:
           mkdir -p out
           APK=$(find cozy-cabin/app/build/outputs/apk/release -name '*.apk' | head -1)
           echo "Found: $APK"
-          cp "$APK" out/RiversideHollow.apk
+          cp "$APK" out/FrostfallHollow.apk
           ls -la out
-          echo "size=$(du -h out/RiversideHollow.apk | cut -f1)" >> "$GITHUB_OUTPUT"
+          echo "size=$(du -h out/FrostfallHollow.apk | cut -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RiversideHollow-apk
-          path: out/RiversideHollow.apk
+          name: FrostfallHollow-apk
+          path: out/FrostfallHollow.apk
           if-no-files-found: error
 
       - name: Publish release
@@ -73,11 +73,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APK_SIZE: ${{ steps.stage.outputs.size }}
         run: |
-          TAG="riverside-hollow-latest"
+          TAG="frostfall-hollow-latest"
           {
-            echo "Cosy side-view farming game for Android."
+            echo "A cosy winter survival game for Android."
             echo ""
-            echo "**Install:** download \`RiversideHollow.apk\` below, open it on your phone,"
+            echo "**Install:** download \`FrostfallHollow.apk\` below, open it on your phone,"
             echo "and allow installs from your browser or files app when Android asks."
             echo ""
             echo "Requires Android 7.0 (API 24) or newer. APK size: ${APK_SIZE}."
@@ -85,8 +85,8 @@ jobs:
             echo "Built from commit \`${GITHUB_SHA}\`."
           } > notes.md
           gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" out/RiversideHollow.apk \
-            --title "Riverside Hollow (latest build)" \
+          gh release create "$TAG" out/FrostfallHollow.apk \
+            --title "Frostfall Hollow (latest build)" \
             --target "$GITHUB_SHA" \
             --notes-file notes.md
 
@@ -116,7 +116,7 @@ jobs:
       - name: Download APK
         uses: actions/download-artifact@v4
         with:
-          name: RiversideHollow-apk
+          name: FrostfallHollow-apk
           path: out
 
       - name: Run the game on an emulator

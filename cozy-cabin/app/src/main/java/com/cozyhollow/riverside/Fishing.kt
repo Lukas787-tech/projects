@@ -6,18 +6,18 @@ import kotlin.math.sin
 
 object FPhase {
     const val IDLE = 0
-    const val CAST = 1
+    const val CUT = 1
     const val WAIT = 2
     const val CAUGHT = 3
 }
 
 /**
- * Fishing, without the fight.
+ * Ice fishing, without the fight.
  *
- * You cast, the float sits out there and turns slow circles on the water, and
- * after a little while something takes it. There is no timing window and no
- * way to lose the fish — the waiting *is* the activity. Sit and watch the
- * ripples; the game will tell you when it lands.
+ * You cut a hole, drop a line into the dark, and stand over it in the cold
+ * until something comes up out of the deep. There is no timing window and no
+ * way to lose the fish — the waiting *is* the activity. Watch the tip of the
+ * jig; the game will tell you when it lands.
  */
 class Fishing {
 
@@ -42,11 +42,16 @@ class Fishing {
     fun cast(targetX: Float, targetZ: Float, rodLevel: Int, weather: Int) {
         bobX = targetX
         bobZ = targetZ
-        phase = FPhase.CAST
+        phase = FPhase.CUT
         t = 0f
         val speedUp = 1f - (rodLevel - 1) * 0.12f
-        val rainBonus = if (weather == Weather.RAIN) 0.75f else 1f
-        waitFor = (2.6f + U.hash((targetX * 37f + targetZ * 11f).toInt()) * 4.2f) * speedUp * rainBonus
+        // fish come up to the hole hardest when the sky is closed in
+        val stormBonus = when (weather) {
+            Weather.BLIZZARD -> 0.62f
+            Weather.SNOW -> 0.78f
+            else -> 1f
+        }
+        waitFor = (3.0f + U.hash((targetX * 37f + targetZ * 11f).toInt()) * 4.6f) * speedUp * stormBonus
     }
 
     /** Picks what came along, weighted by the clock and the weather. */
@@ -57,7 +62,8 @@ class Fishing {
             val f = Catalog.fish[i]
             if (minutes < f.fromMin || minutes > f.toMin) { weights[i] = 0f; continue }
             var w = f.weight
-            if (weather == Weather.RAIN) w *= (1f + f.rainBonus)
+            if (weather == Weather.SNOW) w *= (1f + f.stormBonus * 0.5f)
+            if (weather == Weather.BLIZZARD) w *= (1f + f.stormBonus)
             if (f.weight < 15f) w *= (1f + (rodLevel - 1) * 0.6f)
             weights[i] = w
             total += w
@@ -78,8 +84,8 @@ class Fishing {
     fun update(dt: Float, minutes: Float, weather: Int, rodLevel: Int): Int {
         t += dt
         when (phase) {
-            FPhase.CAST -> {
-                if (t >= 0.6f) { phase = FPhase.WAIT; t = 0f; return Sfx.WATER }
+            FPhase.CUT -> {
+                if (t >= 0.9f) { phase = FPhase.WAIT; t = 0f; return Sfx.WATER }
             }
             FPhase.WAIT -> {
                 if (t >= waitFor) {
@@ -109,12 +115,12 @@ class Fishing {
     /** One quiet line, low on the screen. Nothing to press, nothing to miss. */
     fun drawUi(c: Canvas, vw: Float, vh: Float, timeMs: Float) {
         val msg = when (phase) {
-            FPhase.CAST -> "..."
+            FPhase.CUT -> "Cutting through..."
             FPhase.WAIT -> {
                 val dots = ((timeMs * 0.002f).toInt() % 3) + 1
-                "The float drifts" + ".".repeat(dots)
+                "The line hangs in the dark" + ".".repeat(dots)
             }
-            FPhase.CAUGHT -> "Something's on the line!"
+            FPhase.CAUGHT -> "Something took it!"
             else -> return
         }
         val alpha = if (phase == FPhase.CAUGHT) 1f else 0.85f
