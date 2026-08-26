@@ -125,9 +125,8 @@ sleep 2
 # West out of the field first, then straight up the valley: two runs of
 # diagonals put him at the pond one time and past the stall into the woods the
 # next, and a diagonal's drift compounds over six swipes.
-for _ in 1 2 3 4; do walk_left 2000; sleep 1; done
 for _ in 1 2 3 4 5 6; do walk_far 2000; sleep 1; done
-for _ in 1 2 3 4; do walk_far 1000; sleep 1; act; done
+for _ in 1 2 3 4; do walk_left 1500; sleep 1; act; done
 for _ in 1 2 3; do walk_left 800; sleep 1; act; done
 sleep 2
 shot 11-shop-seeds.png
