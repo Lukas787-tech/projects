@@ -329,25 +329,40 @@ class Screens(private val g: Game) {
 
     // ----------------------------------------------------------------- shop
 
+    /**
+     * The market's box and the three lines it hangs everything off: the tab
+     * row, where a tab's contents start, and the button row along the bottom.
+     * Cards have to stop above that row - they used to run through it and, on
+     * the seeds and home tabs, off the bottom of the screen as well.
+     */
+    private fun shopRect(): FloatArray {
+        val w = min(g.vw - 90f, 1020f)
+        return floatArrayOf((g.vw - w) / 2f, 40f, w, g.vh - 84f)
+    }
+
+    private val shopTopOff = 120f
+    private val seedCardH = 96f
+    private val toolCardH = 206f
+    private fun shopButtonY(p: FloatArray) = p[1] + p[3] - 58f
+
     private fun layoutShop() {
-        val p = panelRect()
+        val p = shopRect()
         val tabW = (p[2] - 80f) / 4f
         for (i in 0 until 4) {
             b(T.TAB0 + i, arrayOf("Seeds", "Tools", "Sell", "Home")[i], if (shopTab == i) 1 else 2)
-                .set(p[0] + 40f + i * tabW, p[1] + 58f, tabW - 10f, 52f)
+                .set(p[0] + 40f + i * tabW, p[1] + 50f, tabW - 10f, 44f)
         }
-        val top = p[1] + 128f
+        val top = p[1] + shopTopOff
         when (shopTab) {
             0 -> {
                 val crops = availableCrops()
                 val cols = 3
                 val cw = (p[2] - 100f - (cols - 1) * 18f) / cols
-                val ch = 172f
                 for (i in crops.indices) {
                     val cx = p[0] + 50f + (i % cols) * (cw + 18f)
-                    val cy = top + (i / cols) * (ch + 16f)
-                    b(T.BUY1 + i, "x1", 1).set(cx + 10f, cy + ch - 54f, cw / 2f - 16f, 44f)
-                    b(T.BUY5 + i, "x5").set(cx + cw / 2f + 4f, cy + ch - 54f, cw / 2f - 16f, 44f)
+                    val cy = top + (i / cols) * (seedCardH + 12f)
+                    b(T.BUY1 + i, "x1", 1).set(cx + 10f, cy + seedCardH - 42f, cw / 2f - 16f, 38f)
+                    b(T.BUY5 + i, "x5").set(cx + cw / 2f + 4f, cy + seedCardH - 42f, cw / 2f - 16f, 38f)
                 }
             }
             1 -> {
@@ -356,8 +371,17 @@ class Screens(private val g: Game) {
                 for (i in 0 until 3) {
                     val cx = p[0] + 50f + i * (cw + 18f)
                     val lvl = toolLevel(i)
-                    val btn = b(T.TOOL + i, if (lvl >= 3) "Maxed" else "Upgrade", if (lvl >= 3) 2 else 1)
-                    btn.set(cx + 16f, top + 196f, cw - 32f, 50f)
+                    val cost = when (i) {
+                        0 -> ToolUp.rodCost(lvl + 1); 1 -> ToolUp.canCost(lvl + 1); else -> ToolUp.axeCost(lvl + 1)
+                    }
+                    // the price rides on the button, which saves a row the card
+                    // no longer has the height for
+                    val btn = b(
+                        T.TOOL + i,
+                        if (lvl >= 3) "Maxed" else "Upgrade  ${U.formatCoins(cost)}",
+                        if (lvl >= 3) 2 else 1
+                    )
+                    btn.set(cx + 16f, top + toolCardH - 44f, cw - 32f, 44f)
                     btn.enabled = lvl < 3
                 }
             }
@@ -376,13 +400,13 @@ class Screens(private val g: Game) {
                     if (i >= cols * 3) break
                     b(T.ITEM + i).set(sx + (i % cols) * (cell + 12f), top + 26f + (i / cols) * (cell + 14f), cell, cell)
                 }
-                b(T.SELL_ALL, "Sell Everything", 1).set(g.vw / 2f - 200f, p[1] + p[3] - 96f, 250f, 58f)
+                b(T.SELL_ALL, "Sell Everything", 1).set(g.vw / 2f - 200f, shopButtonY(p), 250f, 52f)
             }
             3 -> {
                 val next = Tiers.next(g.st.cabinLevel)
                 if (next != null) {
                     val btn = b(T.UPGRADE, "Build it", 1)
-                    btn.set(g.vw / 2f - 130f, p[1] + p[3] - 100f, 260f, 62f)
+                    btn.set(g.vw / 2f - 130f, shopButtonY(p), 260f, 52f)
                     btn.enabled = g.st.coins >= next.coins &&
                         g.st.count("wood") >= next.wood && g.st.count("stone") >= next.stone
                 }
@@ -390,7 +414,7 @@ class Screens(private val g: Game) {
         }
         b(T.BACK, "Close", 2).set(
             if (shopTab == 2 || shopTab == 3) g.vw / 2f + 66f else g.vw / 2f - 90f,
-            p[1] + p[3] - 96f, 180f, 58f
+            shopButtonY(p), 180f, 52f
         )
     }
 
@@ -400,40 +424,58 @@ class Screens(private val g: Game) {
 
     // -------------------------------------------------------------- journal
 
+    /**
+     * The journal gets a slightly taller box than the other panels: a tab row,
+     * a count line and two rows of cards all have to fit between the ribbon
+     * and the Close button.
+     */
+    private fun journalRect(): FloatArray {
+        val w = min(g.vw - 90f, 1020f)
+        return floatArrayOf((g.vw - w) / 2f, 40f, w, g.vh - 84f)
+    }
+
     private fun layoutJournal() {
-        val p = panelRect()
+        val p = journalRect()
         val tabW = (p[2] - 80f) / 3f
         for (i in 0 until 3) {
             b(T.TAB0 + i, arrayOf("Fish", "Crops", "Story")[i], if (jTab == i) 1 else 2)
-                .set(p[0] + 40f + i * tabW, p[1] + 58f, tabW - 10f, 52f)
+                .set(p[0] + 40f + i * tabW, p[1] + 50f, tabW - 10f, 46f)
         }
-        b(T.BACK, "Close", 2).set(g.vw / 2f - 90f, p[1] + p[3] - 96f, 180f, 58f)
+        b(T.BACK, "Close", 2).set(g.vw / 2f - 90f, p[1] + p[3] - 64f, 180f, 52f)
     }
 
     // ------------------------------------------------------------- settings
+
+    /**
+     * Row centres for the settings page, measured down from the top of the
+     * panel. Six rows and a button row have to sit inside 384 units; the old
+     * spacing put the last two toggles below the bottom of the screen and ran
+     * the buttons through the graphics row.
+     */
+    private val setRows = floatArrayOf(60f, 104f, 150f, 198f, 238f, 278f)
 
     private fun layoutSettings() {
         val p = panelRect()
         val lx = p[0] + 80f
         val rw = p[2] - 300f
-        b(T.SLIDER_MUSIC).set(lx + 170f, p[1] + 112f - 26f, rw, 52f)
-        b(T.SLIDER_SFX).set(lx + 170f, p[1] + 182f - 26f, rw, 52f)
-        val qy = p[1] + 254f
-        val qw = (rw) / 3f - 10f
+        b(T.SLIDER_MUSIC).set(lx + 170f, p[1] + setRows[0] - 26f, rw, 52f)
+        b(T.SLIDER_SFX).set(lx + 170f, p[1] + setRows[1] - 26f, rw, 52f)
+        val qw = rw / 3f - 10f
         for (i in 0 until 3) {
             b(T.QUALITY + i, arrayOf("Cosy", "Balanced", "Lush")[i], if (g.settings.quality == i) 1 else 2)
-                .set(lx + 170f + i * (qw + 14f), qy, qw, 52f)
+                .set(lx + 170f + i * (qw + 14f), p[1] + setRows[2] - 22f, qw, 44f)
         }
-        b(T.TOG_FPS).set(lx + 170f, p[1] + 330f - 22f, 68f, 44f)
-        b(T.TOG_HAPTIC).set(lx + 170f, p[1] + 386f - 22f, 68f, 44f)
-        b(T.TOG_SOUTH).set(lx + 170f, p[1] + 442f - 22f, 68f, 44f)
+        b(T.TOG_FPS).set(lx + 170f, p[1] + setRows[3] - 22f, 68f, 44f)
+        b(T.TOG_HAPTIC).set(lx + 170f, p[1] + setRows[4] - 22f, 68f, 44f)
+        b(T.TOG_SOUTH).set(lx + 170f, p[1] + setRows[5] - 22f, 68f, 44f)
+        val by = p[1] + p[3] - 64f
         if (confirmReset) {
-            b(T.RESET_YES, "Erase", 4).set(g.vw / 2f - 210f, p[1] + p[3] - 96f, 180f, 58f)
-            b(T.RESET_NO, "Keep", 2).set(g.vw / 2f - 20f, p[1] + p[3] - 96f, 180f, 58f)
+            b(T.RESET_YES, "Erase", 4).set(g.vw / 2f - 210f, by, 180f, 52f)
+            b(T.RESET_NO, "Keep", 2).set(g.vw / 2f - 20f, by, 180f, 52f)
         } else {
-            b(T.RESET, "Erase Save", 4).set(p[0] + 60f, p[1] + p[3] - 96f, 220f, 58f)
+            b(T.RESET, "Erase Save", 4).set(p[0] + 60f, by, 220f, 52f)
         }
-        b(T.BACK, "Back", 2).set(p[0] + p[2] - 220f, p[1] + p[3] - 96f, 160f, 58f)
+        b(T.BACK, "Back", 2).set(p[0] + p[2] - 220f, by, 160f, 52f)
     }
 
     /**
@@ -604,13 +646,14 @@ class Screens(private val g: Game) {
         layout()
         Ui.scrim(c, g.vw, g.vh, 0.46f * U.clamp01(g.modeT * 2f))
         beginPop(c)
-        val p = panelRect()
+        val p = shopRect()
         Ui.panel(c, p[0], p[1], p[2], p[3])
         Ui.ribbon(c, g.vw / 2f, p[1] - 18f, 420f, "Pip's Market")
-        Ui.coin(c, p[0] + p[2] - 116f, p[1] + 74f, 15f)
-        Ui.text(c, U.formatCoins(g.st.coins), p[0] + p[2] - 96f, p[1] + 82f, 24f, Pal.goldDeep, Paint.Align.LEFT)
+        // above the tabs, not across them
+        Ui.coin(c, p[0] + p[2] - 116f, p[1] + 26f, 15f)
+        Ui.text(c, U.formatCoins(g.st.coins), p[0] + p[2] - 96f, p[1] + 34f, 24f, Pal.goldDeep, Paint.Align.LEFT)
 
-        val top = p[1] + 128f
+        val top = p[1] + shopTopOff
         when (shopTab) {
             0 -> drawSeedShop(c, p, top)
             1 -> drawToolShop(c, p, top)
@@ -625,23 +668,23 @@ class Screens(private val g: Game) {
         val crops = availableCrops()
         val cols = 3
         val cw = (p[2] - 100f - (cols - 1) * 18f) / cols
-        val ch = 172f
+        val ch = seedCardH
         for (i in crops.indices) {
             val crop = crops[i]
             val cx = p[0] + 50f + (i % cols) * (cw + 18f)
-            val cy = top + (i / cols) * (ch + 16f)
+            val cy = top + (i / cols) * (ch + 12f)
             Ui.tile(c, cx, cy, cw, ch, false)
-            IconDraw.draw(c, Catalog.item(crop.seedId), cx + 48f, cy + 46f, 56f, Ui.txt)
-            Ui.text(c, crop.name, cx + 84f, cy + 38f, 22f, Pal.ink, Paint.Align.LEFT, Ui.display)
-            Ui.text(c, "${crop.days} days${if (crop.regrow) " - regrows" else ""}", cx + 84f, cy + 62f, 16f,
+            IconDraw.draw(c, Catalog.item(crop.seedId), cx + 34f, cy + 30f, 42f, Ui.txt)
+            Ui.text(c, crop.name, cx + 62f, cy + 24f, 19f, Pal.ink, Paint.Align.LEFT, Ui.display)
+            Ui.text(c, "${crop.days} days${if (crop.regrow) " - regrows" else ""}", cx + 62f, cy + 42f, 14f,
                 Pal.inkSoft, Paint.Align.LEFT)
-            Ui.coin(c, cx + 22f, cy + 96f, 12f)
-            Ui.text(c, "${crop.seedCost}", cx + 38f, cy + 102f, 21f, Pal.goldDeep, Paint.Align.LEFT)
-            Ui.text(c, "sells ${Catalog.price(crop.produceId)}", cx + cw - 20f, cy + 102f, 17f,
+            Ui.coin(c, cx + cw - 78f, cy + 22f, 11f)
+            Ui.text(c, "${crop.seedCost}", cx + cw - 62f, cy + 28f, 19f, Pal.goldDeep, Paint.Align.LEFT)
+            Ui.text(c, "sells ${Catalog.price(crop.produceId)}", cx + cw - 16f, cy + 46f, 14f,
                 Pal.leafDeep, Paint.Align.RIGHT)
         }
         if (Catalog.crops.size > crops.size) {
-            Ui.text(c, "Upgrade your home to unlock finer seeds.", g.vw / 2f, p[1] + p[3] - 118f, 19f,
+            Ui.text(c, "Upgrade your home to unlock finer seeds.", g.vw / 2f, p[1] + 110f, 17f,
                 Pal.inkSoft, Paint.Align.CENTER)
         }
     }
@@ -649,7 +692,7 @@ class Screens(private val g: Game) {
     private fun drawToolShop(c: Canvas, p: FloatArray, top: Float) {
         val cols = 3
         val cw = (p[2] - 100f - (cols - 1) * 18f) / cols
-        val ch = 264f
+        val ch = toolCardH
         val names = arrayOf("Fishing Rod", "Watering Can", "Axe")
         val descs = arrayOf(
             "Bites come faster and rare fish visit more often.",
@@ -659,32 +702,24 @@ class Screens(private val g: Game) {
         for (i in 0 until 3) {
             val cx = p[0] + 50f + i * (cw + 18f)
             Ui.tile(c, cx, top, cw, ch, false)
-            Ui.text(c, names[i], cx + cw / 2f, top + 42f, 24f, Pal.ink, Paint.Align.CENTER, Ui.display)
-            toolGlyph(c, cx + cw / 2f, top + 92f, i)
+            Ui.text(c, names[i], cx + cw / 2f, top + 30f, 22f, Pal.ink, Paint.Align.CENTER, Ui.display)
+            toolGlyph(c, cx + cw / 2f, top + 70f, i)
             val lvl = toolLevel(i)
             for (k in 0 until 3) {
                 val px = cx + cw / 2f - 26f + k * 26f
                 Ui.txt.style = Paint.Style.FILL
                 Ui.txt.color = if (k < lvl) Pal.gold else U.withAlpha(Pal.inkSoft, 0.3f)
-                c.drawCircle(px, top + 134f, 8f, Ui.txt)
+                c.drawCircle(px, top + 104f, 7f, Ui.txt)
             }
             val label = when (i) {
                 0 -> ToolUp.rodName(lvl); 1 -> ToolUp.canName(lvl); else -> ToolUp.axeName(lvl)
             }
-            Ui.text(c, label, cx + cw / 2f, top + 164f, 19f, Pal.inkSoft, Paint.Align.CENTER)
+            Ui.text(c, label, cx + cw / 2f, top + 128f, 18f, Pal.inkSoft, Paint.Align.CENTER)
             lines.clear()
-            Ui.wrap(descs[i], 16f, cw - 40f, lines)
-            var ly = top + 188f
+            Ui.wrap(descs[i], 15f, cw - 40f, lines)
+            var ly = top + 148f
             for (l in lines) {
-                Ui.text(c, l, cx + cw / 2f, ly, 16f, Pal.inkSoft, Paint.Align.CENTER); ly += 19f
-            }
-            if (lvl < 3) {
-                val cost = when (i) {
-                    0 -> ToolUp.rodCost(lvl + 1); 1 -> ToolUp.canCost(lvl + 1); else -> ToolUp.axeCost(lvl + 1)
-                }
-                Ui.coin(c, cx + cw / 2f - 44f, top + ch - 74f, 12f)
-                Ui.text(c, U.formatCoins(cost), cx + cw / 2f - 28f, top + ch - 68f, 21f,
-                    if (g.st.coins >= cost) Pal.goldDeep else Pal.berry, Paint.Align.LEFT)
+                Ui.text(c, l, cx + cw / 2f, ly, 15f, Pal.inkSoft, Paint.Align.CENTER); ly += 17f
             }
         }
     }
@@ -753,19 +788,19 @@ class Screens(private val g: Game) {
     private fun drawHomeTab(c: Canvas, p: FloatArray, top: Float) {
         val cur = g.st.tier
         val next = Tiers.next(g.st.cabinLevel)
-        Ui.text(c, cur.name, g.vw / 2f, top + 16f, 32f, Pal.ink, Paint.Align.CENTER, Ui.display)
-        Ui.text(c, cur.blurb, g.vw / 2f, top + 46f, 19f, Pal.inkSoft, Paint.Align.CENTER)
+        Ui.text(c, cur.name, g.vw / 2f, top + 12f, 28f, Pal.ink, Paint.Align.CENTER, Ui.display)
+        Ui.text(c, cur.blurb, g.vw / 2f, top + 38f, 18f, Pal.inkSoft, Paint.Align.CENTER)
 
         val cardW = (p[2] - 140f) / 2f
-        val cardY = top + 70f
-        val cardH = 210f
+        val cardY = top + 56f
+        val cardH = 130f
 
         // current perks
         Ui.tile(c, p[0] + 50f, cardY, cardW, cardH, false)
-        Ui.text(c, "Now", p[0] + 50f + cardW / 2f, cardY + 36f, 22f, Pal.inkSoft, Paint.Align.CENTER, Ui.display)
-        perkRow(c, p[0] + 78f, cardY + 74f, "Field plots", "${cur.plots}")
-        perkRow(c, p[0] + 78f, cardY + 112f, "Energy", "${cur.maxEnergy}")
-        perkRow(c, p[0] + 78f, cardY + 150f, "Bag slots", "${cur.invSlots}")
+        Ui.text(c, "Now", p[0] + 50f + cardW / 2f, cardY + 26f, 20f, Pal.inkSoft, Paint.Align.CENTER, Ui.display)
+        perkRow(c, p[0] + 78f, cardY + 56f, "Field plots", "${cur.plots}")
+        perkRow(c, p[0] + 78f, cardY + 84f, "Energy", "${cur.maxEnergy}")
+        perkRow(c, p[0] + 78f, cardY + 112f, "Bag slots", "${cur.invSlots}")
 
         if (next == null) {
             Ui.tile(c, p[0] + 90f + cardW, cardY, cardW, cardH, false)
@@ -775,13 +810,13 @@ class Screens(private val g: Game) {
         }
         Ui.tile(c, p[0] + 90f + cardW, cardY, cardW, cardH, true)
         val nx = p[0] + 90f + cardW
-        Ui.text(c, next.name, nx + cardW / 2f, cardY + 36f, 22f, Pal.ink, Paint.Align.CENTER, Ui.display)
-        perkRow(c, nx + 28f, cardY + 74f, "Field plots", "${next.plots}")
-        perkRow(c, nx + 28f, cardY + 112f, "Energy", "${next.maxEnergy}")
-        perkRow(c, nx + 28f, cardY + 150f, "Bag slots", "${next.invSlots}")
+        Ui.text(c, next.name, nx + cardW / 2f, cardY + 26f, 20f, Pal.ink, Paint.Align.CENTER, Ui.display)
+        perkRow(c, nx + 28f, cardY + 56f, "Field plots", "${next.plots}")
+        perkRow(c, nx + 28f, cardY + 84f, "Energy", "${next.maxEnergy}")
+        perkRow(c, nx + 28f, cardY + 112f, "Bag slots", "${next.invSlots}")
 
-        // cost row
-        val cy = cardY + cardH + 44f
+        // cost row, between the cards and the button along the bottom
+        val cy = cardY + cardH + 34f
         costChip(c, g.vw / 2f - 220f, cy, null, next.coins, g.st.coins)
         costChip(c, g.vw / 2f - 40f, cy, "wood", next.wood, g.st.count("wood"))
         costChip(c, g.vw / 2f + 130f, cy, "stone", next.stone, g.st.count("stone"))
@@ -806,15 +841,15 @@ class Screens(private val g: Game) {
         layout()
         Ui.scrim(c, g.vw, g.vh, 0.46f * U.clamp01(g.modeT * 2f))
         beginPop(c)
-        val p = panelRect()
+        val p = journalRect()
         Ui.panel(c, p[0], p[1], p[2], p[3])
         Ui.ribbon(c, g.vw / 2f, p[1] - 18f, 360f, "Journal")
-        val top = p[1] + 146f
+        val top = p[1] + 152f
         when (jTab) {
             0 -> drawCollection(c, p, top, Catalog.fish.map { it.id }, g.st.seenFish)
             1 -> drawCollection(c, p, top, Catalog.crops.values.map { it.produceId },
                 HashSet(g.st.seenCrops.mapNotNull { Catalog.crops[it]?.produceId }))
-            else -> drawStats(c, p, top)
+            else -> drawStats(c, p, p[1] + 118f)
         }
         drawButtons(c)
         c.restore()
@@ -823,7 +858,7 @@ class Screens(private val g: Game) {
     private fun drawCollection(c: Canvas, p: FloatArray, top: Float, ids: List<String>, seen: Set<String>) {
         val cols = 4
         val cw = (p[2] - 120f - (cols - 1) * 16f) / cols
-        val ch = 118f
+        val ch = 76f
         for (i in ids.indices) {
             val id = ids[i]
             val cx = p[0] + 60f + (i % cols) * (cw + 16f)
@@ -831,17 +866,17 @@ class Screens(private val g: Game) {
             val known = seen.contains(id)
             Ui.tile(c, cx, cy, cw, ch, false)
             if (known) {
-                IconDraw.draw(c, Catalog.item(id), cx + 46f, cy + ch / 2f, 62f, Ui.txt)
-                Ui.text(c, Catalog.name(id), cx + 84f, cy + 50f, 20f, Pal.ink, Paint.Align.LEFT, Ui.display)
-                Ui.coin(c, cx + 90f, cy + 74f, 11f)
-                Ui.text(c, "${Catalog.price(id)}", cx + 104f, cy + 80f, 18f, Pal.goldDeep, Paint.Align.LEFT)
+                IconDraw.draw(c, Catalog.item(id), cx + 36f, cy + ch / 2f, 46f, Ui.txt)
+                Ui.text(c, Catalog.name(id), cx + 66f, cy + 34f, 18f, Pal.ink, Paint.Align.LEFT, Ui.display)
+                Ui.coin(c, cx + 72f, cy + 52f, 10f)
+                Ui.text(c, "${Catalog.price(id)}", cx + 84f, cy + 57f, 16f, Pal.goldDeep, Paint.Align.LEFT)
             } else {
-                Ui.text(c, "?", cx + cw / 2f, cy + ch / 2f + 16f, 44f,
+                Ui.text(c, "?", cx + cw / 2f, cy + ch / 2f + 13f, 36f,
                     U.withAlpha(Pal.inkSoft, 0.4f), Paint.Align.CENTER, Ui.display)
             }
         }
         Ui.text(c, "${seen.count { ids.contains(it) }} of ${ids.size} discovered",
-            g.vw / 2f, p[1] + 118f, 20f, Pal.inkSoft, Paint.Align.CENTER)
+            g.vw / 2f, p[1] + 128f, 20f, Pal.inkSoft, Paint.Align.CENTER)
     }
 
     private fun drawStats(c: Canvas, p: FloatArray, top: Float) {
@@ -855,6 +890,9 @@ class Screens(private val g: Game) {
             "Species known" to "${g.st.seenFish.size} / ${Catalog.fish.size}",
             "Home" to g.st.tier.name
         )
+        // fit the rows into whatever is left above the Close button rather
+        // than running them off the bottom of the panel
+        val step = min(44f, ((p[1] + p[3] - 80f) - top) / rows.size)
         var y = top
         for ((k, v) in rows) {
             Ui.text(c, k, p[0] + 90f, y, 22f, Pal.inkSoft, Paint.Align.LEFT)
@@ -862,7 +900,7 @@ class Screens(private val g: Game) {
             Ui.txt.style = Paint.Style.FILL
             Ui.txt.color = U.withAlpha(Pal.wood, 0.25f)
             c.drawRect(p[0] + 90f, y + 12f, p[0] + p[2] - 90f, y + 13.4f, Ui.txt)
-            y += 46f
+            y += step
         }
     }
 
@@ -877,26 +915,26 @@ class Screens(private val g: Game) {
         Ui.ribbon(c, g.vw / 2f, p[1] - 18f, 340f, "Settings")
         val lx = p[0] + 80f
 
-        Ui.text(c, "Music", lx, p[1] + 120f, 23f, Pal.ink, Paint.Align.LEFT, Ui.display)
+        Ui.text(c, "Music", lx, p[1] + setRows[0] + 8f, 23f, Pal.ink, Paint.Align.LEFT, Ui.display)
         val ms = pool[T.SLIDER_MUSIC]
         if (ms != null) Ui.slider(c, ms.x, ms.y + ms.h / 2f, ms.w, g.settings.music, Pal.leaf)
-        Ui.text(c, "${(g.settings.music * 100).toInt()}%", p[0] + p[2] - 60f, p[1] + 120f, 20f,
+        Ui.text(c, "${(g.settings.music * 100).toInt()}%", p[0] + p[2] - 60f, p[1] + setRows[0] + 8f, 20f,
             Pal.inkSoft, Paint.Align.RIGHT)
 
-        Ui.text(c, "Sounds", lx, p[1] + 190f, 23f, Pal.ink, Paint.Align.LEFT, Ui.display)
+        Ui.text(c, "Sounds", lx, p[1] + setRows[1] + 8f, 23f, Pal.ink, Paint.Align.LEFT, Ui.display)
         val ss = pool[T.SLIDER_SFX]
         if (ss != null) Ui.slider(c, ss.x, ss.y + ss.h / 2f, ss.w, g.settings.sfx, Pal.leaf)
-        Ui.text(c, "${(g.settings.sfx * 100).toInt()}%", p[0] + p[2] - 60f, p[1] + 190f, 20f,
+        Ui.text(c, "${(g.settings.sfx * 100).toInt()}%", p[0] + p[2] - 60f, p[1] + setRows[1] + 8f, 20f,
             Pal.inkSoft, Paint.Align.RIGHT)
 
-        Ui.text(c, "Graphics", lx, p[1] + 286f, 23f, Pal.ink, Paint.Align.LEFT, Ui.display)
+        Ui.text(c, "Graphics", lx, p[1] + setRows[2] + 8f, 23f, Pal.ink, Paint.Align.LEFT, Ui.display)
 
-        toggleRow(c, lx, p[1] + 330f, "Show frame rate", g.settings.showFps, T.TOG_FPS)
-        toggleRow(c, lx, p[1] + 386f, "Vibration", g.settings.haptics, T.TOG_HAPTIC)
-        toggleRow(c, lx, p[1] + 442f, "Left-handed layout", g.settings.southpaw, T.TOG_SOUTH)
+        toggleRow(c, lx, p[1] + setRows[3], "Show frame rate", g.settings.showFps, T.TOG_FPS)
+        toggleRow(c, lx, p[1] + setRows[4], "Vibration", g.settings.haptics, T.TOG_HAPTIC)
+        toggleRow(c, lx, p[1] + setRows[5], "Left-handed layout", g.settings.southpaw, T.TOG_SOUTH)
 
         if (confirmReset) {
-            Ui.text(c, "Erase your valley for good?", g.vw / 2f, p[1] + p[3] - 118f, 22f,
+            Ui.text(c, "Erase your valley for good?", g.vw / 2f, p[1] + p[3] - 80f, 22f,
                 Pal.berry, Paint.Align.CENTER, Ui.display)
         }
         for (btn in btns) {

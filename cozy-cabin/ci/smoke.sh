@@ -29,6 +29,8 @@ walk_far()   { walk 300 660 300 380 "${1:-1600}"; }   # into the woods
 # a time: a walk straight into a bench stops dead, while a diagonal slides off
 # it and carries on.
 walk_se()    { walk 300 470 760 620 "${1:-2200}"; }
+# north-west, up the valley to the market, passing east of the cabin
+walk_nw()    { walk 700 620 240 470 "${1:-2200}"; }
 
 fail=0
 
@@ -110,17 +112,35 @@ shot 10-settings.png
 adb shell input keyevent 4
 sleep 2
 
-# --- on to the market and the river ---
+# --- up to Pip's market: north past the cabin, then the four tabs ---
+for _ in 1 2 3 4; do walk_nw 2200; sleep 1; done
+for _ in 1 2 3; do walk_far 2200; sleep 1; done
+adb shell input tap 1162 583   # Market
+sleep 3
+shot 11-shop-seeds.png
+adb shell input tap 504 168    # Tools tab
+sleep 2
+shot 12-shop-tools.png
+adb shell input tap 760 168    # Sell tab
+sleep 2
+shot 13-shop-sell.png
+adb shell input tap 1016 168   # Home tab
+sleep 2
+shot 14-shop-home.png
+adb shell input keyevent 4
+sleep 2
+
+# --- on to the river ---
 for _ in 1 2 3 4 5; do walk_right 2600; done
 sleep 1
-shot 11-river.png
+shot 15-river.png
 
 adb shell input tap 1162 583   # fish / shop, whatever is in reach
 sleep 3
-shot 12-action.png
+shot 16-action.png
 
 sleep 6
-shot 13-later.png
+shot 17-later.png
 
 echo "--- process check ---"
 if ! adb shell pidof com.cozyhollow.riverside > /dev/null; then
