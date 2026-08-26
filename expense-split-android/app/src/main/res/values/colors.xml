@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only the colours the platform needs before Compose takes over: the launcher icon
+         background, the splash window, and the notification tint. Everything else lives in
+         ui/theme/Color.kt so the palette has a single source of truth. -->
+    <color name="ic_launcher_background">#4A56C4</color>
+    <color name="splash_background">#FBF8FD</color>
+    <color name="notification_accent">#4A56C4</color>
+</resources>

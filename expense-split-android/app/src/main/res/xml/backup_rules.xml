@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 and below (android:fullBackupContent).
+
+  The Room database and preferences are backed up; the DataStore file is included because it holds
+  only settings. Receipt photos are deliberately excluded: they are large, and a user who wants them
+  off the device should choose that explicitly through the app's own backup feature.
+-->
+<full-backup-content>
+    <include domain="database" path="expense_split.db" />
+    <include domain="database" path="expense_split.db-wal" />
+    <include domain="database" path="expense_split.db-shm" />
+    <include domain="file" path="datastore/" />
+    <exclude domain="file" path="receipts/" />
+    <exclude domain="external" path="." />
+</full-backup-content>

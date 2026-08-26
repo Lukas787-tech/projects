@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Launcher foreground: a receipt torn down the middle by a dashed line — the two things the app
+  does (track receipts, split them) in one mark.
+
+  Drawn on the standard 108dp adaptive canvas; all artwork sits inside the central 72dp safe zone
+  so no launcher mask can clip it.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Receipt body with a torn-off bottom edge. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M41,26 h26 a5,5 0 0 1 5,5 v50 l-6,-4 -6,4 -6,-4 -6,4 -6,-4 -6,4 v-50 a5,5 0 0 1 5,-5 z" />
+
+    <!-- Header line: the total at the top of every receipt. -->
+    <path
+        android:fillColor="#4A56C4"
+        android:pathData="M42,37 h24 v4 h-24 z" />
+
+    <!-- Left share. -->
+    <path
+        android:fillColor="#4A56C4"
+        android:pathData="M42,50 h9 v3 h-9 z" />
+    <path
+        android:fillColor="#4A56C4"
+        android:pathData="M42,58 h9 v3 h-9 z" />
+
+    <!-- Right share. -->
+    <path
+        android:fillColor="#4A56C4"
+        android:pathData="M57,50 h9 v3 h-9 z" />
+    <path
+        android:fillColor="#4A56C4"
+        android:pathData="M57,58 h9 v3 h-9 z" />
+
+    <!-- The split: a dashed line dividing the two shares. -->
+    <path
+        android:fillColor="#4A56C4"
+        android:pathData="M52.5,47 h3 v5 h-3 z M52.5,55 h3 v5 h-3 z M52.5,63 h3 v5 h-3 z M52.5,71 h3 v5 h-3 z" />
+</vector>

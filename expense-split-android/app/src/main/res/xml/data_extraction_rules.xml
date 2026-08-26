@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (android:dataExtractionRules).
+
+  Cloud backup mirrors the rules above. Device-to-device transfer additionally carries the receipt
+  images, because that is a direct handset-to-handset move rather than an upload.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="expense_split.db" />
+        <include domain="file" path="datastore/" />
+        <exclude domain="file" path="receipts/" />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="expense_split.db" />
+        <include domain="file" path="datastore/" />
+        <include domain="file" path="receipts/" />
+    </device-transfer>
+</data-extraction-rules>

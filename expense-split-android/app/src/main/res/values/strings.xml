@@ -1,0 +1,432 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ExpenseSplit</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_dashboard">Home</string>
+    <string name="nav_add">Add</string>
+    <string name="nav_bills">Bills</string>
+    <string name="nav_analytics">Analytics</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Screen titles -->
+    <string name="title_add_expense">Add expense</string>
+    <string name="title_edit_expense">Edit expense</string>
+    <string name="title_expenses">Expenses</string>
+    <string name="title_scan_receipt">Scan receipt</string>
+    <string name="title_bills">Bills &amp; groups</string>
+    <string name="title_add_bill">Add bill</string>
+    <string name="title_edit_bill">Edit bill</string>
+    <string name="title_analytics">Analytics</string>
+    <string name="title_search">Search</string>
+    <string name="title_recap">Monthly recap</string>
+    <string name="title_settings">Settings</string>
+    <string name="title_receipt">Receipt</string>
+    <string name="title_receipts">Receipts</string>
+    <string name="title_price_history">Price history</string>
+    <string name="title_recurring">Recurring expenses</string>
+
+    <!-- Actions -->
+    <string name="action_add">Add</string>
+    <string name="action_add_expense">Add expense</string>
+    <string name="action_add_bill">Add bill</string>
+    <string name="action_add_member">Add member</string>
+    <string name="action_back">Back</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_capture">Take photo</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_create">Create</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_export_csv">Export CSV</string>
+    <string name="action_export_pdf">Export PDF</string>
+    <string name="action_filter">Filter</string>
+    <string name="action_grant_permission">Allow camera</string>
+    <string name="action_hide_filters">Hide filters (%1$d active)</string>
+    <string name="action_show_filters">Show filters (%1$d active)</string>
+    <string name="action_mark_as_paid">Mark as paid</string>
+    <string name="action_new_group">New group</string>
+    <string name="action_next_month">Next month</string>
+    <string name="action_previous_month">Previous month</string>
+    <string name="action_ok">OK</string>
+    <string name="action_pick_date">Pick a date</string>
+    <string name="action_pick_from_gallery">Choose from gallery</string>
+    <string name="action_price_history">Price history</string>
+    <string name="action_refresh_offers">Refresh offers</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_rescan">Scan again</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_save">Save</string>
+    <string name="action_save_bill">Save bill</string>
+    <string name="action_save_changes">Save changes</string>
+    <string name="action_save_expense">Save expense</string>
+    <string name="action_scan_receipt">Scan a receipt</string>
+    <string name="action_search">Search</string>
+    <string name="action_see_all">See all</string>
+    <string name="action_set_budget">Set budget</string>
+    <string name="action_share">Share</string>
+    <string name="action_sort">Sort</string>
+    <string name="action_try_again">Try again</string>
+    <string name="action_use_this_receipt">Use this receipt</string>
+    <string name="action_view_receipt">Receipt</string>
+    <string name="action_attachment_add">Attach a photo</string>
+    <string name="action_attachment_replace">Replace attachment</string>
+
+    <!-- Categories -->
+    <string name="category_uncategorized">Uncategorised</string>
+    <string name="category_groceries">Groceries</string>
+    <string name="category_dining">Eating out</string>
+    <string name="category_transport">Transport</string>
+    <string name="category_housing">Housing</string>
+    <string name="category_utilities">Utilities</string>
+    <string name="category_health">Health</string>
+    <string name="category_entertainment">Entertainment</string>
+    <string name="category_shopping">Shopping</string>
+    <string name="category_education">Education</string>
+    <string name="category_travel">Travel</string>
+    <string name="category_subscriptions">Subscriptions</string>
+    <string name="category_personal_care">Personal care</string>
+    <string name="category_gifts">Gifts &amp; donations</string>
+    <string name="category_auto_suggested">Suggested from the merchant name</string>
+
+    <!-- Payment methods -->
+    <string name="payment_cash">Cash</string>
+    <string name="payment_card">Credit card</string>
+    <string name="payment_debit">Debit card</string>
+    <string name="payment_bank_transfer">Bank transfer</string>
+    <string name="payment_mobile_wallet">Mobile wallet</string>
+    <string name="payment_other">Other</string>
+
+    <!-- Split methods -->
+    <string name="split_equal">Equally</string>
+    <string name="split_percentage">By percentage</string>
+    <string name="split_custom">Custom amounts</string>
+    <string name="split_shares">By shares</string>
+    <string name="split_warning_percentages">Percentages didn\'t add up to 100%, so they were scaled proportionally.</string>
+    <string name="split_warning_custom">The amounts didn\'t match the total, so the difference was spread across the largest shares.</string>
+    <string name="split_warning_invalid_weight">A share was zero or negative and was treated as an equal split.</string>
+
+    <!-- Recurrence -->
+    <string name="recurrence_daily">Daily</string>
+    <string name="recurrence_weekly">Weekly</string>
+    <string name="recurrence_monthly">Monthly</string>
+    <string name="recurrence_yearly">Yearly</string>
+    <string name="recurring_summary">%1$s · %2$s</string>
+    <string name="recurring_next_run">Next: %1$s</string>
+
+    <!-- Budget periods and labels -->
+    <string name="budget_period_weekly">Weekly</string>
+    <string name="budget_period_monthly">Monthly</string>
+    <string name="budget_period_yearly">Yearly</string>
+    <string name="budget_overall">All categories</string>
+    <string name="budget_spent_of_limit">%1$s of %2$s</string>
+    <string name="budget_over_by">Over by %1$s</string>
+    <string name="budget_safe_daily">%1$s a day left to stay on track</string>
+    <string name="budget_projected">On track for %1$s</string>
+
+    <!-- Theme -->
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_spent_this_month">Spent this month</string>
+    <string name="dashboard_today">Today</string>
+    <string name="dashboard_this_week">This week</string>
+    <string name="dashboard_daily_average">Daily average</string>
+    <string name="dashboard_transaction_count">%1$d expenses</string>
+    <string name="dashboard_this_month_trend">This month, day by day</string>
+    <string name="dashboard_budgets">Budgets</string>
+    <string name="dashboard_settlements">Outstanding balances</string>
+    <string name="dashboard_insights">Worth knowing</string>
+    <string name="dashboard_recent">Recent expenses</string>
+
+    <!-- Fields -->
+    <string name="field_amount">Amount</string>
+    <string name="field_amount_converted">≈ %1$s in your base currency</string>
+    <string name="field_title">Description</string>
+    <string name="field_merchant">Merchant</string>
+    <string name="field_category">Category</string>
+    <string name="field_date">Date</string>
+    <string name="field_payment_method">Paid with</string>
+    <string name="field_note">Notes</string>
+    <string name="field_group">Group</string>
+    <string name="field_group_none">No group</string>
+    <string name="field_group_name">Group name</string>
+    <string name="field_member_name">Name</string>
+    <string name="field_currency">Currency</string>
+    <string name="field_total">Total</string>
+    <string name="field_tax">Tax</string>
+    <string name="field_paid_by">Paid by</string>
+    <string name="field_split_method">Split</string>
+    <string name="field_percent">Percent</string>
+    <string name="field_shares">Shares</string>
+    <string name="field_limit">Monthly limit</string>
+    <string name="field_recurring">Repeat this expense</string>
+    <string name="field_recurring_hint">Future entries are created automatically.</string>
+    <string name="field_passphrase">Passphrase</string>
+    <string name="field_passphrase_hint">Leave empty for an unencrypted file. You will need this to restore.</string>
+
+    <!-- Validation -->
+    <string name="error_amount_required">Enter an amount</string>
+    <string name="error_amount_invalid">That isn\'t a valid amount</string>
+    <string name="error_amount_positive">The amount must be more than zero</string>
+    <string name="error_title_required">Add a short description</string>
+
+    <!-- Filters and sorting -->
+    <string name="filter_all_time">All time</string>
+    <string name="filter_this_week">This week</string>
+    <string name="filter_this_month">This month</string>
+    <string name="filter_this_year">This year</string>
+    <string name="filter_last_90_days">Last 90 days</string>
+    <string name="filter_period">Period</string>
+    <string name="filter_categories">Categories</string>
+    <string name="filter_payment_methods">Payment method</string>
+    <string name="filter_groups">Groups</string>
+    <string name="filter_min_amount">Min amount</string>
+    <string name="filter_max_amount">Max amount</string>
+    <string name="filter_with_receipt">Has receipt</string>
+    <string name="filter_settled">Settled</string>
+    <string name="filter_unsettled">Unsettled</string>
+    <string name="sort_date_newest">Newest first</string>
+    <string name="sort_date_oldest">Oldest first</string>
+    <string name="sort_amount_highest">Highest amount</string>
+    <string name="sort_amount_lowest">Lowest amount</string>
+    <string name="sort_title">By description</string>
+
+    <!-- Lists -->
+    <string name="list_result_count">%1$d expenses</string>
+    <string name="date_today">Today</string>
+    <string name="date_yesterday">Yesterday</string>
+    <string name="unknown_store">Unknown store</string>
+
+    <!-- Search -->
+    <string name="search_hint">Search descriptions, merchants and notes</string>
+    <string name="search_tab_expenses">Expenses (%1$d)</string>
+    <string name="search_tab_items">Receipt items (%1$d)</string>
+    <string name="item_bought_at">%1$s · %2$s</string>
+
+    <!-- Scanner -->
+    <string name="scan_hint">Fit the whole receipt inside the frame</string>
+    <string name="scan_processing">Reading the receipt…</string>
+    <string name="scan_failed_title">Couldn\'t read that receipt</string>
+    <string name="scan_failed_message">Try again with more light, or enter the expense by hand.</string>
+    <string name="scan_low_confidence">Some details were hard to read. Please check the total and date before saving.</string>
+    <string name="scan_items_found">Items found (%1$d)</string>
+    <string name="scan_items_mismatch">The items don\'t add up to the total — check for missed lines.</string>
+    <string name="permission_camera_title">Camera access needed</string>
+    <string name="permission_camera_message">ExpenseSplit uses the camera to scan receipts. The photo and its text stay on this device.</string>
+
+    <!-- Receipts -->
+    <string name="receipt_items">Items (%1$d)</string>
+    <string name="receipt_item_quantity">%1$d × %2$s each</string>
+    <string name="receipt_scan_confidence">Scan confidence</string>
+    <string name="receipt_savings_title">You could have saved %1$s</string>
+    <string name="receipt_saving_line">%1$s is %3$s at %2$s — %4$s cheaper</string>
+    <string name="receipt_repeat_purchases">You buy these regularly</string>
+    <string name="receipt_bought_times">Bought %1$d times</string>
+
+    <!-- Price history -->
+    <string name="price_history_chart_title">What you have paid over time</string>
+    <string name="price_lowest">Lowest</string>
+    <string name="price_average">Average</string>
+    <string name="price_observations">%1$d prices recorded</string>
+    <string name="price_cheaper_at">Cheaper at %1$s — you could save %2$s</string>
+    <string name="price_all_observations">Every price recorded</string>
+
+    <!-- Bills -->
+    <string name="bills_you_are_owed">You are owed</string>
+    <string name="bills_you_owe">You owe</string>
+    <string name="bills_settled_up">All settled up</string>
+    <string name="bills_open_count">%1$d unsettled bills</string>
+    <string name="group_members_bills">%1$d people · %2$d bills</string>
+    <string name="bill_paid_by">Paid by %1$s · %2$s</string>
+    <string name="balance_paid_owed">Paid %1$s · owes %2$s</string>
+    <string name="tab_bills">Bills</string>
+    <string name="tab_balances">Balances</string>
+    <string name="tab_settle_up">Settle up</string>
+    <string name="settle_plan_explainer">%1$d transfers will clear every balance in this group.</string>
+    <string name="settle_all_done_title">Everyone is square</string>
+    <string name="settle_nothing_title">Nothing to settle yet</string>
+    <string name="settle_all_done_message">Add a bill and the settlement plan will appear here.</string>
+    <string name="dialog_new_group_title">New group</string>
+    <string name="dialog_new_group_members">Who is in this group?</string>
+
+    <!-- Analytics -->
+    <string name="analytics_transactions">Expenses</string>
+    <string name="analytics_per_day">Per day</string>
+    <string name="analytics_per_transaction">Per expense</string>
+    <string name="analytics_by_category">Where the money went</string>
+    <string name="analytics_total">Total</string>
+    <string name="analytics_trend">Trend</string>
+    <string name="analytics_month_over_month">Month by month</string>
+    <string name="analytics_budgets">Budgets</string>
+    <string name="analytics_no_budgets">No budgets yet. Set one to get alerts before you overspend.</string>
+    <string name="analytics_tips">Ways to spend less</string>
+    <string name="trend_rising">Spending is trending up — on this pace you will reach %1$s.</string>
+    <string name="trend_falling">Spending is trending down — on this pace you will reach %1$s.</string>
+    <string name="trend_stable">Spending is holding steady.</string>
+    <string name="trend_unclear">Not enough of a pattern yet to call a trend.</string>
+    <string name="trend_confidence">Based on a %1$d%% fit to your daily spending.</string>
+
+    <!-- Recap -->
+    <string name="recap_title">Monthly recap</string>
+    <string name="recap_section_summary">Summary</string>
+    <string name="recap_section_categories">By category</string>
+    <string name="recap_section_budgets">Budgets</string>
+    <string name="recap_section_insights">Insights</string>
+    <string name="recap_section_merchants">Top merchants</string>
+    <string name="recap_section_settlements">Shared expenses</string>
+    <string name="recap_section_expenses">All expenses</string>
+    <string name="recap_total_spent">Total spent</string>
+    <string name="recap_transactions">Expenses</string>
+    <string name="recap_daily_average">Daily average</string>
+    <string name="recap_average_transaction">Average expense</string>
+    <string name="recap_vs_last_month">vs last month</string>
+    <string name="recap_year_to_date">Year to date</string>
+    <string name="recap_ytd_transactions">%1$d expenses</string>
+    <string name="recap_visits">%1$d visits</string>
+    <string name="recap_budget_line">%1$s of %2$s</string>
+    <string name="recap_you_are_owed">You are owed %1$s</string>
+    <string name="recap_you_owe">You owe %1$s</string>
+    <string name="recap_all_settled">Settled up</string>
+    <string name="pdf_footer">ExpenseSplit · page %1$d</string>
+    <string name="export_column_date">Date</string>
+    <string name="export_column_title">Description</string>
+    <string name="export_column_category">Merchant</string>
+    <string name="export_column_amount">Amount</string>
+
+    <!-- Insights -->
+    <string name="insight_potential_saving">Could save about %1$s</string>
+    <string name="insight_top_category_title">%1$s is your biggest expense</string>
+    <string name="insight_top_category_body_discretionary">It is %1$d%% of this period at %2$s. Trimming it by 15%% would free up %3$s.</string>
+    <string name="insight_top_category_body_essential">It is %1$d%% of this period at %2$s. Mostly fixed costs, but worth reviewing for a better deal. (%3$s)</string>
+    <string name="insight_budget_exceeded_title">%1$s is over budget</string>
+    <string name="insight_budget_exceeded_body">You are %1$s past your %2$s limit.</string>
+    <string name="insight_budget_near_title">%1$s is close to its limit</string>
+    <string name="insight_budget_near_body">%1$d%% used. Keep it under %2$s a day for the rest of the period.</string>
+    <string name="insight_budget_pace_title">%1$s is running hot</string>
+    <string name="insight_budget_pace_body">At this pace you will finish on %1$s against a %2$s limit.</string>
+    <string name="insight_trend_rising_title">Spending is climbing</string>
+    <string name="insight_trend_rising_body">On the current pace you are heading for %1$s, up from %2$s.</string>
+    <string name="insight_trend_falling_title">Spending is easing off</string>
+    <string name="insight_trend_falling_body">You are %1$s below the previous period. Keep it up.</string>
+    <string name="insight_small_purchases_title">%1$d small purchases added up</string>
+    <string name="insight_small_purchases_body">They came to %1$s, mostly on %2$s. Cutting a quarter of them saves %3$s.</string>
+    <string name="insight_dining_vs_groceries_title">Eating out costs more than your groceries</string>
+    <string name="insight_dining_vs_groceries_body">%1$s eating out versus %2$s on groceries. Two meals at home a week would save around %3$s.</string>
+    <string name="insight_weekend_title">Weekends cost the most</string>
+    <string name="insight_weekend_body">You spend %1$s× more per weekend day, about %2$s extra a month.</string>
+    <string name="insight_subscriptions_title">%1$d subscriptions this period</string>
+    <string name="insight_subscriptions_body">They total %1$s — that is %2$s a year. Worth checking which you still use.</string>
+    <string name="insight_large_expense_title">One expense dominated the period</string>
+    <string name="insight_large_expense_body">%1$s at %2$s was %3$d%% of everything you spent.</string>
+    <string name="insight_duplicate_title">You buy %1$s often</string>
+    <string name="insight_duplicate_body">%1$d times, roughly every %2$s days, for %3$s in total. Buying in bulk may be cheaper.</string>
+    <string name="insight_cheaper_elsewhere_title">%1$d items are cheaper elsewhere</string>
+    <string name="insight_cheaper_elsewhere_body">%1$s costs less at %2$s — %3$s cheaper. Across every item that is %4$s.</string>
+    <string name="insight_no_spend_title">%1$d days without spending</string>
+    <string name="insight_no_spend_body">You spent nothing on %1$d of %2$d days. Those days are what keep the month down.</string>
+
+    <!-- Settings -->
+    <string name="settings_section_general">General</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_section_data">Data</string>
+    <string name="settings_section_privacy">Privacy</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">System default</string>
+    <string name="settings_base_currency">Base currency</string>
+    <string name="settings_your_name">Your name</string>
+    <string name="settings_your_name_hint">Shown as you in shared groups.</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_dynamic_color">Match my wallpaper</string>
+    <string name="settings_dynamic_color_hint">Uses your system colours on Android 12 and later.</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notifications_hint">Budget alerts, bill reminders and price drops.</string>
+    <string name="settings_budget_alerts">Budget alerts</string>
+    <string name="settings_bill_reminders">Bill reminders</string>
+    <string name="settings_sale_alerts">Price drop alerts</string>
+    <string name="settings_sale_alerts_hint">Tells you when something you buy is cheaper elsewhere.</string>
+    <string name="settings_recurring_auto_post">Post recurring expenses automatically</string>
+    <string name="settings_recurring_auto_post_hint">Creates each entry on its due date.</string>
+    <string name="settings_manage_recurring">Recurring expenses</string>
+    <string name="settings_receipt_gallery">Receipt gallery</string>
+    <string name="settings_export_csv">Export everything as CSV</string>
+    <string name="settings_export_csv_hint">Every expense, ready for a spreadsheet.</string>
+    <string name="settings_create_backup">Create a backup</string>
+    <string name="settings_create_backup_hint">A single JSON file with all your data.</string>
+    <string name="settings_restore_backup">Restore from a backup</string>
+    <string name="settings_restore_backup_hint">Replaces everything currently in the app.</string>
+    <string name="settings_last_backup">Last backup: %1$s</string>
+    <string name="settings_encrypt_exports">Encrypt backups</string>
+    <string name="settings_encrypt_exports_hint">Requires a passphrase you choose. Without it the file cannot be restored.</string>
+    <string name="settings_cloud_backup">Cloud backup</string>
+    <string name="settings_cloud_backup_hint">Off by default. See the README for connecting a provider.</string>
+    <string name="settings_privacy_note">Your expenses, receipts and receipt photos stay on this device. Receipt text is read on-device; only currency rates are fetched from the network.</string>
+    <string name="settings_version">Version %1$s</string>
+
+    <!-- Backup dialogs -->
+    <string name="backup_passphrase_message">Choose a passphrase to encrypt this backup, or leave it empty for a plain file.</string>
+    <string name="backup_restore_warning">Restoring replaces everything currently in the app. Enter the passphrase if this backup is encrypted.</string>
+    <string name="backup_restored">Restored %1$d expenses</string>
+    <string name="backup_error_passphrase">Wrong passphrase, or the file has been changed.</string>
+    <string name="backup_error_unreadable">That file could not be read as a backup.</string>
+    <string name="backup_error_version">This backup was made by a newer version of the app.</string>
+    <string name="backup_error_unknown">Something went wrong. Please try again.</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_delete_expense_title">Delete this expense?</string>
+    <string name="dialog_delete_expense_message">This cannot be undone.</string>
+    <string name="dialog_delete_receipt_title">Delete this receipt?</string>
+    <string name="dialog_delete_receipt_message">The photo and its item list will be removed. The expense itself stays.</string>
+
+    <!-- Empty states -->
+    <string name="empty_expenses_title">No expenses yet</string>
+    <string name="empty_expenses_message">Add one by hand, or scan a receipt and let the app fill it in.</string>
+    <string name="empty_filtered_title">Nothing matches</string>
+    <string name="empty_filtered_message">Try a wider date range or clear a filter.</string>
+    <string name="empty_groups_title">No groups yet</string>
+    <string name="empty_groups_message">Create a group to split bills and track who owes what.</string>
+    <string name="empty_bills_title">No bills yet</string>
+    <string name="empty_bills_message">Add the first bill and the split is calculated for you.</string>
+    <string name="empty_analytics_title">Nothing to chart yet</string>
+    <string name="empty_analytics_message">Add a few expenses and the breakdown will appear here.</string>
+    <string name="empty_search_title">No expenses found</string>
+    <string name="empty_search_message">Try a different word, or widen the filters.</string>
+    <string name="empty_items_title">No receipt items found</string>
+    <string name="empty_items_message">Scan a few receipts and you can search everything you have bought.</string>
+    <string name="empty_receipts_title">No receipts yet</string>
+    <string name="empty_receipts_message">Scanned receipts and their photos appear here.</string>
+    <string name="empty_price_history_title">No price history yet</string>
+    <string name="empty_price_history_message">Buy this again and the app will start tracking what it costs.</string>
+    <string name="empty_recurring_title">No recurring expenses</string>
+    <string name="empty_recurring_message">Turn on "Repeat this expense" when adding one to set it up.</string>
+
+    <!-- Notification channels -->
+    <string name="channel_budget_name">Budget alerts</string>
+    <string name="channel_budget_description">Warnings when a budget is close to or over its limit.</string>
+    <string name="channel_bills_name">Bills and reminders</string>
+    <string name="channel_bills_description">Unsettled shared expenses and the monthly recap.</string>
+    <string name="channel_offers_name">Price drops</string>
+    <string name="channel_offers_description">When something you buy is cheaper elsewhere.</string>
+    <string name="channel_recurring_name">Recurring expenses</string>
+    <string name="channel_recurring_description">Confirmation when recurring entries are created.</string>
+
+    <!-- Notifications -->
+    <string name="notification_budget_over_title">%1$s is over budget</string>
+    <string name="notification_budget_over_body">You are %1$s past your %2$s limit.</string>
+    <string name="notification_budget_near_title">%1$s is nearly spent</string>
+    <string name="notification_budget_near_body">%1$d%% used — %2$s left.</string>
+    <string name="notification_recurring_title">Recurring expenses added</string>
+    <plurals name="notification_recurring_body">
+        <item quantity="one">%1$d expense was created from your recurring rules.</item>
+        <item quantity="other">%1$d expenses were created from your recurring rules.</item>
+    </plurals>
+    <string name="notification_bills_title">You have unsettled bills</string>
+    <string name="notification_bills_body">You are owed %1$s and owe %2$s.</string>
+    <string name="notification_sale_title">%1$s is cheaper elsewhere</string>
+    <string name="notification_sale_body">%1$s has it for %2$s less — that is %3$d%% off what you paid.</string>
+    <string name="notification_recap_title">Last month\'s recap is ready</string>
+    <string name="notification_recap_body">You spent %1$s across %2$d expenses.</string>
+</resources>

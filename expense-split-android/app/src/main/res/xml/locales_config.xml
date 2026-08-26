@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Declares the shipped languages so Android 13+ shows ExpenseSplit in the system's
+  per-app language picker. Must stay in sync with the values-* resource folders.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="es" />
+    <locale android:name="fr" />
+    <locale android:name="de" />
+    <locale android:name="zh-CN" />
+    <locale android:name="ja" />
+    <locale android:name="ar" />
+</locale-config>

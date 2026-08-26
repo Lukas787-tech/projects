@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Themed-icon layer. A monochrome icon is tinted by the launcher, so it must be a single solid
+  silhouette: the receipt is drawn as an outline with the detail lines punched through it, rather
+  than relying on two colours the way the full-colour foreground does.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M41,26 h26 a5,5 0 0 1 5,5 v50 l-6,-4 -6,4 -6,-4 -6,4 -6,-4 -6,4 v-50 a5,5 0 0 1 5,-5 z
+                          M42,37 h24 v4 h-24 z
+                          M42,50 h9 v3 h-9 z
+                          M42,58 h9 v3 h-9 z
+                          M57,50 h9 v3 h-9 z
+                          M57,58 h9 v3 h-9 z
+                          M52.5,47 h3 v5 h-3 z
+                          M52.5,55 h3 v5 h-3 z
+                          M52.5,63 h3 v5 h-3 z
+                          M52.5,71 h3 v5 h-3 z" />
+</vector>

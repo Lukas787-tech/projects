@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The activity theme exists only to paint the window correctly before the first Compose frame.
+      It intentionally carries no widget styling: Material 3 in Compose owns the look of the app.
+    -->
+    <style name="Theme.ExpenseSplit" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="windowSplashScreenAnimationDuration">400</item>
+        <item name="postSplashScreenTheme">@style/Theme.ExpenseSplit.Main</item>
+    </style>
+
+    <style name="Theme.ExpenseSplit.Main" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+</resources>

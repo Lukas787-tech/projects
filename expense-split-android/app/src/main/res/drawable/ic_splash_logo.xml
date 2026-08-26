@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Splash mark. The splash window shows this over a background that flips with the system theme, so
+  the logo carries its own indigo tile and keeps the same contrast in light and dark.
+
+  Sized on the 288dp splash canvas with the artwork inside the inner two thirds, per the
+  SplashScreen API's icon guidance.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+
+    <!-- Rounded indigo tile. -->
+    <path
+        android:fillColor="#4A56C4"
+        android:pathData="M96,48 h96 a48,48 0 0 1 48,48 v96 a48,48 0 0 1 -48,48 h-96 a48,48 0 0 1 -48,-48 v-96 a48,48 0 0 1 48,-48 z" />
+
+    <!-- Receipt, scaled from the launcher mark. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M126,96 h36 a7,7 0 0 1 7,7 v70 l-8.4,-5.6 -8.4,5.6 -8.4,-5.6 -8.4,5.6 -8.4,-5.6 -8.4,5.6 v-70 a7,7 0 0 1 7,-7 z" />
+
+    <path
+        android:fillColor="#4A56C4"
+        android:pathData="M127.4,111.4 h33.6 v5.6 h-33.6 z" />
+    <path
+        android:fillColor="#4A56C4"
+        android:pathData="M127.4,129.6 h12.6 v4.2 h-12.6 z M127.4,140.8 h12.6 v4.2 h-12.6 z" />
+    <path
+        android:fillColor="#4A56C4"
+        android:pathData="M148.4,129.6 h12.6 v4.2 h-12.6 z M148.4,140.8 h12.6 v4.2 h-12.6 z" />
+    <path
+        android:fillColor="#4A56C4"
+        android:pathData="M142.1,125.4 h4.2 v7 h-4.2 z M142.1,136.6 h4.2 v7 h-4.2 z M142.1,147.8 h4.2 v7 h-4.2 z M142.1,159 h4.2 v7 h-4.2 z" />
+</vector>
