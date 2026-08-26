@@ -22,7 +22,7 @@ shot() {
 # The floating stick drops wherever you press, so a swipe = press then lean.
 walk() { adb shell input swipe "$1" "$2" "$3" "$4" "${5:-2500}"; }
 walk_right() { walk 300 560 760 560 "${1:-2500}"; }
-walk_left()  { walk 340 560 60 560 "${1:-2500}"; }    # press inside the stick's half
+walk_left()  { walk 380 560 140 560 "${1:-2500}"; }   # inside the stick half, clear of the edge gesture
 walk_near()  { walk 300 340 300 620 "${1:-1600}"; }   # toward the camera
 walk_far()   { walk 300 620 300 340 "${1:-1600}"; }   # into the woods
 # Crossing the valley on a diagonal, because collision is resolved one axis at
