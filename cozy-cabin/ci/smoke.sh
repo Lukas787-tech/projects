@@ -71,12 +71,16 @@ act() { adb shell input tap 1162 583; sleep 2; }
 # which a walk straight up the valley runs into and stops at
 walk_right 2600
 sleep 1
+walk_right 2600
+sleep 1
 walk_far 2000
 sleep 1
 shot 04-depth.png
 
 # --- up the valley to Pip's market, then its four tabs ---
-for _ in 1 2 3 4 5; do walk_far 2200; sleep 1; done
+# with an eastward nudge between the long legs: anything he does run into stops
+# him dead, and a step sideways is enough to get round it
+for _ in 1 2 3 4 5; do walk_far 2200; sleep 1; walk_right 700; sleep 1; done
 for _ in 1 2 3 4; do walk_far 1200; sleep 1; act; done
 sleep 2
 shot 05-shop-seeds.png
