@@ -264,14 +264,24 @@ class Screens(private val g: Game) {
 
     // ---------------------------------------------------------------- pause
 
+    /**
+     * The pause menu's box. Five buttons have to fit inside 480 units of
+     * design height with the panel round them - the old spacing ran Save &
+     * Exit off the bottom of the screen entirely - so panel and stack come
+     * off the same numbers.
+     */
+    private val pauseTop = 62f
+    private val pausePanelH = 402f
+    private val pauseStep = 66f
+
     private fun layoutPause() {
-        val bw = 300f; val bh = 62f
+        val bw = 300f; val bh = 54f
         val x = g.vw / 2f - bw / 2f
-        var y = g.vh * 0.30f
-        b(T.RESUME, "Resume", 1).set(x, y, bw, bh); y += bh + 16f
-        b(T.BAG, "Backpack").set(x, y, bw, bh); y += bh + 16f
-        b(T.JOURNAL, "Journal").set(x, y, bw, bh); y += bh + 16f
-        b(T.SETTINGS, "Settings").set(x, y, bw, bh); y += bh + 16f
+        var y = pauseTop + 46f
+        b(T.RESUME, "Resume", 1).set(x, y, bw, bh); y += pauseStep
+        b(T.BAG, "Backpack").set(x, y, bw, bh); y += pauseStep
+        b(T.JOURNAL, "Journal").set(x, y, bw, bh); y += pauseStep
+        b(T.SETTINGS, "Settings").set(x, y, bw, bh); y += pauseStep
         b(T.TO_TITLE, "Save & Exit", 2).set(x, y, bw, bh)
     }
 
@@ -306,16 +316,15 @@ class Screens(private val g: Game) {
             b(T.PAGE_PREV, "<", 2).set(p[0] + 24f, p[1] + p[2] * 0f + p[3] - 92f, 64f, 56f)
             b(T.PAGE_NEXT, ">", 2).set(p[0] + p[2] - 88f, p[1] + p[3] - 92f, 64f, 56f)
         }
-        val sel = bagSel
-        if (sel != null) {
-            val item = Catalog.items[sel]
-            if (item != null) {
-                val by = p[1] + p[3] - 96f
-                if (item.food > 0) b(T.EAT, "Eat", 1).set(g.vw / 2f - 170f, by, 160f, 58f)
-                if (item.cat == Cat.SEED) b(T.USE_SEED, "Select", 1).set(g.vw / 2f - 170f, by, 160f, 58f)
-            }
+        val by = p[1] + p[3] - 96f
+        val item = bagSel?.let { Catalog.items[it] }
+        val paired = item != null && (item.food > 0 || item.cat == Cat.SEED)
+        if (item != null) {
+            if (item.food > 0) b(T.EAT, "Eat", 1).set(g.vw / 2f - 170f, by, 160f, 58f)
+            if (item.cat == Cat.SEED) b(T.USE_SEED, "Select", 1).set(g.vw / 2f - 170f, by, 160f, 58f)
         }
-        b(T.BACK, "Close", 2).set(g.vw / 2f + 20f, p[1] + p[3] - 96f, 160f, 58f)
+        // on its own Close sits in the middle; beside Eat or Select it shares
+        b(T.BACK, "Close", 2).set(if (paired) g.vw / 2f + 20f else g.vw / 2f - 80f, by, 160f, 58f)
     }
 
     // ----------------------------------------------------------------- shop
@@ -522,9 +531,8 @@ class Screens(private val g: Game) {
         Ui.scrim(c, g.vw, g.vh, 0.46f * U.clamp01(g.modeT * 2f))
         beginPop(c)
         val w = 380f
-        val h = 460f
-        Ui.panel(c, g.vw / 2f - w / 2f, g.vh * 0.30f - 74f, w, h)
-        Ui.ribbon(c, g.vw / 2f, g.vh * 0.30f - 96f, 260f, "Paused")
+        Ui.panel(c, g.vw / 2f - w / 2f, pauseTop, w, pausePanelH)
+        Ui.ribbon(c, g.vw / 2f, pauseTop - 18f, 260f, "Paused")
         drawButtons(c)
         c.restore()
     }

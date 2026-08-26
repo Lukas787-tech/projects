@@ -91,24 +91,36 @@ shot 07-backpack.png
 adb shell input keyevent 4
 sleep 2
 
-# --- pause menu ---
+# --- pause menu, and the two screens hanging off it ---
 adb shell input tap 1197 83
 sleep 2
 shot 08-pause.png
+
+adb shell input tap 640 400   # Journal
+sleep 2
+shot 09-journal.png
+adb shell input keyevent 4    # back goes straight to play, not to the menu
+sleep 2
+
+adb shell input tap 1197 83
+sleep 2
+adb shell input tap 640 500   # Settings
+sleep 2
+shot 10-settings.png
 adb shell input keyevent 4
 sleep 2
 
 # --- on to the market and the river ---
 for _ in 1 2 3 4 5; do walk_right 2600; done
 sleep 1
-shot 09-river.png
+shot 11-river.png
 
 adb shell input tap 1162 583   # fish / shop, whatever is in reach
 sleep 3
-shot 10-action.png
+shot 12-action.png
 
 sleep 6
-shot 11-later.png
+shot 13-later.png
 
 echo "--- process check ---"
 if ! adb shell pidof com.cozyhollow.riverside > /dev/null; then
