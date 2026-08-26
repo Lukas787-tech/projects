@@ -22,7 +22,7 @@ shot() {
 # The floating stick drops wherever you press, so a swipe = press then lean.
 walk() { adb shell input swipe "$1" "$2" "$3" "$4" "${5:-2500}"; }
 walk_right() { walk 300 560 760 560 "${1:-2500}"; }
-walk_left()  { walk 700 560 240 560 "${1:-2500}"; }
+walk_left()  { walk 340 560 60 560 "${1:-2500}"; }    # press inside the stick's half
 walk_near()  { walk 300 340 300 620 "${1:-1600}"; }   # toward the camera
 walk_far()   { walk 300 620 300 340 "${1:-1600}"; }   # into the woods
 # Crossing the valley on a diagonal, because collision is resolved one axis at
@@ -80,8 +80,9 @@ shot 04-depth.png
 # --- up the valley to Pip's market, then its four tabs ---
 # with an eastward nudge between the long legs: anything he does run into stops
 # him dead, and a step sideways is enough to get round it
-for _ in 1 2 3 4 5; do walk_far 2200; sleep 1; walk_right 700; sleep 1; done
-for _ in 1 2 3 4; do walk_far 1200; sleep 1; act; done
+for _ in 1 2 3 4 5; do walk_far 2200; sleep 1; done
+# the counter is west of the line he comes up on, and the river is east of it
+for _ in 1 2 3 4; do walk_left 1200; sleep 1; act; done
 sleep 2
 shot 05-shop-seeds.png
 adb shell input tap 504 168    # Tools tab
