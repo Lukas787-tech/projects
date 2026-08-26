@@ -4,6 +4,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -364,11 +366,11 @@ private fun CategoryGrid(
     nameOf: (com.expensesplit.app.domain.model.Category) -> String,
     onSelected: (Long) -> Unit,
 ) {
-    androidx.compose.foundation.lazy.LazyRow(
+    LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        androidx.compose.foundation.lazy.items(categories, key = { it.id }) { category ->
+        items(categories, key = { it.id }) { category ->
             val selected = category.id == selectedId
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

@@ -40,12 +40,12 @@ object SearchQueryBuilder {
 
         if (filters.categoryIds.isNotEmpty()) {
             clauses += "categoryId IN (${placeholders(filters.categoryIds.size)})"
-            args += filters.categoryIds
+            args.addAll(filters.categoryIds)
         }
 
         if (filters.paymentMethods.isNotEmpty()) {
             clauses += "paymentMethod IN (${placeholders(filters.paymentMethods.size)})"
-            args += filters.paymentMethods.map { it.name }
+            args.addAll(filters.paymentMethods.map { it.name })
         }
 
         filters.minAmountMinor?.let {
@@ -59,7 +59,7 @@ object SearchQueryBuilder {
 
         if (filters.groupIds.isNotEmpty()) {
             clauses += "groupId IN (${placeholders(filters.groupIds.size)})"
-            args += filters.groupIds
+            args.addAll(filters.groupIds)
         }
 
         filters.settledOnly?.let {
