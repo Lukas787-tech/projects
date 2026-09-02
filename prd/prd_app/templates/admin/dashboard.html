@@ -1,0 +1,84 @@
+{% extends "admin/base.html" %}
+{% block title %}Requests — PRD{% endblock %}
+{% block admin_content %}
+<div class="kpi">
+  <div><b>{{ stats.pending }}</b><span>Waiting</span></div>
+  <div><b>{{ stats.sites_live }}</b><span>Live</span></div>
+  <div><b>{{ stats.sites_public }}</b><span>In gallery</span></div>
+  <div><b>{{ stats.today }}</b><span>New today</span></div>
+  <div><b>{{ stats.views }}</b><span>Visits</span></div>
+</div>
+
+<div class="card" style="margin-bottom:22px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between">
+  <div>
+    <label style="margin:0">Deploy target</label>
+    <div style="font-weight:650">{{ deployer.target }}
+      {% if deployer.ready %}<span class="tag tag-live">ready</span>
+      {% else %}<span class="tag tag-failed">not ready</span>{% endif %}</div>
+    <div class="hint">{{ deployer.detail }}</div>
+  </div>
+  <form method="post" action="{{ url_for('admin.redeploy_everything') }}"
+        onsubmit="return confirm('Re-render and redeploy every live site?')">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button class="btn btn-soft btn-s">Redeploy all live sites</button>
+  </form>
+</div>
+
+<div class="filters">
+  {% for value, label in [('pending','Waiting'),('deployed','Deployed'),('rejected','Rejected'),('failed','Failed'),('all','Everything')] %}
+    <a class="chip {% if status == value %}on{% endif %}" href="{{ url_for('admin.dashboard', status=value) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% for item in requests %}
+<div class="req">
+  <div class="req-head">
+    <div>
+      <h3 style="margin:0">{{ item.title }}
+        <span class="mono dim" style="font-weight:400">/s/{{ item.slug }}</span></h3>
+      <div class="hint">{{ item.kind }} · {{ item.created_at|shortdate }} ·
+        {{ presets[item.preset].name if item.preset in presets else item.preset }} ·
+        visitor <span class="mono">{{ item.ip_hash[:10] }}</span></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="tag tag-{{ item.status if item.status != 'deployed' else 'live' }}">{{ item.status }}</span>
+      {% if item.is_public %}<span class="tag tag-public">gallery</span>{% endif %}
+    </div>
+  </div>
+  {% if item.note %}<p class="muted" style="margin:12px 0 0;font-size:.92rem">“{{ item.note }}”</p>{% endif %}
+  {% if item.error %}<p class="err">{{ item.error }}</p>{% endif %}
+  <div class="req-actions">
+    <a class="btn btn-ghost btn-s" href="{{ url_for('admin.preview', site_id=item.site_id) }}" target="_blank">Preview ↗</a>
+    {% if item.status == 'pending' %}
+      <form method="post" action="{{ url_for('admin.request_action', request_id=item.id, action='approve') }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-primary btn-s">Approve &amp; deploy</button>
+      </form>
+      <form method="post" action="{{ url_for('admin.request_action', request_id=item.id, action='reject') }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <input type="text" name="note" placeholder="Reason (shown to them)" style="max-width:230px" class="btn-s">
+        <button class="btn btn-danger btn-s">Reject</button>
+      </form>
+    {% else %}
+      <form method="post" action="{{ url_for('admin.site_action', site_id=item.site_id, action='deploy') }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-soft btn-s">Redeploy</button>
+      </form>
+      {% if item.site_status == 'live' %}
+      <form method="post" action="{{ url_for('admin.site_action', site_id=item.site_id, action='offline') }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-soft btn-s">Take offline</button>
+      </form>
+      {% endif %}
+    {% endif %}
+    <form method="post" action="{{ url_for('admin.site_action', site_id=item.site_id, action='block') }}"
+          onsubmit="return confirm('Block this visitor from publishing anything else?')">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button class="btn btn-danger btn-s">Block visitor</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="gal-empty"><p style="font-size:2rem;margin:0 0 6px">📭</p><p>Nothing in this list.</p></div>
+{% endfor %}
+{% endblock %}

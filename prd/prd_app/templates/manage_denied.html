@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Manage link needed — PRD{% endblock %}
+{% block content %}
+<section class="section"><div class="narrow card center" style="padding:50px 30px">
+  <div style="font-size:3rem">🔑</div>
+  <h1 style="font-size:2rem">That link isn't valid</h1>
+  <p class="muted">Managing <strong>{{ slug }}</strong> needs the private link you were given when you
+    requested it. It looks like <span class="mono">/manage/{{ slug }}?t=…</span></p>
+  <p class="hint">Lost it? Nothing else can prove the site is yours — but you can always build a new one.</p>
+  <a class="btn btn-ghost" href="{{ url_for('views.editor') }}">Open the editor</a>
+</div></section>
+{% endblock %}

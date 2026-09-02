@@ -1,0 +1,28 @@
+{% extends "admin/base.html" %}
+{% block title %}Activity — PRD{% endblock %}
+{% block admin_content %}
+{% if blocked %}
+<h3>Blocked visitors</h3>
+<div class="card" style="margin-bottom:26px;padding:6px 10px;overflow-x:auto">
+<table><thead><tr><th>Visitor</th><th>Reason</th><th>Since</th><th></th></tr></thead><tbody>
+{% for row in blocked %}
+<tr><td class="mono">{{ row.ip_hash[:16] }}</td><td class="muted">{{ row.reason }}</td>
+  <td class="dim">{{ row.created_at|shortdate }}</td>
+  <td style="text-align:right"><form method="post" action="{{ url_for('admin.unblock') }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="ip_hash" value="{{ row.ip_hash }}">
+    <button class="btn btn-soft btn-xs">Unblock</button></form></td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endif %}
+
+<h3>Recent activity</h3>
+<div class="card" style="padding:6px 10px;overflow-x:auto">
+<table><thead><tr><th>When</th><th>Who</th><th>What</th><th>Target</th><th>Detail</th></tr></thead><tbody>
+{% for entry in entries %}
+<tr><td class="dim">{{ entry.created_at|shortdate }}</td><td>{{ entry.actor }}</td>
+  <td class="mono">{{ entry.action }}</td><td>{{ entry.target }}</td>
+  <td class="muted">{{ entry.detail }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endblock %}

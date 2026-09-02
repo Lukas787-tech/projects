@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Gallery — PRD{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">The gallery</h1>
+      <p>Everything here is live and public. Open one, then hit <strong>Remix</strong> to start your own
+        version of it in the editor.</p>
+    </div>
+
+    <div class="filters">
+      <input class="search" id="q" type="search" placeholder="Search sites…" autocomplete="off">
+      <span class="chip on" data-sort="new">Newest</span>
+      <span class="chip" data-sort="popular">Most visited</span>
+      <span class="chip" data-sort="remixed">Most remixed</span>
+      <span style="flex:1"></span>
+      <select id="preset" style="max-width:190px">
+        <option value="">All kinds</option>
+        {% for preset in presets %}<option value="{{ preset.id }}">{{ preset.emoji }} {{ preset.name }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <div class="gal-grid" id="grid"></div>
+    <div id="empty" class="gal-empty" hidden>
+      <p style="font-size:2rem;margin:0 0 8px">🫥</p>
+      <p>Nothing here yet. <a href="{{ url_for('views.editor') }}" style="color:var(--accent)">Be the first</a>.</p>
+    </div>
+    <div class="center" style="margin-top:30px">
+      <button class="btn btn-ghost" id="more" hidden>Load more</button>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/gallery.js') }}"></script>{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Site offline — PRD{% endblock %}
+{% block content %}
+<section class="section"><div class="narrow card center" style="padding:50px 30px">
+  <div style="font-size:3rem">🌫️</div>
+  <h1 style="font-size:2rem">This site is offline</h1>
+  <p class="muted">It was taken down by its creator or by the owner of this PRD instance.</p>
+  <a class="btn btn-primary" href="{{ url_for('views.editor') }}">Build your own</a>
+</div></section>
+{% endblock %}

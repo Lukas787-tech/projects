@@ -16,3 +16,9 @@ venv.bak/
 .vscode/
 *.swp
 *.swo
+
+# PRD local data
+prd/.prd-data/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm

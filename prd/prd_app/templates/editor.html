@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Editor — PRD</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='54' font-size='72' text-anchor='middle' dominant-baseline='central'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Outfit:wght@600;700;800&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
+</head>
+<body class="editing">
+<div class="ed">
+
+  <header class="ed-bar">
+    <a class="logo" href="{{ url_for('views.index') }}" title="Back to PRD"><span class="logo-mark">⚡</span></a>
+    <input class="ed-title" id="siteTitle" value="My site" aria-label="Site title" maxlength="90">
+    <span class="ed-save" id="saveState">saved</span>
+
+    <div class="ed-spacer"></div>
+
+    <div class="ed-group" role="group" aria-label="History">
+      <button class="ed-icon" id="undo" title="Undo (Ctrl+Z)" disabled>↶</button>
+      <button class="ed-icon" id="redo" title="Redo (Ctrl+Shift+Z)" disabled>↷</button>
+    </div>
+    <div class="ed-group" role="group" aria-label="Preview size">
+      <button class="ed-icon on" data-device="desktop" title="Desktop">🖥️</button>
+      <button class="ed-icon" data-device="tablet" title="Tablet">📱</button>
+      <button class="ed-icon" data-device="phone" title="Phone">📲</button>
+    </div>
+    <button class="btn btn-ghost btn-s" id="previewBtn" title="Open a clean preview in a new tab">Preview</button>
+    <button class="btn btn-primary btn-s" id="publishBtn">Publish →</button>
+  </header>
+
+  <div class="mobile-bar">
+    <button class="btn btn-soft btn-s" data-pane="left">＋ Blocks</button>
+    <button class="btn btn-soft btn-s" data-pane="right">⚙ Settings</button>
+  </div>
+
+  <aside class="pane pane-left" id="paneLeft">
+    <div class="tabs">
+      <button class="tab on" data-tab="library">Add blocks</button>
+      <button class="tab" data-tab="layers">Layers</button>
+    </div>
+    <div class="pane-body" id="tabLibrary">
+      <input class="lib-search" id="libSearch" type="search" placeholder="Search blocks…" autocomplete="off">
+      <div id="library"></div>
+    </div>
+    <div class="pane-body" id="tabLayers" hidden>
+      <p class="hint" style="margin-top:0">Drag to reorder. Click to jump to a section.</p>
+      <div id="layers"></div>
+    </div>
+  </aside>
+
+  <section class="canvas">
+    <div class="canvas-stage">
+      <div class="frame" id="frame">
+        <iframe id="preview" title="Live preview of your site"></iframe>
+      </div>
+    </div>
+    <div class="canvas-busy" id="busy">updating…</div>
+    <div class="canvas-hint" id="hint">Click anything in the page to edit it</div>
+  </section>
+
+  <aside class="pane pane-right" id="paneRight">
+    <div class="tabs">
+      <button class="tab on" data-tab="element">Element</button>
+      <button class="tab" data-tab="design">Design</button>
+      <button class="tab" data-tab="page">Page</button>
+    </div>
+    <div id="tabElement" style="display:flex;flex-direction:column;min-height:0;flex:1">
+      <div id="inspectorHead"></div>
+      <div class="pane-body" id="inspector"></div>
+    </div>
+    <div class="pane-body" id="tabDesign" hidden></div>
+    <div class="pane-body" id="tabPage" hidden></div>
+  </aside>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+window.PRD_BOOT = {
+  preset: {{ start_preset|tojson }},
+  template: {{ start_template|tojson }},
+  editSlug: {{ edit_slug|tojson }},
+  editToken: {{ edit_token|tojson }},
+  presets: {{ presets|tojson }},
+  autoApprove: {{ auto_approve|tojson }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+</body>
+</html>

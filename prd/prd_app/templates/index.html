@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div class="hero-bd"></div><div class="hero-grid"></div>
+  <div class="wrap hero-in">
+    <span class="eyebrow"><span class="dotpulse"></span> No account · No code · Free</span>
+    <h1>Make a website you're<br><span class="grad">actually proud of</span></h1>
+    <p class="hero-sub">Pick a starting point, drag things around until it looks right, then ask us to put it
+      online. It takes about five minutes and you never touch a line of code.</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="{{ url_for('views.editor') }}">Start building →</a>
+      <a class="btn btn-ghost" href="{{ url_for('views.gallery') }}">Browse the gallery</a>
+    </div>
+    <p class="hero-note">{{ stats.sites_live }} sites live · {{ stats.views }} visits served</p>
+  </div>
+</section>
+
+<section class="section" id="how">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <h2>PRD is three steps</h2>
+      <p>That's where the name comes from.</p>
+    </div>
+    <div class="steps">
+      <div class="step card reveal">
+        <span class="step-n">1</span>
+        <h3>Personalise</h3>
+        <p>Start from a preset — Discord server, bio page, company site — then drag in the pieces you want.
+          Every colour, word and picture is yours to change, live, as you type.</p>
+      </div>
+      <div class="step card reveal" style="transition-delay:.08s">
+        <span class="step-n">2</span>
+        <h3>Request</h3>
+        <p>Happy with it? Pick an address and send a publish request. No sign-up, no email required —
+          you get a private manage link so you can come back and edit later.</p>
+      </div>
+      <div class="step card reveal" style="transition-delay:.16s">
+        <span class="step-n">3</span>
+        <h3>Deploy</h3>
+        <p>We render your site to plain, fast HTML and push it live on PythonAnywhere.
+          Share the link — it works on every phone and loads instantly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <h2>Start from something good</h2>
+      <p>Ten presets, all fully editable. Nothing here is a locked template.</p>
+    </div>
+    <div class="preset-grid">
+      {% for preset in presets %}
+      <a class="preset reveal" style="--pc:{{ preset.accent }}55;transition-delay:{{ loop.index0 * 0.04 }}s"
+         href="{{ url_for('views.editor', preset=preset.id) }}">
+        <div class="preset-emoji">{{ preset.emoji }}</div>
+        <h3>{{ preset.name }}</h3>
+        <p>{{ preset.tagline }}</p>
+        <div class="preset-go">Open in editor →</div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if showcase %}
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <h2>Made with PRD</h2>
+      <p>Public sites from other people. Click any of them to use as your own starting point.</p>
+    </div>
+    <div class="gal-grid">
+      {% for item in showcase %}
+      <article class="gal-card reveal">
+        <a class="gal-thumb" href="{{ url_for('views.site_detail', slug=item.slug) }}">
+          <iframe src="{{ url_for('views.serve_site', slug=item.slug) }}" loading="lazy" tabindex="-1"
+                  title="{{ item.title }} preview" scrolling="no"></iframe>
+        </a>
+        <div class="gal-body">
+          <h3>{{ item.favicon }} {{ item.title }}</h3>
+          <p>{{ item.summary }}</p>
+          <div class="gal-meta"><span>👁 {{ item.views }}</span><span>🔁 {{ item.remixes }}</span></div>
+        </div>
+        <div class="gal-actions">
+          <a class="btn btn-soft btn-s btn-block" href="{{ url_for('views.serve_site', slug=item.slug) }}">Visit</a>
+          <a class="btn btn-ghost btn-s btn-block" href="{{ url_for('views.editor', template=item.slug) }}">Remix</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    <div class="center" style="margin-top:32px">
+      <a class="btn btn-ghost" href="{{ url_for('views.gallery') }}">See the whole gallery</a>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="section" style="padding-top:0">
+  <div class="narrow card reveal" style="text-align:center;padding:44px 30px">
+    <h2>Ready in five minutes</h2>
+    <p class="muted">Free, no account, {{ limits.publish_day }} new sites per day per person so the queue stays sane.</p>
+    <a class="btn btn-primary" href="{{ url_for('views.editor') }}">Open the editor</a>
+  </div>
+</section>
+{% endblock %}

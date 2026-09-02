@@ -1,0 +1,41 @@
+{% extends "admin/base.html" %}
+{% block title %}Sites — PRD{% endblock %}
+{% block admin_content %}
+<div class="card" style="padding:6px 10px;overflow-x:auto">
+<table>
+  <thead><tr><th>Site</th><th>Status</th><th>Visits</th><th>Created</th><th>Visitor</th><th></th></tr></thead>
+  <tbody>
+  {% for site in sites %}
+  <tr>
+    <td>
+      <strong>{{ site.title }}</strong><br>
+      <a class="mono dim" href="{{ url_for('views.serve_site', slug=site.slug) }}" target="_blank">/s/{{ site.slug }} ↗</a>
+    </td>
+    <td><span class="tag tag-{{ site.status }}">{{ site.status }}</span>
+        {% if site.is_public %}<span class="tag tag-public">gallery</span>{% endif %}</td>
+    <td>{{ site.views }}</td>
+    <td class="dim">{{ site.created_at|shortdate }}</td>
+    <td class="mono dim">{{ site.ip_hash[:10] }}</td>
+    <td>
+      <div style="display:flex;gap:6px;justify-content:flex-end">
+        <form method="post" action="{{ url_for('admin.site_action', site_id=site.id, action='deploy') }}">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          <button class="btn btn-soft btn-xs">Deploy</button></form>
+        <form method="post" action="{{ url_for('admin.site_action', site_id=site.id, action='public') }}">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          <button class="btn btn-soft btn-xs">{{ 'Unlist' if site.is_public else 'List' }}</button></form>
+        <form method="post" action="{{ url_for('admin.site_action', site_id=site.id, action='offline') }}">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          <button class="btn btn-soft btn-xs">Offline</button></form>
+        <form method="post" action="{{ url_for('admin.site_action', site_id=site.id, action='delete') }}"
+              onsubmit="return confirm('Delete {{ site.slug }} permanently?')">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          <button class="btn btn-danger btn-xs">Delete</button></form>
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

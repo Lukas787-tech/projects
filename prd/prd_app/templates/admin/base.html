@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+.adm-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:26px}
+.adm-nav a{padding:8px 14px;border-radius:10px;border:1px solid var(--line);font-size:.9rem;font-weight:600;color:var(--muted)}
+.adm-nav a:hover,.adm-nav a.on{color:var(--text);border-color:var(--accent);background:rgba(124,92,255,.1)}
+.kpi{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:26px}
+.kpi div{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.kpi b{display:block;font-family:var(--head);font-size:1.8rem;font-weight:800}
+.kpi span{font-size:.78rem;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.req{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:20px;margin-bottom:14px}
+.req-head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.req-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+.req-actions form{display:flex;gap:8px;align-items:center;margin:0}
+</style>
+{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:34px">
+  <div class="wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <h1 style="font-size:1.9rem;margin:0">Owner dashboard</h1>
+      <form method="post" action="{{ url_for('admin.logout') }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-soft btn-s">Sign out</button>
+      </form>
+    </div>
+    <nav class="adm-nav">
+      <a href="{{ url_for('admin.dashboard') }}" class="{% if request.endpoint == 'admin.dashboard' %}on{% endif %}">Requests</a>
+      <a href="{{ url_for('admin.sites') }}" class="{% if request.endpoint == 'admin.sites' %}on{% endif %}">Sites</a>
+      <a href="{{ url_for('admin.audit') }}" class="{% if request.endpoint == 'admin.audit' %}on{% endif %}">Activity</a>
+      <a href="{{ url_for('views.gallery') }}">Public gallery ↗</a>
+    </nav>
+    {% block admin_content %}{% endblock %}
+  </div>
+</section>
+{% endblock %}
