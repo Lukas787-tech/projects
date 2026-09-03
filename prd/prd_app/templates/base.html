@@ -5,24 +5,25 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{% block title %}PRD — build a website without code{% endblock %}</title>
 <meta name="description" content="{% block description %}Personalise, request, deploy. Build a real website with a clean drag-and-drop editor and publish it in a minute — no account needed.{% endblock %}">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='54' font-size='72' text-anchor='middle' dominant-baseline='central'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23fff'/%3E%3Crect x='8' y='8' width='16' height='16' fill='%230b0b0b'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Outfit:wght@600;700;800&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 {% block head %}{% endblock %}
 </head>
 <body>
+{{ icon_sprite()|safe }}
 <header class="top">
   <div class="wrap top-in">
     <a class="logo" href="{{ url_for('views.index') }}">
-      <span class="logo-mark">⚡</span> PRD
+      <span class="logo-mark"></span> PRD
     </a>
     <nav class="top-nav">
       <a class="hide-s {% if request.endpoint == 'views.gallery' %}on{% endif %}" href="{{ url_for('views.gallery') }}">Gallery</a>
       <a class="hide-s" href="{{ url_for('views.index') }}#how">How it works</a>
       {% if admin_logged_in %}<a class="hide-s" href="{{ url_for('admin.dashboard') }}">Dashboard</a>{% endif %}
-      <a class="btn btn-primary btn-s" href="{{ url_for('views.editor') }}">Start building</a>
+      <a class="btn btn-s" href="{{ url_for('views.editor') }}">Start building</a>
     </nav>
   </div>
 </header>
@@ -36,7 +37,7 @@
 </main>
 <footer class="footer">
   <div class="wrap footer-in">
-    <div>⚡ <strong>PRD</strong> — personalise · request · deploy</div>
+    <div><span class="logo-mark"></span> <strong>PRD</strong> — personalise · request · deploy</div>
     <div style="display:flex;gap:18px;flex-wrap:wrap">
       <a href="{{ url_for('views.gallery') }}">Gallery</a>
       <a href="{{ url_for('views.editor') }}">Editor</a>

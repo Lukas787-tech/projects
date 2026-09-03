@@ -5,39 +5,41 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Editor — PRD</title>
 <meta name="robots" content="noindex">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='54' font-size='72' text-anchor='middle' dominant-baseline='central'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23fff'/%3E%3Crect x='8' y='8' width='16' height='16' fill='%230b0b0b'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Outfit:wght@600;700;800&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
 </head>
 <body class="editing">
+{{ icon_sprite()|safe }}
 <div class="ed">
 
   <header class="ed-bar">
-    <a class="logo" href="{{ url_for('views.index') }}" title="Back to PRD"><span class="logo-mark">⚡</span></a>
+    <a class="logo" href="{{ url_for('views.index') }}" title="Back to PRD"><span class="logo-mark"></span></a>
     <input class="ed-title" id="siteTitle" value="My site" aria-label="Site title" maxlength="90">
+    <span class="ed-rule"></span>
     <span class="ed-save" id="saveState">saved</span>
 
     <div class="ed-spacer"></div>
 
     <div class="ed-group" role="group" aria-label="History">
-      <button class="ed-icon" id="undo" title="Undo (Ctrl+Z)" disabled>↶</button>
-      <button class="ed-icon" id="redo" title="Redo (Ctrl+Shift+Z)" disabled>↷</button>
+      <button class="ed-icon" id="undo" title="Undo (Ctrl+Z)" disabled>{{ icon("undo", 17)|safe }}</button>
+      <button class="ed-icon" id="redo" title="Redo (Ctrl+Shift+Z)" disabled>{{ icon("redo", 17)|safe }}</button>
     </div>
     <div class="ed-group" role="group" aria-label="Preview size">
-      <button class="ed-icon on" data-device="desktop" title="Desktop">🖥️</button>
-      <button class="ed-icon" data-device="tablet" title="Tablet">📱</button>
-      <button class="ed-icon" data-device="phone" title="Phone">📲</button>
+      <button class="ed-icon on" data-device="desktop" title="Desktop">{{ icon("desktop", 17)|safe }}</button>
+      <button class="ed-icon" data-device="tablet" title="Tablet">{{ icon("tablet", 17)|safe }}</button>
+      <button class="ed-icon" data-device="phone" title="Phone">{{ icon("phone", 17)|safe }}</button>
     </div>
     <button class="btn btn-ghost btn-s" id="previewBtn" title="Open a clean preview in a new tab">Preview</button>
-    <button class="btn btn-primary btn-s" id="publishBtn">Publish →</button>
+    <button class="btn btn-s" id="publishBtn">Publish {{ icon("arrow-right", 15)|safe }}</button>
   </header>
 
   <div class="mobile-bar">
-    <button class="btn btn-soft btn-s" data-pane="left">＋ Blocks</button>
-    <button class="btn btn-soft btn-s" data-pane="right">⚙ Settings</button>
+    <button class="btn btn-soft btn-s" data-pane="left">{{ icon("plus", 15)|safe }} Blocks</button>
+    <button class="btn btn-soft btn-s" data-pane="right">{{ icon("sliders", 15)|safe }} Settings</button>
   </div>
 
   <aside class="pane pane-left" id="paneLeft">
@@ -62,7 +64,7 @@
       </div>
     </div>
     <div class="canvas-busy" id="busy">updating…</div>
-    <div class="canvas-hint" id="hint">Click anything in the page to edit it</div>
+    <div class="canvas-hint" id="hint">{{ icon("plus", 14)|safe }} Drag a block onto the page, or click anything to edit it</div>
   </section>
 
   <aside class="pane pane-right" id="paneRight">

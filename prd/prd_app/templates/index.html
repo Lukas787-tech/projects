@@ -8,7 +8,7 @@
     <p class="hero-sub">Pick a starting point, drag things around until it looks right, then ask us to put it
       online. It takes about five minutes and you never touch a line of code.</p>
     <div class="hero-cta">
-      <a class="btn btn-primary" href="{{ url_for('views.editor') }}">Start building →</a>
+      <a class="btn" href="{{ url_for('views.editor') }}">Start building {{ icon("arrow-right", 16)|safe }}</a>
       <a class="btn btn-ghost" href="{{ url_for('views.gallery') }}">Browse the gallery</a>
     </div>
     <p class="hero-note">{{ stats.sites_live }} sites live · {{ stats.views }} visits served</p>
@@ -54,10 +54,10 @@
       {% for preset in presets %}
       <a class="preset reveal" style="--pc:{{ preset.accent }}55;transition-delay:{{ loop.index0 * 0.04 }}s"
          href="{{ url_for('views.editor', preset=preset.id) }}">
-        <div class="preset-emoji">{{ preset.emoji }}</div>
+        <div class="preset-emoji">{{ icon(preset.icon, 22)|safe }}</div>
         <h3>{{ preset.name }}</h3>
         <p>{{ preset.tagline }}</p>
-        <div class="preset-go">Open in editor →</div>
+        <div class="preset-go">Open in editor {{ icon("arrow-right", 14)|safe }}</div>
       </a>
       {% endfor %}
     </div>
@@ -79,9 +79,9 @@
                   title="{{ item.title }} preview" scrolling="no"></iframe>
         </a>
         <div class="gal-body">
-          <h3>{{ item.favicon }} {{ item.title }}</h3>
+          <h3>{{ item.title }}</h3>
           <p>{{ item.summary }}</p>
-          <div class="gal-meta"><span>👁 {{ item.views }}</span><span>🔁 {{ item.remixes }}</span></div>
+          <div class="gal-meta"><span>{{ icon("eye", 14)|safe }}{{ item.views }}</span><span>{{ icon("duplicate", 14)|safe }}{{ item.remixes }}</span></div>
         </div>
         <div class="gal-actions">
           <a class="btn btn-soft btn-s btn-block" href="{{ url_for('views.serve_site', slug=item.slug) }}">Visit</a>
@@ -101,7 +101,7 @@
   <div class="narrow card reveal" style="text-align:center;padding:44px 30px">
     <h2>Ready in five minutes</h2>
     <p class="muted">Free, no account, {{ limits.publish_day }} new sites per day per person so the queue stays sane.</p>
-    <a class="btn btn-primary" href="{{ url_for('views.editor') }}">Open the editor</a>
+    <a class="btn" href="{{ url_for('views.editor') }}">Open the editor</a>
   </div>
 </section>
 {% endblock %}

@@ -12,6 +12,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
+from . import icons
 from .blocks import BLOCKS
 from .document import FONTS, resolved_palette, sanitize_url
 
@@ -1021,15 +1022,14 @@ main{flex:1 0 auto;position:relative;z-index:1}
 PREVIEW_CSS = """.prd-blk{position:relative}
 .prd-blk::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:90;
   border:2px solid transparent;border-radius:10px;transition:border-color .15s,box-shadow .15s}
-.prd-blk.hov::after{border-color:rgba(124,92,255,.5)}
-.prd-blk.sel::after{border-color:#7c5cff;box-shadow:0 0 0 4px rgba(124,92,255,.16)}
+.prd-blk.hov::after{border-color:rgba(11,11,11,.35)}
+.prd-blk.sel::after{border-color:#0b0b0b}
 .prd-blk.hov>.prd-tag,.prd-blk.sel>.prd-tag{opacity:1;transform:none}
-.prd-tag{position:absolute;top:0;left:0;z-index:91;background:#7c5cff;color:#fff;font:600 11px/1 ui-sans-serif,system-ui;
-  padding:5px 9px;border-radius:0 0 8px 0;pointer-events:none;opacity:0;transform:translateY(-4px);transition:.15s;
+.prd-tag{position:absolute;top:0;left:0;z-index:91;background:#0b0b0b;color:#fff;font:600 10px/1 ui-sans-serif,system-ui;display:flex;align-items:center;gap:5px;text-transform:uppercase;
+  padding:5px 8px;pointer-events:none;opacity:0;transform:translateY(-4px);transition:.15s;
   font-family:ui-sans-serif,system-ui,sans-serif;letter-spacing:.02em}
-.prd-drop{position:absolute;left:0;right:0;height:3px;background:#7c5cff;z-index:95;pointer-events:none;
-  box-shadow:0 0 12px rgba(124,92,255,.9);border-radius:3px}
-.prd-drop::before{content:'';position:absolute;left:8px;top:-4px;width:11px;height:11px;border-radius:50%;background:#7c5cff}
+.prd-drop{position:absolute;left:0;right:0;height:2px;background:#0b0b0b;z-index:95;pointer-events:none}
+.prd-drop::before{content:'';position:absolute;left:0;top:-3px;width:8px;height:8px;background:#0b0b0b}
 body.prd-dragging *{cursor:grabbing !important}
 html{scroll-behavior:auto}"""
 
@@ -1143,7 +1143,7 @@ def render_blocks(doc: dict, ctx: dict) -> str:
             label = BLOCKS[btype]["label"]
             html_out = (
                 f'<div class="prd-blk" data-prd-id="{esc(block["id"])}" data-prd-type="{esc(btype)}">'
-                f'<div class="prd-tag">{esc(BLOCKS[btype]["icon"])} {esc(label)}</div>{html_out}</div>'
+                f'<div class="prd-tag">{icons.svg(BLOCKS[btype]["icon"], 12)}{esc(label)}</div>{html_out}</div>'
             )
         parts.append(html_out)
     return "".join(parts)

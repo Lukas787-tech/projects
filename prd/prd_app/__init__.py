@@ -42,6 +42,12 @@ def create_app(config: Config | None = None) -> Flask:
             response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         return response
 
+    from . import icons
+
+    # Icons are drawn once per page as a sprite and referenced by name.
+    app.jinja_env.globals["icon"] = icons.use
+    app.jinja_env.globals["icon_sprite"] = icons.sprite
+
     @app.template_filter("shortdate")
     def shortdate(value: str) -> str:
         return (value or "").replace("T", " ")[:16]

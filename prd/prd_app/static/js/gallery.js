@@ -13,14 +13,15 @@
     el.className = 'gal-card reveal';
     el.innerHTML = `
       <a class="gal-thumb" href="/site/${encodeURIComponent(item.slug)}">
-        <div class="gal-thumb-fallback">${PRD.escapeHtml(item.favicon || '🌐')}</div>
+        <div class="gal-thumb-fallback">${PRD.ico('page', 26)}</div>
         <iframe src="/s/${encodeURIComponent(item.slug)}" loading="lazy" tabindex="-1" scrolling="no"
                 title="${PRD.escapeHtml(item.title)} preview"></iframe>
       </a>
       <div class="gal-body">
         <h3>${PRD.escapeHtml(item.title)}</h3>
         <p>${PRD.escapeHtml(item.summary || 'No description')}</p>
-        <div class="gal-meta"><span>👁 ${item.views}</span><span>🔁 ${item.remixes}</span>
+        <div class="gal-meta"><span>${PRD.ico('eye', 14)}${item.views}</span>
+          <span>${PRD.ico('duplicate', 14)}${item.remixes}</span>
           <span style="margin-left:auto" class="mono">/${PRD.escapeHtml(item.slug)}</span></div>
       </div>
       <div class="gal-actions">

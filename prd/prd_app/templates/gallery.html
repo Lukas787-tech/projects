@@ -17,13 +17,13 @@
       <span style="flex:1"></span>
       <select id="preset" style="max-width:190px">
         <option value="">All kinds</option>
-        {% for preset in presets %}<option value="{{ preset.id }}">{{ preset.emoji }} {{ preset.name }}</option>{% endfor %}
+        {% for preset in presets %}<option value="{{ preset.id }}">{{ preset.name }}</option>{% endfor %}
       </select>
     </div>
 
     <div class="gal-grid" id="grid"></div>
     <div id="empty" class="gal-empty" hidden>
-      <p style="font-size:2rem;margin:0 0 8px">🫥</p>
+      <p style="color:#a3a3a3;margin:0 0 10px">{{ icon("search", 26)|safe }}</p>
       <p>Nothing here yet. <a href="{{ url_for('views.editor') }}" style="color:var(--accent)">Be the first</a>.</p>
     </div>
     <div class="center" style="margin-top:30px">

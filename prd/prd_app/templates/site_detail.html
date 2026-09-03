@@ -9,16 +9,16 @@
               style="width:100%;height:620px;border:0;display:block;background:#000"></iframe>
     </div>
     <div>
-      <h1 style="font-size:2rem">{{ site.title }}</h1>
+      <h1 style="font-size:1.9rem">{{ site.title }}</h1>
       <p class="muted">{{ site.summary }}</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin:18px 0">
         <span class="tag tag-live">live</span>
-        {% if preset %}<span class="chip">{{ preset.emoji }} {{ preset.name }}</span>{% endif %}
-        <span class="chip">👁 {{ site.views }}</span>
-        <span class="chip">🔁 {{ site.remixes }}</span>
+        {% if preset %}<span class="chip">{{ icon(preset.icon, 14)|safe }} {{ preset.name }}</span>{% endif %}
+        <span class="chip">{{ icon("eye", 14)|safe }} {{ site.views }}</span>
+        <span class="chip">{{ icon("duplicate", 14)|safe }} {{ site.remixes }}</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px">
-        <a class="btn btn-primary btn-block" href="{{ live_url }}" target="_blank" rel="noopener">Open the site ↗</a>
+        <a class="btn btn-block" href="{{ live_url }}" target="_blank" rel="noopener">Open the site ↗</a>
         <a class="btn btn-ghost btn-block" href="{{ url_for('views.editor', template=site.slug) }}">Remix this design</a>
       </div>
       <div class="code-line" style="margin-top:16px">

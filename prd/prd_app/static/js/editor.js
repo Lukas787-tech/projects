@@ -365,14 +365,15 @@
         if (!items.length) { return; }
         shown += items.length;
         const section = el('div', 'pane-section');
-        section.appendChild(el('h4', null, esc(category)));
+        section.appendChild(el('h4', null,
+          `<span>${esc(category)}</span><span class="pane-count">${items.length}</span>`));
         const grid = el('div', 'lib-grid');
         items.forEach((block) => {
           const button = el('button', 'lib-item');
           button.type = 'button';
           button.title = block.description;
           button.dataset.type = block.type;
-          button.innerHTML = `<span class="lib-emoji">${esc(block.icon)}</span>
+          button.innerHTML = `<span class="lib-emoji">${PRD.ico(block.icon, 20)}</span>
             <span class="lib-name">${esc(block.label)}</span>`;
           button.addEventListener('click', () => {
             if (state.dragging) { return; }
@@ -382,6 +383,7 @@
           button.addEventListener('pointerdown', (ev) => startLibraryDrag(ev, block));
           grid.appendChild(button);
         });
+        if (items.length % 2) { grid.appendChild(el('div', 'lib-item lib-blank')); }
         section.appendChild(grid);
         host.appendChild(section);
       });
@@ -430,7 +432,7 @@
         state.dragging = block;
         state.dropIndex = -1;
         raiseShield();
-        ghost = el('div', 'drag-ghost', `${esc(block.icon)} ${esc(block.label)}`);
+        ghost = el('div', 'drag-ghost', `${PRD.ico(block.icon, 16)}${esc(block.label)}`);
         document.body.appendChild(ghost);
         document.body.style.userSelect = 'none';
       }
@@ -488,13 +490,13 @@
       const row = el('div', 'layer' + (block.id === state.selected ? ' on' : ''));
       row.dataset.id = block.id;
       row.dataset.index = String(index);
-      row.innerHTML = `<span class="layer-emoji">${esc(def.icon)}</span>
+      row.innerHTML = `<span class="layer-emoji">${PRD.ico(def.icon, 18)}</span>
         <span class="layer-name">${esc(def.label)}<span class="layer-sub">${esc(blockSummary(block))}</span></span>
         <span class="layer-tools">
-          <button type="button" data-act="up" title="Move up">↑</button>
-          <button type="button" data-act="down" title="Move down">↓</button>
-          <button type="button" data-act="dup" title="Duplicate">⧉</button>
-          <button type="button" data-act="del" title="Delete">✕</button>
+          <button type="button" data-act="up" title="Move up">${PRD.ico('arrow-up', 13)}</button>
+          <button type="button" data-act="down" title="Move down">${PRD.ico('arrow-down', 13)}</button>
+          <button type="button" data-act="dup" title="Duplicate">${PRD.ico('duplicate', 13)}</button>
+          <button type="button" data-act="del" title="Delete">${PRD.ico('trash', 13)}</button>
         </span>`;
       row.addEventListener('click', (ev) => {
         const action = ev.target.getAttribute && ev.target.getAttribute('data-act');
@@ -751,11 +753,11 @@
     items.forEach((item, index) => {
       const card = el('div', 'li');
       const head = el('div', 'li-head');
-      head.innerHTML = `<span class="li-grip">⠿</span>
+      head.innerHTML = `<span class="li-grip">${PRD.ico('drag', 14)}</span>
         <span class="li-title">${esc(itemTitle(spec, item, index))}</span>
         <span class="li-tools">
-          <button type="button" data-act="dup" title="Duplicate">⧉</button>
-          <button type="button" data-act="del" title="Remove">✕</button>
+          <button type="button" data-act="dup" title="Duplicate">${PRD.ico('duplicate', 12)}</button>
+          <button type="button" data-act="del" title="Remove">${PRD.ico('trash', 12)}</button>
         </span>`;
       head.addEventListener('click', (ev) => {
         const action = ev.target.getAttribute && ev.target.getAttribute('data-act');
@@ -801,7 +803,8 @@
     });
 
     const max = spec.max || 24;
-    const add = el('button', 'btn btn-soft btn-s btn-block', `＋ Add ${esc((spec.item_label || 'item').toLowerCase())}`);
+    const add = el('button', 'btn btn-soft btn-s btn-block',
+      `${PRD.ico('plus', 14)} Add ${esc((spec.item_label || 'item').toLowerCase())}`);
     add.type = 'button';
     add.style.marginTop = '10px';
     add.disabled = items.length >= max;
@@ -826,7 +829,7 @@
 
     const index = blockIndex(state.selected);
     if (index < 0) {
-      body.innerHTML = `<div class="insp-empty"><div>👈</div>
+      body.innerHTML = `<div class="insp-empty"><div>${PRD.ico('sliders', 22)}</div>
         Select a section on the page — or add one from the left — and its settings show up here.</div>`;
       return;
     }
@@ -834,12 +837,12 @@
     const def = blockDef(block.type);
 
     const bar = el('div', 'insp-head');
-    bar.innerHTML = `<span class="emoji">${esc(def.icon)}</span>
+    bar.innerHTML = `<span class="emoji">${PRD.ico(def.icon, 20)}</span>
       <span style="flex:1"><h3>${esc(def.label)}</h3><p>${esc(def.description)}</p></span>`;
-    const dup = el('button', 'ed-icon', '⧉');
+    const dup = el('button', 'ed-icon', PRD.ico('duplicate', 16));
     dup.title = 'Duplicate section';
     dup.addEventListener('click', () => duplicateBlock(block.id));
-    const del = el('button', 'ed-icon', '✕');
+    const del = el('button', 'ed-icon', PRD.ico('trash', 16));
     del.title = 'Delete section';
     del.addEventListener('click', () => removeBlock(block.id));
     bar.append(dup, del);
@@ -978,15 +981,18 @@
 
     const file = el('div', 'pane-section');
     file.appendChild(el('h4', null, 'Your design file'));
-    const download = el('button', 'btn btn-soft btn-s btn-block', '⬇ Download design (.json)');
+    const download = el('button', 'btn btn-soft btn-s btn-block',
+      `${PRD.ico('download', 14)} Download design (.json)`);
     download.type = 'button';
     download.style.marginBottom = '8px';
     download.addEventListener('click', downloadDesign);
-    const upload = el('button', 'btn btn-soft btn-s btn-block', '⬆ Load a design file');
+    const upload = el('button', 'btn btn-soft btn-s btn-block',
+      `${PRD.ico('upload', 14)} Load a design file`);
     upload.type = 'button';
     upload.style.marginBottom = '8px';
     upload.addEventListener('click', uploadDesign);
-    const restart = el('button', 'btn btn-ghost btn-s btn-block', '↺ Start over from a preset');
+    const restart = el('button', 'btn btn-ghost btn-s btn-block',
+      `${PRD.ico('undo', 14)} Start over from a preset`);
     restart.type = 'button';
     restart.addEventListener('click', startOver);
     file.append(download, upload, restart);
@@ -1213,7 +1219,7 @@
         slugInput.value = data.slug || value;
         if (data.ok) {
           slugErr.className = 'slug-ok';
-          slugErr.textContent = `✓ ${data.url} is free`;
+          slugErr.innerHTML = `${PRD.ico('check', 14)} <span>${esc(data.url)} is free</span>`;
           sendBtn.disabled = false;
         } else {
           slugErr.className = 'err';
@@ -1276,7 +1282,7 @@
     const manageUrl = location.origin + data.manage_url;
     const siteUrl = data.url.startsWith('http') ? data.url : location.origin + data.url;
     const box = modal(`
-      <div class="success-mark">${live ? '🎉' : '📨'}</div>
+      <div class="success-mark">${PRD.ico(live ? 'check' : 'upload', 22)}</div>
       <h2 class="center">${live ? 'Your site is live' : 'Request sent'}</h2>
       <p class="lead center">${live
         ? 'It is deployed and ready to share.'

@@ -38,6 +38,12 @@ window.PRD = (function () {
     items.forEach((el) => io.observe(el));
   }
 
+  /** A reference into the page's icon sprite. */
+  function ico(name, size) {
+    const px = size || 20;
+    return `<svg class="i" width="${px}" height="${px}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+  }
+
   function escapeHtml(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, (ch) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -50,5 +56,5 @@ window.PRD = (function () {
   });
   document.addEventListener('DOMContentLoaded', reveals);
 
-  return { toast, copy, reveals, escapeHtml };
+  return { toast, copy, reveals, escapeHtml, ico };
 })();

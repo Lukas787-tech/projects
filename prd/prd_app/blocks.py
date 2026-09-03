@@ -209,7 +209,7 @@ def block(
 
 BLOCK_LIST: list[dict] = [
     block(
-        "nav", "Navigation", "🧭", "Structure",
+        "nav", "Navigation", "nav", "Structure",
         "Sticky top bar with your name and links.",
         [
             field("brand", "text", "Brand / name", "My Site"),
@@ -225,7 +225,7 @@ BLOCK_LIST: list[dict] = [
         unique=True, keywords="menu header bar",
     ),
     block(
-        "hero", "Hero", "🚀", "Structure",
+        "hero", "Hero", "hero", "Structure",
         "The big opening statement people read first.",
         [
             field("eyebrow", "text", "Eyebrow", "Welcome"),
@@ -246,7 +246,7 @@ BLOCK_LIST: list[dict] = [
         keywords="header banner intro",
     ),
     block(
-        "discord", "Discord invite", "💬", "Community",
+        "discord", "Discord invite", "discord", "Community",
         "Server card with member counts and a big join button.",
         [
             field("name", "text", "Server name", "My Server"),
@@ -264,7 +264,7 @@ BLOCK_LIST: list[dict] = [
         keywords="server invite join community gaming",
     ),
     block(
-        "links", "Link buttons", "🔗", "Content",
+        "links", "Link buttons", "links", "Content",
         "Stacked buttons — perfect for a bio page.",
         [
             field("heading", "text", "Heading", ""),
@@ -278,7 +278,7 @@ BLOCK_LIST: list[dict] = [
         keywords="linktree bio buttons",
     ),
     block(
-        "socials", "Social icons", "🌐", "Content",
+        "socials", "Social icons", "socials", "Content",
         "A neat row of platform icons.",
         [
             field("items", "list", "Profiles", [
@@ -291,7 +291,7 @@ BLOCK_LIST: list[dict] = [
         keywords="icons social media",
     ),
     block(
-        "about", "Text section", "📝", "Content",
+        "about", "Text section", "text", "Content",
         "A heading plus a paragraph. Supports **bold**, *italic* and [links](url).",
         [
             field("heading", "text", "Heading", "About"),
@@ -304,7 +304,7 @@ BLOCK_LIST: list[dict] = [
         keywords="paragraph about story text",
     ),
     block(
-        "features", "Feature cards", "🧩", "Content",
+        "features", "Feature cards", "features", "Content",
         "Grid of cards for perks, services or rules.",
         [
             field("heading", "text", "Heading", "What you get"),
@@ -320,7 +320,7 @@ BLOCK_LIST: list[dict] = [
         keywords="cards grid perks services rules",
     ),
     block(
-        "stats", "Stats", "📊", "Content",
+        "stats", "Stats", "stats", "Content",
         "Big numbers that count up as people scroll.",
         [
             field("heading", "text", "Heading", ""),
@@ -334,7 +334,7 @@ BLOCK_LIST: list[dict] = [
         keywords="numbers counter metrics",
     ),
     block(
-        "gallery", "Gallery", "🖼️", "Media",
+        "gallery", "Gallery", "gallery", "Media",
         "Image grid with hover zoom.",
         [
             field("heading", "text", "Heading", "Gallery"),
@@ -346,7 +346,7 @@ BLOCK_LIST: list[dict] = [
         keywords="images photos screenshots grid",
     ),
     block(
-        "image", "Single image", "🏞️", "Media",
+        "image", "Single image", "image", "Media",
         "One picture with an optional caption.",
         [
             field("url", "image", "Image URL", ""),
@@ -358,7 +358,7 @@ BLOCK_LIST: list[dict] = [
         keywords="photo picture banner",
     ),
     block(
-        "pricing", "Pricing", "💳", "Business",
+        "pricing", "Pricing", "pricing", "Business",
         "Side-by-side plans with a highlighted favourite.",
         [
             field("heading", "text", "Heading", "Pricing"),
@@ -372,7 +372,7 @@ BLOCK_LIST: list[dict] = [
         keywords="plans price money tiers",
     ),
     block(
-        "testimonials", "Testimonials", "💬", "Business",
+        "testimonials", "Testimonials", "testimonials", "Business",
         "Quotes from people who like you.",
         [
             field("heading", "text", "Heading", "What people say"),
@@ -385,7 +385,7 @@ BLOCK_LIST: list[dict] = [
         keywords="reviews quotes praise",
     ),
     block(
-        "faq", "FAQ", "❓", "Content",
+        "faq", "FAQ", "faq", "Content",
         "Expandable questions and answers.",
         [
             field("heading", "text", "Heading", "FAQ"),
@@ -397,7 +397,7 @@ BLOCK_LIST: list[dict] = [
         keywords="questions answers help accordion",
     ),
     block(
-        "timeline", "Timeline", "🧵", "Content",
+        "timeline", "Timeline", "timeline", "Content",
         "A vertical story — history, roadmap or schedule.",
         [
             field("heading", "text", "Heading", "Timeline"),
@@ -410,7 +410,7 @@ BLOCK_LIST: list[dict] = [
         keywords="history roadmap schedule agenda",
     ),
     block(
-        "team", "People", "👥", "Business",
+        "team", "People", "team", "Business",
         "Team, staff or speaker cards.",
         [
             field("heading", "text", "Heading", "The team"),
@@ -423,7 +423,7 @@ BLOCK_LIST: list[dict] = [
         keywords="staff crew members speakers",
     ),
     block(
-        "cta", "Call to action", "📣", "Structure",
+        "cta", "Call to action", "cta", "Structure",
         "A loud panel with one clear button.",
         [
             field("heading", "text", "Heading", "Ready when you are"),
@@ -436,7 +436,7 @@ BLOCK_LIST: list[dict] = [
         keywords="banner action join signup",
     ),
     block(
-        "contact", "Contact", "✉️", "Structure",
+        "contact", "Contact", "contact", "Structure",
         "Ways to reach you, with copy-to-clipboard.",
         [
             field("heading", "text", "Heading", "Get in touch"),
@@ -450,7 +450,7 @@ BLOCK_LIST: list[dict] = [
         keywords="email reach out message",
     ),
     block(
-        "embed", "Embed", "▶️", "Media",
+        "embed", "Embed", "embed", "Media",
         "YouTube, Spotify, SoundCloud, Google Maps or a Discord widget.",
         [
             field("url", "url", "Paste a link", "", help="YouTube, Spotify, SoundCloud, Google Maps or discord.com/widget links."),
@@ -461,7 +461,7 @@ BLOCK_LIST: list[dict] = [
         keywords="video youtube spotify music map iframe",
     ),
     block(
-        "marquee", "Scrolling text", "🎞️", "Media",
+        "marquee", "Scrolling text", "marquee", "Media",
         "An endless ticker of words or emoji.",
         [
             field("text", "text", "Text (separate with • or ,)", "welcome • have fun • be nice"),
@@ -471,7 +471,7 @@ BLOCK_LIST: list[dict] = [
         keywords="ticker scroll banner",
     ),
     block(
-        "countdown", "Countdown", "⏳", "Media",
+        "countdown", "Countdown", "countdown", "Media",
         "Counts down to a date and time.",
         [
             field("heading", "text", "Heading", "Launching in"),
@@ -482,7 +482,7 @@ BLOCK_LIST: list[dict] = [
         keywords="timer launch event date",
     ),
     block(
-        "divider", "Divider", "➖", "Structure",
+        "divider", "Divider", "divider", "Structure",
         "A quiet line between sections.",
         [
             select("style", "Style", [("line", "Line"), ("dots", "Dots"), ("glow", "Glow")], "line"),
@@ -491,13 +491,13 @@ BLOCK_LIST: list[dict] = [
         keywords="separator hr line",
     ),
     block(
-        "spacer", "Spacer", "⬜", "Structure",
+        "spacer", "Spacer", "spacer", "Structure",
         "Empty breathing room.",
         [select("pad", "Height", PAD_OPTIONS, "m")],
         keywords="gap space margin",
     ),
     block(
-        "footer", "Footer", "🔻", "Structure",
+        "footer", "Footer", "footer", "Structure",
         "Small print, links and socials at the bottom.",
         [
             field("text", "text", "Text", "© 2026 My Site"),

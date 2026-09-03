@@ -2,8 +2,8 @@
 {% block title %}Waiting to go live — PRD{% endblock %}
 {% block content %}
 <section class="section"><div class="narrow card center" style="padding:50px 30px">
-  <div style="font-size:3rem">⏳</div>
-  <h1 style="font-size:2rem">Almost there</h1>
+  <div style="color:#0b0b0b;margin-bottom:6px">{{ icon("countdown", 30)|safe }}</div>
+  <h1 style="font-size:1.9rem">Almost there</h1>
   <p class="muted"><strong>{{ site.title }}</strong> has been requested and is waiting for the owner to
     approve it. This page will work the moment it's deployed.</p>
   <a class="btn btn-ghost" href="{{ url_for('views.index') }}">Back to PRD</a>

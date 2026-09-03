@@ -3,8 +3,8 @@
 {% block content %}
 <section class="section"><div class="narrow center" style="padding:60px 0">
   <div class="grad" style="font-family:var(--head);font-size:6rem;font-weight:800;line-height:1">{{ code }}</div>
-  <h1 style="font-size:2rem">{{ title }}</h1>
+  <h1 style="font-size:1.9rem">{{ title }}</h1>
   <p class="muted">{{ message }}</p>
-  <a class="btn btn-primary" href="{{ url_for('views.index') }}">Go home</a>
+  <a class="btn" href="{{ url_for('views.index') }}">Go home</a>
 </div></section>
 {% endblock %}
