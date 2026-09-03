@@ -1,3 +1,4 @@
+import os
 """The one-command deploy script, driven against a stubbed PythonAnywhere API."""
 import sys
 from pathlib import Path
@@ -278,3 +279,23 @@ def test_a_failed_wsgi_write_still_finishes_and_prints_the_file(api, monkeypatch
     assert "Could not write" in output
     assert "from wsgi import application" in output      # so it can be pasted by hand
     assert f"POST /webapps/{DOMAIN}/reload/" in [c["key"] for c in api.calls]
+
+
+def test_the_token_can_come_from_the_env_file(tmp_path, monkeypatch):
+    """Updating a deployed instance should not need the token pasted again."""
+    env_file = tmp_path / ".env"
+    env_file.write_text("PYTHONANYWHERE_API_TOKEN=from-the-file\nPYTHONANYWHERE_USERNAME=prd\n")
+    monkeypatch.setattr(script, "PROJECT_DIR", tmp_path)
+    monkeypatch.delenv("PYTHONANYWHERE_API_TOKEN", raising=False)
+    monkeypatch.delenv("PYTHONANYWHERE_USERNAME", raising=False)
+    script.load_env_file()
+    assert os.environ["PYTHONANYWHERE_API_TOKEN"] == "from-the-file"
+    assert os.environ["PYTHONANYWHERE_USERNAME"] == "prd"
+
+
+def test_a_real_environment_variable_beats_the_file(tmp_path, monkeypatch):
+    (tmp_path / ".env").write_text("PYTHONANYWHERE_API_TOKEN=from-the-file\n")
+    monkeypatch.setattr(script, "PROJECT_DIR", tmp_path)
+    monkeypatch.setenv("PYTHONANYWHERE_API_TOKEN", "from-the-shell")
+    script.load_env_file()
+    assert os.environ["PYTHONANYWHERE_API_TOKEN"] == "from-the-shell"

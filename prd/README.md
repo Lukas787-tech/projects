@@ -109,6 +109,16 @@ without waking Python, and reloads. It prints your live URL at the end.
 It will not quietly take over an existing web app: if `yourname.pythonanywhere.com`
 already serves something else it stops and tells you to pass `--replace-webapp`.
 
+### Updating a deployed instance
+
+```bash
+cd ~/projects/prd && ./update.sh
+```
+
+That pulls, redeploys and reloads. Nothing to paste: the token and username
+come from `.env`, and `--keep-env` keeps your secrets and owner password. Sites
+people have already published live in `~/prd-data` and are never touched.
+
 Useful flags:
 
 | Flag | Effect |

@@ -33,6 +33,26 @@ from prd_app.deploy.pythonanywhere import (  # noqa: E402
 
 HOSTS = ("www.pythonanywhere.com", "eu.pythonanywhere.com")
 
+
+def load_env_file() -> None:
+    """A deployed instance already keeps its token in .env; reuse it.
+
+    Real environment variables still win, so an explicit token or username on
+    the command line overrides whatever the file says.
+    """
+    env_file = PROJECT_DIR / ".env"
+    if not env_file.exists():
+        return
+    for line in env_file.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_env_file()
+
 # The create-webapp endpoint wants "python310", not "3.10".
 PYTHON_VERSIONS = {
     "3.9": "python39", "3.10": "python310", "3.11": "python311",
