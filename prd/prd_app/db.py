@@ -43,15 +43,23 @@ LATE_COLUMNS = (
 )
 
 
+def _add_late_columns(conn: sqlite3.Connection) -> None:
+    for table, column, spec in LATE_COLUMNS:
+        info = list(conn.execute(f"PRAGMA table_info({table})"))
+        if not info:
+            continue  # the table does not exist yet; the schema creates it complete
+        if column not in {row["name"] for row in info}:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {spec}")
+
+
 def init_db(path: Path) -> None:
     """Create or update the schema. Safe to call on every boot."""
     conn = _connect(Path(path))
     try:
+        # Columns first: the schema script indexes one of them, so running it
+        # against an older database would fail before the column exists.
+        _add_late_columns(conn)
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-        for table, column, spec in LATE_COLUMNS:
-            existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
-            if column not in existing:
-                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {spec}")
     finally:
         conn.close()
 
