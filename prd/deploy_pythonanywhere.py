@@ -142,7 +142,8 @@ def build_env(*, username: str, host: str, domain: str, data_dir: str,
     ])
 
 
-def ensure_static_mapping(client: PythonAnywhereClient, domain: str, url: str, path: str) -> None:
+def ensure_static_mapping(client: PythonAnywhereClient, domain: str, url: str, path: str,
+                          dry: bool = False) -> None:
     for mapping in client.static_mappings(domain):
         if mapping.get("url") == url:
             if (mapping.get("path") or "").rstrip("/") != path.rstrip("/"):
@@ -150,6 +151,9 @@ def ensure_static_mapping(client: PythonAnywhereClient, domain: str, url: str, p
             else:
                 log(f"  · {url} already mapped")
             return
+    if dry:
+        log(f"  would map {url} → {path}")
+        return
     client.add_static_mapping(domain, url, path)
     log(f"  + mapped {url} → {path}")
 
@@ -177,6 +181,8 @@ def main() -> int:
                         help="Repoint an existing web app at PRD (it will stop serving whatever it serves now)")
     parser.add_argument("--keep-env", action="store_true",
                         help="Leave an existing .env alone instead of writing a new one")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Show what would happen without changing anything on your account")
     args = parser.parse_args()
 
     if not args.token:
@@ -204,8 +210,11 @@ def main() -> int:
     existing = next((app for app in client.webapps() if app.get("domain_name") == domain), None)
     if existing is None:
         log(f"→ Creating the web app {domain} (Python {args.python_version})")
-        client.create_webapp(domain, args.python_version)
-        log("✓ Web app created")
+        if args.dry_run:
+            log("  would create it")
+        else:
+            client.create_webapp(domain, args.python_version)
+            log("✓ Web app created")
     else:
         serving = existing.get("source_directory") or "(unset)"
         if serving.rstrip("/") != project_dir.rstrip("/") and not args.replace_webapp:
@@ -217,14 +226,21 @@ def main() -> int:
     fields = {"source_directory": project_dir}
     if args.virtualenv:
         fields["virtualenv_path"] = args.virtualenv
-    client.update_webapp(domain, **fields)
-    log("✓ Web app configured")
+    if args.dry_run:
+        log(f"  would set {fields}")
+    else:
+        client.update_webapp(domain, **fields)
+        log("✓ Web app configured")
 
     # 2. Code ---------------------------------------------------------------
     if upload:
         log("→ Uploading project files")
-        count = upload_project(client, PROJECT_DIR, project_dir)
-        log(f"✓ Uploaded {count} files")
+        if args.dry_run:
+            count = sum(1 for _ in iter_project_files(PROJECT_DIR))
+            log(f"  would upload {count} files to {project_dir}")
+        else:
+            count = upload_project(client, PROJECT_DIR, project_dir)
+            log(f"✓ Uploaded {count} files")
     else:
         log("· Using the files already on disk")
 
@@ -238,28 +254,49 @@ def main() -> int:
         if existing_env:
             log("  ! Replacing the existing .env (pass --keep-env to keep it)")
         admin_password = args.admin_password or secrets.token_urlsafe(12)
-        client.upload(env_path, build_env(
+        env_body = build_env(
             username=username, host=host, domain=domain, data_dir=data_dir,
             admin_password=admin_password, auto_approve=args.auto_approve, token=args.token,
-        ))
-        log("✓ Wrote .env with fresh secrets")
+        )
+        if args.dry_run:
+            log(f"  would write {env_path}:")
+            for line in env_body.splitlines():
+                key = line.split("=", 1)[0]
+                secret = key in ("PRD_SECRET_KEY", "PRD_IP_SALT", "PRD_ADMIN_PASSWORD",
+                                 "PYTHONANYWHERE_API_TOKEN")
+                log(f"      {key}=<generated>" if secret and line else f"      {line}")
+        else:
+            client.upload(env_path, env_body)
+            log("✓ Wrote .env with fresh secrets")
 
     # Uploading a file creates its parent directories, which is how the data
     # directory comes into existence.
-    client.upload(f"{data_dir}/sites/.prd-keep", "This directory holds published sites.\n")
-    log("✓ Data directory ready")
+    if args.dry_run:
+        log(f"  would create {data_dir}/sites/")
+    else:
+        client.upload(f"{data_dir}/sites/.prd-keep", "This directory holds published sites.\n")
+        log("✓ Data directory ready")
 
     # 4. WSGI ---------------------------------------------------------------
     wsgi_remote = f"/var/www/{domain.replace('.', '_')}_wsgi.py"
-    client.upload(wsgi_remote, WSGI_TEMPLATE.format(project_dir=project_dir))
-    log(f"✓ Wrote {wsgi_remote}")
+    if args.dry_run:
+        log(f"  would write {wsgi_remote}")
+    else:
+        client.upload(wsgi_remote, WSGI_TEMPLATE.format(project_dir=project_dir))
+        log(f"✓ Wrote {wsgi_remote}")
 
     # 5. Static files -------------------------------------------------------
     log("→ Static file mappings")
-    ensure_static_mapping(client, domain, "/sites/", f"{data_dir}/sites")
-    ensure_static_mapping(client, domain, "/static/", f"{project_dir}/prd_app/static")
+    ensure_static_mapping(client, domain, "/sites/", f"{data_dir}/sites", args.dry_run)
+    ensure_static_mapping(client, domain, "/static/", f"{project_dir}/prd_app/static", args.dry_run)
 
     # 6. Go ------------------------------------------------------------------
+    if args.dry_run:
+        log("")
+        log("Dry run — nothing on your account was touched.")
+        log("Re-run without --dry-run to deploy for real.")
+        return 0
+
     log("→ Reloading the web app")
     client.reload(domain)
 

@@ -221,3 +221,29 @@ def test_the_other_api_host_is_tried_automatically(api, monkeypatch):
     assert script.main() == 0
     env = uploads(api)["/home/tester/projects/prd/.env"]
     assert "PYTHONANYWHERE_HOST=eu.pythonanywhere.com" in env
+
+
+def test_dry_run_changes_nothing(api, monkeypatch, capsys):
+    assert run(monkeypatch, "--dry-run") == 0
+    methods = {call["key"].split(" ", 1)[0] for call in api.calls}
+    assert methods == {"GET"}, f"a dry run must only read, got {methods}"
+    output = capsys.readouterr().out
+    assert "would create the web app" in output.lower() or "would create it" in output.lower()
+    assert "nothing on your account was touched" in output
+
+
+def test_dry_run_does_not_print_the_generated_secrets(api, monkeypatch, capsys):
+    run(monkeypatch, "--dry-run", "--admin-password", "top-secret-pw")
+    output = capsys.readouterr().out
+    assert "top-secret-pw" not in output
+    assert "tok-not-real" not in output
+    assert "PRD_SECRET_KEY=<generated>" in output
+
+
+def test_dry_run_still_reports_a_conflicting_webapp(api, monkeypatch, capsys):
+    api.responses["GET /webapps/"] = FakeResponse(200, [
+        {"domain_name": DOMAIN, "source_directory": "/home/tester/something-else"},
+    ])
+    with pytest.raises(SystemExit):
+        run(monkeypatch, "--dry-run")
+    assert "--replace-webapp" in capsys.readouterr().err
