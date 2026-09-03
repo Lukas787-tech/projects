@@ -54,6 +54,13 @@ def public_url(slug: str) -> str:
     return f"{base}/{slug}" if base else f"/{slug}"
 
 
+def canonical_url(site: dict) -> str:
+    """A verified custom domain is the site's real address; prefer it."""
+    if site.get("custom_domain") and site.get("domain_verified"):
+        return f"https://{site['custom_domain']}/"
+    return public_url(site["slug"])
+
+
 def badge_url() -> str:
     return _config().base_url or "/"
 
@@ -64,7 +71,7 @@ def render_for_site(site: dict, *, preview: bool = False) -> str:
         doc,
         preview=preview,
         badge_url=badge_url(),
-        canonical=public_url(site["slug"]),
+        canonical=canonical_url(site),
         noindex=not site["is_public"],
     )
 

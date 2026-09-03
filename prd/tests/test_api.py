@@ -252,3 +252,13 @@ def test_a_domain_can_be_removed(app, client, sample_doc):
     set_domain(client, "undomain", token, "gone.example.com")
     assert set_domain(client, "undomain", token, "").get_json()["domain"] == ""
     assert client.get("/", headers={"Host": "gone.example.com"}).status_code == 200  # the app's own home
+
+
+def test_a_verified_domain_becomes_the_canonical_address(app, client, sample_doc):
+    app.config["PRD_CONFIG"].auto_approve = True
+    token = publish(client, sample_doc, slug="canon").get_json()["manage_token"]
+    set_domain(client, "canon", token, "canon.example.com")
+    # Not verified yet: the PRD address stays canonical.
+    assert 'rel="canonical" href="https://prd.test/canon"' in client.get("/canon").data.decode()
+    client.get("/", headers={"Host": "canon.example.com"})      # verifies it
+    assert 'rel="canonical" href="https://canon.example.com/"' in client.get("/canon").data.decode()

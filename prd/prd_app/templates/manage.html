@@ -52,12 +52,13 @@
       </div>
 
       <div class="card">
-        <label>Custom domain</label>
-        {% if site.custom_domain %}
-          <div class="code-line" style="margin-bottom:10px"><span>{{ site.custom_domain }}</span>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+          <label>Custom domain</label>
+          {% if site.custom_domain %}
             <span class="tag {{ 'tag-live' if site.domain_verified else 'tag-pending' }}">
-              {{ 'live' if site.domain_verified else 'waiting' }}</span></div>
-        {% endif %}
+              {{ 'live' if site.domain_verified else 'waiting for its first visit' }}</span>
+          {% endif %}
+        </div>
         <input id="domainInput" type="text" placeholder="fanclub.example"
                value="{{ site.custom_domain }}" autocomplete="off" spellcheck="false">
         <div class="err" id="domainErr"></div>

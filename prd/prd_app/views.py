@@ -177,8 +177,13 @@ def custom_domain_router():
     site = models.get_site_by_domain(host)
     if site is None:
         return None
-    # The request arriving at all is the proof that the DNS points here.
-    models.mark_domain_verified(site["id"])
+    # The request arriving at all is the proof that the DNS points here. The
+    # domain then becomes the site's canonical address, so rebuild the file.
+    if models.mark_domain_verified(site["id"]):
+        from .services import deploy_site
+
+        site = models.get_site(site["id"])
+        deploy_site(site)
     if request.path not in ("/", ""):
         return redirect("/", 301)
     return site_response(site)

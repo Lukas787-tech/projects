@@ -3,7 +3,7 @@
 {% block admin_content %}
 <div class="card" style="padding:6px 10px;overflow-x:auto">
 <table>
-  <thead><tr><th>Site</th><th>Status</th><th>Visits</th><th>Created</th><th>Visitor</th><th></th></tr></thead>
+  <thead><tr><th>Site</th><th>Status</th><th>Domain</th><th>Visits</th><th>Created</th><th>Visitor</th><th></th></tr></thead>
   <tbody>
   {% for site in sites %}
   <tr>
@@ -13,6 +13,13 @@
     </td>
     <td><span class="tag tag-{{ site.status }}">{{ site.status }}</span>
         {% if site.is_public %}<span class="tag tag-public">gallery</span>{% endif %}</td>
+    <td>
+      {% if site.custom_domain %}
+        <span class="mono" style="font-size:.78rem">{{ site.custom_domain }}</span>
+        <span class="tag {{ 'tag-live' if site.domain_verified else 'tag-pending' }}">
+          {{ 'live' if site.domain_verified else 'waiting' }}</span>
+      {% else %}<span class="dim">&mdash;</span>{% endif %}
+    </td>
     <td>{{ site.views }}</td>
     <td class="dim">{{ site.created_at|shortdate }}</td>
     <td class="mono dim">{{ site.ip_hash[:10] }}</td>
@@ -27,6 +34,12 @@
         <form method="post" action="{{ url_for('admin.site_action', site_id=site.id, action='offline') }}">
           <input type="hidden" name="csrf" value="{{ csrf_token() }}">
           <button class="btn btn-soft btn-xs">Offline</button></form>
+        {% if site.custom_domain %}
+        <form method="post" action="{{ url_for('admin.site_action', site_id=site.id, action='cleardomain') }}"
+              onsubmit="return confirm('Release {{ site.custom_domain }} from this site?')">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          <button class="btn btn-soft btn-xs">Release domain</button></form>
+        {% endif %}
         <form method="post" action="{{ url_for('admin.site_action', site_id=site.id, action='delete') }}"
               onsubmit="return confirm('Delete {{ site.slug }} permanently?')">
           <input type="hidden" name="csrf" value="{{ csrf_token() }}">

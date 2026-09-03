@@ -161,6 +161,10 @@ def site_action(site_id: int, action: str):
     elif action == "public":
         models.update_site_doc(site_id, models.load_doc(site), is_public=not site["is_public"])
         flash("Gallery visibility toggled.", "success")
+    elif action == "cleardomain":
+        models.set_custom_domain(site_id, "")
+        models.audit("owner", "domain.cleared", site["slug"], site["custom_domain"])
+        flash(f"Released {site['custom_domain'] or 'the domain'}.", "success")
     elif action == "block":
         models.block_ip(site["ip_hash"], f"Blocked while reviewing {site['slug']}")
         flash("That network can no longer publish.", "success")

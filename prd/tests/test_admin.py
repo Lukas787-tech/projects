@@ -114,3 +114,13 @@ def test_ip_hashes_are_never_raw_addresses(client, sample_doc):
     login(client)
     page = client.get("/admin/sites").data.decode()
     assert "127.0.0.1" not in page
+
+
+def test_owner_can_release_a_domain_a_site_claimed(app, client, sample_doc):
+    app.config["PRD_CONFIG"].auto_approve = True
+    token = publish(client, sample_doc, slug="claimed").get_json()["manage_token"]
+    client.post("/api/sites/claimed/domain", json={"token": token, "domain": "someone-elses.com"})
+    login(client)
+    assert b"someone-elses.com" in client.get("/admin/sites").data
+    client.post("/admin/site/1/cleardomain", data={"csrf": csrf(client)}, follow_redirects=True)
+    assert client.get(f"/api/sites/claimed?t={token}").get_json()["domain"] == ""

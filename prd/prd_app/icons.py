@@ -42,6 +42,7 @@ UI = {
     "page": '<path d="M5 2.5h7l3.5 3.5v11.5H5Z"/><path d="M12 2.5V6h3.5"/>',
     "lock": '<rect x="4.5" y="8.5" width="11" height="9"/><path d="M7.5 8.5V6a2.5 2.5 0 0 1 5 0v2.5"/>',
     "upload": '<path d="M10 2.5v10"/><path d="M6 6.5 10 2.5l4 4"/><path d="M3.5 13v4.5h13V13"/>',
+    "download": '<path d="M10 2.5v10"/><path d="M6 8.5 10 12.5l4-4"/><path d="M3.5 13v4.5h13V13"/>',
     "link": ('<path d="M8.6 11.4a3.2 3.2 0 0 0 4.5 0l2.6-2.6a3.2 3.2 0 0 0-4.5-4.5l-1.3 1.3"/>'
              '<path d="M11.4 8.6a3.2 3.2 0 0 0-4.5 0l-2.6 2.6a3.2 3.2 0 0 0 4.5 4.5l1.3-1.3"/>'),
 }
@@ -113,7 +114,7 @@ UI_LABELS = {
     "trash": "Delete", "drag": "Drag handle", "chevron-down": "Expand", "chevron-right": "Next",
     "check": "Confirm", "close": "Close", "eye": "Views", "external": "Open externally",
     "arrow-right": "Continue", "arrow-up": "Move up", "arrow-down": "Move down", "sliders": "Design", "page": "Page", "lock": "Private",
-    "upload": "Upload", "link": "Copy link",
+    "upload": "Upload", "download": "Download", "link": "Copy link",
 }
 
 ALL: dict[str, str] = dict(UI)

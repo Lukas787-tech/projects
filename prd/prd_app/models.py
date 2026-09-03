@@ -105,9 +105,14 @@ def set_custom_domain(site_id: int, domain: str) -> None:
                (domain, now_iso(), site_id))
 
 
-def mark_domain_verified(site_id: int) -> None:
-    """The first request that actually arrives on the domain proves the DNS."""
-    db.execute("UPDATE sites SET domain_verified = 1 WHERE id = ? AND domain_verified = 0", (site_id,))
+def mark_domain_verified(site_id: int) -> bool:
+    """The first request that actually arrives on the domain proves the DNS.
+
+    Returns True only on the transition, so callers can react once.
+    """
+    cursor = db.execute(
+        "UPDATE sites SET domain_verified = 1 WHERE id = ? AND domain_verified = 0", (site_id,))
+    return bool(cursor.rowcount)
 
 
 def domain_taken(domain: str, exclude_site: int = 0) -> bool:
