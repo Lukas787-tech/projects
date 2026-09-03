@@ -69,11 +69,13 @@ class PythonAnywhereClient:
             raise PythonAnywhereError(f"PythonAnywhere returned HTTP {response.status_code} for /cpu/.")
         return response.json() if response.content else {}
 
-    def upload(self, remote_path: str, content: str) -> None:
+    def upload(self, remote_path: str, content: str | bytes) -> None:
+        payload = content.encode("utf-8") if isinstance(content, str) else content
+        name = remote_path.rsplit("/", 1)[-1] or "index.html"
         response = self.request(
             "POST",
             f"/files/path{remote_path}",
-            files={"content": ("index.html", content.encode("utf-8"), "text/html")},
+            files={"content": (name, payload, "application/octet-stream")},
         )
         if response.status_code not in (200, 201):
             raise PythonAnywhereError(
@@ -83,6 +85,33 @@ class PythonAnywhereClient:
     def delete(self, remote_path: str) -> bool:
         response = self.request("DELETE", f"/files/path{remote_path}")
         return response.status_code in (200, 204, 404)
+
+    def read_file(self, remote_path: str) -> bytes | None:
+        response = self.request("GET", f"/files/path{remote_path}")
+        if response.status_code == 404:
+            return None
+        if response.status_code >= 400:
+            raise PythonAnywhereError(f"Could not read {remote_path} (HTTP {response.status_code}).")
+        return response.content
+
+    def create_webapp(self, domain: str, python_version: str) -> dict:
+        response = self.request(
+            "POST", "/webapps/",
+            data={"domain_name": domain, "python_version": python_version},
+        )
+        if response.status_code not in (200, 201):
+            raise PythonAnywhereError(
+                f"Could not create the web app (HTTP {response.status_code}): {response.text[:300]}"
+            )
+        return response.json() if response.content else {}
+
+    def update_webapp(self, domain: str, **fields: str) -> dict:
+        response = self.request("PATCH", f"/webapps/{domain}/", data=fields)
+        if response.status_code not in (200, 201):
+            raise PythonAnywhereError(
+                f"Could not configure the web app (HTTP {response.status_code}): {response.text[:300]}"
+            )
+        return response.json() if response.content else {}
 
     def webapps(self) -> list[dict]:
         response = self.request("GET", "/webapps/")

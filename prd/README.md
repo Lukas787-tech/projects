@@ -51,89 +51,97 @@ local deploys, auto-approve on, and the owner password `admin`
 Run the tests with:
 
 ```bash
-python -m pytest -q          # 134 tests, no network needed
+python -m pytest -q          # 154 tests, no network needed
 ```
 
 ---
 
 ## Deploy it on PythonAnywhere
 
-### 1. Get the code onto PythonAnywhere
+### The one-command way
 
-In a Bash console:
+Open a **Bash console** on PythonAnywhere and run:
 
 ```bash
-git clone https://github.com/Lukas787-tech/projects.git
+git clone -b claude/prd-website-builder-ng238a https://github.com/Lukas787-tech/projects.git
 cd projects/prd
-mkvirtualenv prd --python=/usr/bin/python3.11
-pip install -r requirements.txt
-mkdir -p ~/prd-data/sites
+pip3.10 install --user -r requirements.txt
+
+export PYTHONANYWHERE_API_TOKEN=your-token-here
+python3.10 deploy_pythonanywhere.py --admin-password 'pick-something-private'
 ```
 
-### 2. Create the web app
+`deploy_pythonanywhere.py` does the rest through the API: creates the web app if
+you don't have one, points it at the project, writes a `.env` with freshly
+generated secrets, creates the `prd-data` directory, writes
+`/var/www/<domain>_wsgi.py`, maps `/sites/` and `/static/` so nginx serves them
+without waking Python, and reloads. It prints your live URL at the end.
 
-**Web** tab → *Add a new web app* → **Manual configuration** → Python 3.11.
+It will not quietly take over an existing web app: if `yourname.pythonanywhere.com`
+already serves something else it stops and tells you to pass `--replace-webapp`.
 
-* **Source code:** `/home/YOURNAME/projects/prd`
-* **Virtualenv:** `/home/YOURNAME/.virtualenvs/prd`
-* **WSGI configuration file:** replace its contents with
+Useful flags:
 
-  ```python
-  import sys
-  sys.path.insert(0, "/home/YOURNAME/projects/prd")
-  from wsgi import application  # noqa
-  ```
-
-### 3. Configure it
-
-Create `/home/YOURNAME/projects/prd/.env` (it is git-ignored; `wsgi.py` loads it):
-
-```ini
-PRD_SECRET_KEY=<python -c "import secrets;print(secrets.token_hex(32))">
-PRD_ADMIN_PASSWORD=<something only you know>
-PRD_IP_SALT=<another random string>
-PRD_DB_PATH=/home/YOURNAME/prd-data/prd.sqlite3
-PRD_SITES_ROOT=/home/YOURNAME/prd-data/sites
-PRD_BASE_URL=https://YOURNAME.pythonanywhere.com
-PRD_DEPLOY_TARGET=pythonanywhere
-PRD_AUTO_APPROVE=0
-
-PYTHONANYWHERE_API_TOKEN=<from the API token page>
-PYTHONANYWHERE_USERNAME=YOURNAME
-PYTHONANYWHERE_HOST=www.pythonanywhere.com     # eu.pythonanywhere.com for EU accounts
-PYTHONANYWHERE_DOMAIN=YOURNAME.pythonanywhere.com
-PYTHONANYWHERE_SITES_DIR=/home/YOURNAME/prd-data/sites
-PYTHONANYWHERE_SITES_URL=/sites/
-```
+| Flag | Effect |
+|---|---|
+| `--upload` | Push the project files over the API — use this to deploy **from your own computer** instead of a PythonAnywhere console (it is the default when the script isn't running on PythonAnywhere) |
+| `--auto-approve` | Publish requests instantly instead of queueing them for review |
+| `--virtualenv /home/you/.virtualenvs/prd` | Attach a virtualenv to the web app |
+| `--python-version 3.11` | Python version for a newly created web app |
+| `--keep-env` | Leave an existing `.env` untouched |
+| `--replace-webapp` | Repoint an existing web app at PRD |
 
 Create the API token at
-<https://www.pythonanywhere.com/account/#api_token>. **Never commit it** — keep it
-in `.env` or the Web tab's environment variables, and rotate it if it leaks.
+<https://www.pythonanywhere.com/account/#api_token>. **Never commit it** — the
+script writes it to `.env`, which is git-ignored. Rotate it if it ever leaks.
 
-### 4. Reload
+### Doing it by hand
 
-Hit **Reload** on the Web tab. Visit your domain, build something, and approve it
-from `/admin`.
+If you would rather click through the Web tab:
+
+1. Clone the repo and `pip install -r requirements.txt` as above.
+2. **Web** tab → *Add a new web app* → **Manual configuration** → Python 3.10.
+3. Source code: `/home/YOURNAME/projects/prd`. WSGI configuration file:
+
+   ```python
+   import sys
+   sys.path.insert(0, "/home/YOURNAME/projects/prd")
+   from wsgi import application  # noqa
+   ```
+4. Copy `.env.example` to `.env` and fill it in (`wsgi.py` loads it).
+5. Add a static file mapping: URL `/sites/` → `/home/YOURNAME/prd-data/sites`.
+6. Hit **Reload**.
 
 ### What the API is used for
 
-`prd_app/deploy/pythonanywhere.py` uses three endpoints:
+`prd_app/deploy/pythonanywhere.py` uses these endpoints:
 
 | Call | Why |
 |---|---|
-| `POST /api/v0/user/<user>/files/path/<path>` | Upload the rendered `index.html` for a site |
-| `GET`/`POST` `/api/v0/user/<user>/webapps/<domain>/static_files/` | Map `/sites/` to the sites directory once, so nginx serves published pages without waking Python |
-| `POST /api/v0/user/<user>/webapps/<domain>/reload/` | Pick up that new mapping |
+| `POST /api/v0/user/<user>/files/path/<path>` | Upload the rendered `index.html` for a site (and, during deployment, the project itself) |
+| `GET`/`POST` `/api/v0/user/<user>/webapps/` | Find or create the web app |
+| `PATCH /api/v0/user/<user>/webapps/<domain>/` | Point it at the project directory |
+| `GET`/`POST` `/api/v0/user/<user>/webapps/<domain>/static_files/` | Map `/sites/` to the sites directory, so nginx serves published pages without waking Python |
+| `POST /api/v0/user/<user>/webapps/<domain>/reload/` | Apply a new mapping or a new deploy |
 
-When PRD is running *on* PythonAnywhere it writes the files directly to disk and
-only uses the API for the mapping and reload — faster, and it burns no API quota.
-Server errors and rate limits are retried four times with exponential backoff,
-and a deploy failure is reported in the dashboard rather than raised.
+When PRD is running *on* PythonAnywhere it writes published sites straight to
+disk and only uses the API for the mapping and reload — faster, and it burns no
+API quota. Server errors and rate limits are retried four times with exponential
+backoff, and a deploy failure is reported in the dashboard rather than raised.
 
 Every site is reachable two ways: `/s/<slug>` (served by the app, always correct)
 and `/sites/<slug>/` (served by nginx from the deployed file).
 
----
+### If the site 500s
+
+Check `https://www.pythonanywhere.com/user/YOURNAME/files/var/log/YOURNAME.pythonanywhere.com.error.log`.
+Nine times out of ten it is Flask missing from the Python the web app runs:
+
+```bash
+pip3.10 install --user Flask requests
+```
+
+then Reload.
 
 ## Configuration reference
 
@@ -203,6 +211,7 @@ validation are all generated from that one definition.
 prd/
 ├── run.py                  local dev server
 ├── wsgi.py                 PythonAnywhere entry point
+├── deploy_pythonanywhere.py  one-command deploy through the API
 ├── requirements.txt
 ├── .env.example
 ├── prd_app/
@@ -221,7 +230,7 @@ prd/
 │   ├── deploy/             local + PythonAnywhere deployers
 │   ├── static/             app CSS/JS (editor is vanilla JS, no build step)
 │   └── templates/
-└── tests/                  134 tests
+└── tests/                  154 tests
 ```
 
 No build tooling, no npm, no CDN dependency beyond Google Fonts — which degrades
