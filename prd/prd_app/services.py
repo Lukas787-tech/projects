@@ -51,7 +51,7 @@ def validated_document(raw) -> dict:
 
 def public_url(slug: str) -> str:
     base = _config().base_url
-    return f"{base}/s/{slug}" if base else f"/s/{slug}"
+    return f"{base}/{slug}" if base else f"/{slug}"
 
 
 def badge_url() -> str:

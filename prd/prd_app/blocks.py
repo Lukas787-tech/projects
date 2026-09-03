@@ -129,7 +129,7 @@ SOCIAL_FIELDS = [
 ]
 
 STAT_FIELDS = [
-    field("value", "text", "Value", "1,200+"),
+    field("value", "text", "Value", "[0]"),
     field("label", "text", "Label", "Members"),
 ]
 
@@ -141,7 +141,7 @@ GALLERY_FIELDS = [
 
 PRICING_FIELDS = [
     field("name", "text", "Plan name", "Starter"),
-    field("price", "text", "Price", "$0"),
+    field("price", "text", "Price", "[PRICE]"),
     field("period", "text", "Period", "/month"),
     field("features", "textarea", "Features (one per line)", "Everything you need\nNo credit card"),
     field("cta", "text", "Button label", "Choose plan"),
@@ -150,9 +150,9 @@ PRICING_FIELDS = [
 ]
 
 TESTIMONIAL_FIELDS = [
-    field("quote", "textarea", "Quote", "This is exactly what I needed."),
-    field("author", "text", "Name", "Alex"),
-    field("role", "text", "Role", "Community member"),
+    field("quote", "textarea", "Quote", "[Something a real person said about you.]"),
+    field("author", "text", "Name", "[Their name]"),
+    field("role", "text", "Role", "[Who they are]"),
     field("avatar", "image", "Avatar URL", ""),
 ]
 
@@ -162,14 +162,14 @@ FAQ_FIELDS = [
 ]
 
 TIMELINE_FIELDS = [
-    field("date", "text", "Date", "2024"),
-    field("title", "text", "Title", "Something happened"),
+    field("date", "text", "Date", "[year]"),
+    field("title", "text", "Title", "[What happened]"),
     field("text", "textarea", "Description", ""),
 ]
 
 TEAM_FIELDS = [
-    field("name", "text", "Name", "Jamie"),
-    field("role", "text", "Role", "Founder"),
+    field("name", "text", "Name", "[Their name]"),
+    field("role", "text", "Role", "[Their role]"),
     field("photo", "image", "Photo URL", ""),
     field("url", "url", "Link", ""),
 ]
@@ -250,14 +250,14 @@ BLOCK_LIST: list[dict] = [
         "Server card with member counts and a big join button.",
         [
             field("name", "text", "Server name", "My Server"),
-            field("tagline", "textarea", "Short pitch", "Chill community, active voice chats, daily events."),
+            field("tagline", "textarea", "Short pitch", "[One line that makes someone want to join.]"),
             field("icon", "image", "Server icon URL", ""),
             field("banner", "image", "Banner URL", ""),
             field("invite", "url", "Invite link", "https://discord.gg/"),
             field("cta", "text", "Button label", "Join the server"),
-            field("members", "text", "Members", "1,240"),
-            field("online", "text", "Online", "312"),
-            field("boosts", "text", "Boosts", "14"),
+            field("members", "text", "Members", "[0]"),
+            field("online", "text", "Online", "[0]"),
+            field("boosts", "text", "Boosts", "[0]"),
             field("widget_id", "text", "Widget server ID (optional)", "", help="Enable the server widget in Discord to show a live member list."),
             *_section_fields(pad="l", surface="soft"),
         ],
@@ -325,9 +325,9 @@ BLOCK_LIST: list[dict] = [
         [
             field("heading", "text", "Heading", ""),
             field("items", "list", "Stats", [
-                {"value": "1,200+", "label": "Members"},
-                {"value": "24/7", "label": "Active mods"},
-                {"value": "99%", "label": "Vibes"},
+                {"value": "[0]", "label": "Members"},
+                {"value": "[0]", "label": "Online now"},
+                {"value": "[0]", "label": "Staff"},
             ], fields=STAT_FIELDS, item_label="Stat", max=8),
             *_section_fields(pad="m", surface="soft"),
         ],
@@ -364,8 +364,8 @@ BLOCK_LIST: list[dict] = [
             field("heading", "text", "Heading", "Pricing"),
             field("subheading", "textarea", "Subheading", ""),
             field("items", "list", "Plans", [
-                {"name": "Free", "price": "$0", "period": "/forever", "features": "1 site\nCommunity support", "cta": "Start free", "url": "#", "highlight": False},
-                {"name": "Pro", "price": "$9", "period": "/month", "features": "Unlimited sites\nCustom domain\nPriority support", "cta": "Go Pro", "url": "#", "highlight": True},
+                {"name": "Free", "price": "[PRICE]", "period": "/forever", "features": "[What they get]\n[And this]", "cta": "Start free", "url": "#", "highlight": False},
+                {"name": "Pro", "price": "[PRICE]", "period": "/month", "features": "[Everything in Free]\n[Plus this]\n[And this]", "cta": "Go Pro", "url": "#", "highlight": True},
             ], fields=PRICING_FIELDS, item_label="Plan", max=4),
             *_section_fields(),
         ],
@@ -377,7 +377,8 @@ BLOCK_LIST: list[dict] = [
         [
             field("heading", "text", "Heading", "What people say"),
             field("items", "list", "Quotes", [
-                {"quote": "Genuinely the nicest community I'm in.", "author": "Sam", "role": "Member since 2023", "avatar": ""},
+                {"quote": "[Something a real person said about you. Paste it as they wrote it.]",
+                 "author": "[Their name]", "role": "[Who they are]", "avatar": ""},
             ], fields=TESTIMONIAL_FIELDS, item_label="Quote", max=LIST_MAX),
             select("columns", "Columns", COLUMN_OPTIONS, "3"),
             *_section_fields(surface="soft"),
@@ -390,7 +391,7 @@ BLOCK_LIST: list[dict] = [
         [
             field("heading", "text", "Heading", "FAQ"),
             field("items", "list", "Questions", [
-                {"q": "Is it free?", "a": "Yes. Building and publishing costs nothing."},
+                {"q": "[A question people actually ask you]", "a": "[Your answer, in one or two sentences.]"},
             ], fields=FAQ_FIELDS, item_label="Question", max=LIST_MAX),
             *_section_fields(),
         ],
@@ -402,8 +403,8 @@ BLOCK_LIST: list[dict] = [
         [
             field("heading", "text", "Heading", "Timeline"),
             field("items", "list", "Entries", [
-                {"date": "2023", "title": "Started", "text": "Two friends and a voice chat."},
-                {"date": "Today", "title": "Growing", "text": "Over a thousand members."},
+                {"date": "[year]", "title": "[What happened]", "text": "[A sentence about it.]"},
+                {"date": "Today", "title": "[Where you are now]", "text": "[A sentence about it.]"},
             ], fields=TIMELINE_FIELDS, item_label="Entry", max=LIST_MAX),
             *_section_fields(),
         ],
@@ -415,7 +416,7 @@ BLOCK_LIST: list[dict] = [
         [
             field("heading", "text", "Heading", "The team"),
             field("items", "list", "People", [
-                {"name": "Jamie", "role": "Founder", "photo": "", "url": ""},
+                {"name": "[Their name]", "role": "[Their role]", "photo": "", "url": ""},
             ], fields=TEAM_FIELDS, item_label="Person", max=LIST_MAX),
             select("columns", "Columns", COLUMN_OPTIONS, "4"),
             *_section_fields(),

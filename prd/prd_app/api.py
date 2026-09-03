@@ -1,14 +1,15 @@
 """JSON API used by the editor, the gallery and the manage page."""
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 
 from . import models, ratelimit
 from .blocks import BLOCK_LIST, CATEGORIES
-from .document import EFFECTS, FONTS, PALETTES, SPACINGS
+from .document import EFFECTS, FONTS, PALETTES, SPACINGS, clean_domain, domain_error
 from .presets import PRESET_MAP, preset_doc, preset_index
 from .render import render_site
 from .security import hash_ip
+from .document import slugify
 from .services import (
     PublishError,
     badge_url,
@@ -97,6 +98,28 @@ def preview():
     return jsonify({"ok": True, "html": html})
 
 
+def html_attachment(html: str, filename: str):
+    """One self-contained file — no assets, no build step, opens anywhere."""
+    safe = "".join(c for c in filename if c.isalnum() or c in "-_") or "site"
+    response = current_app.response_class(html, mimetype="text/html")
+    response.headers["Content-Disposition"] = f'attachment; filename="{safe}.html"'
+    response.headers["Content-Length"] = str(len(html.encode("utf-8")))
+    return response
+
+
+@bp.post("/download")
+def download_draft():
+    """Take the site as a file without publishing anything."""
+    ip_hash = hash_ip()
+    limit = ratelimit.consume("preview", ip_hash)
+    if not limit.allowed:
+        return fail(limit.message, 429, retry_after=limit.retry_after)
+    data = body()
+    doc = validated_document(data.get("doc"))
+    html = render_site(doc, preview=False, badge_url=badge_url())
+    return html_attachment(html, slugify(doc["meta"]["title"]) or "site")
+
+
 # ---------------------------------------------------------------------------
 # Addresses
 # ---------------------------------------------------------------------------
@@ -175,6 +198,8 @@ def site_status(slug: str):
         "remixes": site["remixes"],
         "created_at": site["created_at"],
         "published_at": site["published_at"],
+        "domain": site["custom_domain"],
+        "domain_verified": bool(site["domain_verified"]),
         "doc": site["doc"],
         "request": {"id": latest.get("id"), "status": latest.get("status"),
                     "note": latest.get("decision_note", ""), "error": latest.get("error", "")},
@@ -251,6 +276,40 @@ def template(slug: str):
     doc = models.load_doc(site)
     doc["meta"]["title"] = f"{doc['meta']['title']} (remix)"
     return jsonify({"ok": True, "doc": doc, "source": site["slug"]})
+
+
+@bp.get("/sites/<slug>/download")
+def site_download(slug: str):
+    site = _authorized_site(slug, request.args.get("t", ""))
+    return html_attachment(render_for_site(site), site["slug"])
+
+
+@bp.post("/sites/<slug>/domain")
+def site_domain(slug: str):
+    data = body()
+    site = _authorized_site(slug, str(data.get("token", "")))
+    domain = clean_domain(str(data.get("domain", "")))
+    error = domain_error(domain)
+    if error:
+        return fail(error, 400, field="domain")
+    if domain and models.domain_taken(domain, site["id"]):
+        return fail("Another site here already uses that domain.", 400, field="domain")
+    models.set_custom_domain(site["id"], domain)
+    models.audit("owner", "domain.set" if domain else "domain.clear", site["slug"], domain)
+    return jsonify({
+        "ok": True,
+        "domain": domain,
+        "verified": False,
+        "cname_target": _config_host(),
+        "help": ("Point the domain at this host with a CNAME record, then open it. "
+                 "It verifies itself on the first visit that arrives.") if domain else "",
+    })
+
+
+def _config_host():
+    from urllib.parse import urlparse
+
+    return urlparse(current_app.config["PRD_CONFIG"].base_url).hostname or ""
 
 
 @bp.get("/sites/<slug>/html")

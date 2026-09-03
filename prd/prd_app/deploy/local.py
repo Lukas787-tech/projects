@@ -18,7 +18,7 @@ class LocalDeployer(Deployer):
         return self.sites_root / slug
 
     def public_url(self, slug: str) -> str:
-        return f"{self.base_url}/s/{slug}" if self.base_url else f"/s/{slug}"
+        return f"{self.base_url}/{slug}" if self.base_url else f"/{slug}"
 
     def deploy(self, slug: str, html: str) -> DeployResult:
         try:

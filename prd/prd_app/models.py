@@ -92,6 +92,30 @@ def get_site_by_slug(slug: str) -> dict | None:
     return _row_to_site(db.query_one("SELECT * FROM sites WHERE slug = ?", (slug,)))
 
 
+def get_site_by_domain(domain: str) -> dict | None:
+    domain = (domain or "").strip().lower().removeprefix("www.")
+    if not domain:
+        return None
+    return _row_to_site(db.query_one(
+        "SELECT * FROM sites WHERE custom_domain = ? AND status = 'live'", (domain,)))
+
+
+def set_custom_domain(site_id: int, domain: str) -> None:
+    db.execute("UPDATE sites SET custom_domain = ?, domain_verified = 0, updated_at = ? WHERE id = ?",
+               (domain, now_iso(), site_id))
+
+
+def mark_domain_verified(site_id: int) -> None:
+    """The first request that actually arrives on the domain proves the DNS."""
+    db.execute("UPDATE sites SET domain_verified = 1 WHERE id = ? AND domain_verified = 0", (site_id,))
+
+
+def domain_taken(domain: str, exclude_site: int = 0) -> bool:
+    row = db.query_one("SELECT id FROM sites WHERE custom_domain = ? AND id <> ?",
+                       (domain, exclude_site))
+    return row is not None
+
+
 def authorize_site(slug: str, token: str) -> dict | None:
     """Return the site if `token` is its manage token."""
     site = get_site_by_slug(slug)
@@ -283,7 +307,7 @@ def stats() -> dict:
 def recent_sites(limit: int = 30) -> list[dict]:
     rows = db.query(
         """SELECT id, slug, title, status, is_public, preset, views, remixes, deploy_url,
-                  created_at, published_at, ip_hash
+                  custom_domain, domain_verified, created_at, published_at, ip_hash
            FROM sites ORDER BY id DESC LIMIT ?""", (limit,))
     return [dict(row) for row in rows]
 

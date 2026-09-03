@@ -4,7 +4,7 @@ A no-code website builder that publishes to PythonAnywhere.
 """
 from __future__ import annotations
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, g, jsonify, render_template, request
 
 from .config import Config
 
@@ -38,7 +38,8 @@ def create_app(config: Config | None = None) -> Flask:
     def security_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-        if not request.path.startswith("/s/"):
+        # Published sites stay framable — the gallery shows them as live thumbnails.
+        if not g.get("prd_serving_site"):
             response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         return response
 

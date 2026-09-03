@@ -44,6 +44,31 @@
       </div>
 
       <div class="card">
+        <label>Take it with you</label>
+        <p class="hint" style="margin-top:0">The whole site is one HTML file. Download it and
+          host it anywhere, or keep it here.</p>
+        <a class="btn btn-soft btn-block" href="{{ url_for('api.site_download', slug=site.slug, t=token) }}">
+          {{ icon("download", 15)|safe }} Download the site (.html)</a>
+      </div>
+
+      <div class="card">
+        <label>Custom domain</label>
+        {% if site.custom_domain %}
+          <div class="code-line" style="margin-bottom:10px"><span>{{ site.custom_domain }}</span>
+            <span class="tag {{ 'tag-live' if site.domain_verified else 'tag-pending' }}">
+              {{ 'live' if site.domain_verified else 'waiting' }}</span></div>
+        {% endif %}
+        <input id="domainInput" type="text" placeholder="fanclub.example"
+               value="{{ site.custom_domain }}" autocomplete="off" spellcheck="false">
+        <div class="err" id="domainErr"></div>
+        <button class="btn btn-soft btn-s btn-block" id="domainSave">Save domain</button>
+        <p class="hint">Point a CNAME record at <span class="mono">{{ app_host }}</span>, then open
+          the domain once &mdash; it verifies itself on the first visit that arrives. On
+          PythonAnywhere the domain also has to be added under the Web tab, which needs a paid
+          account.</p>
+      </div>
+
+      <div class="card">
         <label>Visibility</label>
         <label class="switch" style="margin-top:8px">
           <input type="checkbox" id="publicToggle" {% if site.is_public %}checked{% endif %}>
@@ -86,6 +111,16 @@ document.getElementById('offline').addEventListener('click', async () => {
   try { await call(`/api/sites/${SLUG}/offline`); PRD.toast('Site taken offline', 'good');
         setTimeout(() => location.reload(), 900); }
   catch (err) { PRD.toast(err.message, 'bad'); }
+});
+document.getElementById('domainSave').addEventListener('click', async () => {
+  const input = document.getElementById('domainInput');
+  const err = document.getElementById('domainErr');
+  err.textContent = '';
+  try {
+    const data = await call(`/api/sites/${SLUG}/domain`, {domain: input.value});
+    PRD.toast(data.domain ? 'Domain saved — open it to finish' : 'Domain removed', 'good');
+    if (data.domain) { setTimeout(() => location.reload(), 900); }
+  } catch (e) { err.textContent = e.message; }
 });
 document.getElementById('delete').addEventListener('click', async () => {
   if(!confirm('Delete this site permanently? This cannot be undone.')) return;

@@ -160,7 +160,7 @@ class PythonAnywhereDeployer(Deployer):
     def public_url(self, slug: str) -> str:
         """Canonical link we hand to the creator (always served by the app)."""
         base = self.base_url or (f"https://{self.config.domain}" if self.config.domain else "")
-        return f"{base}/s/{slug}" if base else f"/s/{slug}"
+        return f"{base}/{slug}" if base else f"/{slug}"
 
     def _write_locally(self, slug: str, html: str) -> bool:
         """If the sites directory is on this machine, skip the upload."""

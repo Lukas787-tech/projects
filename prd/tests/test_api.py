@@ -46,14 +46,14 @@ def test_publish_queues_a_request_by_default(client, sample_doc):
     assert len(data["manage_token"]) > 20
     assert data["manage_url"].startswith("/manage/test-site?t=")
     # A queued site is not served yet.
-    assert client.get("/s/test-site").status_code == 202
+    assert client.get("/test-site").status_code == 202
 
 
 def test_publish_auto_approves_when_configured(app, client, sample_doc):
     app.config["PRD_CONFIG"].auto_approve = True
     data = publish(client, sample_doc, slug="auto-site").get_json()
     assert data["live"] is True and data["queued"] is False
-    page = client.get("/s/auto-site")
+    page = client.get("/auto-site")
     assert page.status_code == 200 and b"Hello" in page.data
 
 
@@ -105,16 +105,16 @@ def test_updating_a_live_site_redeploys_it(app, client, sample_doc):
     result = client.post("/api/sites/livesite/update",
                          json={"token": token, "doc": sample_doc}).get_json()
     assert result["ok"] and result["queued"] is False
-    assert b"Second version" in client.get("/s/livesite").data
+    assert b"Second version" in client.get("/livesite").data
 
 
 def test_owner_can_take_a_site_offline_and_delete_it(app, client, sample_doc):
     app.config["PRD_CONFIG"].auto_approve = True
     token = publish(client, sample_doc, slug="gone-soon").get_json()["manage_token"]
     client.post("/api/sites/gone-soon/offline", json={"token": token})
-    assert client.get("/s/gone-soon").status_code == 410
+    assert client.get("/gone-soon").status_code == 410
     client.post("/api/sites/gone-soon/delete", json={"token": token})
-    assert client.get("/s/gone-soon").status_code == 404
+    assert client.get("/gone-soon").status_code == 404
 
 
 def test_gallery_only_lists_public_live_sites(app, client, sample_doc):
@@ -145,7 +145,7 @@ def test_remix_count_increases(app, client, sample_doc):
 def test_private_sites_are_served_but_not_indexed(app, client, sample_doc):
     app.config["PRD_CONFIG"].auto_approve = True
     publish(client, sample_doc, slug="unlisted", public=False)
-    response = client.get("/s/unlisted")
+    response = client.get("/unlisted")
     assert response.status_code == 200
     assert response.headers["X-Robots-Tag"] == "noindex"
 
@@ -153,7 +153,7 @@ def test_private_sites_are_served_but_not_indexed(app, client, sample_doc):
 def test_served_sites_carry_a_restrictive_csp(app, client, sample_doc):
     app.config["PRD_CONFIG"].auto_approve = True
     publish(client, sample_doc, slug="csp-site")
-    csp = client.get("/s/csp-site").headers["Content-Security-Policy"]
+    csp = client.get("/csp-site").headers["Content-Security-Policy"]
     assert "default-src 'none'" in csp and "form-action 'none'" in csp
 
 
@@ -161,7 +161,7 @@ def test_views_are_counted(app, client, sample_doc):
     app.config["PRD_CONFIG"].auto_approve = True
     token = publish(client, sample_doc, slug="counted").get_json()["manage_token"]
     for _ in range(3):
-        client.get("/s/counted")
+        client.get("/counted")
     assert client.get(f"/api/sites/counted?t={token}").get_json()["views"] == 3
 
 
@@ -169,3 +169,86 @@ def test_publish_rejects_an_invalid_document(client):
     response = client.post("/api/publish", json={"doc": {"nope": True}, "slug": "x-site",
                                                  "elapsed_ms": 9000})
     assert response.status_code == 400
+
+
+# --- one file, yours to keep ------------------------------------------------
+
+def test_a_draft_downloads_as_one_self_contained_file(client, sample_doc):
+    response = client.post("/api/download", json={"doc": sample_doc})
+    assert response.status_code == 200
+    assert response.headers["Content-Disposition"] == 'attachment; filename="test-site.html"'
+    html = response.data.decode()
+    assert html.count("<html") == 1 and "<style>" in html
+    assert "data-prd-id" not in html          # no editor scaffolding in the file
+    assert "src=\"./" not in html             # nothing to fetch alongside it
+
+
+def test_downloading_a_draft_needs_no_account_and_publishes_nothing(client, sample_doc):
+    client.post("/api/download", json={"doc": sample_doc})
+    assert client.get("/api/gallery").get_json()["items"] == []
+
+
+def test_a_live_site_downloads_with_its_manage_token(app, client, sample_doc):
+    app.config["PRD_CONFIG"].auto_approve = True
+    token = publish(client, sample_doc, slug="takeaway").get_json()["manage_token"]
+    assert client.get("/api/sites/takeaway/download?t=nope").status_code == 403
+    response = client.get(f"/api/sites/takeaway/download?t={token}")
+    assert response.status_code == 200
+    assert response.headers["Content-Disposition"] == 'attachment; filename="takeaway.html"'
+
+
+# --- custom domains ---------------------------------------------------------
+
+def set_domain(client, slug, token, domain):
+    return client.post(f"/api/sites/{slug}/domain", json={"token": token, "domain": domain})
+
+
+def test_a_domain_can_be_pointed_at_a_site(app, client, sample_doc):
+    app.config["PRD_CONFIG"].auto_approve = True
+    token = publish(client, sample_doc, slug="domained").get_json()["manage_token"]
+    data = set_domain(client, "domained", token, "https://Fan.Example.com/path").get_json()
+    assert data["ok"] and data["domain"] == "fan.example.com"
+    status = client.get(f"/api/sites/domained?t={token}").get_json()
+    assert status["domain"] == "fan.example.com" and status["domain_verified"] is False
+
+
+def test_the_site_answers_on_its_own_domain(app, client, sample_doc):
+    app.config["PRD_CONFIG"].auto_approve = True
+    token = publish(client, sample_doc, slug="ownhost").get_json()["manage_token"]
+    set_domain(client, "ownhost", token, "fanclub.example.com")
+    page = client.get("/", headers={"Host": "fanclub.example.com"})
+    assert page.status_code == 200 and b"Hello" in page.data
+    # Arriving on the domain is what proves the DNS points here.
+    assert client.get(f"/api/sites/ownhost?t={token}").get_json()["domain_verified"] is True
+
+
+def test_www_and_deep_paths_land_on_the_same_page(app, client, sample_doc):
+    app.config["PRD_CONFIG"].auto_approve = True
+    token = publish(client, sample_doc, slug="wwwsite").get_json()["manage_token"]
+    set_domain(client, "wwwsite", token, "example.org")
+    assert client.get("/", headers={"Host": "www.example.org"}).status_code == 200
+    assert client.get("/anything", headers={"Host": "example.org"}).status_code == 301
+
+
+def test_a_domain_is_refused_when_it_cannot_work(app, client, sample_doc):
+    app.config["PRD_CONFIG"].auto_approve = True
+    token = publish(client, sample_doc, slug="baddomain").get_json()["manage_token"]
+    for bad in ("nope", "thing.local", "someone.pythonanywhere.com"):
+        assert set_domain(client, "baddomain", token, bad).status_code == 400, bad
+
+
+def test_two_sites_cannot_share_a_domain(app, client, sample_doc):
+    app.config["PRD_CONFIG"].auto_approve = True
+    first = publish(client, sample_doc, slug="first-one").get_json()["manage_token"]
+    second = publish(client, sample_doc, slug="second-one").get_json()["manage_token"]
+    assert set_domain(client, "first-one", first, "shared.example.com").status_code == 200
+    response = set_domain(client, "second-one", second, "shared.example.com")
+    assert response.status_code == 400 and "already uses" in response.get_json()["error"]
+
+
+def test_a_domain_can_be_removed(app, client, sample_doc):
+    app.config["PRD_CONFIG"].auto_approve = True
+    token = publish(client, sample_doc, slug="undomain").get_json()["manage_token"]
+    set_domain(client, "undomain", token, "gone.example.com")
+    assert set_domain(client, "undomain", token, "").get_json()["domain"] == ""
+    assert client.get("/", headers={"Host": "gone.example.com"}).status_code == 200  # the app's own home

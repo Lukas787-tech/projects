@@ -35,11 +35,23 @@ def close_db(_exc: BaseException | None = None) -> None:
         conn.close()
 
 
+# Columns added after the first release. CREATE TABLE IF NOT EXISTS will not
+# add them to a database that already exists, so they are applied by hand.
+LATE_COLUMNS = (
+    ("sites", "custom_domain", "TEXT NOT NULL DEFAULT ''"),
+    ("sites", "domain_verified", "INTEGER NOT NULL DEFAULT 0"),
+)
+
+
 def init_db(path: Path) -> None:
-    """Create the schema. Safe to call on every boot."""
+    """Create or update the schema. Safe to call on every boot."""
     conn = _connect(Path(path))
     try:
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        for table, column, spec in LATE_COLUMNS:
+            existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+            if column not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {spec}")
     finally:
         conn.close()
 

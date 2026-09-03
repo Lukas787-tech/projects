@@ -25,6 +25,9 @@ Personalise ─────────────► Request ─────�
 | **Presets** | Discord server · personal bio · company · portfolio · product launch · event · gaming clan · CV · coming soon · blank |
 | **Themes** | 9 palettes, 9 fonts, custom colours, corner radius, page width, spacing, background textures, motion toggle |
 | **Requests** | No account. Per-visitor rate limits, honeypot + timing bot checks, a private manage link per site |
+| **Addresses** | Sites live at the root — `yourhost/cooldiscordserver`. Old `/s/<slug>` links redirect |
+| **Take it away** | Every site is one self-contained HTML file: download it from the editor without publishing, or from the manage page once it is live |
+| **Custom domains** | Point a domain at a site with a CNAME; it verifies itself on the first visit that arrives |
 | **Gallery** | Public sites with live thumbnails, sort by new/visits/remixes, one-click **Remix** into your own editor |
 | **Owner dashboard** | Request queue, approve/reject with a reason, redeploy, take offline, delete, block a visitor, activity log |
 | **Deploy** | Local disk or the PythonAnywhere API (file upload → static-file mapping → web app reload) |
@@ -32,6 +35,31 @@ Personalise ─────────────► Request ─────�
 Everything a visitor types is escaped at render time, URLs are scheme-checked,
 and embeds come from a fixed allow-list (YouTube, Spotify, SoundCloud, Vimeo,
 Google Maps, Discord widget). Published pages are served with a strict CSP.
+
+Presets state no facts about the person using them. Every number, price, quote
+and name is a visibly marked blank — `[0]`, `[PRICE]`, `[Their name]` — so
+nobody publishes an invented member count by accident. A test enforces it.
+
+## Addresses, downloads and domains
+
+A published site is reachable three ways:
+
+| | |
+|---|---|
+| `yourhost/cooldiscordserver` | The address the creator picks. `/s/<slug>` still redirects here |
+| `yourhost/sites/cooldiscordserver/` | The same file served by nginx, no Python involved |
+| `theirdomain.example` | A custom domain, once its CNAME points at your host |
+
+**Custom domains** are set from the site's manage page. PRD stores the domain,
+serves any request whose `Host` matches it, and marks it verified the first
+time a request actually arrives — no DNS lookups, no verification file. The
+creator still needs to add a CNAME at their registrar, and on PythonAnywhere
+the domain has to be added under the Web tab, which needs a paid account.
+
+**Downloads** need no account at all: the editor's *Download the site (.html)*
+builds the page and hands it over without publishing anything. It is one file —
+inline CSS, inline script, no assets to copy — so it opens from a USB stick or
+goes on any host that serves static files.
 
 ---
 

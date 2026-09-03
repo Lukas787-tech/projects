@@ -19,7 +19,7 @@ def test_gallery_page_renders(client):
 
 
 def test_unknown_site_is_a_404_page(client):
-    page = client.get("/s/does-not-exist")
+    page = client.get("/does-not-exist")
     assert page.status_code == 404
     assert b"Nothing here" in page.data
 
@@ -44,7 +44,7 @@ def test_robots_and_sitemap(app, client, sample_doc):
     assert "Disallow: /admin" in robots and "Sitemap:" in robots
     app.config["PRD_CONFIG"].auto_approve = True
     publish(client, sample_doc, slug="in-sitemap", public=True)
-    assert b"/s/in-sitemap" in client.get("/sitemap.xml").data
+    assert b"/in-sitemap" in client.get("/sitemap.xml").data
 
 
 def test_health_check(client):
@@ -58,4 +58,30 @@ def test_app_pages_are_not_framable(client):
 def test_published_sites_are_framable_for_gallery_thumbnails(app, client, sample_doc):
     app.config["PRD_CONFIG"].auto_approve = True
     publish(client, sample_doc, slug="framed")
-    assert "X-Frame-Options" not in client.get("/s/framed").headers
+    assert "X-Frame-Options" not in client.get("/framed").headers
+
+
+def test_sites_live_at_the_root(app, client, sample_doc):
+    app.config["PRD_CONFIG"].auto_approve = True
+    publish(client, sample_doc, slug="cooldiscordserver")
+    page = client.get("/cooldiscordserver")
+    assert page.status_code == 200 and b"Hello" in page.data
+
+
+def test_old_slash_s_addresses_still_work(app, client, sample_doc):
+    app.config["PRD_CONFIG"].auto_approve = True
+    publish(client, sample_doc, slug="moved")
+    response = client.get("/s/moved")
+    assert response.status_code == 301
+    assert response.headers["Location"].endswith("/moved")
+
+
+def test_app_pages_win_over_a_site_of_the_same_name(client):
+    assert client.get("/gallery").status_code == 200
+    assert client.get("/editor").status_code == 200
+
+
+def test_reserved_names_cannot_be_claimed(client, sample_doc):
+    for name in ("gallery", "editor", "admin", "healthz", "download"):
+        response = publish(client, sample_doc, slug=name)
+        assert response.status_code == 400, name

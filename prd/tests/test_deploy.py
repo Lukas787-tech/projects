@@ -67,7 +67,7 @@ def test_local_deployer_writes_and_removes(tmp_path):
     deployer = LocalDeployer(tmp_path / "sites", "https://prd.test")
     result = deployer.deploy("hello", "<html>hi</html>")
     assert result.ok
-    assert result.url == "https://prd.test/s/hello"
+    assert result.url == "https://prd.test/hello"
     assert (tmp_path / "sites" / "hello" / "index.html").read_text() == "<html>hi</html>"
     assert deployer.remove("hello").ok
     assert not (tmp_path / "sites" / "hello").exists()
@@ -109,7 +109,7 @@ def test_deploy_uploads_the_page_and_creates_the_static_mapping(pa_config):
     })
     result = deployer_with(session, pa_config).deploy("mysite", "<html>x</html>")
     assert result.ok, result.detail
-    assert result.url == "https://tester.pythonanywhere.com/s/mysite"
+    assert result.url == "https://tester.pythonanywhere.com/mysite"
     assert result.extra["static_url"] == "https://tester.pythonanywhere.com/sites/mysite/"
 
     keys = [call["key"] for call in session.calls]

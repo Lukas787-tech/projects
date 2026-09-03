@@ -40,7 +40,7 @@ def test_owner_can_approve_a_request_and_the_site_goes_live(client, sample_doc):
     response = client.post(f"/admin/request/{request_id}/approve",
                            data={"csrf": csrf(client)}, follow_redirects=True)
     assert response.status_code == 200
-    page = client.get("/s/queued-site")
+    page = client.get("/queued-site")
     assert page.status_code == 200 and b"Hello" in page.data
 
 
@@ -50,7 +50,7 @@ def test_owner_can_reject_a_request_with_a_reason(client, sample_doc):
     login(client)
     client.post(f"/admin/request/{request_id}/reject",
                 data={"csrf": csrf(client), "note": "Not appropriate"}, follow_redirects=True)
-    assert client.get("/s/bad-site").status_code == 410
+    assert client.get("/bad-site").status_code == 410
     client.get("/admin/logout")
 
 
@@ -84,7 +84,7 @@ def test_owner_can_delete_a_site(client, sample_doc):
     publish(client, sample_doc, slug="delete-me")
     login(client)
     client.post("/admin/site/1/delete", data={"csrf": csrf(client)}, follow_redirects=True)
-    assert client.get("/s/delete-me").status_code == 404
+    assert client.get("/delete-me").status_code == 404
 
 
 def test_activity_log_records_decisions(client, sample_doc):

@@ -33,7 +33,9 @@ RESERVED_SLUGS = {
     "api", "admin", "static", "editor", "gallery", "site", "sites", "s", "manage",
     "login", "logout", "about", "help", "docs", "new", "create", "preset", "presets",
     "template", "templates", "prd", "www", "assets", "favicon", "robots", "sitemap",
-    "health", "status", "terms", "privacy", "me", "user", "users", "null", "undefined",
+    "health", "healthz", "status", "terms", "privacy", "me", "user", "users", "null",
+    "undefined", "download", "downloads", "domain", "domains", "settings", "account",
+    "signin", "signup", "register", "dashboard", "index", "home", "search", "explore",
 }
 
 SAFE_SCHEMES = ("http://", "https://", "mailto:", "tel:")
@@ -352,6 +354,30 @@ def slugify(value: str) -> str:
     text = re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
     text = re.sub(r"-{2,}", "-", text)
     return text[:40].strip("-")
+
+
+DOMAIN_RE = re.compile(r"^(?=.{4,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$")
+
+
+def clean_domain(value: str) -> str:
+    """Strip anything that is not the hostname itself."""
+    text = clean_text(value, 300).strip().lower()
+    text = re.sub(r"^[a-z]+://", "", text)
+    text = text.split("/")[0].split("?")[0].split("#")[0].split(":")[0]
+    return text.removeprefix("www.").strip(".")
+
+
+def domain_error(domain: str) -> str:
+    """Return a human message describing why `domain` is unusable, else ''."""
+    if not domain:
+        return ""
+    if not DOMAIN_RE.match(domain):
+        return "That does not look like a domain. Use something like fanclub.example."
+    if domain.endswith((".local", ".localhost", ".test", ".invalid", ".example")):
+        return "That domain cannot be reached from the internet."
+    if domain.endswith(".pythonanywhere.com"):
+        return "PythonAnywhere addresses are handed out by PythonAnywhere, not here."
+    return ""
 
 
 def slug_error(slug: str) -> str:

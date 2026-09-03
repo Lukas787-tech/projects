@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS sites (
     deploy_target     TEXT    NOT NULL DEFAULT '',
     deploy_url        TEXT    NOT NULL DEFAULT '',
     deploy_detail     TEXT    NOT NULL DEFAULT '',
+    custom_domain     TEXT    NOT NULL DEFAULT '',
+    domain_verified   INTEGER NOT NULL DEFAULT 0,
     views             INTEGER NOT NULL DEFAULT 0,
     remixes           INTEGER NOT NULL DEFAULT 0,
     created_at        TEXT    NOT NULL,
@@ -24,6 +26,8 @@ CREATE TABLE IF NOT EXISTS sites (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sites_status  ON sites(status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sites_domain ON sites(custom_domain)
+    WHERE custom_domain <> '';
 CREATE INDEX IF NOT EXISTS idx_sites_gallery ON sites(is_public, status, published_at DESC);
 
 CREATE TABLE IF NOT EXISTS requests (

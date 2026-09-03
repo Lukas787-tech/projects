@@ -980,7 +980,12 @@
     host.appendChild(meta);
 
     const file = el('div', 'pane-section');
-    file.appendChild(el('h4', null, 'Your design file'));
+    file.appendChild(el('h4', null, 'Take it with you'));
+    const site = el('button', 'btn btn-s btn-block',
+      `${PRD.ico('download', 14)} Download the site (.html)`);
+    site.type = 'button';
+    site.style.marginBottom = '8px';
+    site.addEventListener('click', downloadSite);
     const download = el('button', 'btn btn-soft btn-s btn-block',
       `${PRD.ico('download', 14)} Download design (.json)`);
     download.type = 'button';
@@ -995,7 +1000,9 @@
       `${PRD.ico('undo', 14)} Start over from a preset`);
     restart.type = 'button';
     restart.addEventListener('click', startOver);
-    file.append(download, upload, restart);
+    file.appendChild(el('div', 'hint',
+      'One self-contained HTML file — open it anywhere, or put it on any host.'));
+    file.append(site, download, upload, restart);
     host.appendChild(file);
 
     const help = el('div', 'pane-section');
@@ -1012,6 +1019,28 @@
   }
 
   function syncPageTab() { if (state.schema) { buildPageTab(); } }
+
+  /** The finished page, as one file, without publishing anything. */
+  async function downloadSite() {
+    try {
+      const res = await fetch('/api/download', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doc: state.doc }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Could not build the file.');
+      }
+      const blob = await res.blob();
+      const link = el('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = (state.doc.meta.title || 'site').toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '.html';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      PRD.toast('Downloaded', 'good');
+    } catch (err) { PRD.toast(err.message, 'bad'); }
+  }
 
   function downloadDesign() {
     const blob = new Blob([JSON.stringify(state.doc, null, 2)], { type: 'application/json' });
@@ -1202,7 +1231,12 @@
       <div id="usageNote" class="hint"></div>
       <div class="modal-actions">
         <button class="btn btn-ghost" id="cancelBtn">Not yet</button>
-        <button class="btn btn-primary" id="sendBtn">Send request</button>
+        <button class="btn" id="sendBtn">Send request</button>
+      </div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line);
+        display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <span class="hint" style="margin:0">Or skip hosting and take the file.</span>
+        <button class="btn btn-soft btn-s" id="dlBtn" type="button">Download .html</button>
       </div>`);
 
     const slugInput = box.querySelector('#slugInput');
@@ -1240,6 +1274,7 @@
     }).catch(() => {});
 
     box.querySelector('#cancelBtn').addEventListener('click', () => box.closest('.modal-bd').remove());
+    box.querySelector('#dlBtn').addEventListener('click', downloadSite);
     sendBtn.addEventListener('click', async () => {
       sendBtn.disabled = true;
       sendBtn.textContent = 'Sending…';
@@ -1302,7 +1337,7 @@
       ${data.deploy_error ? `<p class="err">${esc(data.deploy_error)}</p>` : ''}
       <div class="modal-actions">
         <button class="btn btn-ghost" id="keepEditing">Keep editing</button>
-        <a class="btn btn-primary" href="${esc(manageUrl)}">Open manage page</a>
+        <a class="btn" href="${esc(manageUrl)}">Open manage page</a>
       </div>`);
     box.querySelector('#keepEditing').addEventListener('click', () => box.closest('.modal-bd').remove());
   }
@@ -1321,7 +1356,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn btn-ghost" id="cancelBtn">Cancel</button>
-        <button class="btn btn-primary" id="saveBtn">Save &amp; deploy</button>
+        <button class="btn" id="saveBtn">Save &amp; deploy</button>
       </div>`);
     box.querySelector('#cancelBtn').addEventListener('click', () => box.closest('.modal-bd').remove());
     const saveBtn = box.querySelector('#saveBtn');
