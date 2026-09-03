@@ -69,12 +69,6 @@ def test_a_full_deploy_makes_every_call_in_order(api, monkeypatch, capsys):
     assert "secret-pw" in output
 
 
-def test_new_webapp_is_created_with_the_requested_python(api, monkeypatch):
-    run(monkeypatch, "--python-version", "3.11")
-    create = next(c for c in api.calls if c["key"] == "POST /webapps/")
-    assert create["kwargs"]["data"] == {"domain_name": DOMAIN, "python_version": "3.11"}
-
-
 def test_source_directory_is_pointed_at_the_project(api, monkeypatch):
     run(monkeypatch)
     patch = next(c for c in api.calls if c["key"].startswith("PATCH"))
@@ -247,3 +241,40 @@ def test_dry_run_still_reports_a_conflicting_webapp(api, monkeypatch, capsys):
     with pytest.raises(SystemExit):
         run(monkeypatch, "--dry-run")
     assert "--replace-webapp" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("given,expected", [
+    ("3.10", "python310"), ("3.9", "python39"), ("3.13", "python313"),
+    ("python311", "python311"), ("3.10.4", "python310"), ("PYTHON310", "python310"),
+])
+def test_python_version_is_translated_for_the_api(given, expected):
+    assert script.api_python_version(given) == expected
+
+
+def test_a_nonsense_python_version_is_rejected_clearly(capsys):
+    with pytest.raises(SystemExit):
+        script.api_python_version("banana")
+    assert "not a Python version" in capsys.readouterr().err
+
+
+def test_new_webapp_is_created_with_the_api_version_format(api, monkeypatch):
+    run(monkeypatch, "--python-version", "3.11")
+    create = next(c for c in api.calls if c["key"] == "POST /webapps/")
+    assert create["kwargs"]["data"] == {"domain_name": DOMAIN, "python_version": "python311"}
+
+
+def test_an_unavailable_python_version_explains_the_fix(api, monkeypatch, capsys):
+    api.responses["POST /webapps/"] = FakeResponse(
+        400, text='{"error_type": "invalid_python_version", "error_message": "No such Python version"}')
+    with pytest.raises(SystemExit):
+        run(monkeypatch)
+    assert "--python-version" in capsys.readouterr().err
+
+
+def test_a_failed_wsgi_write_still_finishes_and_prints_the_file(api, monkeypatch, capsys):
+    api.responses["POST /files/path/var/www/tester_pythonanywhere_com_wsgi.py"] = FakeResponse(403)
+    assert run(monkeypatch) == 0
+    output = capsys.readouterr().out
+    assert "Could not write" in output
+    assert "from wsgi import application" in output      # so it can be pasted by hand
+    assert f"POST /webapps/{DOMAIN}/reload/" in [c["key"] for c in api.calls]

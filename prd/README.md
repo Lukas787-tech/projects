@@ -51,7 +51,7 @@ local deploys, auto-approve on, and the owner password `admin`
 Run the tests with:
 
 ```bash
-python -m pytest -q          # 157 tests, no network needed
+python -m pytest -q          # 166 tests, no network needed
 ```
 
 ---
@@ -88,7 +88,7 @@ Useful flags:
 | `--upload` | Push the project files over the API — use this to deploy **from your own computer** instead of a PythonAnywhere console (it is the default when the script isn't running on PythonAnywhere) |
 | `--auto-approve` | Publish requests instantly instead of queueing them for review |
 | `--virtualenv /home/you/.virtualenvs/prd` | Attach a virtualenv to the web app |
-| `--python-version 3.11` | Python version for a newly created web app |
+| `--python-version 3.11` | Python version for a newly created web app (translated to the API's `python311` form for you) |
 | `--keep-env` | Leave an existing `.env` untouched |
 | `--dry-run` | Print exactly what would happen and make only read-only API calls |
 | `--replace-webapp` | Repoint an existing web app at PRD |
@@ -232,7 +232,7 @@ prd/
 │   ├── deploy/             local + PythonAnywhere deployers
 │   ├── static/             app CSS/JS (editor is vanilla JS, no build step)
 │   └── templates/
-└── tests/                  157 tests
+└── tests/                  166 tests
 ```
 
 No build tooling, no npm, no CDN dependency beyond Google Fonts — which degrades

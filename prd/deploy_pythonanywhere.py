@@ -33,6 +33,12 @@ from prd_app.deploy.pythonanywhere import (  # noqa: E402
 
 HOSTS = ("www.pythonanywhere.com", "eu.pythonanywhere.com")
 
+# The create-webapp endpoint wants "python310", not "3.10".
+PYTHON_VERSIONS = {
+    "3.9": "python39", "3.10": "python310", "3.11": "python311",
+    "3.12": "python312", "3.13": "python313",
+}
+
 SKIP_DIRS = {".git", "__pycache__", ".venv", "venv", ".prd-data", ".pytest_cache",
              ".mypy_cache", "node_modules", ".idea", ".vscode"}
 SKIP_SUFFIXES = {".pyc", ".pyo", ".sqlite3", ".sqlite3-wal", ".sqlite3-shm", ".log"}
@@ -47,6 +53,19 @@ if PROJECT_DIR not in sys.path:
 
 from wsgi import application  # noqa: E402,F401
 '''
+
+
+def api_python_version(value: str) -> str:
+    """Accept "3.10", "python310" or "3.10.4" and return what the API expects."""
+    raw = (value or "").strip().lower()
+    if raw.startswith("python"):
+        return raw
+    parts = raw.split(".")
+    if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+        return f"python{parts[0]}{parts[1]}"
+    if raw.isdigit():
+        return f"python{raw}"
+    fail(f"'{value}' is not a Python version. Try one of: {', '.join(PYTHON_VERSIONS)}")
 
 
 def log(message: str) -> None:
@@ -167,7 +186,8 @@ def main() -> int:
     parser.add_argument("--host", default=os.environ.get("PYTHONANYWHERE_HOST", ""),
                         choices=[*HOSTS, ""], help="API host (auto-detected by default)")
     parser.add_argument("--domain", default="", help="Web app domain (default: <user>.pythonanywhere.com)")
-    parser.add_argument("--python-version", default="3.10", help="Python version for a new web app")
+    parser.add_argument("--python-version", default="3.10",
+                        help="Python version for a new web app, e.g. 3.10 (default) or 3.11")
     parser.add_argument("--project-dir", default="", help="Where the code lives on PythonAnywhere")
     parser.add_argument("--data-dir", default="", help="Where the database and sites live")
     parser.add_argument("--virtualenv", default="", help="Virtualenv path to attach to the web app")
@@ -207,13 +227,21 @@ def main() -> int:
     log(f"✓ API token accepted on {host}")
 
     # 1. The web app itself -------------------------------------------------
+    python_version = api_python_version(args.python_version)
     existing = next((app for app in client.webapps() if app.get("domain_name") == domain), None)
     if existing is None:
-        log(f"→ Creating the web app {domain} (Python {args.python_version})")
+        log(f"→ Creating the web app {domain} (Python {args.python_version} → {python_version})")
         if args.dry_run:
             log("  would create it")
         else:
-            client.create_webapp(domain, args.python_version)
+            try:
+                client.create_webapp(domain, python_version)
+            except PythonAnywhereError as exc:
+                if "python_version" in str(exc) or "Python version" in str(exc):
+                    fail(f"{exc}\n\nThat Python version is not available on your account. "
+                         f"Try another with --python-version, for example:\n"
+                         f"  python3 deploy_pythonanywhere.py --username {username} --python-version 3.11")
+                raise
             log("✓ Web app created")
     else:
         serving = existing.get("source_directory") or "(unset)"
@@ -279,11 +307,19 @@ def main() -> int:
 
     # 4. WSGI ---------------------------------------------------------------
     wsgi_remote = f"/var/www/{domain.replace('.', '_')}_wsgi.py"
+    wsgi_body = WSGI_TEMPLATE.format(project_dir=project_dir)
+    wsgi_written = True
     if args.dry_run:
         log(f"  would write {wsgi_remote}")
     else:
-        client.upload(wsgi_remote, WSGI_TEMPLATE.format(project_dir=project_dir))
-        log(f"✓ Wrote {wsgi_remote}")
+        try:
+            client.upload(wsgi_remote, wsgi_body)
+            log(f"✓ Wrote {wsgi_remote}")
+        except PythonAnywhereError as exc:
+            # Everything else is already in place, so finish the deploy and tell
+            # them the one thing left to paste rather than throwing it all away.
+            wsgi_written = False
+            log(f"  ! Could not write {wsgi_remote}: {exc}")
 
     # 5. Static files -------------------------------------------------------
     log("→ Static file mappings")
@@ -307,6 +343,15 @@ def main() -> int:
     if admin_password:
         log(f"  Owner password:   {admin_password}")
     log("=" * 62)
+    if not wsgi_written:
+        log("")
+        log("One manual step left — the WSGI file could not be written over the API.")
+        log(f"Open the Web tab, click the WSGI configuration file link, and replace it with:")
+        log("")
+        for line in wsgi_body.splitlines():
+            log(f"    {line}")
+        log("")
+        log("Then hit Reload.")
     log("")
     log("If the site shows an error, check the log at")
     log(f"  https://{host}/user/{username}/files/var/log/{domain}.error.log")
