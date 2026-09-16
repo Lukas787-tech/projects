@@ -3,6 +3,8 @@ package com.lukas.jarvis.voice
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -28,9 +30,13 @@ class SpeechInput(private val context: Context) {
     private val _level = MutableStateFlow(0f)
     val level: StateFlow<Float> = _level.asStateFlow()
 
+    private val handler = Handler(Looper.getMainLooper())
     private var recognizer: SpeechRecognizer? = null
     private var onResult: ((String) -> Unit)? = null
     private var onFailure: ((String) -> Unit)? = null
+
+    /** Guards the one automatic retry after the recognizer reports itself busy. */
+    private var retriedAfterBusy = false
 
     val available: Boolean get() = SpeechRecognizer.isRecognitionAvailable(context)
 
@@ -41,6 +47,11 @@ class SpeechInput(private val context: Context) {
         }
         this.onResult = onResult
         this.onFailure = onFailure
+        retriedAfterBusy = false
+
+        // Starting while a session is still open is itself a cause of
+        // ERROR_RECOGNIZER_BUSY, so never stack two.
+        if (_listening.value) runCatching { recognizer?.cancel() }
 
         val engine = recognizer ?: SpeechRecognizer.createSpeechRecognizer(context).also {
             it.setRecognitionListener(listener)
@@ -70,6 +81,7 @@ class SpeechInput(private val context: Context) {
     }
 
     fun destroy() {
+        handler.removeCallbacksAndMessages(null)
         runCatching { recognizer?.destroy() }
         recognizer = null
         _listening.value = false
@@ -119,6 +131,20 @@ class SpeechInput(private val context: Context) {
                 onFailure?.invoke("")
                 return
             }
+            // "Busy" usually means the previous session has not finished letting
+            // go of the microphone. Dropping the engine and trying once more
+            // clears it far more often than telling the user to tap again.
+            if (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY && !retriedAfterBusy) {
+                retriedAfterBusy = true
+                val resume = onResult
+                val fail = onFailure
+                runCatching { recognizer?.destroy() }
+                recognizer = null
+                if (resume != null && fail != null) {
+                    handler.postDelayed({ start(resume, fail) }, BUSY_RETRY_MS)
+                    return
+                }
+            }
             onFailure?.invoke(describe(error))
         }
 
@@ -145,13 +171,19 @@ class SpeechInput(private val context: Context) {
         override fun onEvent(eventType: Int, params: Bundle?) = Unit
     }
 
+    private companion object {
+        const val BUSY_RETRY_MS = 450L
+    }
+
     private fun describe(error: Int): String = when (error) {
         SpeechRecognizer.ERROR_AUDIO -> "Microphone error."
         SpeechRecognizer.ERROR_CLIENT -> "Recognizer was interrupted."
         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is off."
         SpeechRecognizer.ERROR_NETWORK -> "Speech recognition needs a network connection."
         SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Speech recognition timed out."
-        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer is busy, try again."
+        SpeechRecognizer.ERROR_RECOGNIZER_BUSY ->
+            "Another app is holding the microphone. Close Google Assistant or any " +
+                "voice keyboard, then try again."
         SpeechRecognizer.ERROR_SERVER -> "Speech service error."
         else -> "Speech recognition failed ($error)."
     }

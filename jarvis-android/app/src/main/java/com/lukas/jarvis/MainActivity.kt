@@ -31,6 +31,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +42,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lukas.jarvis.ui.screens.BrainScreen
@@ -144,14 +148,29 @@ private fun JarvisRoot(
         }
     }
 
-    // The service follows the setting rather than being toggled imperatively,
-    // so it stays consistent after a process restart.
-    LaunchedEffect(settings.wakeWordEnabled) {
-        if (settings.wakeWordEnabled) {
-            WakeWordService.start(context)
-        } else {
-            WakeWordService.stop(context)
+    // Only one thing may hold the microphone. The wake-word service listens
+    // continuously, so leaving it running while the app is open makes every tap
+    // on the orb fail with ERROR_RECOGNIZER_BUSY. It yields whenever the app is
+    // in front, and takes over again once the app is backgrounded — which is the
+    // only time a wake word is useful anyway.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, settings.wakeWordEnabled) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> WakeWordService.stop(context)
+                Lifecycle.Event.ON_PAUSE -> {
+                    if (settings.wakeWordEnabled) WakeWordService.start(context)
+                }
+                else -> Unit
+            }
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(settings.wakeWordEnabled) {
+        // Turning it off should take effect at once, not at the next pause.
+        if (!settings.wakeWordEnabled) WakeWordService.stop(context)
     }
 
     Column(
