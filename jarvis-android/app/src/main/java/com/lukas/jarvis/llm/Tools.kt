@@ -361,21 +361,14 @@ class Tools(
         status.balance?.let { parts += "${money(it, t)} left" }
         status.budgetLeft?.let {
             parts += if (it >= 0) {
-                "${money(it, t)} of budget left this ${periodWord(t.period)}"
+                "${money(it, t)} of budget left this ${Tracker.periodWord(t.period)}"
             } else {
-                "${money(-it, t)} over budget this ${periodWord(t.period)}"
+                "${money(-it, t)} over budget this ${Tracker.periodWord(t.period)}"
             }
         }
-        parts += "${money(status.periodSpent, t)} used this ${periodWord(t.period)}"
+        parts += "${money(status.periodSpent, t)} used this ${Tracker.periodWord(t.period)}"
         if (status.periodReceived > 0) parts += "${money(status.periodReceived, t)} added"
         append(parts.joinToString(", "))
-    }
-
-    private fun periodWord(period: String): String = when (period) {
-        Tracker.PERIOD_DAILY -> "day"
-        Tracker.PERIOD_WEEKLY -> "week"
-        Tracker.PERIOD_MONTHLY -> "month"
-        else -> "period"
     }
 
     // ------------------------------------------------------------------- tasks

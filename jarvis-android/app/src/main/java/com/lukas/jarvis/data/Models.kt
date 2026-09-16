@@ -61,6 +61,14 @@ data class Tracker(
 
         val ALL_KINDS = listOf(KIND_MONEY, KIND_COUNT, KIND_DURATION, KIND_QUANTITY)
         val ALL_PERIODS = listOf(PERIOD_NONE, PERIOD_DAILY, PERIOD_WEEKLY, PERIOD_MONTHLY)
+
+        /** "week", not "weekly" — this reads inside a sentence. */
+        fun periodWord(period: String): String = when (period) {
+            PERIOD_DAILY -> "day"
+            PERIOD_WEEKLY -> "week"
+            PERIOD_MONTHLY -> "month"
+            else -> "period"
+        }
     }
 }
 

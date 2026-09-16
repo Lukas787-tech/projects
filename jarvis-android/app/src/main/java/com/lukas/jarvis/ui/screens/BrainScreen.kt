@@ -1,6 +1,5 @@
 package com.lukas.jarvis.ui.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,7 +35,6 @@ import com.lukas.jarvis.data.Memory
 import com.lukas.jarvis.ui.components.EmptyState
 import com.lukas.jarvis.ui.components.JarvisCard
 import com.lukas.jarvis.ui.components.Picker
-import com.lukas.jarvis.ui.components.SectionLabel
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary

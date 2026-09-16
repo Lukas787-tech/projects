@@ -3,6 +3,7 @@ package com.lukas.jarvis.llm
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.core.TimeUtil
 import com.lukas.jarvis.data.Brain
+import com.lukas.jarvis.data.Tracker
 
 /**
  * Two pieces: a fixed persona, and a context block rebuilt on every turn from
@@ -26,11 +27,7 @@ HOW YOU TALK
 - Be warm and direct. Skip filler like "Certainly!" or "I'd be happy to".
 
 BEING A SECOND BRAIN
-- $user tells you things in passing. Capture them without being asked.
-- Any statement of fact, preference, plan, name, place or detail -> call `remember`.
-- Any purchase, expense, income or countable activity -> call `log_entry`.
-  "I bought chips for 2 euros" is a `log_entry` on a sensible tracker, not a `remember`.
-- Anything with a time or a deadline -> call `add_task`.
+${captureRules(settings, user)}
 - Before answering a question about $user's own life, possessions, money or past,
   call `recall` or `tracker_status` first. Do not answer such questions from guesswork.
 - When you learn a number that changes a balance or budget, log it, then state the
@@ -76,7 +73,8 @@ HONESTY
                 val bits = mutableListOf<String>()
                 status.balance?.let { bits += "balance ${fmt(it)} ${t.unit}" }
                 status.budgetLeft?.let { bits += "budget left ${fmt(it)} ${t.unit}" }
-                bits += "used this ${t.period} ${fmt(status.periodSpent)} ${t.unit}"
+                bits += "used this ${Tracker.periodWord(t.period)} " +
+                    "${fmt(status.periodSpent)} ${t.unit}"
                 builder.appendLine("- ${t.label} (key: ${t.name}): ${bits.joinToString(", ")}")
             }
         }
@@ -110,6 +108,27 @@ HONESTY
         }
         return builder.toString().trim()
     }
+
+    /**
+     * The autoCapture setting is the difference between an assistant that
+     * quietly writes things down and one that only does so on request.
+     */
+    private fun captureRules(settings: Settings, user: String): String =
+        if (settings.autoCapture) {
+            """
+- $user tells you things in passing. Capture them without being asked.
+- Any statement of fact, preference, plan, name, place or detail -> call `remember`.
+- Any purchase, expense, income or countable activity -> call `log_entry`.
+  "I bought chips for 2 euros" is a `log_entry` on a sensible tracker, not a `remember`.
+- Anything with a time or a deadline -> call `add_task`.
+            """.trim()
+        } else {
+            """
+- Automatic capture is switched off. Only call `remember`, `log_entry` or
+  `add_task` when $user actually asks you to note, log, track or remind.
+- Never store something just because it was mentioned.
+            """.trim()
+        }
 
     private fun fmt(value: Double): String =
         if (value == value.toLong().toDouble()) {

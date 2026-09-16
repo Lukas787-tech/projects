@@ -23,8 +23,7 @@ data class Settings(
     val wakePhrase: String = "jarvis",
     val webSearchEnabled: Boolean = true,
     val autoCapture: Boolean = true,
-    val defaultCurrency: String = "EUR",
-    val onboarded: Boolean = false
+    val defaultCurrency: String = "EUR"
 ) {
     val isConfigured: Boolean
         get() = baseUrl.isNotBlank() && model.isNotBlank() &&
@@ -66,8 +65,7 @@ class SettingsStore(context: Context) {
             wakePhrase = prefs.getString(KEY_WAKE_PHRASE, "jarvis") ?: "jarvis",
             webSearchEnabled = prefs.getBoolean(KEY_WEB_SEARCH, true),
             autoCapture = prefs.getBoolean(KEY_AUTO_CAPTURE, true),
-            defaultCurrency = prefs.getString(KEY_CURRENCY, "EUR") ?: "EUR",
-            onboarded = prefs.getBoolean(KEY_ONBOARDED, false)
+            defaultCurrency = prefs.getString(KEY_CURRENCY, "EUR") ?: "EUR"
         )
     }
 
@@ -92,7 +90,6 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_WEB_SEARCH, next.webSearchEnabled)
             .putBoolean(KEY_AUTO_CAPTURE, next.autoCapture)
             .putString(KEY_CURRENCY, next.defaultCurrency)
-            .putBoolean(KEY_ONBOARDED, next.onboarded)
             .apply()
         _state.value = next
     }
@@ -129,6 +126,5 @@ class SettingsStore(context: Context) {
         const val KEY_WEB_SEARCH = "web_search"
         const val KEY_AUTO_CAPTURE = "auto_capture"
         const val KEY_CURRENCY = "currency"
-        const val KEY_ONBOARDED = "onboarded"
     }
 }

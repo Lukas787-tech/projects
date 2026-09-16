@@ -179,7 +179,7 @@ private fun TrackerCard(
             val headlineLabel = when {
                 status.balance != null -> "left"
                 status.budgetLeft != null -> "budget left"
-                else -> "used this ${periodWord(tracker.period)}"
+                else -> "used this ${Tracker.periodWord(tracker.period)}"
             }
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
@@ -223,7 +223,7 @@ private fun TrackerCard(
             Spacer(Modifier.height(8.dp))
             Text(
                 "${format(status.periodSpent, tracker)} used this " +
-                    "${periodWord(tracker.period)} · ${status.entryCount} entries",
+                    "${Tracker.periodWord(tracker.period)} · ${status.entryCount} entries",
                 style = MaterialTheme.typography.labelSmall,
                 color = TextFaint
             )
@@ -396,13 +396,6 @@ private fun EntryDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
-}
-
-private fun periodWord(period: String): String = when (period) {
-    Tracker.PERIOD_DAILY -> "day"
-    Tracker.PERIOD_WEEKLY -> "week"
-    Tracker.PERIOD_MONTHLY -> "month"
-    else -> "period"
 }
 
 private fun format(value: Double, tracker: Tracker?): String {
