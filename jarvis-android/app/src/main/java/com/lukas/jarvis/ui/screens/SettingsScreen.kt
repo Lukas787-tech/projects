@@ -39,8 +39,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.lukas.jarvis.BuildConfig
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.llm.Providers
 import com.lukas.jarvis.ui.components.Banner
@@ -375,6 +377,16 @@ fun SettingsScreen(
             )
         }
 
+        Spacer(Modifier.height(20.dp))
+        // Printed so "which build is this?" is answerable at a glance rather
+        // than by guesswork.
+        Text(
+            "Jarvis ${BuildConfig.VERSION_NAME}  ·  build ${BuildConfig.VERSION_CODE}",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextFaint,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
         Spacer(Modifier.height(40.dp))
     }
 }
