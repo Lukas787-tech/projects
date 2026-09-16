@@ -137,6 +137,10 @@ private fun JarvisRoot(
     val availableModels by viewModel.availableModels.collectAsStateWithLifecycle()
     val modelsState by viewModel.modelsState.collectAsStateWithLifecycle()
     val testState by viewModel.testState.collectAsStateWithLifecycle()
+    val poolEntries by viewModel.poolEntries.collectAsStateWithLifecycle()
+    val poolBusy by viewModel.poolBusy.collectAsStateWithLifecycle()
+    val poolMessage by viewModel.poolMessage.collectAsStateWithLifecycle()
+    val lastUsedEndpoint by viewModel.lastUsedEndpoint.collectAsStateWithLifecycle()
 
     var tab by remember { mutableStateOf(Tab.Voice) }
 
@@ -188,7 +192,7 @@ private fun JarvisRoot(
                 Tab.Voice -> VoiceScreen(
                     state = ui,
                     assistantName = settings.assistantName,
-                    configured = settings.isConfigured,
+                    configured = settings.isConfigured || poolEntries.isNotEmpty(),
                     onOrbTap = viewModel::toggleListening,
                     onSend = viewModel::sendTyped,
                     onDismissError = viewModel::dismissError,
@@ -227,10 +231,19 @@ private fun JarvisRoot(
                     availableModels = availableModels,
                     modelsState = modelsState,
                     testState = testState,
+                    poolEntries = poolEntries,
+                    poolBusy = poolBusy,
+                    poolMessage = poolMessage,
+                    lastUsedEndpoint = lastUsedEndpoint,
                     onUpdate = viewModel::updateSettings,
                     onSwitchProvider = viewModel::switchProvider,
                     onRefreshModels = viewModel::refreshModels,
                     onTestConnection = viewModel::testConnection,
+                    onAddToPool = viewModel::addCurrentProviderToPool,
+                    onRemoveFromPool = viewModel::removeFromPool,
+                    onTogglePoolEntry = viewModel::setPoolEntryEnabled,
+                    onWakePool = viewModel::wakePool,
+                    onClearPool = viewModel::clearPool,
                     onPreviewVoice = viewModel::previewVoice,
                     onClearConversation = viewModel::clearConversation
                 )

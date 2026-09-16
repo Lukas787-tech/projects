@@ -10,15 +10,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -44,12 +49,14 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.BuildConfig
 import com.lukas.jarvis.core.Settings
+import com.lukas.jarvis.llm.PoolEntry
 import com.lukas.jarvis.llm.Providers
 import com.lukas.jarvis.ui.components.Banner
 import com.lukas.jarvis.ui.components.BannerTone
 import com.lukas.jarvis.ui.components.ChipButton
 import com.lukas.jarvis.ui.components.Panel
 import com.lukas.jarvis.ui.components.Picker
+import com.lukas.jarvis.ui.components.StatusDot
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
@@ -63,10 +70,19 @@ fun SettingsScreen(
     availableModels: List<String>,
     modelsState: ModelsState,
     testState: TestState,
+    poolEntries: List<PoolEntry>,
+    poolBusy: Boolean,
+    poolMessage: String?,
+    lastUsedEndpoint: String?,
     onUpdate: ((Settings) -> Settings) -> Unit,
     onSwitchProvider: (String) -> Unit,
     onRefreshModels: () -> Unit,
     onTestConnection: () -> Unit,
+    onAddToPool: () -> Unit,
+    onRemoveFromPool: (String) -> Unit,
+    onTogglePoolEntry: (String, Boolean) -> Unit,
+    onWakePool: () -> Unit,
+    onClearPool: () -> Unit,
     onPreviewVoice: () -> Unit,
     onClearConversation: () -> Unit,
     modifier: Modifier = Modifier
@@ -250,6 +266,71 @@ fun SettingsScreen(
             }
         }
 
+        Panel(
+            title = "Model pool",
+            subtitle = "Add several free models and Jarvis rotates through them, " +
+                "resting any that hit their limit. Add each provider once — a pool " +
+                "spanning providers survives a daily cap, not just a per-model one."
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ChipButton(
+                    label = "Add ${preset.label}",
+                    icon = Icons.Default.Add,
+                    prominent = true,
+                    busy = poolBusy,
+                    onClick = onAddToPool,
+                    modifier = Modifier.weight(1f)
+                )
+                ChipButton(
+                    label = "Wake all",
+                    icon = Icons.Default.Refresh,
+                    onClick = onWakePool
+                )
+            }
+
+            poolMessage?.let {
+                Spacer(Modifier.height(10.dp))
+                Banner(tone = BannerTone.Neutral, title = it)
+            }
+
+            if (poolEntries.isEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Pool is empty — Jarvis uses the single model selected above. " +
+                        "Paste a key for each provider, tap Add, and switch provider " +
+                        "to stack up more.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextFaint
+                )
+            } else {
+                lastUsedEndpoint?.let {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "Last answer came from $it",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                poolEntries.forEach { entry ->
+                    PoolRow(
+                        entry = entry,
+                        onToggle = { onTogglePoolEntry(entry.endpoint.id, it) },
+                        onRemove = { onRemoveFromPool(entry.endpoint.id) }
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                ChipButton(
+                    label = "Empty the pool",
+                    onClick = onClearPool,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
         Panel(title = "You") {
             OutlinedTextField(
                 value = settings.userName,
@@ -388,6 +469,54 @@ fun SettingsScreen(
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(40.dp))
+    }
+}
+
+@Composable
+private fun PoolRow(
+    entry: PoolEntry,
+    onToggle: (Boolean) -> Unit,
+    onRemove: () -> Unit
+) {
+    val status = entry.status()
+    val tone = when {
+        !entry.endpoint.enabled -> BannerTone.Neutral
+        status == "Ready" -> BannerTone.Good
+        status == "Key rejected" -> BannerTone.Bad
+        else -> BannerTone.Neutral
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        StatusDot(tone)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                entry.endpoint.model,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (entry.endpoint.enabled) TextPrimary else TextFaint
+            )
+            Text(
+                "${Providers.byId(entry.endpoint.providerId).label} · $status" +
+                    if (entry.health.successes > 0) " · ${entry.health.successes} ok" else "",
+                style = MaterialTheme.typography.labelSmall,
+                color = TextFaint
+            )
+        }
+        Switch(
+            checked = entry.endpoint.enabled,
+            onCheckedChange = onToggle,
+            colors = SwitchDefaults.colors(checkedTrackColor = Accent)
+        )
+        IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
+            Icon(
+                Icons.Default.Delete,
+                contentDescription = "Remove",
+                tint = TextFaint,
+                modifier = Modifier.size(16.dp)
+            )
+        }
     }
 }
 

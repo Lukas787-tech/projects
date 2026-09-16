@@ -8,6 +8,9 @@ import com.lukas.jarvis.llm.Agent
 import com.lukas.jarvis.llm.ConnectionTest
 import com.lukas.jarvis.llm.LlmClient
 import com.lukas.jarvis.llm.ModelCatalog
+import com.lukas.jarvis.llm.ModelPool
+import com.lukas.jarvis.llm.PoolBuilder
+import com.lukas.jarvis.llm.PooledLlm
 import com.lukas.jarvis.llm.Tools
 import com.lukas.jarvis.notify.Reminders
 import com.lukas.jarvis.voice.SpeechInput
@@ -33,8 +36,13 @@ class AppContainer(context: Context) {
     private val client = LlmClient()
     private val tools = Tools(brain, web, reminders)
 
-    val agent = Agent(client, tools, brain)
     val models = ModelCatalog()
+    val pool = ModelPool(context)
+    val poolBuilder = PoolBuilder(models)
+
+    private val pooled = PooledLlm(client, pool)
+
+    val agent = Agent(pooled, tools, brain)
     val connectionTest = ConnectionTest(client)
 }
 

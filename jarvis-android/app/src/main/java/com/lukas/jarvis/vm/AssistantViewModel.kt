@@ -17,6 +17,7 @@ import com.lukas.jarvis.data.Tracker
 import com.lukas.jarvis.data.TrackerStatus
 import com.lukas.jarvis.llm.ConnectionTest
 import com.lukas.jarvis.llm.LlmException
+import com.lukas.jarvis.llm.PoolEntry
 import com.lukas.jarvis.llm.Providers
 import com.lukas.jarvis.voice.SpeechInput
 import com.lukas.jarvis.voice.Speaker
@@ -94,6 +95,15 @@ class AssistantViewModel(
 
     private val _testState = MutableStateFlow<TestState>(TestState.Idle)
     val testState: StateFlow<TestState> = _testState.asStateFlow()
+
+    val poolEntries: StateFlow<List<PoolEntry>> = container.pool.entries
+    val lastUsedEndpoint: StateFlow<String?> = container.pool.lastUsed
+
+    private val _poolBusy = MutableStateFlow(false)
+    val poolBusy: StateFlow<Boolean> = _poolBusy.asStateFlow()
+
+    private val _poolMessage = MutableStateFlow<String?>(null)
+    val poolMessage: StateFlow<String?> = _poolMessage.asStateFlow()
 
     /** Only a turn that started with the mic should hand the mic back afterwards. */
     private var lastTurnWasVoice = false
@@ -189,7 +199,9 @@ class AssistantViewModel(
         val text = rawText.trim()
         if (text.isBlank() || busy) return
         val current = settingsStore.current
-        if (!current.isConfigured) {
+        // A configured pool is enough on its own; the single-provider settings
+        // are only the fallback when no pool exists.
+        if (!current.isConfigured && container.pool.isEmpty) {
             _ui.value = _ui.value.copy(
                 stage = Stage.Idle,
                 error = "Add a provider and API key in Settings first."
@@ -438,6 +450,50 @@ class AssistantViewModel(
                     TestState.Failed(result.message, result.diagnostics)
             }
         }
+    }
+
+    // -------------------------------------------------------------- model pool
+
+    /**
+     * Enrols several of the current provider's models at once. Free tiers cap
+     * per model as well as per account, so holding a spread of models on one key
+     * is what keeps the assistant answering after the first one runs dry.
+     */
+    fun addCurrentProviderToPool() {
+        if (_poolBusy.value) return
+        val current = settingsStore.current
+        _poolBusy.value = true
+        _poolMessage.value = null
+        viewModelScope.launch {
+            val result = container.poolBuilder.expand(
+                providerId = current.providerId,
+                baseUrl = current.baseUrl,
+                apiKey = current.apiKey,
+                pool = container.pool
+            )
+            _poolMessage.value = result.message
+            _poolBusy.value = false
+        }
+    }
+
+    fun removeFromPool(id: String) = container.pool.remove(id)
+
+    fun setPoolEntryEnabled(id: String, enabled: Boolean) =
+        container.pool.setEnabled(id, enabled)
+
+    fun clearPool() {
+        container.pool.clear()
+        _poolMessage.value = null
+    }
+
+    /** Clears every cooldown, for when limits have reset or a key was fixed. */
+    fun wakePool() {
+        container.pool.wakeAll()
+        _poolMessage.value = "All endpoints woken."
+    }
+
+    fun dismissPoolMessage() {
+        _poolMessage.value = null
     }
 
     fun updateSettings(transform: (Settings) -> Settings) {

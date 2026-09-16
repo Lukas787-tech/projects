@@ -37,7 +37,33 @@ data class LlmMessage(
 
 data class LlmReply(val content: String?, val toolCalls: List<ToolCall>)
 
-class LlmException(message: String, val recoverable: Boolean = true) : Exception(message)
+/** Why a call failed. The pool routes on this rather than on string matching. */
+enum class FailureKind {
+    /** Out of quota for now. Another endpoint should be tried, this one rested. */
+    RateLimited,
+
+    /** The key is wrong. Retrying costs time and will never succeed. */
+    AuthFailed,
+
+    /** The model id is gone. The endpoint needs repointing, not resting. */
+    ModelMissing,
+
+    /** The request shape was rejected; a plainer payload may work. */
+    PayloadRejected,
+
+    ServerError,
+    Network,
+    Unknown
+}
+
+class LlmException(
+    message: String,
+    val kind: FailureKind = FailureKind.Unknown,
+    val retryAfterSeconds: Long? = null
+) : Exception(message) {
+    /** Only a payload problem is worth re-sending to the same endpoint. */
+    val recoverable: Boolean get() = kind == FailureKind.PayloadRejected
+}
 
 /** Exactly what went over the wire, so a failure can be reported instead of guessed at. */
 data class Diagnostics(
@@ -108,7 +134,7 @@ class LlmClient {
                 if (!e.recoverable) throw e
             }
         }
-        throw last ?: LlmException("Request failed.", recoverable = false)
+        throw last ?: LlmException("Request failed.")
     }
 
     private fun request(
@@ -141,23 +167,29 @@ class LlmClient {
             builder.header("X-Title", "Jarvis")
         }
 
-        val (code, body) = try {
+        val (code, body, retryAfter) = try {
             http.newCall(builder.build()).execute().use { response ->
-                response.code to response.body?.string().orEmpty()
+                Triple(
+                    response.code,
+                    response.body?.string().orEmpty(),
+                    // Providers that publish a wait time are worth obeying exactly
+                    // rather than guessing a cooldown for.
+                    response.header("Retry-After")?.trim()?.toLongOrNull()
+                )
             }
         } catch (e: IOException) {
             lastDiagnostics = Diagnostics(url, settings.model, attempt.label, 0, e.toString())
             throw LlmException(
                 "Could not reach $url\n\n${e.message ?: "Check your connection."}",
-                recoverable = false
+                FailureKind.Network
             )
         }
 
         lastDiagnostics = Diagnostics(url, settings.model, attempt.label, code, body.take(600))
 
         if (code !in 200..299) {
-            val (message, recoverable) = classify(code, body)
-            throw LlmException(message, recoverable)
+            val (message, kind) = classify(code, body)
+            throw LlmException(message, kind, retryAfter)
         }
         return parseReply(body)
     }
@@ -166,7 +198,7 @@ class LlmClient {
      * Status codes alone are not enough: Google answers a bad API key with 400,
      * not 401, so the body has to be read before deciding what went wrong.
      */
-    private fun classify(code: Int, body: String): Pair<String, Boolean> {
+    private fun classify(code: Int, body: String): Pair<String, FailureKind> {
         val detail = extractMessage(body)
         val lower = detail.lowercase()
 
@@ -177,28 +209,36 @@ class LlmClient {
             (lower.contains("not found") || lower.contains("does not exist") ||
                 lower.contains("decommissioned") || lower.contains("deprecated") ||
                 lower.contains("unknown"))
+        // Several providers report exhausted quota as 400 or 403 rather than 429.
+        val looksLikeQuota = lower.contains("quota") || lower.contains("rate limit") ||
+            lower.contains("rate_limit") || lower.contains("too many requests") ||
+            lower.contains("resource_exhausted") || lower.contains("exceeded")
 
         return when {
+            looksLikeQuota || code == 429 ->
+                "Out of quota for now.\n\n$detail" to FailureKind.RateLimited
+
             looksLikeKey -> "API key rejected.\n\nCheck it is pasted whole with no spaces, " +
-                "and that it belongs to the provider selected above.\n\n$detail" to false
+                "and that it belongs to the provider selected above.\n\n$detail" to
+                FailureKind.AuthFailed
 
             looksLikeModel -> "That model is not available on this key.\n\nTap Load models " +
-                "and pick one from the list — providers retire model names regularly.\n\n$detail" to false
+                "and pick one from the list — providers retire model names regularly.\n\n$detail" to
+                FailureKind.ModelMissing
 
             code == 404 -> "Nothing at that URL (404).\n\nCheck the base URL is right for this " +
-                "provider, then tap Load models.\n\n$detail" to false
+                "provider, then tap Load models.\n\n$detail" to FailureKind.ModelMissing
 
-            code == 401 || code == 403 -> "Key rejected ($code).\n\n$detail" to false
+            code == 401 || code == 403 -> "Key rejected ($code).\n\n$detail" to FailureKind.AuthFailed
 
-            code == 429 -> "Rate limited ($code). Free tiers throttle — wait a moment, " +
-                "or switch provider.\n\n$detail" to false
-
-            code in 500..599 -> "Provider error ($code). Not your setup — try again.\n\n$detail" to false
+            code in 500..599 -> "Provider error ($code). Not your setup — try again.\n\n$detail" to
+                FailureKind.ServerError
 
             // A plain rejected payload: worth retrying in a simpler shape.
-            code == 400 || code == 422 -> "Request rejected ($code).\n\n$detail" to true
+            code == 400 || code == 422 -> "Request rejected ($code).\n\n$detail" to
+                FailureKind.PayloadRejected
 
-            else -> "Request failed ($code).\n\n$detail" to false
+            else -> "Request failed ($code).\n\n$detail" to FailureKind.Unknown
         }
     }
 
@@ -226,14 +266,14 @@ class LlmClient {
         val json = runCatching { JSONObject(body) }.getOrNull()
             ?: throw LlmException(
                 "Provider returned something unexpected:\n\n${body.take(300)}",
-                recoverable = false
+                FailureKind.Unknown
             )
         val choices = json.optJSONArray("choices")
         if (choices == null || choices.length() == 0) {
-            throw LlmException("Provider returned no choices:\n\n${body.take(300)}", false)
+            throw LlmException("Provider returned no choices:\n\n${body.take(300)}")
         }
         val message = choices.getJSONObject(0).optJSONObject("message")
-            ?: throw LlmException("Provider returned no message.", false)
+            ?: throw LlmException("Provider returned no message.")
 
         val content = message.opt("content").let { raw ->
             when (raw) {

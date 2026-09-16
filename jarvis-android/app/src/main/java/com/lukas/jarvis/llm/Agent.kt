@@ -16,7 +16,7 @@ data class AgentResult(
  * tools it asks for, feed the results back, repeat until it answers in words.
  */
 class Agent(
-    private val client: LlmClient,
+    private val client: PooledLlm,
     private val tools: Tools,
     private val brain: Brain
 ) {
@@ -46,7 +46,10 @@ class Agent(
 
         for (round in 1..MAX_ROUNDS) {
             onStage(if (round == 1) "thinking" else "working")
-            val reply = client.chat(settings, messages, schemas)
+            val reply = client.chat(settings, messages, schemas) { next ->
+                // Surfaced so a quota switch is visible rather than mysterious.
+                onStage("switching to $next")
+            }
 
             val nativeCalls = reply.toolCalls
             val textCalls = if (nativeCalls.isEmpty()) parseTextToolCalls(reply.content) else emptyList()
