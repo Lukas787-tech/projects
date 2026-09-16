@@ -92,7 +92,7 @@ fun Picker(
 ) {
     var open by remember { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxWidth()) {
-        SectionLabel(label)
+        if (label.isNotBlank()) SectionLabel(label)
         Box {
             Row(
                 modifier = Modifier

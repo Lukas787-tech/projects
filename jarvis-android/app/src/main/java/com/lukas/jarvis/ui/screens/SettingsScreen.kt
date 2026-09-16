@@ -12,10 +12,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -33,22 +36,30 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.KeyboardOptions
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.llm.Providers
-import com.lukas.jarvis.ui.components.JarvisCard
+import com.lukas.jarvis.ui.components.Banner
+import com.lukas.jarvis.ui.components.BannerTone
+import com.lukas.jarvis.ui.components.ChipButton
+import com.lukas.jarvis.ui.components.Panel
 import com.lukas.jarvis.ui.components.Picker
-import com.lukas.jarvis.ui.components.SectionLabel
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
 import com.lukas.jarvis.ui.theme.TextSecondary
+import com.lukas.jarvis.vm.ModelsState
+import com.lukas.jarvis.vm.TestState
 
 @Composable
 fun SettingsScreen(
     settings: Settings,
+    availableModels: List<String>,
+    modelsState: ModelsState,
+    testState: TestState,
     onUpdate: ((Settings) -> Settings) -> Unit,
     onSwitchProvider: (String) -> Unit,
+    onRefreshModels: () -> Unit,
+    onTestConnection: () -> Unit,
     onPreviewVoice: () -> Unit,
     onClearConversation: () -> Unit,
     modifier: Modifier = Modifier
@@ -57,223 +68,305 @@ fun SettingsScreen(
     val preset = Providers.byId(settings.providerId)
     var showKey by remember { mutableStateOf(false) }
 
+    // Whatever the provider just told us, falling back to the baked-in guess
+    // only until the first successful refresh.
+    val modelOptions = remember(availableModels, preset, settings.model) {
+        if (availableModels.isNotEmpty()) {
+            (availableModels + settings.model).distinct()
+        } else {
+            (preset.fallbackModels + settings.model).distinct()
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 20.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        ScreenHeader(title = "Settings", subtitle = "All providers below have a free tier")
+        ScreenHeader(title = "Settings", subtitle = "Every provider here has a free tier")
 
-        // ------------------------------------------------------------- brain
-        SectionLabel("Model")
-        Picker(
-            label = "Provider",
-            value = settings.providerId,
-            options = Providers.ALL.map { it.id },
-            onSelect = onSwitchProvider,
-            display = { Providers.byId(it).label }
-        )
-        Spacer(Modifier.height(8.dp))
+        Panel(title = "Connection", subtitle = preset.note) {
+            Picker(
+                label = "Provider",
+                value = settings.providerId,
+                options = Providers.ALL.map { it.id },
+                onSelect = onSwitchProvider,
+                display = { Providers.byId(it).label }
+            )
 
-        JarvisCard {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(
-                    preset.note,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
-                )
-                preset.keyUrl?.let { url ->
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = {
+            preset.keyUrl?.let { url ->
+                Spacer(Modifier.height(12.dp))
+                ChipButton(
+                    label = "Get a free API key",
+                    icon = Icons.Default.OpenInNew,
+                    onClick = {
                         runCatching {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                         }
-                    }) {
-                        Text("Get a free API key")
                     }
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+            OutlinedTextField(
+                value = settings.baseUrl,
+                onValueChange = { value -> onUpdate { it.copy(baseUrl = value) } },
+                label = { Text("Base URL") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (preset.needsKey || settings.apiKey.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = settings.apiKey,
+                    onValueChange = { value -> onUpdate { it.copy(apiKey = value.trim()) } },
+                    label = { Text("API key") },
+                    singleLine = true,
+                    visualTransformation = if (showKey) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    trailingIcon = {
+                        Text(
+                            text = if (showKey) "HIDE" else "SHOW",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Accent,
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .clickable { showKey = !showKey }
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // The model list is fetched live. Baked-in ids go stale the moment a
+            // provider retires one, and the failure looks like a generic 404.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Model", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                ChipButton(
+                    label = if (availableModels.isEmpty()) "Load models" else "Refresh",
+                    icon = Icons.Default.Refresh,
+                    busy = modelsState is ModelsState.Loading,
+                    onClick = onRefreshModels
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Picker(
+                label = "",
+                value = settings.model,
+                options = modelOptions,
+                onSelect = { value -> onUpdate { it.copy(model = value) } }
+            )
+
+            Spacer(Modifier.height(6.dp))
+            when (val state = modelsState) {
+                is ModelsState.Idle -> Text(
+                    "Showing built-in suggestions. Tap Load models to see what your " +
+                        "key can actually call — providers retire model names often.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextFaint
+                )
+                is ModelsState.Loading -> Text(
+                    "Asking the provider…",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary
+                )
+                is ModelsState.Loaded -> Text(
+                    "${state.count} models available on this key.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextFaint
+                )
+                is ModelsState.Failed -> Banner(
+                    tone = BannerTone.Bad,
+                    title = "Could not list models",
+                    body = state.message
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = settings.model,
+                onValueChange = { value -> onUpdate { it.copy(model = value.trim()) } },
+                label = { Text("Or type a model id") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(16.dp))
+            ChipButton(
+                label = "Test connection",
+                icon = Icons.Default.Bolt,
+                prominent = true,
+                busy = testState is TestState.Running,
+                onClick = onTestConnection,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            when (val state = testState) {
+                is TestState.Idle, is TestState.Running -> Unit
+                is TestState.Passed -> {
+                    Spacer(Modifier.height(12.dp))
+                    Banner(
+                        tone = if (state.toolsWork) BannerTone.Good else BannerTone.Neutral,
+                        title = if (state.toolsWork) "Working" else "Replies, but no tool calling",
+                        body = if (state.toolsWork) {
+                            "Model answered: \"${state.reply}\". Memory and trackers will work."
+                        } else {
+                            "Model answered: \"${state.reply}\", but it did not accept a tool " +
+                                "call. Jarvis falls back to a text protocol, which is less " +
+                                "reliable — pick a model that supports tools if you can."
+                        }
+                    )
+                }
+                is TestState.Failed -> {
+                    Spacer(Modifier.height(12.dp))
+                    Banner(
+                        tone = BannerTone.Bad,
+                        title = "Not working",
+                        body = listOfNotNull(state.message, state.hint).joinToString("\n\n")
+                    )
                 }
             }
         }
 
-        Spacer(Modifier.height(12.dp))
-
-        OutlinedTextField(
-            value = settings.baseUrl,
-            onValueChange = { value -> onUpdate { it.copy(baseUrl = value) } },
-            label = { Text("Base URL") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(8.dp))
-
-        if (preset.needsKey || settings.apiKey.isNotBlank()) {
+        Panel(title = "You") {
             OutlinedTextField(
-                value = settings.apiKey,
-                onValueChange = { value -> onUpdate { it.copy(apiKey = value) } },
-                label = { Text("API key") },
+                value = settings.userName,
+                onValueChange = { value -> onUpdate { it.copy(userName = value) } },
+                label = { Text("Your name") },
                 singleLine = true,
-                visualTransformation = if (showKey) {
-                    VisualTransformation.None
-                } else {
-                    PasswordVisualTransformation()
-                },
-                trailingIcon = {
-                    Text(
-                        text = if (showKey) "HIDE" else "SHOW",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Accent,
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                            .clickable { showKey = !showKey }
-                    )
-                },
                 modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = settings.assistantName,
+                onValueChange = { value -> onUpdate { it.copy(assistantName = value) } },
+                label = { Text("Assistant name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = settings.defaultCurrency,
+                onValueChange = { value ->
+                    onUpdate { it.copy(defaultCurrency = value.uppercase().take(5)) }
+                },
+                label = { Text("Default currency") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Panel(title = "Voice") {
+            ToggleRow(
+                title = "Speak replies",
+                subtitle = "Read answers out loud",
+                checked = settings.speakReplies,
+                onChange = { value -> onUpdate { it.copy(speakReplies = value) } }
+            )
+            ToggleRow(
+                title = "Hands free",
+                subtitle = "Start listening again after each reply",
+                checked = settings.handsFree,
+                onChange = { value -> onUpdate { it.copy(handsFree = value) } }
+            )
+            ToggleRow(
+                title = "Wake word",
+                subtitle = "Listens in the background. Uses noticeably more battery, " +
+                    "and can only open the app reliably while it is already running.",
+                checked = settings.wakeWordEnabled,
+                onChange = { value -> onUpdate { it.copy(wakeWordEnabled = value) } }
+            )
+            if (settings.wakeWordEnabled) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = settings.wakePhrase,
+                    onValueChange = { value -> onUpdate { it.copy(wakePhrase = value.lowercase()) } },
+                    label = { Text("Wake phrase") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            SliderRow(
+                label = "Speech rate",
+                value = settings.speechRate,
+                range = 0.5f..2.0f,
+                onChange = { value -> onUpdate { it.copy(speechRate = value) } }
+            )
+            SliderRow(
+                label = "Pitch",
+                value = settings.speechPitch,
+                range = 0.5f..2.0f,
+                onChange = { value -> onUpdate { it.copy(speechPitch = value) } }
             )
             Spacer(Modifier.height(8.dp))
-        }
-
-        Picker(
-            label = "Model",
-            value = settings.model,
-            options = (preset.models + settings.model).distinct(),
-            onSelect = { value -> onUpdate { it.copy(model = value) } }
-        )
-        OutlinedTextField(
-            value = settings.model,
-            onValueChange = { value -> onUpdate { it.copy(model = value) } },
-            label = { Text("Or type a model name") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(20.dp))
-
-        // --------------------------------------------------------------- you
-        SectionLabel("You")
-        OutlinedTextField(
-            value = settings.userName,
-            onValueChange = { value -> onUpdate { it.copy(userName = value) } },
-            label = { Text("Your name") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = settings.assistantName,
-            onValueChange = { value -> onUpdate { it.copy(assistantName = value) } },
-            label = { Text("Assistant name") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = settings.defaultCurrency,
-            onValueChange = { value ->
-                onUpdate { it.copy(defaultCurrency = value.uppercase().take(5)) }
-            },
-            label = { Text("Default currency") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(20.dp))
-
-        // ------------------------------------------------------------- voice
-        SectionLabel("Voice")
-        ToggleRow(
-            title = "Speak replies",
-            subtitle = "Read answers out loud",
-            checked = settings.speakReplies,
-            onChange = { value -> onUpdate { it.copy(speakReplies = value) } }
-        )
-        ToggleRow(
-            title = "Hands free",
-            subtitle = "Start listening again after each reply",
-            checked = settings.handsFree,
-            onChange = { value -> onUpdate { it.copy(handsFree = value) } }
-        )
-        ToggleRow(
-            title = "Wake word",
-            subtitle = "Listen in the background. Uses noticeably more battery, " +
-                "and can only open the app reliably while it is already running.",
-            checked = settings.wakeWordEnabled,
-            onChange = { value -> onUpdate { it.copy(wakeWordEnabled = value) } }
-        )
-        if (settings.wakeWordEnabled) {
-            OutlinedTextField(
-                value = settings.wakePhrase,
-                onValueChange = { value ->
-                    onUpdate { it.copy(wakePhrase = value.lowercase()) }
-                },
-                label = { Text("Wake phrase") },
-                singleLine = true,
+            ChipButton(
+                label = "Preview voice",
+                onClick = onPreviewVoice,
                 modifier = Modifier.fillMaxWidth()
             )
         }
 
-        SliderRow(
-            label = "Speech rate",
-            value = settings.speechRate,
-            range = 0.5f..2.0f,
-            onChange = { value -> onUpdate { it.copy(speechRate = value) } }
-        )
-        SliderRow(
-            label = "Pitch",
-            value = settings.speechPitch,
-            range = 0.5f..2.0f,
-            onChange = { value -> onUpdate { it.copy(speechPitch = value) } }
-        )
-        OutlinedButton(onClick = onPreviewVoice, modifier = Modifier.fillMaxWidth()) {
-            Text("Preview voice")
+        Panel(title = "Behaviour") {
+            ToggleRow(
+                title = "Internet access",
+                subtitle = "Let Jarvis search the web. Free, no key needed.",
+                checked = settings.webSearchEnabled,
+                onChange = { value -> onUpdate { it.copy(webSearchEnabled = value) } }
+            )
+            ToggleRow(
+                title = "Capture automatically",
+                subtitle = "Save facts and purchases without being asked",
+                checked = settings.autoCapture,
+                onChange = { value -> onUpdate { it.copy(autoCapture = value) } }
+            )
+            SliderRow(
+                label = "Creativity",
+                value = settings.temperature,
+                range = 0f..1.2f,
+                onChange = { value -> onUpdate { it.copy(temperature = value) } }
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = settings.maxTokens.toString(),
+                onValueChange = { value ->
+                    value.toIntOrNull()?.let { parsed ->
+                        onUpdate { it.copy(maxTokens = parsed.coerceIn(128, 8192)) }
+                    }
+                },
+                label = { Text("Max reply length (tokens)") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
-        Spacer(Modifier.height(20.dp))
-
-        // ----------------------------------------------------------- behaviour
-        SectionLabel("Behaviour")
-        ToggleRow(
-            title = "Internet access",
-            subtitle = "Let Jarvis search the web. Free, no key needed.",
-            checked = settings.webSearchEnabled,
-            onChange = { value -> onUpdate { it.copy(webSearchEnabled = value) } }
-        )
-        ToggleRow(
-            title = "Capture memories automatically",
-            subtitle = "Save facts and purchases without being asked",
-            checked = settings.autoCapture,
-            onChange = { value -> onUpdate { it.copy(autoCapture = value) } }
-        )
-        SliderRow(
-            label = "Creativity",
-            value = settings.temperature,
-            range = 0f..1.2f,
-            onChange = { value -> onUpdate { it.copy(temperature = value) } }
-        )
-        OutlinedTextField(
-            value = settings.maxTokens.toString(),
-            onValueChange = { value ->
-                value.toIntOrNull()?.let { parsed ->
-                    onUpdate { it.copy(maxTokens = parsed.coerceIn(128, 8192)) }
-                }
-            },
-            label = { Text("Max reply length (tokens)") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(24.dp))
-        Button(onClick = onClearConversation, modifier = Modifier.fillMaxWidth()) {
-            Text("Clear conversation history")
+        Panel(title = "Data") {
+            ChipButton(
+                label = "Clear conversation history",
+                onClick = onClearConversation,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Memories, trackers and tasks are kept — only the chat log is cleared. " +
+                    "Everything stays on this phone.",
+                style = MaterialTheme.typography.labelSmall,
+                color = TextFaint
+            )
         }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Memories, trackers and tasks are kept — only the chat log is cleared. " +
-                "Everything stays on this phone.",
-            style = MaterialTheme.typography.labelSmall,
-            color = TextFaint
-        )
+
         Spacer(Modifier.height(40.dp))
     }
 }

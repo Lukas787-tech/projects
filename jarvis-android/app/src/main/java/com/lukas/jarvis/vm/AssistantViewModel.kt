@@ -15,7 +15,9 @@ import com.lukas.jarvis.data.Memory
 import com.lukas.jarvis.data.Task
 import com.lukas.jarvis.data.Tracker
 import com.lukas.jarvis.data.TrackerStatus
+import com.lukas.jarvis.llm.ConnectionTest
 import com.lukas.jarvis.llm.LlmException
+import com.lukas.jarvis.llm.Providers
 import com.lukas.jarvis.voice.SpeechInput
 import com.lukas.jarvis.voice.Speaker
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +28,21 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 enum class Stage { Idle, Listening, Thinking, Speaking }
+
+/** State of "ask the provider which models it really has". */
+sealed interface ModelsState {
+    data object Idle : ModelsState
+    data object Loading : ModelsState
+    data class Loaded(val count: Int) : ModelsState
+    data class Failed(val message: String) : ModelsState
+}
+
+sealed interface TestState {
+    data object Idle : TestState
+    data object Running : TestState
+    data class Passed(val reply: String, val toolsWork: Boolean) : TestState
+    data class Failed(val message: String, val hint: String?) : TestState
+}
 
 data class AssistantUiState(
     val stage: Stage = Stage.Idle,
@@ -62,6 +79,15 @@ class AssistantViewModel(
 
     private val _entries = MutableStateFlow<List<Entry>>(emptyList())
     val entries: StateFlow<List<Entry>> = _entries.asStateFlow()
+
+    private val _availableModels = MutableStateFlow<List<String>>(emptyList())
+    val availableModels: StateFlow<List<String>> = _availableModels.asStateFlow()
+
+    private val _modelsState = MutableStateFlow<ModelsState>(ModelsState.Idle)
+    val modelsState: StateFlow<ModelsState> = _modelsState.asStateFlow()
+
+    private val _testState = MutableStateFlow<TestState>(TestState.Idle)
+    val testState: StateFlow<TestState> = _testState.asStateFlow()
 
     /** Only a turn that started with the mic should hand the mic back afterwards. */
     private var lastTurnWasVoice = false
@@ -372,6 +398,40 @@ class AssistantViewModel(
 
     // ---------------------------------------------------------------- settings
 
+    /**
+     * Pulls the live model list. Hardcoded ids go stale — this is how the app
+     * recovers without shipping an update.
+     */
+    fun refreshModels() {
+        if (_modelsState.value == ModelsState.Loading) return
+        _modelsState.value = ModelsState.Loading
+        viewModelScope.launch {
+            try {
+                val models = container.models.fetch(settingsStore.current)
+                _availableModels.value = models
+                _modelsState.value = ModelsState.Loaded(models.size)
+                // A model that no longer exists would fail on the next message,
+                // so move to a real one now rather than at the worst moment.
+                if (settingsStore.current.model !in models && models.isNotEmpty()) {
+                    settingsStore.update { it.copy(model = models.first()) }
+                }
+            } catch (e: Exception) {
+                _modelsState.value = ModelsState.Failed(e.message ?: "Could not list models.")
+            }
+        }
+    }
+
+    fun testConnection() {
+        if (_testState.value == TestState.Running) return
+        _testState.value = TestState.Running
+        viewModelScope.launch {
+            _testState.value = when (val result = container.connectionTest.run(settingsStore.current)) {
+                is ConnectionTest.Result.Ok -> TestState.Passed(result.reply, result.toolsWork)
+                is ConnectionTest.Result.Failed -> TestState.Failed(result.message, result.hint)
+            }
+        }
+    }
+
     fun updateSettings(transform: (Settings) -> Settings) {
         settingsStore.update(transform)
         val next = settingsStore.current
@@ -380,6 +440,13 @@ class AssistantViewModel(
 
     fun switchProvider(providerId: String) {
         settingsStore.switchProvider(providerId)
+        // The old provider's models mean nothing here.
+        _availableModels.value = emptyList()
+        _modelsState.value = ModelsState.Idle
+        _testState.value = TestState.Idle
+        if (settingsStore.current.let { Providers.byId(it.providerId).needsKey.not() || it.apiKey.isNotBlank() }) {
+            refreshModels()
+        }
     }
 
     fun previewVoice() {

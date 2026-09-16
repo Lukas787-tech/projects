@@ -45,6 +45,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.data.ChatMessage
+import com.lukas.jarvis.ui.components.ChipButton
 import com.lukas.jarvis.ui.components.Orb
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.Hairline
@@ -64,10 +65,12 @@ import com.lukas.jarvis.vm.Stage
 fun VoiceScreen(
     state: AssistantUiState,
     assistantName: String,
+    configured: Boolean,
     onOrbTap: () -> Unit,
     onSend: (String) -> Unit,
     onDismissError: () -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var draft by remember { mutableStateOf("") }
@@ -111,7 +114,7 @@ fun VoiceScreen(
         Spacer(Modifier.height(18.dp))
 
         Text(
-            text = statusText(state),
+            text = statusText(state, configured),
             style = MaterialTheme.typography.labelSmall,
             color = if (state.stage == Stage.Idle) TextFaint else Accent,
             modifier = Modifier.fillMaxWidth(),
@@ -158,6 +161,30 @@ fun VoiceScreen(
                             color = TextPrimary,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.clickable { onOpenHistory() }
+                        )
+                    }
+
+                    !configured -> Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Pick a model to get started.",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = TextPrimary,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = "Takes a minute, and every provider on the list is free.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextFaint,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(18.dp))
+                        ChipButton(
+                            label = "Open setup",
+                            prominent = true,
+                            onClick = onOpenSettings
                         )
                     }
 
@@ -258,8 +285,12 @@ fun VoiceScreen(
     }
 }
 
-private fun statusText(state: AssistantUiState): String = when (state.stage) {
-    Stage.Idle -> if (state.micAvailable) "TAP TO SPEAK" else "NO MIC — TYPE INSTEAD"
+private fun statusText(state: AssistantUiState, configured: Boolean): String = when (state.stage) {
+    Stage.Idle -> when {
+        !configured -> "NOT SET UP YET"
+        !state.micAvailable -> "NO MIC — TYPE INSTEAD"
+        else -> "TAP TO SPEAK"
+    }
     Stage.Listening -> "LISTENING"
     Stage.Thinking -> state.stageLabel.uppercase().ifBlank { "THINKING" }
     Stage.Speaking -> "SPEAKING — TAP TO STOP"

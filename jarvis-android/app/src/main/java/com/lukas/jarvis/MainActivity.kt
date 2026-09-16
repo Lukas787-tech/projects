@@ -130,6 +130,9 @@ private fun JarvisRoot(
     val trackers by viewModel.trackers.collectAsStateWithLifecycle()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val entries by viewModel.entries.collectAsStateWithLifecycle()
+    val availableModels by viewModel.availableModels.collectAsStateWithLifecycle()
+    val modelsState by viewModel.modelsState.collectAsStateWithLifecycle()
+    val testState by viewModel.testState.collectAsStateWithLifecycle()
 
     var tab by remember { mutableStateOf(Tab.Voice) }
 
@@ -166,10 +169,12 @@ private fun JarvisRoot(
                 Tab.Voice -> VoiceScreen(
                     state = ui,
                     assistantName = settings.assistantName,
+                    configured = settings.isConfigured,
                     onOrbTap = viewModel::toggleListening,
                     onSend = viewModel::sendTyped,
                     onDismissError = viewModel::dismissError,
-                    onOpenHistory = { tab = Tab.Chat }
+                    onOpenHistory = { tab = Tab.Chat },
+                    onOpenSettings = { tab = Tab.Settings }
                 )
 
                 Tab.Brain -> BrainScreen(
@@ -200,8 +205,13 @@ private fun JarvisRoot(
 
                 Tab.Settings -> SettingsScreen(
                     settings = settings,
+                    availableModels = availableModels,
+                    modelsState = modelsState,
+                    testState = testState,
                     onUpdate = viewModel::updateSettings,
                     onSwitchProvider = viewModel::switchProvider,
+                    onRefreshModels = viewModel::refreshModels,
+                    onTestConnection = viewModel::testConnection,
                     onPreviewVoice = viewModel::previewVoice,
                     onClearConversation = viewModel::clearConversation
                 )

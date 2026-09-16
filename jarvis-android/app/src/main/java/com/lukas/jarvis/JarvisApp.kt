@@ -5,7 +5,9 @@ import android.content.Context
 import com.lukas.jarvis.core.SettingsStore
 import com.lukas.jarvis.data.Brain
 import com.lukas.jarvis.llm.Agent
+import com.lukas.jarvis.llm.ConnectionTest
 import com.lukas.jarvis.llm.LlmClient
+import com.lukas.jarvis.llm.ModelCatalog
 import com.lukas.jarvis.llm.Tools
 import com.lukas.jarvis.notify.Reminders
 import com.lukas.jarvis.voice.SpeechInput
@@ -32,6 +34,8 @@ class AppContainer(context: Context) {
     private val tools = Tools(brain, web, reminders)
 
     val agent = Agent(client, tools, brain)
+    val models = ModelCatalog()
+    val connectionTest = ConnectionTest(client)
 }
 
 class JarvisApp : Application() {

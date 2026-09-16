@@ -133,9 +133,14 @@ class LlmClient {
 
         return when (code) {
             401, 403 -> "API key rejected ($code). Check the key in Settings. $detail"
-            404 -> "Model or endpoint not found ($code). Check the model name. $detail"
+            // The overwhelmingly common cause is a model id the provider has
+            // since retired, so point at the fix rather than just the symptom.
+            404 -> "Model not found ($code). It was probably retired — open Settings " +
+                "and tap Refresh to load the models this key can actually call. $detail"
             429 -> "Rate limited ($code) — free tiers throttle. Wait a moment or switch provider."
             in 500..599 -> "Provider error ($code). $detail"
+            400, 422 -> "Provider rejected the request ($code). If this model is new to " +
+                "you it may not support tool calling. $detail"
             else -> "Request failed ($code). $detail"
         }
     }
