@@ -12,13 +12,17 @@ Everything it knows lives in a SQLite file on your phone.
 
 There is no Android SDK in this repo, so the APK is built by GitHub Actions.
 
-1. Go to the **Actions** tab → **Build Jarvis APK**.
-2. Open the newest run and download the `jarvis-apk` artifact.
-3. Unzip, copy the `.apk` to your phone, tap it, allow "install unknown apps".
+**On your phone — easiest.** Open
+[Releases](https://github.com/Lukas787-tech/projects/releases), tap the
+`jarvis-*.apk` on the newest `jarvis-v*` release, and allow "install unknown
+apps" when the browser asks. No login, no unzipping.
 
-To get a permanent download link instead, run the workflow manually
-(**Run workflow** → tick *Also publish the APK as a GitHub Release*) and the APK
-appears under **Releases**, which you can open directly on your phone.
+To refresh that link after changes: **Actions** -> **Build Jarvis APK** ->
+**Run workflow** -> tick *Also publish the APK as a GitHub Release*.
+
+**From a computer.** Every push also uploads a `jarvis-apk` artifact on the
+workflow run, which is a zip you download and extract. Fine at a desk, painful
+on a phone, which is why Releases is the default route above.
 
 Every build is signed with the throwaway key in `app/keystore/`, so new versions
 install over old ones without an uninstall. That key is not a secret and is not
