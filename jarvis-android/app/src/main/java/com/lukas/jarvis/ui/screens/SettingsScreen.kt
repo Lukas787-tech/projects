@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.MaterialTheme
@@ -31,10 +32,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.llm.Providers
@@ -65,6 +70,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     val preset = Providers.byId(settings.providerId)
     var showKey by remember { mutableStateOf(false) }
 
@@ -228,14 +234,16 @@ fun SettingsScreen(
                                 "reliable — pick a model that supports tools if you can."
                         }
                     )
+                    DiagnosticsBlock(state.diagnostics, clipboard)
                 }
                 is TestState.Failed -> {
                     Spacer(Modifier.height(12.dp))
                     Banner(
                         tone = BannerTone.Bad,
                         title = "Not working",
-                        body = listOfNotNull(state.message, state.hint).joinToString("\n\n")
+                        body = state.message
                     )
+                    DiagnosticsBlock(state.diagnostics, clipboard)
                 }
             }
         }
@@ -369,6 +377,28 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(40.dp))
     }
+}
+
+/**
+ * The exact URL, status and provider response. Without this, a failure report is
+ * just "it doesn't work", which is not enough to fix anything.
+ */
+@Composable
+private fun DiagnosticsBlock(diagnostics: String, clipboard: ClipboardManager) {
+    if (diagnostics.isBlank()) return
+    Spacer(Modifier.height(10.dp))
+    Text(
+        diagnostics,
+        style = MaterialTheme.typography.labelSmall,
+        color = TextFaint,
+        fontFamily = FontFamily.Monospace
+    )
+    Spacer(Modifier.height(8.dp))
+    ChipButton(
+        label = "Copy details",
+        icon = Icons.Default.ContentCopy,
+        onClick = { clipboard.setText(AnnotatedString(diagnostics)) }
+    )
 }
 
 @Composable

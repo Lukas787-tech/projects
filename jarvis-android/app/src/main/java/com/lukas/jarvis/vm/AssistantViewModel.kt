@@ -40,8 +40,14 @@ sealed interface ModelsState {
 sealed interface TestState {
     data object Idle : TestState
     data object Running : TestState
-    data class Passed(val reply: String, val toolsWork: Boolean) : TestState
-    data class Failed(val message: String, val hint: String?) : TestState
+    data class Passed(
+        val reply: String,
+        val toolsWork: Boolean,
+        val diagnostics: String
+    ) : TestState
+
+    /** [diagnostics] is the raw exchange, so a failure can be reported verbatim. */
+    data class Failed(val message: String, val diagnostics: String) : TestState
 }
 
 data class AssistantUiState(
@@ -426,8 +432,10 @@ class AssistantViewModel(
         _testState.value = TestState.Running
         viewModelScope.launch {
             _testState.value = when (val result = container.connectionTest.run(settingsStore.current)) {
-                is ConnectionTest.Result.Ok -> TestState.Passed(result.reply, result.toolsWork)
-                is ConnectionTest.Result.Failed -> TestState.Failed(result.message, result.hint)
+                is ConnectionTest.Result.Ok ->
+                    TestState.Passed(result.reply, result.toolsWork, result.diagnostics)
+                is ConnectionTest.Result.Failed ->
+                    TestState.Failed(result.message, result.diagnostics)
             }
         }
     }
