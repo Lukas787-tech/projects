@@ -27,7 +27,7 @@ class ModelCatalog {
 
     suspend fun fetch(settings: Settings): List<String> = withContext(Dispatchers.IO) {
         if (Providers.byId(settings.providerId).needsKey && settings.apiKey.isBlank()) {
-            throw LlmException("Add an API key first, then refresh.", recoverable = false)
+            throw LlmException("Add an API key first, then refresh.", FailureKind.Unknown)
         }
         // Gemini's OpenAI compatibility layer answers 404 for /models, so its
         // native endpoint is the only way to enumerate them.
@@ -47,17 +47,17 @@ class ModelCatalog {
         val body = execute(builder.build(), url)
 
         val json = runCatching { JSONObject(body) }.getOrNull()
-            ?: throw LlmException("$url did not return JSON.", recoverable = false)
+            ?: throw LlmException("$url did not return JSON.", FailureKind.Unknown)
         val data = json.optJSONArray("data")
             ?: throw LlmException(
                 "$url has no 'data' array — this endpoint may not be OpenAI compatible.",
-                recoverable = false
+                FailureKind.Unknown
             )
 
         val ids = (0 until data.length()).mapNotNull { i ->
             data.optJSONObject(i)?.optString("id")?.takeIf { it.isNotBlank() }
         }
-        if (ids.isEmpty()) throw LlmException("Provider listed no models.", recoverable = false)
+        if (ids.isEmpty()) throw LlmException("Provider listed no models.", FailureKind.Unknown)
         return sortForDisplay(ids)
     }
 
@@ -68,9 +68,9 @@ class ModelCatalog {
         val body = execute(Request.Builder().url(url).get().build(), "$GEMINI_NATIVE/models")
 
         val json = runCatching { JSONObject(body) }.getOrNull()
-            ?: throw LlmException("Google did not return JSON.", recoverable = false)
+            ?: throw LlmException("Google did not return JSON.", FailureKind.Unknown)
         val models = json.optJSONArray("models")
-            ?: throw LlmException("Google listed no models.", recoverable = false)
+            ?: throw LlmException("Google listed no models.", FailureKind.Unknown)
 
         val ids = (0 until models.length()).mapNotNull { i ->
             val model = models.optJSONObject(i) ?: return@mapNotNull null
@@ -82,7 +82,7 @@ class ModelCatalog {
             // Names come back as "models/gemini-x"; the OpenAI shim wants the bare id.
             model.optString("name").removePrefix("models/").takeIf { it.isNotBlank() }
         }
-        if (ids.isEmpty()) throw LlmException("No chat-capable Gemini models.", recoverable = false)
+        if (ids.isEmpty()) throw LlmException("No chat-capable Gemini models.", FailureKind.Unknown)
         return sortForDisplay(ids)
     }
 
@@ -92,7 +92,7 @@ class ModelCatalog {
         } catch (e: IOException) {
             throw LlmException(
                 "Could not reach $displayUrl. ${e.message ?: "Check your connection."}",
-                recoverable = false
+                FailureKind.Network
             )
         }
         if (code !in 200..299) {
@@ -106,7 +106,12 @@ class ModelCatalog {
                     429 -> "Rate limited ($code). Try again shortly."
                     else -> "Could not list models ($code). $detail"
                 },
-                recoverable = false
+                when (code) {
+                    401, 403 -> FailureKind.AuthFailed
+                    429 -> FailureKind.RateLimited
+                    404 -> FailureKind.ModelMissing
+                    else -> FailureKind.Unknown
+                }
             )
         }
         return body
