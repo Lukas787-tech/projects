@@ -70,8 +70,16 @@ jobs:
       # permanent download link. Numbered tags all shared a creation timestamp,
       # which left the Releases page ordering them arbitrarily and the newest
       # build buried among older ones.
+      #
+      # The upload is retried because it is the one step here that depends on
+      # GitHub's upload endpoint being healthy, and it replaces the asset by
+      # deleting the old one first: when the upload then times out, as it did on
+      # run 32, the permanent link is left pointing at nothing. A failed publish
+      # must not be the end of the attempt.
       - name: Publish release
+        id: publish
         if: github.event_name == 'workflow_dispatch' && inputs.make_release
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: jarvis-latest
@@ -89,3 +97,47 @@ jobs:
             Built: ${{ github.event.repository.updated_at }}
             Commit: ${{ github.sha }}
           files: jarvis-android/out/jarvis.apk
+
+      - name: Publish release (second attempt)
+        id: publish_retry
+        if: |
+          github.event_name == 'workflow_dispatch' && inputs.make_release &&
+          steps.publish.outcome == 'failure'
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: jarvis-latest
+          target_commitish: ${{ github.sha }}
+          name: Jarvis (latest build)
+          make_latest: true
+          body: |
+            Always the newest Jarvis build — this link never changes.
+
+            Open it on your phone, tap the `.apk`, allow "install unknown apps".
+            Then check Settings shows the version below; if it does not, the
+            install did not replace the old one.
+
+            Version: ${{ env.APP_VERSION }}
+            Built: ${{ github.event.repository.updated_at }}
+            Commit: ${{ github.sha }}
+          files: jarvis-android/out/jarvis.apk
+
+      # Neither attempt is trusted on its own word: the job passes only if the
+      # link a person will actually tap serves the file.
+      - name: Verify the download link
+        if: github.event_name == 'workflow_dispatch' && inputs.make_release
+        run: |
+          set -eu
+          URL=https://github.com/${{ github.repository }}/releases/download/jarvis-latest/jarvis.apk
+          for attempt in 1 2 3 4 5 6; do
+            CODE=$(curl -sSL -o /dev/null -w '%{http_code}' "$URL" || echo 000)
+            echo "attempt $attempt: HTTP $CODE"
+            if [ "$CODE" = "200" ]; then
+              echo "The download link serves the APK."
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::jarvis-latest has no downloadable jarvis.apk. The release"
+          echo "::error::asset was deleted but not replaced; re-run this workflow."
+          exit 1
