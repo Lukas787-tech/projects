@@ -28,7 +28,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -470,7 +470,7 @@ private fun Composer(onSend: (String) -> Unit, onOpenHistory: () -> Unit) {
                 .background(if (draft.isBlank()) FieldResting else Accent)
         ) {
             Icon(
-                Icons.Default.Send,
+                Icons.AutoMirrored.Filled.Send,
                 contentDescription = "Send",
                 tint = if (draft.isBlank()) TextFaint else MaterialTheme.colorScheme.onPrimary
             )
