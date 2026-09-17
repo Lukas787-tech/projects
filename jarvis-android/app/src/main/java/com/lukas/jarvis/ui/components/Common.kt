@@ -1,7 +1,5 @@
 package com.lukas.jarvis.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,10 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.lukas.jarvis.ui.theme.Hairline
-import com.lukas.jarvis.ui.theme.InkCard
+import com.lukas.jarvis.ui.theme.glass
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextSecondary
 
@@ -52,9 +48,7 @@ fun JarvisCard(
 ) {
     val base = modifier
         .fillMaxWidth()
-        .clip(RoundedCornerShape(18.dp))
-        .background(InkCard)
-        .border(1.dp, Hairline, RoundedCornerShape(18.dp))
+        .glass(RoundedCornerShape(18.dp))
     Column(
         modifier = if (onClick != null) base.clickable { onClick() } else base,
         content = content
@@ -97,9 +91,7 @@ fun Picker(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(InkCard)
-                    .border(1.dp, Hairline, RoundedCornerShape(14.dp))
+                    .glass(RoundedCornerShape(14.dp))
                     .clickable { open = true }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,

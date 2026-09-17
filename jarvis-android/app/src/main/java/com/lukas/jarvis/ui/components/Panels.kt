@@ -1,7 +1,6 @@
 package com.lukas.jarvis.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,15 +29,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.ui.theme.Accent
-import com.lukas.jarvis.ui.theme.Hairline
-import com.lukas.jarvis.ui.theme.Ink
-import com.lukas.jarvis.ui.theme.InkCard
-import com.lukas.jarvis.ui.theme.InkRaised
+import com.lukas.jarvis.ui.theme.glass
 import com.lukas.jarvis.ui.theme.Negative
 import com.lukas.jarvis.ui.theme.Positive
 import com.lukas.jarvis.ui.theme.TextFaint
@@ -96,11 +90,7 @@ fun Panel(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(
-                        Brush.verticalGradient(listOf(InkRaised, InkCard))
-                    )
-                    .border(1.dp, Hairline, RoundedCornerShape(20.dp))
+                    .glass(RoundedCornerShape(20.dp))
                     .padding(16.dp)
             ) {
                 subtitle?.let {
@@ -132,12 +122,14 @@ fun Banner(
         BannerTone.Bad -> Negative
         BannerTone.Neutral -> Accent
     }
+    // Glass first, then the faintest wash of the status colour over it, so a
+    // banner is the same material as everything else rather than a coloured box
+    // dropped on top of it.
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(color.copy(alpha = 0.10f))
-            .border(1.dp, color.copy(alpha = 0.30f), RoundedCornerShape(14.dp))
+            .glass(RoundedCornerShape(14.dp))
+            .background(color.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, color = color)
@@ -159,19 +151,21 @@ fun ChipButton(
     enabled: Boolean = true,
     prominent: Boolean = false
 ) {
-    val background = if (prominent) Accent else InkCard
-    val content = if (prominent) Ink else TextPrimary
+    val shape = RoundedCornerShape(12.dp)
+    val content = if (prominent) MaterialTheme.colorScheme.onPrimary else TextPrimary
     val alpha = if (enabled && !busy) 1f else 0.45f
+
+    // The prominent one is machined out of silver; the rest are glass. Exactly
+    // one solid button per screen is what keeps it meaning "this one".
+    val surface = if (prominent) {
+        Modifier.clip(shape).background(Accent.copy(alpha = alpha))
+    } else {
+        Modifier.glass(shape)
+    }
 
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(background.copy(alpha = alpha))
-            .border(
-                1.dp,
-                if (prominent) Color.Transparent else Hairline,
-                RoundedCornerShape(12.dp)
-            )
+            .then(surface)
             .clickable(enabled = enabled && !busy) { onClick() }
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,

@@ -34,11 +34,9 @@ import com.lukas.jarvis.maps.GeoPoint
 import com.lukas.jarvis.maps.MapState
 import com.lukas.jarvis.maps.TileCache
 import com.lukas.jarvis.ui.theme.Accent
-import com.lukas.jarvis.ui.theme.AccentSoft
 import com.lukas.jarvis.ui.theme.Ink
 import com.lukas.jarvis.ui.theme.InkRaised
 import com.lukas.jarvis.ui.theme.Positive
-import com.lukas.jarvis.ui.theme.TextPrimary
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.atan
@@ -186,14 +184,15 @@ fun MapCanvas(
             val radius = if (selected) 22f else 17f
             drawCircle(color = Ink.copy(alpha = 0.85f), radius = radius + 3f, center = screen)
             drawCircle(
-                color = if (selected) Positive else AccentSoft,
+                color = if (selected) Positive else Accent,
                 radius = radius,
                 center = screen
             )
             val label = measurer.measure(
                 text = "${index + 1}",
                 style = TextStyle(
-                    color = if (selected) Ink else TextPrimary,
+                    // Both marker fills are light, so the number on them is dark.
+                    color = Ink,
                     fontSize = if (selected) 14.sp else 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -236,12 +235,23 @@ private const val MAX_HELD_TILES = 160
 private val DEFAULT_CENTER = GeoPoint(52.520008, 13.404954)
 
 /** Invert plus a 180 degree hue rotation: the standard trick for a dark basemap. */
+/**
+ * OpenStreetMap's tiles are printed on pale paper, which is a lamp in the middle
+ * of a black app. This turns them into graphite and silver to match it.
+ *
+ * All three output channels are the same row, which is what makes it neutral:
+ * the tile's luminance is measured, inverted — so the paper goes dark and the
+ * ink goes light — then scaled back to 88% and lifted off pure black, so the
+ * landmass reads as graphite rather than as a hole in the screen. The previous
+ * matrix inverted per channel, which also rotated the hue and left the map
+ * tinted blue.
+ */
 private val DARK_TILES = ColorFilter.colorMatrix(
     ColorMatrix(
         floatArrayOf(
-            0.574f, -1.430f, -0.144f, 0f, 255f,
-            -0.426f, -0.430f, -0.144f, 0f, 255f,
-            -0.426f, -1.430f, 0.856f, 0f, 255f,
+            -0.188f, -0.629f, -0.063f, 0f, 234.4f,
+            -0.188f, -0.629f, -0.063f, 0f, 234.4f,
+            -0.188f, -0.629f, -0.063f, 0f, 234.4f,
             0f, 0f, 0f, 1f, 0f
         )
     )

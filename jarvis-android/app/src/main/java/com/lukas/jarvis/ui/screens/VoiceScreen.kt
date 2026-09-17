@@ -42,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -51,13 +52,16 @@ import com.lukas.jarvis.ui.components.ChipButton
 import com.lukas.jarvis.ui.components.Orb
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.Hairline
-import com.lukas.jarvis.ui.theme.InkCard
 import com.lukas.jarvis.ui.theme.Negative
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
 import com.lukas.jarvis.ui.theme.TextSecondary
 import com.lukas.jarvis.vm.AssistantUiState
 import com.lukas.jarvis.vm.Stage
+
+// The two states of the text field, as films of white rather than as greys.
+private val FieldResting = Color(0x12FFFFFF)
+private val FieldFocused = Color(0x1FFFFFFF)
 
 /**
  * Deliberately sparse: an orb, whatever was just said, and a way to say more.
@@ -267,13 +271,18 @@ fun VoiceScreen(
                 singleLine = true,
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(24.dp)),
+                    .clip(RoundedCornerShape(24.dp))
+                    .border(1.dp, Hairline, RoundedCornerShape(24.dp)),
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = InkCard,
-                    unfocusedContainerColor = InkCard,
-                    focusedIndicatorColor = Hairline,
-                    unfocusedIndicatorColor = Hairline,
-                    cursorColor = Accent
+                    // Glass, and a touch brighter once it has focus — the same
+                    // film as every other surface rather than a grey box.
+                    focusedContainerColor = FieldFocused,
+                    unfocusedContainerColor = FieldResting,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    cursorColor = Accent,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(
@@ -295,7 +304,7 @@ fun VoiceScreen(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(if (draft.isBlank()) InkCard else Accent)
+                    .background(if (draft.isBlank()) FieldResting else Accent)
             ) {
                 Icon(
                     Icons.Default.Send,

@@ -35,13 +35,15 @@ import com.lukas.jarvis.ui.components.JarvisCard
 import com.lukas.jarvis.ui.components.SectionLabel
 import com.lukas.jarvis.ui.map.MapCanvas
 import com.lukas.jarvis.ui.theme.Accent
-import com.lukas.jarvis.ui.theme.Hairline
+import com.lukas.jarvis.ui.theme.glass
 import com.lukas.jarvis.ui.theme.Ink
-import com.lukas.jarvis.ui.theme.InkCard
 import com.lukas.jarvis.ui.theme.Positive
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
 import com.lukas.jarvis.ui.theme.TextSecondary
+
+/** The unselected result number, as a film of white rather than a grey box. */
+private val IndexChip = androidx.compose.ui.graphics.Color(0x1FFFFFFF)
 
 /**
  * The map tab: whatever the last place question produced, drawn and listed.
@@ -77,8 +79,7 @@ fun MapScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(if (state.places.isEmpty()) 300.dp else 260.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .border(1.dp, Hairline, RoundedCornerShape(20.dp))
+                .glass(RoundedCornerShape(20.dp))
         ) {
             MapCanvas(state = state, tiles = tiles, onSelectPlace = onSelect)
 
@@ -179,7 +180,7 @@ private fun PlaceRow(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) Positive else InkCard)
+                        .background(if (selected) Positive else IndexChip)
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(

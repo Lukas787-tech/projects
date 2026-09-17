@@ -25,9 +25,11 @@ import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.core.TimeUtil
 import com.lukas.jarvis.data.ChatMessage
 import com.lukas.jarvis.ui.components.EmptyState
-import com.lukas.jarvis.ui.theme.InkCard
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
+
+private val BubbleMine = androidx.compose.ui.graphics.Color(0x24FFFFFF)
+private val BubbleTheirs = androidx.compose.ui.graphics.Color(0x12FFFFFF)
 
 @Composable
 fun HistoryScreen(
@@ -81,17 +83,15 @@ private fun MessageBubble(message: ChatMessage) {
                         bottomEnd = if (fromUser) 4.dp else 18.dp
                     )
                 )
-                .background(if (fromUser) MaterialTheme.colorScheme.primaryContainer else InkCard)
+                // Yours is the brighter pane, Jarvis's the dimmer one — the
+                // same film at two densities rather than two different colours.
+                .background(if (fromUser) BubbleMine else BubbleTheirs)
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             Text(
                 message.content,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (fromUser) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    TextPrimary
-                }
+                color = TextPrimary
             )
             Spacer(Modifier.height(4.dp))
             Text(

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
@@ -38,6 +39,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -57,7 +60,7 @@ import com.lukas.jarvis.ui.screens.TrackersScreen
 import com.lukas.jarvis.ui.screens.VoiceScreen
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.Ink
-import com.lukas.jarvis.ui.theme.InkRaised
+import com.lukas.jarvis.ui.theme.Hairline
 import com.lukas.jarvis.ui.theme.JarvisTheme
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.voice.WakeWordService
@@ -213,7 +216,16 @@ private fun JarvisRoot(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Ink)
+            // Not a flat black: a faint lift at the very top, so the glass
+            // surfaces have something to pick up and are not all the same
+            // shade wherever they happen to sit.
+            .background(
+                Brush.verticalGradient(
+                    0f to Color(0xFF121216),
+                    0.35f to Color(0xFF07070A),
+                    1f to Ink
+                )
+            )
             .windowInsetsPadding(WindowInsets.systemBars)
             // Without this the soft keyboard sits on top of the text field it
             // was opened for, which makes typing to Jarvis a guessing game.
@@ -326,22 +338,40 @@ private fun JarvisRoot(
 
 @Composable
 private fun JarvisNavBar(current: Tab, onSelect: (Tab) -> Unit) {
-    NavigationBar(containerColor = InkRaised, tonalElevation = 0.dp) {
-        Tab.entries.forEach { entry ->
-            NavigationBarItem(
-                selected = current == entry,
-                onClick = { onSelect(entry) },
-                icon = { Icon(entry.icon, contentDescription = entry.label) },
-                label = { Text(entry.label) },
-                alwaysShowLabel = true,
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Accent,
-                    selectedTextColor = Accent,
-                    unselectedIconColor = TextFaint,
-                    unselectedTextColor = TextFaint,
-                    indicatorColor = Accent.copy(alpha = 0.12f)
-                )
+    // A pane of glass rather than a painted strip: the film of white and the
+    // lit hairline along its top edge are what separate it from the content
+    // scrolling underneath, instead of a block of a different colour.
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(listOf(Color(0x16FFFFFF), Color(0x0BFFFFFF)))
             )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Hairline)
+        )
+        NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp) {
+            Tab.entries.forEach { entry ->
+                NavigationBarItem(
+                    selected = current == entry,
+                    onClick = { onSelect(entry) },
+                    icon = { Icon(entry.icon, contentDescription = entry.label) },
+                    label = { Text(entry.label) },
+                    alwaysShowLabel = true,
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Accent,
+                        selectedTextColor = Accent,
+                        unselectedIconColor = TextFaint,
+                        unselectedTextColor = TextFaint,
+                        // White on white: the active pill is light, not a hue.
+                        indicatorColor = Color(0x1FFFFFFF)
+                    )
+                )
+            }
         }
     }
 }

@@ -67,19 +67,23 @@ fun Orb(
         label = "level"
     )
 
+    // One material — polished silver — lit differently per state. Stages read
+    // by brightness and movement rather than by colour, which is what keeps the
+    // screen monochrome without making the states ambiguous: idle is a dim
+    // sphere, listening swells with the voice, thinking carries a travelling
+    // arc, speaking is lit through.
     val tint = when (stage) {
-        Stage.Idle -> Accent.copy(alpha = 0.55f)
-        Stage.Listening -> Accent
+        Stage.Idle -> AccentSoft
         Stage.Thinking -> AccentSoft
-        Stage.Speaking -> Color(0xFF5FE3C0)
+        else -> Accent
     }
 
     val intensity by animateFloatAsState(
         targetValue = when (stage) {
-            Stage.Idle -> 0.35f
-            Stage.Listening -> 0.75f
-            Stage.Thinking -> 0.6f
-            Stage.Speaking -> 0.85f
+            Stage.Idle -> 0.22f
+            Stage.Listening -> 0.80f
+            Stage.Thinking -> 0.55f
+            Stage.Speaking -> 1f
         },
         animationSpec = tween(durationMillis = 400),
         label = "intensity"
