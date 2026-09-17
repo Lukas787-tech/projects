@@ -19,7 +19,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,34 +54,65 @@ fun Panel(
     title: String,
     subtitle: String? = null,
     modifier: Modifier = Modifier,
+    collapsible: Boolean = false,
+    initiallyExpanded: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    // Saveable so a rotation does not fold everything the user opened back up.
+    var expanded by rememberSaveable(title) { mutableStateOf(!collapsible || initiallyExpanded) }
+
     Column(modifier = modifier.fillMaxWidth().padding(bottom = 18.dp)) {
-        Text(
-            title.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = TextFaint,
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-        )
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(
-                    Brush.verticalGradient(listOf(InkRaised, InkCard))
+                .then(
+                    if (collapsible) {
+                        Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { expanded = !expanded }
+                    } else {
+                        Modifier
+                    }
                 )
-                .border(1.dp, Hairline, RoundedCornerShape(20.dp))
-                .padding(16.dp)
+                .padding(start = 4.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            subtitle?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(bottom = 12.dp)
+            Text(
+                title.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = TextFaint,
+                modifier = Modifier.weight(1f)
+            )
+            if (collapsible) {
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+                    tint = TextFaint,
+                    modifier = Modifier.size(18.dp)
                 )
             }
-            content()
+        }
+        if (expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        Brush.verticalGradient(listOf(InkRaised, InkCard))
+                    )
+                    .border(1.dp, Hairline, RoundedCornerShape(20.dp))
+                    .padding(16.dp)
+            ) {
+                subtitle?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                }
+                content()
+            }
         }
     }
 }

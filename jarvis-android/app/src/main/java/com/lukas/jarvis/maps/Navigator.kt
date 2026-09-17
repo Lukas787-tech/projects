@@ -165,13 +165,33 @@ class Navigator(
         return text in setOf("me", "here", "my area", "nearby", "around me", "my location", "us")
     }
 
+    /**
+     * A warning when the answer rests on an old fix. Without it "restaurants
+     * near you" sounds equally confident whether the fix is ten seconds or two
+     * days old, and the second one quietly means a different city.
+     */
+    private fun staleness(anchor: Anchor): String {
+        if (anchor.label != "you") return ""
+        val age = locator.lastFixAgeMillis() ?: return ""
+        if (age < 30 * 60_000L) return ""
+        val hours = age / 3_600_000.0
+        val howOld = if (hours >= 24) {
+            "${(hours / 24).toInt()} day(s)"
+        } else if (hours >= 1) {
+            "${hours.toInt()} hour(s)"
+        } else {
+            "${age / 60_000} minutes"
+        }
+        return " (working from a location fix $howOld old — say the town if that is wrong)"
+    }
+
     private fun describe(
         query: String,
         anchor: Anchor,
         found: List<Place>,
         wide: Boolean
     ): String = buildString {
-        val where = if (anchor.label == "you") "near you" else "near ${anchor.label}"
+        val where = if (anchor.label == "you") "near you${staleness(anchor)}" else "near ${anchor.label}"
         append("${found.size} option(s) for '$query' $where")
         if (wide) append(" (had to widen the search)")
         appendLine(":")

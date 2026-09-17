@@ -25,6 +25,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -88,15 +90,35 @@ fun VoiceScreen(
             .fillMaxSize()
             .padding(horizontal = 24.dp)
     ) {
-        Spacer(Modifier.height(24.dp))
-
-        Text(
-            text = assistantName.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = TextFaint,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
-        )
+        // The chat log and the settings used to be tabs; they are reached from
+        // here now, which is where you are when you want either of them.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = assistantName.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = TextFaint,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onOpenHistory, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    Icons.Default.History,
+                    contentDescription = "Conversation history",
+                    tint = TextFaint,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            IconButton(onClick = onOpenSettings, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = TextFaint,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
 
         Spacer(Modifier.weight(0.6f))
 

@@ -51,7 +51,8 @@ fun TasksScreen(
     onAdd: (String, Long?, String, String?) -> Unit,
     onToggle: (Task) -> Unit,
     onDelete: (Long) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    embedded: Boolean = false
 ) {
     var showAdd by remember { mutableStateOf(false) }
     val open = remember(tasks) { tasks.filter { !it.done } }
@@ -59,7 +60,7 @@ fun TasksScreen(
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         ScreenHeader(
-            title = "Tasks",
+            title = if (embedded) null else "Tasks",
             subtitle = if (open.isEmpty()) "All clear" else "${open.size} open",
             actionIcon = Icons.Default.Add,
             actionLabel = "New task",

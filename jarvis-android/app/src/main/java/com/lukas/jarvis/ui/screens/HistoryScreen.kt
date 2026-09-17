@@ -30,7 +30,11 @@ import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
 
 @Composable
-fun HistoryScreen(messages: List<ChatMessage>, modifier: Modifier = Modifier) {
+fun HistoryScreen(
+    messages: List<ChatMessage>,
+    modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null
+) {
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
@@ -40,7 +44,8 @@ fun HistoryScreen(messages: List<ChatMessage>, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         ScreenHeader(
             title = "Chat",
-            subtitle = if (messages.isEmpty()) "Nothing yet" else "${messages.size} messages"
+            subtitle = if (messages.isEmpty()) "Nothing yet" else "${messages.size} messages",
+            onBack = onBack
         )
         if (messages.isEmpty()) {
             EmptyState("No conversation yet", "Everything you say is kept here.")

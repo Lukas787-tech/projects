@@ -65,7 +65,8 @@ fun TrackersScreen(
     onDeleteTracker: (Long) -> Unit,
     onAddEntry: (Long, Double, String, String?) -> Unit,
     onDeleteEntry: (Long) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    embedded: Boolean = false
 ) {
     var showTrackerDialog by remember { mutableStateOf(false) }
     var entryTarget by remember { mutableStateOf<TrackerStatus?>(null) }
@@ -74,7 +75,7 @@ fun TrackersScreen(
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         ScreenHeader(
-            title = "Trackers",
+            title = if (embedded) null else "Trackers",
             subtitle = if (trackers.isEmpty()) "Nothing tracked yet" else "${trackers.size} active",
             actionIcon = Icons.Default.Add,
             actionLabel = "New tracker",

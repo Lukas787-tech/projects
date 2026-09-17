@@ -123,6 +123,16 @@ class Locator(context: Context) {
         return GeoPoint(location.latitude, location.longitude)
     }
 
+    /**
+     * How old the fix behind the last answer is. A cached fix keeps the app
+     * useful in a basement, but a two-day-old one is from another city, and the
+     * answer built on it has to say so rather than sound certain.
+     */
+    fun lastFixAgeMillis(): Long? {
+        val at = prefs.getLong(KEY_AT, 0L)
+        return if (at <= 0L) null else (System.currentTimeMillis() - at).coerceAtLeast(0L)
+    }
+
     fun remembered(): GeoPoint? {
         if (!prefs.contains(KEY_LAT)) return null
         return GeoPoint(

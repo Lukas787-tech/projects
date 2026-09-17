@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,16 +15,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -50,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lukas.jarvis.ui.screens.BrainScreen
 import com.lukas.jarvis.ui.screens.HistoryScreen
+import com.lukas.jarvis.ui.screens.HubScreen
 import com.lukas.jarvis.ui.screens.MapScreen
 import com.lukas.jarvis.ui.screens.SettingsScreen
 import com.lukas.jarvis.ui.screens.TasksScreen
@@ -119,13 +119,17 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Four destinations, each with a label that fits.
+ *
+ * Memory, trackers and tasks used to be three of seven tabs; they are one now,
+ * segmented inside the hub, and the chat log opens over the top of the voice
+ * screen it belongs to instead of holding a slot of its own.
+ */
 private enum class Tab(val label: String, val icon: ImageVector) {
     Voice("Voice", Icons.Default.GraphicEq),
-    Brain("Memory", Icons.Default.Psychology),
-    Trackers("Trackers", Icons.Default.AccountBalanceWallet),
+    Brain("Brain", Icons.Default.Psychology),
     Map("Map", Icons.Default.Map),
-    Tasks("Tasks", Icons.Default.CheckCircle),
-    Chat("Chat", Icons.Default.Chat),
     Settings("Settings", Icons.Default.Settings)
 }
 
@@ -154,10 +158,16 @@ private fun JarvisRoot(
     val routing by viewModel.routing.collectAsStateWithLifecycle()
 
     var tab by remember { mutableStateOf(Tab.Voice) }
+    var showHistory by remember { mutableStateOf(false) }
+
+    // The chat log is an overlay, so the system back gesture has to close it
+    // rather than leave the app — it is not a destination of its own.
+    BackHandler(enabled = showHistory) { showHistory = false }
 
     LaunchedEffect(autoStartListening) {
         if (autoStartListening) {
             tab = Tab.Voice
+            showHistory = false
             viewModel.startListening()
             onAutoStartHandled()
         }
@@ -170,6 +180,7 @@ private fun JarvisRoot(
     LaunchedEffect(map.revision) {
         if (map.revision != seenMapRevision) {
             seenMapRevision = map.revision
+            showHistory = false
             tab = Tab.Map
         }
     }
@@ -204,13 +215,18 @@ private fun JarvisRoot(
             .fillMaxSize()
             .background(Ink)
             .windowInsetsPadding(WindowInsets.systemBars)
+            // Without this the soft keyboard sits on top of the text field it
+            // was opened for, which makes typing to Jarvis a guessing game.
+            .imePadding()
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
         ) {
-            when (tab) {
+            if (showHistory) {
+                HistoryScreen(messages = ui.messages, onBack = { showHistory = false })
+            } else when (tab) {
                 Tab.Voice -> VoiceScreen(
                     state = ui,
                     assistantName = settings.assistantName,
@@ -218,25 +234,44 @@ private fun JarvisRoot(
                     onOrbTap = viewModel::toggleListening,
                     onSend = viewModel::sendTyped,
                     onDismissError = viewModel::dismissError,
-                    onOpenHistory = { tab = Tab.Chat },
+                    onOpenHistory = { showHistory = true },
                     onOpenSettings = { tab = Tab.Settings }
                 )
 
-                Tab.Brain -> BrainScreen(
-                    memories = memories,
-                    onAdd = viewModel::addMemory,
-                    onDelete = viewModel::deleteMemory,
-                    onTogglePin = viewModel::togglePin
-                )
-
-                Tab.Trackers -> TrackersScreen(
-                    trackers = trackers,
-                    entries = entries,
-                    defaultCurrency = settings.defaultCurrency,
-                    onSaveTracker = viewModel::saveTracker,
-                    onDeleteTracker = viewModel::deleteTracker,
-                    onAddEntry = viewModel::addEntry,
-                    onDeleteEntry = viewModel::deleteEntry
+                Tab.Brain -> HubScreen(
+                    memoryCount = memories.size,
+                    trackerCount = trackers.size,
+                    openTaskCount = tasks.count { !it.done },
+                    memory = {
+                        BrainScreen(
+                            memories = memories,
+                            onAdd = viewModel::addMemory,
+                            onDelete = viewModel::deleteMemory,
+                            onTogglePin = viewModel::togglePin,
+                            embedded = true
+                        )
+                    },
+                    trackers = {
+                        TrackersScreen(
+                            trackers = trackers,
+                            entries = entries,
+                            defaultCurrency = settings.defaultCurrency,
+                            onSaveTracker = viewModel::saveTracker,
+                            onDeleteTracker = viewModel::deleteTracker,
+                            onAddEntry = viewModel::addEntry,
+                            onDeleteEntry = viewModel::deleteEntry,
+                            embedded = true
+                        )
+                    },
+                    tasks = {
+                        TasksScreen(
+                            tasks = tasks,
+                            onAdd = viewModel::addTask,
+                            onToggle = viewModel::toggleTask,
+                            onDelete = viewModel::deleteTask,
+                            embedded = true
+                        )
+                    }
                 )
 
                 Tab.Map -> MapScreen(
@@ -250,15 +285,6 @@ private fun JarvisRoot(
                     onModeChange = viewModel::setTravelMode,
                     onClear = viewModel::clearMap
                 )
-
-                Tab.Tasks -> TasksScreen(
-                    tasks = tasks,
-                    onAdd = viewModel::addTask,
-                    onToggle = viewModel::toggleTask,
-                    onDelete = viewModel::deleteTask
-                )
-
-                Tab.Chat -> HistoryScreen(messages = ui.messages)
 
                 Tab.Settings -> SettingsScreen(
                     settings = settings,
@@ -288,7 +314,13 @@ private fun JarvisRoot(
             }
         }
 
-        JarvisNavBar(current = tab, onSelect = { tab = it })
+        JarvisNavBar(
+            current = tab,
+            onSelect = {
+                showHistory = false
+                tab = it
+            }
+        )
     }
 }
 
@@ -301,7 +333,7 @@ private fun JarvisNavBar(current: Tab, onSelect: (Tab) -> Unit) {
                 onClick = { onSelect(entry) },
                 icon = { Icon(entry.icon, contentDescription = entry.label) },
                 label = { Text(entry.label) },
-                alwaysShowLabel = false,
+                alwaysShowLabel = true,
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = Accent,
                     selectedTextColor = Accent,

@@ -32,8 +32,9 @@ class PlacesClient {
     /**
      * Things of a kind near a point: "restaurants", "coffee", "pharmacy".
      *
-     * Falls back to a name search when the words do not map to an OSM category,
-     * so "Aldi" or "Cafe Central" still finds something.
+     * Everything this returns is inside the radius asked for. That is the whole
+     * contract: a wrong-continent result is worse than no result, because the
+     * user acts on it.
      */
     suspend fun nearby(
         query: String,
@@ -42,16 +43,25 @@ class PlacesClient {
         limit: Int
     ): List<Place> = withContext(Dispatchers.IO) {
         val filters = Categories.filtersFor(query)
-        val found = if (filters.isEmpty()) {
-            emptyList()
+        val raw = if (filters.isNotEmpty()) {
+            // A kind of place. Overpass searches by radius, so it cannot wander.
+            overpass(filters, center, radiusMeters, limit)
         } else {
-            runCatching { overpass(filters, center, radiusMeters, limit) }.getOrDefault(emptyList())
+            // A name rather than a kind ("Aldi", "Cafe Central"). Nominatim is
+            // the only thing that can find those, and it must be held to the
+            // box: an unbounded viewbox is a hint, not a limit, and a search
+            // for a common word cheerfully answers with the other side of the
+            // planet. Asking for a restaurant in Germany is not answered by one
+            // in Tunisia.
+            geocode(query, center, radiusMeters, limit, bounded = true)
         }
-        val results = found.ifEmpty {
-            runCatching { geocode(query, center, radiusMeters, limit) }.getOrDefault(emptyList())
-        }
-        results
+
+        // Second line of defence, whatever the source: a result further out than
+        // twice what was asked for is not an answer to "near me".
+        val ceiling = radiusMeters * 2.0
+        raw
             .map { it.copy(distanceMeters = Geo.distance(center, it.point)) }
+            .filter { (it.distanceMeters ?: Double.MAX_VALUE) <= ceiling }
             .sortedBy { it.distanceMeters ?: Double.MAX_VALUE }
             .take(limit)
     }
@@ -61,17 +71,21 @@ class PlacesClient {
         query: String,
         near: GeoPoint? = null,
         radiusMeters: Int = 0,
-        limit: Int = 5
+        limit: Int = 5,
+        bounded: Boolean = false
     ): List<Place> = withContext(Dispatchers.IO) {
         val url = buildString {
             append("https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1")
             append("&limit=").append(limit.coerceIn(1, 20))
             append("&q=").append(encode(query))
             if (near != null && radiusMeters > 0) {
-                // A viewbox biases towards the user without hiding the good
-                // answer two towns over, so it is deliberately not bounded=1.
-                val latPad = Geo.latSpan(radiusMeters * 3.0)
-                val lonPad = Geo.lonSpan(radiusMeters * 3.0, near.lat)
+                // Bounded is a hard box and is what "near me" means. Unbounded
+                // is only a bias, for when the user named a place and the good
+                // answer may legitimately be the next town over.
+                val reach = if (bounded) radiusMeters.toDouble() else radiusMeters * 3.0
+                if (bounded) append("&bounded=1")
+                val latPad = Geo.latSpan(reach)
+                val lonPad = Geo.lonSpan(reach, near.lat)
                 append("&viewbox=")
                 append(fmt(near.lon - lonPad)).append(',').append(fmt(near.lat + latPad))
                 append(',')
@@ -115,7 +129,12 @@ class PlacesClient {
         val clauses = filters.joinToString("") { "nwr$it$around;" }
         val query = "[out:json][timeout:20];($clauses);out center ${(limit * 3).coerceAtMost(60)};"
 
+        // An endpoint that answers with nothing is an answer: there is nothing
+        // of that kind nearby. Only when every endpoint refuses is this a
+        // failure, and then it has to be said out loud rather than quietly
+        // turning into a search of the whole world.
         var lastError: Exception? = null
+        var answered = false
         for (endpoint in OVERPASS_ENDPOINTS) {
             try {
                 val request = Request.Builder()
@@ -131,12 +150,13 @@ class PlacesClient {
                 val places = (0 until elements.length()).mapNotNull { index ->
                     toPlace(elements.optJSONObject(index) ?: return@mapNotNull null)
                 }
+                answered = true
                 if (places.isNotEmpty()) return places
             } catch (e: Exception) {
                 lastError = e
             }
         }
-        lastError?.let { throw it }
+        if (!answered) lastError?.let { throw it }
         return emptyList()
     }
 

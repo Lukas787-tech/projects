@@ -355,7 +355,7 @@ fun SettingsScreen(
             }
         }
 
-        Panel(title = "You") {
+        Panel(title = "You", collapsible = true, initiallyExpanded = false) {
             OutlinedTextField(
                 value = settings.userName,
                 onValueChange = { value -> onUpdate { it.copy(userName = value) } },
@@ -383,7 +383,7 @@ fun SettingsScreen(
             )
         }
 
-        Panel(title = "Voice") {
+        Panel(title = "Voice", collapsible = true, initiallyExpanded = false) {
             ToggleRow(
                 title = "Speak replies",
                 subtitle = "Read answers out loud",
@@ -433,7 +433,7 @@ fun SettingsScreen(
             )
         }
 
-        Panel(title = "Behaviour") {
+        Panel(title = "Behaviour", collapsible = true, initiallyExpanded = false) {
             ToggleRow(
                 title = "Internet access",
                 subtitle = "Let Jarvis search the web. Free, no key needed.",
@@ -496,7 +496,7 @@ fun SettingsScreen(
             }
         }
 
-        Panel(title = "Data") {
+        Panel(title = "Data", collapsible = true, initiallyExpanded = false) {
             ChipButton(
                 label = "Clear conversation history",
                 onClick = onClearConversation,

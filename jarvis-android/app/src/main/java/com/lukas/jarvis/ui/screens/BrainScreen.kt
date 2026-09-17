@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PushPin
@@ -47,7 +49,8 @@ fun BrainScreen(
     onAdd: (String, String, List<String>, Int) -> Unit,
     onDelete: (Long) -> Unit,
     onTogglePin: (Memory) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    embedded: Boolean = false
 ) {
     var showAdd by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
@@ -66,7 +69,7 @@ fun BrainScreen(
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         ScreenHeader(
-            title = "Memory",
+            title = if (embedded) null else "Memory",
             subtitle = "${memories.size} stored",
             actionIcon = Icons.Default.Add,
             actionLabel = "Add memory",
@@ -211,21 +214,42 @@ private fun AddMemoryDialog(
     )
 }
 
-/** Shared header used by every list screen. */
+/**
+ * Shared header used by every list screen.
+ *
+ * The title is optional because a screen shown inside the hub already has its
+ * name on the segment above it, and printing it twice wastes the top of a phone
+ * screen on saying the same word twice.
+ */
 @Composable
 fun ScreenHeader(
-    title: String,
+    title: String?,
     subtitle: String,
     actionIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     actionLabel: String? = null,
-    onAction: (() -> Unit)? = null
+    onAction: (() -> Unit)? = null,
+    onBack: (() -> Unit)? = null
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = if (title == null) 4.dp else 24.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (onBack != null) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = TextSecondary
+                )
+            }
+            Spacer(Modifier.width(4.dp))
+        }
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.displayLarge, color = TextPrimary)
+            if (title != null) {
+                Text(title, style = MaterialTheme.typography.displayLarge, color = TextPrimary)
+            }
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         }
         if (actionIcon != null && onAction != null) {
