@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -49,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lukas.jarvis.ui.screens.BrainScreen
 import com.lukas.jarvis.ui.screens.HistoryScreen
+import com.lukas.jarvis.ui.screens.MapScreen
 import com.lukas.jarvis.ui.screens.SettingsScreen
 import com.lukas.jarvis.ui.screens.TasksScreen
 import com.lukas.jarvis.ui.screens.TrackersScreen
@@ -96,7 +98,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun askForPermissions() {
-        val wanted = mutableListOf(Manifest.permission.RECORD_AUDIO)
+        val wanted = mutableListOf(
+            Manifest.permission.RECORD_AUDIO,
+            // Coarse is enough to answer "what is near me", and it is the one
+            // users grant without thinking twice.
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             wanted += Manifest.permission.POST_NOTIFICATIONS
         }
@@ -115,6 +123,7 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     Voice("Voice", Icons.Default.GraphicEq),
     Brain("Memory", Icons.Default.Psychology),
     Trackers("Trackers", Icons.Default.AccountBalanceWallet),
+    Map("Map", Icons.Default.Map),
     Tasks("Tasks", Icons.Default.CheckCircle),
     Chat("Chat", Icons.Default.Chat),
     Settings("Settings", Icons.Default.Settings)
@@ -141,6 +150,8 @@ private fun JarvisRoot(
     val poolBusy by viewModel.poolBusy.collectAsStateWithLifecycle()
     val poolMessage by viewModel.poolMessage.collectAsStateWithLifecycle()
     val lastUsedEndpoint by viewModel.lastUsedEndpoint.collectAsStateWithLifecycle()
+    val map by viewModel.map.collectAsStateWithLifecycle()
+    val routing by viewModel.routing.collectAsStateWithLifecycle()
 
     var tab by remember { mutableStateOf(Tab.Voice) }
 
@@ -149,6 +160,17 @@ private fun JarvisRoot(
             tab = Tab.Voice
             viewModel.startListening()
             onAutoStartHandled()
+        }
+    }
+
+    // An answer about places is half map, so a turn that moved the map brings
+    // the map forward rather than leaving it a tab away. The starting revision
+    // is taken as already seen, so an activity recreation does not do it.
+    var seenMapRevision by remember { mutableStateOf(map.revision) }
+    LaunchedEffect(map.revision) {
+        if (map.revision != seenMapRevision) {
+            seenMapRevision = map.revision
+            tab = Tab.Map
         }
     }
 
@@ -215,6 +237,18 @@ private fun JarvisRoot(
                     onDeleteTracker = viewModel::deleteTracker,
                     onAddEntry = viewModel::addEntry,
                     onDeleteEntry = viewModel::deleteEntry
+                )
+
+                Tab.Map -> MapScreen(
+                    state = map,
+                    tiles = viewModel.tiles,
+                    travelMode = settings.travelMode,
+                    routing = routing,
+                    onSelect = viewModel::selectPlace,
+                    onRoute = viewModel::routeToPlace,
+                    onNavigate = viewModel::navigateToPlace,
+                    onModeChange = viewModel::setTravelMode,
+                    onClear = viewModel::clearMap
                 )
 
                 Tab.Tasks -> TasksScreen(

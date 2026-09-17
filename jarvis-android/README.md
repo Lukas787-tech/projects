@@ -77,6 +77,15 @@ notification. Repeating tasks roll themselves forward.
 
 **Searches the web.** For anything current or outside the model's knowledge.
 
+**Finds places and draws the way there.** "I'm hungry, what's around here" pins
+real restaurants on a map with distances; "how do I get to the second one" draws
+the route and tells you the distance, the time and the first turns. Tap
+**Navigate** on any pin to hand it to Google Maps for turn-by-turn. The data is
+OpenStreetMap — Overpass for what is nearby, Nominatim for names and addresses,
+OSRM for routing, and the standard OSM tiles for the map itself, which is why
+there is no API key and no bill here either. Location stays on the phone; it is
+only ever sent as the coordinates of a lookup.
+
 **Speaks.** Replies are read aloud, and hands-free mode hands the microphone
 straight back so you can keep talking.
 
@@ -122,9 +131,10 @@ app/src/main/java/com/lukas/jarvis/
   data/       SQLite schema, models, BM25 retrieval, tracker maths
   llm/        OpenAI-compatible client, tool definitions, agent loop, prompt
   voice/      speech recognition, text to speech, wake word service
+  maps/       places, routing, location, map tiles and state
   web/        DuckDuckGo search, page reader
   notify/     alarms and notifications
-  ui/         theme, orb, screens
+  ui/         theme, orb, screens, the map canvas
   vm/         view model
 ```
 

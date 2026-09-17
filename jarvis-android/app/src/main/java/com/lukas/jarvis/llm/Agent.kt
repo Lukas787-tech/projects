@@ -196,6 +196,10 @@ class Agent(
         "tracker_status", "list_entries" -> "checking the numbers"
         "configure_tracker" -> "setting that up"
         "add_task", "complete_task", "list_tasks" -> "updating tasks"
+        "find_places" -> "looking around you"
+        "route_to" -> "finding the way"
+        "start_navigation" -> "opening directions"
+        "where_am_i" -> "checking where you are"
         else -> "working"
     }
 

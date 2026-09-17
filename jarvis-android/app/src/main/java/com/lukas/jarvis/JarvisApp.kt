@@ -12,6 +12,11 @@ import com.lukas.jarvis.llm.ModelPool
 import com.lukas.jarvis.llm.PoolBuilder
 import com.lukas.jarvis.llm.PooledLlm
 import com.lukas.jarvis.llm.Tools
+import com.lukas.jarvis.maps.Locator
+import com.lukas.jarvis.maps.MapStore
+import com.lukas.jarvis.maps.Navigator
+import com.lukas.jarvis.maps.PlacesClient
+import com.lukas.jarvis.maps.TileCache
 import com.lukas.jarvis.notify.Reminders
 import com.lukas.jarvis.voice.SpeechInput
 import com.lukas.jarvis.voice.Speaker
@@ -34,7 +39,14 @@ class AppContainer(context: Context) {
 
     private val web = WebTools()
     private val client = LlmClient()
-    private val tools = Tools(brain, web, reminders)
+
+    val mapStore = MapStore(context)
+    val tiles = TileCache(context)
+    val locator = Locator(context)
+    private val places = PlacesClient()
+    val navigator = Navigator(locator, places, mapStore)
+
+    private val tools = Tools(brain, web, reminders, navigator)
 
     val models = ModelCatalog()
     val pool = ModelPool(context)

@@ -19,6 +19,8 @@ import com.lukas.jarvis.llm.ConnectionTest
 import com.lukas.jarvis.llm.LlmException
 import com.lukas.jarvis.llm.PoolEntry
 import com.lukas.jarvis.llm.Providers
+import com.lukas.jarvis.maps.MapState
+import com.lukas.jarvis.maps.TileCache
 import com.lukas.jarvis.voice.SpeechInput
 import com.lukas.jarvis.voice.Speaker
 import kotlinx.coroutines.Dispatchers
@@ -98,6 +100,13 @@ class AssistantViewModel(
 
     val poolEntries: StateFlow<List<PoolEntry>> = container.pool.entries
     val lastUsedEndpoint: StateFlow<String?> = container.pool.lastUsed
+
+    val map: StateFlow<MapState> = container.mapStore.state
+    val tiles: TileCache get() = container.tiles
+
+    /** True while a pin tapped by hand is being routed to. */
+    private val _routing = MutableStateFlow(false)
+    val routing: StateFlow<Boolean> = _routing.asStateFlow()
 
     private val _poolBusy = MutableStateFlow(false)
     val poolBusy: StateFlow<Boolean> = _poolBusy.asStateFlow()
@@ -413,6 +422,48 @@ class AssistantViewModel(
             refreshAll()
         }
     }
+
+    // -------------------------------------------------------------------- maps
+
+    fun selectPlace(index: Int) = container.mapStore.select(index)
+
+    /**
+     * The same routing the model does, from a tap instead of a sentence. The
+     * navigator's prose only surfaces when nothing was drawn, because otherwise
+     * the map itself is the answer.
+     */
+    fun routeToPlace(index: Int) {
+        if (_routing.value) return
+        val place = container.mapStore.current.places.getOrNull(index) ?: return
+        container.mapStore.select(index)
+        _routing.value = true
+        viewModelScope.launch {
+            val message = withContext(Dispatchers.IO) {
+                container.navigator.routeTo(
+                    destination = place.name,
+                    mode = null,
+                    settings = settingsStore.current
+                )
+            }
+            _routing.value = false
+            if (container.mapStore.current.route == null) fail(message)
+        }
+    }
+
+    fun navigateToPlace(index: Int) {
+        val place = container.mapStore.current.places.getOrNull(index) ?: return
+        container.mapStore.select(index)
+        val opened = container.mapStore.openExternalNavigation(
+            destination = place.point,
+            label = place.name,
+            mode = settingsStore.current.travelMode
+        )
+        if (!opened) fail("No maps app on this phone would take the directions.")
+    }
+
+    fun setTravelMode(mode: String) = updateSettings { it.copy(travelMode = mode) }
+
+    fun clearMap() = container.mapStore.clear()
 
     // ---------------------------------------------------------------- settings
 

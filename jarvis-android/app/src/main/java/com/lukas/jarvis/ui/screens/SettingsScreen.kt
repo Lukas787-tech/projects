@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.BuildConfig
 import com.lukas.jarvis.core.Settings
+import com.lukas.jarvis.maps.Geo
 import com.lukas.jarvis.llm.PoolEntry
 import com.lukas.jarvis.llm.Providers
 import com.lukas.jarvis.llm.Tier
@@ -464,6 +465,35 @@ fun SettingsScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
+        }
+
+        Panel(
+            title = "Places and maps",
+            subtitle = "OpenStreetMap data — no key, no account, no tracking"
+        ) {
+            ToggleRow(
+                title = "Places and routes",
+                subtitle = "Let Jarvis look up what is near you and draw the way there",
+                checked = settings.mapsEnabled,
+                onChange = { value -> onUpdate { it.copy(mapsEnabled = value) } }
+            )
+            if (settings.mapsEnabled) {
+                Picker(
+                    label = "Default travel mode",
+                    value = settings.travelMode,
+                    options = Geo.ALL_MODES,
+                    onSelect = { mode -> onUpdate { it.copy(travelMode = mode) } },
+                    display = { it.replaceFirstChar { first -> first.uppercase() } }
+                )
+                SliderRow(
+                    label = "Search radius: ${Geo.formatDistance(settings.searchRadiusMeters.toDouble())}",
+                    value = settings.searchRadiusMeters.toFloat(),
+                    range = 300f..10_000f,
+                    onChange = { value ->
+                        onUpdate { it.copy(searchRadiusMeters = value.toInt()) }
+                    }
+                )
+            }
         }
 
         Panel(title = "Data") {

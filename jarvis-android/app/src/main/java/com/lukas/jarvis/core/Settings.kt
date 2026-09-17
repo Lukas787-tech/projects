@@ -2,6 +2,7 @@ package com.lukas.jarvis.core
 
 import android.content.Context
 import com.lukas.jarvis.llm.Providers
+import com.lukas.jarvis.maps.Geo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +24,10 @@ data class Settings(
     val wakePhrase: String = "jarvis",
     val webSearchEnabled: Boolean = true,
     val autoCapture: Boolean = true,
-    val defaultCurrency: String = "EUR"
+    val defaultCurrency: String = "EUR",
+    val mapsEnabled: Boolean = true,
+    val travelMode: String = Geo.MODE_WALK,
+    val searchRadiusMeters: Int = 1_500
 ) {
     val isConfigured: Boolean
         get() = baseUrl.isNotBlank() && model.isNotBlank() &&
@@ -65,7 +69,10 @@ class SettingsStore(context: Context) {
             wakePhrase = prefs.getString(KEY_WAKE_PHRASE, "jarvis") ?: "jarvis",
             webSearchEnabled = prefs.getBoolean(KEY_WEB_SEARCH, true),
             autoCapture = prefs.getBoolean(KEY_AUTO_CAPTURE, true),
-            defaultCurrency = prefs.getString(KEY_CURRENCY, "EUR") ?: "EUR"
+            defaultCurrency = prefs.getString(KEY_CURRENCY, "EUR") ?: "EUR",
+            mapsEnabled = prefs.getBoolean(KEY_MAPS, true),
+            travelMode = prefs.getString(KEY_TRAVEL_MODE, Geo.MODE_WALK) ?: Geo.MODE_WALK,
+            searchRadiusMeters = prefs.getInt(KEY_SEARCH_RADIUS, 1_500)
         )
     }
 
@@ -90,6 +97,9 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_WEB_SEARCH, next.webSearchEnabled)
             .putBoolean(KEY_AUTO_CAPTURE, next.autoCapture)
             .putString(KEY_CURRENCY, next.defaultCurrency)
+            .putBoolean(KEY_MAPS, next.mapsEnabled)
+            .putString(KEY_TRAVEL_MODE, next.travelMode)
+            .putInt(KEY_SEARCH_RADIUS, next.searchRadiusMeters)
             .apply()
         _state.value = next
     }
@@ -161,5 +171,8 @@ class SettingsStore(context: Context) {
         const val KEY_WEB_SEARCH = "web_search"
         const val KEY_AUTO_CAPTURE = "auto_capture"
         const val KEY_CURRENCY = "currency"
+        const val KEY_MAPS = "maps_enabled"
+        const val KEY_TRAVEL_MODE = "travel_mode"
+        const val KEY_SEARCH_RADIUS = "search_radius"
     }
 }

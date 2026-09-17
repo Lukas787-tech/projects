@@ -8,6 +8,8 @@ import com.lukas.jarvis.data.Memory
 import com.lukas.jarvis.data.Task
 import com.lukas.jarvis.data.Tracker
 import com.lukas.jarvis.data.TrackerStatus
+import com.lukas.jarvis.maps.Geo
+import com.lukas.jarvis.maps.Navigator
 import com.lukas.jarvis.notify.Reminders
 import com.lukas.jarvis.web.WebTools
 import org.json.JSONArray
@@ -32,7 +34,8 @@ data class ToolEffects(
 class Tools(
     private val brain: Brain,
     private val web: WebTools,
-    private val reminders: Reminders
+    private val reminders: Reminders,
+    private val navigator: Navigator
 ) {
 
     fun schemas(settings: Settings): List<JSONObject> {
@@ -163,6 +166,53 @@ class Tools(
                 listOf("url")
             )
         }
+
+        if (settings.mapsEnabled) {
+            list += tool(
+                "find_places",
+                "Find real places around the user: restaurants, cafes, shops, pharmacies, " +
+                    "cash machines, stations, anything with an address. Use this whenever the " +
+                    "user wonders where to eat, drink, buy or go, or says something like " +
+                    "'I'm hungry' or 'is there one near me'. The results are pinned on the map.",
+                props(
+                    "query" to str("What to look for in plain words, e.g. 'restaurants', 'pizza', 'pharmacy', 'Aldi'."),
+                    "near" to str("Area to search around, e.g. 'Berlin Mitte'. Omit to search around the user."),
+                    "radius_m" to int("How far to look, in metres. Default ${settings.searchRadiusMeters}."),
+                    "limit" to int("How many results. Default 5.")
+                ),
+                listOf("query")
+            )
+            list += tool(
+                "route_to",
+                "Work out the way from the user to a place and draw it on the map. Use after " +
+                    "find_places, or whenever the user asks how to get somewhere or how far it is.",
+                props(
+                    "destination" to str(
+                        "Where to: a name from find_places, a result number like '2', or an address. " +
+                            "Omit to route to the currently selected pin."
+                    ),
+                    "mode" to str("How they are travelling. Defaults to ${settings.travelMode}.", Geo.ALL_MODES)
+                ),
+                emptyList()
+            )
+            list += tool(
+                "start_navigation",
+                "Hand turn-by-turn directions to the phone's maps app. Only use when the user " +
+                    "asks to start or open navigation, not for a simple 'how far is it'.",
+                props(
+                    "destination" to str("Where to. Omit to use the place already on the map."),
+                    "mode" to str("How they are travelling.", Geo.ALL_MODES)
+                ),
+                emptyList()
+            )
+            list += tool(
+                "where_am_i",
+                "Get the user's current street and area. Use when they ask where they are, or " +
+                    "when an answer depends on which part of town they are in.",
+                props(),
+                emptyList()
+            )
+        }
         return list
     }
 
@@ -180,6 +230,10 @@ class Tools(
                 "add_task" -> addTask(args, effects)
                 "list_tasks" -> listTasks(args)
                 "complete_task" -> completeTask(args, effects)
+                "find_places" -> findPlaces(args, settings)
+                "route_to" -> routeTo(args, settings)
+                "start_navigation" -> startNavigation(args, settings)
+                "where_am_i" -> navigator.whereAmI()
                 "web_search" -> webSearch(args)
                 "open_url" -> web.readPage(args.optString("url"))
                 "now" -> nowText()
@@ -413,6 +467,35 @@ class Tools(
         effects.tasksChanged = true
         return "Completed: ${done.title}"
     }
+
+    // -------------------------------------------------------------------- maps
+    //
+    // These write their results onto the map as well as returning prose, so the
+    // reply and the pins always describe the same lookup. The map has its own
+    // state flow, which is why none of them touch ToolEffects.
+
+    private suspend fun findPlaces(args: JSONObject, settings: Settings): String =
+        navigator.findPlaces(
+            query = args.optString("query").trim(),
+            near = args.optString("near").trim().takeIf { it.isNotBlank() },
+            radiusMeters = args.optInt("radius_m", 0).takeIf { it > 0 },
+            limit = args.optInt("limit", 5),
+            settings = settings
+        )
+
+    private suspend fun routeTo(args: JSONObject, settings: Settings): String =
+        navigator.routeTo(
+            destination = args.optString("destination").trim().takeIf { it.isNotBlank() },
+            mode = args.optString("mode").trim().takeIf { it.isNotBlank() },
+            settings = settings
+        )
+
+    private suspend fun startNavigation(args: JSONObject, settings: Settings): String =
+        navigator.startNavigation(
+            destination = args.optString("destination").trim().takeIf { it.isNotBlank() },
+            mode = args.optString("mode").trim().takeIf { it.isNotBlank() },
+            settings = settings
+        )
 
     // --------------------------------------------------------------------- web
 

@@ -4,6 +4,7 @@ import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.core.TimeUtil
 import com.lukas.jarvis.data.Brain
 import com.lukas.jarvis.data.Tracker
+import com.lukas.jarvis.maps.Geo
 
 /**
  * Two pieces: a fixed persona, and a context block rebuilt on every turn from
@@ -46,12 +47,36 @@ TOOLS
 INTERNET
 - Your knowledge has a cutoff. For news, prices, hours, scores, or anything current,
   use `web_search` rather than guessing, then answer in your own words.
+${placesRules(settings)}
 
 HONESTY
 - If you do not know and cannot find out, say so plainly.
 - If a tool fails, say what failed in one short sentence. Do not pretend it worked.
         """.trimIndent()
     }
+
+    /**
+     * Maps only earn their place in the prompt when they are switched on, and
+     * the rules are deliberately about what the user said rather than about
+     * tool names: "I'm hungry" has to reach `find_places` without the user ever
+     * saying the word "search".
+     */
+    private fun placesRules(settings: Settings): String =
+        if (!settings.mapsEnabled) {
+            ""
+        } else {
+            """
+PLACES AND GETTING AROUND
+- "I'm hungry", "where can I get coffee", "is there a pharmacy near here" -> call
+  `find_places`. Never guess at shop names or addresses; they change and you would be wrong.
+- The results are pinned on a map the user can see, so refer to them by number:
+  "the second one is a five minute walk".
+- "how do I get there", "how far is it", "which way" -> call `route_to`. Say the distance,
+  the time and the first turn or two. The full turn list is on the map, so do not read it all out.
+- Only call `start_navigation` when they ask to start or open navigation.
+- Default travel mode is ${Geo.modeVerb(settings.travelMode)} unless they say otherwise.
+            """.trim()
+        }
 
     /**
      * Rebuilt each turn. Retrieval runs against the user's actual words, so the
