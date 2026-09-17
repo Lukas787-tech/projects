@@ -65,8 +65,9 @@ fun HistoryScreen(
     }
 }
 
+/** Shared with the text-mode thread, which shows the same bubbles. */
 @Composable
-private fun MessageBubble(message: ChatMessage) {
+internal fun MessageBubble(message: ChatMessage) {
     val fromUser = message.role == ChatMessage.ROLE_USER
     Box(
         modifier = Modifier.fillMaxWidth(),

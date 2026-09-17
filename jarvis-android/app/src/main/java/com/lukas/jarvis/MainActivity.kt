@@ -181,11 +181,13 @@ private fun JarvisRoot(
     // is taken as already seen, so an activity recreation does not do it.
     var seenMapRevision by remember { mutableStateOf(map.revision) }
     LaunchedEffect(map.revision) {
-        if (map.revision != seenMapRevision) {
-            seenMapRevision = map.revision
-            showHistory = false
-            tab = Tab.Map
-        }
+        if (map.revision == seenMapRevision) return@LaunchedEffect
+        seenMapRevision = map.revision
+        showHistory = false
+        // Voice mode shows the result on its own stage — the globe is mid-flight
+        // towards it — so jumping tabs would interrupt the thing being watched.
+        // Text mode has nowhere to put a map, so it goes to the map tab.
+        if (!settings.voiceMode) tab = Tab.Map
     }
 
     // Only one thing may hold the microphone. The wake-word service listens
@@ -243,11 +245,18 @@ private fun JarvisRoot(
                     state = ui,
                     assistantName = settings.assistantName,
                     configured = settings.isConfigured || poolEntries.isNotEmpty(),
+                    voiceMode = settings.voiceMode,
+                    onModeChange = { voice ->
+                        viewModel.updateSettings { it.copy(voiceMode = voice) }
+                    },
+                    map = map,
+                    tiles = viewModel.tiles,
                     onOrbTap = viewModel::toggleListening,
                     onSend = viewModel::sendTyped,
                     onDismissError = viewModel::dismissError,
                     onOpenHistory = { showHistory = true },
-                    onOpenSettings = { tab = Tab.Settings }
+                    onOpenSettings = { tab = Tab.Settings },
+                    onOpenMap = { tab = Tab.Map }
                 )
 
                 Tab.Brain -> HubScreen(

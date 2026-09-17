@@ -27,7 +27,9 @@ data class Settings(
     val defaultCurrency: String = "EUR",
     val mapsEnabled: Boolean = true,
     val travelMode: String = Geo.MODE_WALK,
-    val searchRadiusMeters: Int = 1_500
+    val searchRadiusMeters: Int = 1_500,
+    /** Voice mode shows the globe and speaks; text mode shows the transcript. */
+    val voiceMode: Boolean = true
 ) {
     val isConfigured: Boolean
         get() = baseUrl.isNotBlank() && model.isNotBlank() &&
@@ -72,7 +74,8 @@ class SettingsStore(context: Context) {
             defaultCurrency = prefs.getString(KEY_CURRENCY, "EUR") ?: "EUR",
             mapsEnabled = prefs.getBoolean(KEY_MAPS, true),
             travelMode = prefs.getString(KEY_TRAVEL_MODE, Geo.MODE_WALK) ?: Geo.MODE_WALK,
-            searchRadiusMeters = prefs.getInt(KEY_SEARCH_RADIUS, 1_500)
+            searchRadiusMeters = prefs.getInt(KEY_SEARCH_RADIUS, 1_500),
+            voiceMode = prefs.getBoolean(KEY_VOICE_MODE, true)
         )
     }
 
@@ -100,6 +103,7 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_MAPS, next.mapsEnabled)
             .putString(KEY_TRAVEL_MODE, next.travelMode)
             .putInt(KEY_SEARCH_RADIUS, next.searchRadiusMeters)
+            .putBoolean(KEY_VOICE_MODE, next.voiceMode)
             .apply()
         _state.value = next
     }
@@ -173,6 +177,7 @@ class SettingsStore(context: Context) {
         const val KEY_CURRENCY = "currency"
         const val KEY_MAPS = "maps_enabled"
         const val KEY_TRAVEL_MODE = "travel_mode"
+        const val KEY_VOICE_MODE = "voice_mode"
         const val KEY_SEARCH_RADIUS = "search_radius"
     }
 }
