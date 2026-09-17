@@ -48,27 +48,44 @@ jobs:
       - name: Build release APK
         run: ./gradlew assembleRelease --stacktrace --no-daemon
 
-      - name: Rename APK
+      - name: Stage APK
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/release/app-release.apk "out/jarvis-${GITHUB_SHA::7}.apk"
+          # Fixed name so the release download URL is stable build to build.
+          cp app/build/outputs/apk/release/app-release.apk out/jarvis.apk
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          CODE=$(grep -oP 'versionCode = \K[0-9]+' app/build.gradle.kts)
+          echo "APP_VERSION=$VERSION (build $CODE)" >> "$GITHUB_ENV"
           ls -la out
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-apk
-          path: jarvis-android/out/*.apk
+          path: jarvis-android/out/jarvis.apk
           if-no-files-found: error
           retention-days: 90
 
+      # Published to one fixed tag that is moved each time, so there is a single
+      # permanent download link. Numbered tags all shared a creation timestamp,
+      # which left the Releases page ordering them arbitrarily and the newest
+      # build buried among older ones.
       - name: Publish release
         if: github.event_name == 'workflow_dispatch' && inputs.make_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: jarvis-v${{ github.run_number }}
-          name: Jarvis build ${{ github.run_number }}
+          tag_name: jarvis-latest
+          target_commitish: ${{ github.sha }}
+          name: Jarvis (latest build)
+          make_latest: true
           body: |
-            Install this APK directly on your phone.
-            Built from commit ${{ github.sha }}.
-          files: jarvis-android/out/*.apk
+            Always the newest Jarvis build — this link never changes.
+
+            Open it on your phone, tap the `.apk`, allow "install unknown apps".
+            Then check Settings shows the version below; if it does not, the
+            install did not replace the old one.
+
+            Version: ${{ env.APP_VERSION }}
+            Built: ${{ github.event.repository.updated_at }}
+            Commit: ${{ github.sha }}
+          files: jarvis-android/out/jarvis.apk
