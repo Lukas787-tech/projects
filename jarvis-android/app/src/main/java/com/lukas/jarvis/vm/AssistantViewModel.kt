@@ -476,6 +476,31 @@ class AssistantViewModel(
         }
     }
 
+    /**
+     * Enrols every provider that already has a key saved.
+     *
+     * Spreading across accounts is the only thing a daily cap cannot follow you
+     * to, so this is the button that actually makes the pool reliable — one tap
+     * instead of a dozen trips through the provider picker.
+     */
+    fun addEverySavedProviderToPool() {
+        if (_poolBusy.value) return
+        _poolBusy.value = true
+        _poolMessage.value = null
+        viewModelScope.launch {
+            val result = container.poolBuilder.expandAll(
+                saved = settingsStore.savedProviders(),
+                pool = container.pool,
+                onProgress = { _poolMessage.value = it }
+            )
+            _poolMessage.value = result.message
+            _poolBusy.value = false
+        }
+    }
+
+    /** One line of "how much of the pool can actually answer right now". */
+    fun poolSummary(): String = container.pool.summary()
+
     fun removeFromPool(id: String) = container.pool.remove(id)
 
     fun setPoolEntryEnabled(id: String, enabled: Boolean) =

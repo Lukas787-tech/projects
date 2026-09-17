@@ -51,6 +51,7 @@ import com.lukas.jarvis.BuildConfig
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.llm.PoolEntry
 import com.lukas.jarvis.llm.Providers
+import com.lukas.jarvis.llm.Tier
 import com.lukas.jarvis.ui.components.Banner
 import com.lukas.jarvis.ui.components.BannerTone
 import com.lukas.jarvis.ui.components.ChipButton
@@ -73,12 +74,14 @@ fun SettingsScreen(
     poolEntries: List<PoolEntry>,
     poolBusy: Boolean,
     poolMessage: String?,
+    poolSummary: String,
     lastUsedEndpoint: String?,
     onUpdate: ((Settings) -> Settings) -> Unit,
     onSwitchProvider: (String) -> Unit,
     onRefreshModels: () -> Unit,
     onTestConnection: () -> Unit,
     onAddToPool: () -> Unit,
+    onAddEveryProvider: () -> Unit,
     onRemoveFromPool: (String) -> Unit,
     onTogglePoolEntry: (String, Boolean) -> Unit,
     onWakePool: () -> Unit,
@@ -116,7 +119,12 @@ fun SettingsScreen(
                 value = settings.providerId,
                 options = Providers.ALL.map { it.id },
                 onSelect = onSwitchProvider,
-                display = { Providers.byId(it).label }
+                // With this many providers the label alone is not enough to
+                // choose by; what an account costs is the thing you are picking.
+                display = { id ->
+                    val option = Providers.byId(id)
+                    "${option.label} · ${tierLabel(option.tier)}"
+                }
             )
 
             preset.keyUrl?.let { url ->
@@ -268,9 +276,10 @@ fun SettingsScreen(
 
         Panel(
             title = "Model pool",
-            subtitle = "Add several free models and Jarvis rotates through them, " +
-                "resting any that hit their limit. Add each provider once — a pool " +
-                "spanning providers survives a daily cap, not just a per-model one."
+            subtitle = "Jarvis rotates through these, counts every call against the " +
+                "provider's free-tier rate, and steps aside before a limit is hit " +
+                "rather than after. A pool spanning several accounts survives a " +
+                "daily cap; one spanning models on a single key does not."
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -291,6 +300,15 @@ fun SettingsScreen(
                 )
             }
 
+            Spacer(Modifier.height(8.dp))
+            ChipButton(
+                label = "Add every provider I have a key for",
+                icon = Icons.Default.Bolt,
+                busy = poolBusy,
+                onClick = onAddEveryProvider,
+                modifier = Modifier.fillMaxWidth()
+            )
+
             poolMessage?.let {
                 Spacer(Modifier.height(10.dp))
                 Banner(tone = BannerTone.Neutral, title = it)
@@ -306,12 +324,17 @@ fun SettingsScreen(
                     color = TextFaint
                 )
             } else {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    poolSummary,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary
+                )
                 lastUsedEndpoint?.let {
-                    Spacer(Modifier.height(10.dp))
                     Text(
                         "Last answer came from $it",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary
+                        color = TextFaint
                     )
                 }
                 Spacer(Modifier.height(6.dp))
@@ -498,8 +521,7 @@ private fun PoolRow(
                 color = if (entry.endpoint.enabled) TextPrimary else TextFaint
             )
             Text(
-                "${Providers.byId(entry.endpoint.providerId).label} · $status" +
-                    if (entry.health.successes > 0) " · ${entry.health.successes} ok" else "",
+                detail(entry, status),
                 style = MaterialTheme.typography.labelSmall,
                 color = TextFaint
             )
@@ -518,6 +540,32 @@ private fun PoolRow(
             )
         }
     }
+}
+
+/** What a provider costs, in one word, for the picker. */
+private fun tierLabel(tier: Tier): String = when (tier) {
+    Tier.Free -> "free tier"
+    Tier.Trial -> "free credit"
+    Tier.Local -> "your PC"
+    Tier.Paid -> "paid"
+    Tier.Custom -> "custom"
+}
+
+/**
+ * The second line of a pool row. Everything here is something that changes what
+ * Jarvis does next: whether the endpoint can call tools decides if it can reach
+ * your trackers, and how fast it answers decides whether it gets picked first.
+ */
+private fun detail(entry: PoolEntry, status: String): String {
+    val parts = mutableListOf(
+        Providers.byId(entry.endpoint.providerId).label,
+        status
+    )
+    entry.capabilityNote()?.let { parts += it }
+    if (entry.health.latencyMs > 0) parts += "${entry.health.latencyMs / 100 / 10.0}s"
+    if (entry.health.successes > 0) parts += "${entry.health.successes} ok"
+    entry.health.lastError?.takeIf { entry.health.successes == 0L }?.let { parts += it.take(40) }
+    return parts.joinToString(" · ")
 }
 
 /**

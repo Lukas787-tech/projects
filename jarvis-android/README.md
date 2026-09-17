@@ -31,18 +31,29 @@ for Play Store use — it exists so upgrades work.
 ## First run
 
 1. Open **Settings**.
-2. Pick a provider and paste an API key. All of these have a free tier:
+2. Pick a provider and paste an API key. The picker holds around thirty of
+   them, labelled by what an account costs. The ones worth starting with:
 
    | Provider | Free key | Notes |
    |---|---|---|
    | **Groq** | console.groq.com/keys | Fastest. Best default. |
    | **Google Gemini** | aistudio.google.com/apikey | Generous limits, strong quality. |
-   | **OpenRouter** | openrouter.ai/keys | Models ending `:free` cost nothing. |
    | **Cerebras** | cloud.cerebras.ai | Very fast. |
-   | **Ollama** | — | Your own PC. See below. |
+   | **OpenRouter** | openrouter.ai/keys | Models ending `:free` cost nothing. |
+   | **Mistral** | console.mistral.ai/api-keys | Good tool calling for its size. |
+   | **GitHub Models** | github.com/settings/tokens | Any token with `models:read`. |
+   | **SambaNova** | cloud.sambanova.ai/apis | Free developer tier. |
+   | **Z.ai (GLM)** | z.ai | The flash models are free. |
+   | **Cohere**, **Chutes**, **Scaleway**, **Cloudflare** | — | More standing free tiers. |
+   | **NVIDIA**, **Hugging Face**, **Nebius**, **Together**, **Novita**, **Hyperbolic**, **DeepInfra**, **Moonshot**, **Qwen** | — | Free credit on signup. |
+   | **Ollama**, **LM Studio**, **llama.cpp**, **vLLM** | — | Your own PC. See below. |
+   | **DeepSeek**, **xAI**, **Fireworks**, **Perplexity**, **OpenAI** | — | Paid. Only used if you add them. |
 
-3. Set your name so it addresses you properly.
-4. Go back to **Voice**, tap the orb, talk.
+3. In **Model pool**, tap **Add** for that provider — it enrols several of its
+   models at once. Repeat for a second and third provider, or once you have a
+   few keys saved use **Add every provider I have a key for**.
+4. Set your name so it addresses you properly.
+5. Go back to **Voice**, tap the orb, talk.
 
 No costs anywhere: the models are free tiers, speech-to-text and text-to-speech
 are the ones built into Android, and web search goes through DuckDuckGo's
@@ -120,3 +131,28 @@ app/src/main/java/com/lukas/jarvis/
 Every provider speaks the OpenAI chat-completions dialect, so switching between
 a cloud model, your own Ollama box and a future relay is a base URL and a model
 name — nothing in the client changes.
+
+## Staying inside the free tiers
+
+A pool of endpoints only helps if it is used carefully, so the rotation is built
+around not hitting limits rather than recovering from them:
+
+- **Every call is counted before it is sent**, against the provider's published
+  free-tier rate and against whatever its `x-ratelimit-*` headers report. An
+  endpoint near its ceiling loses its turn to one with room, so the limit is
+  usually never reached.
+- **Limits are tracked per account, not per model.** A daily cap is charged to
+  the key, so when one is hit the whole account rests instead of each of its
+  models spending a request to discover the same wall. Escaping a daily cap
+  means a second account — which is why the pool spans providers.
+- **The shape each endpoint accepts is remembered.** Providers disagree about
+  `temperature`, `max_tokens` and `tools`; finding that out costs a rejected
+  request, so it is learned once and reused. Tool calling is given up last
+  rather than first, because it is what reaches your memory and trackers.
+- **A daily cap rests until midnight UTC**, a stated `Retry-After` is obeyed
+  exactly, and everything else backs off with jitter so a pool that failed
+  together does not wake together.
+- **One turn walks at most five endpoints.** The tenth failure costs the same as
+  the second and says the same thing.
+- **Prompts are kept small.** History is trimmed and tool output clamped, since
+  tokens per minute are metered as strictly as requests.

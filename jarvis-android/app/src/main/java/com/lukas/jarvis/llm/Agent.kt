@@ -33,7 +33,7 @@ class Agent(
 
         val messages = mutableListOf<LlmMessage>()
         messages += LlmMessage.system(Prompt.system(settings))
-        history.forEach { past ->
+        trimToBudget(history).forEach { past ->
             messages += LlmMessage(
                 role = if (past.role == ChatMessage.ROLE_USER) LlmMessage.USER else LlmMessage.ASSISTANT,
                 content = past.content
@@ -78,7 +78,7 @@ class Agent(
             for (call in calls) {
                 onStage(stageFor(call.name))
                 used += call.name
-                val result = tools.execute(call, settings, effects)
+                val result = clamp(tools.execute(call, settings, effects))
                 if (nativeCalls.isNotEmpty()) {
                     messages += LlmMessage.toolResult(call.id, call.name, result)
                 } else {
@@ -111,6 +111,40 @@ class Agent(
             toolsUsed = used
         )
     }
+
+    /**
+     * Drops the oldest turns until the conversation fits a sane prompt size.
+     *
+     * Free tiers meter tokens per minute as strictly as they meter requests, and
+     * a long conversation quietly grows until every turn costs several times what
+     * the first one did. Dropping the far end of the history is cheap — anything
+     * that mattered is in the brain, and the context block re-retrieves it every
+     * turn anyway — while being throttled mid-sentence is not.
+     */
+    private fun trimToBudget(history: List<ChatMessage>): List<ChatMessage> {
+        var budget = MAX_HISTORY_CHARS
+        val kept = ArrayDeque<ChatMessage>()
+        // Newest first, so it is always the oldest turns that fall off the end.
+        for (message in history.asReversed()) {
+            val cost = message.content.length
+            if (cost > budget && kept.isNotEmpty()) break
+            budget -= cost
+            kept.addFirst(message)
+        }
+        return kept.toList()
+    }
+
+    /**
+     * Tool output is the other thing that quietly inflates a prompt: a web page
+     * can be tens of thousands of characters, and every later round in the turn
+     * pays for it again.
+     */
+    private fun clamp(result: String): String =
+        if (result.length <= MAX_TOOL_RESULT_CHARS) {
+            result
+        } else {
+            result.take(MAX_TOOL_RESULT_CHARS) + "\n… (truncated)"
+        }
 
     /** Strips the text-protocol blocks so they never reach the screen or the speaker. */
     private fun clean(raw: String?): String? {
@@ -167,6 +201,15 @@ class Agent(
 
     private companion object {
         const val MAX_ROUNDS = 4
+
+        /**
+         * Roughly six thousand tokens of past conversation. Generous enough that
+         * Jarvis still follows a thread, small enough that a long evening of
+         * chatting does not end in a tokens-per-minute refusal.
+         */
+        const val MAX_HISTORY_CHARS = 24_000
+
+        const val MAX_TOOL_RESULT_CHARS = 4_000
         val TOOL_BLOCK = Regex("<tool>\\s*(\\{.*?\\})\\s*</tool>", RegexOption.DOT_MATCHES_ALL)
         val FENCED_TOOL = Regex(
             "```(?:json|tool)?\\s*(\\{[^`]*?\"(?:name|tool)\"[^`]*?\\})\\s*```",

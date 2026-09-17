@@ -234,12 +234,16 @@ private fun JarvisRoot(
                     poolEntries = poolEntries,
                     poolBusy = poolBusy,
                     poolMessage = poolMessage,
+                    // Recomputed whenever the pool changes, which is exactly
+                    // what poolEntries already tracks.
+                    poolSummary = remember(poolEntries) { viewModel.poolSummary() },
                     lastUsedEndpoint = lastUsedEndpoint,
                     onUpdate = viewModel::updateSettings,
                     onSwitchProvider = viewModel::switchProvider,
                     onRefreshModels = viewModel::refreshModels,
                     onTestConnection = viewModel::testConnection,
                     onAddToPool = viewModel::addCurrentProviderToPool,
+                    onAddEveryProvider = viewModel::addEverySavedProviderToPool,
                     onRemoveFromPool = viewModel::removeFromPool,
                     onTogglePoolEntry = viewModel::setPoolEntryEnabled,
                     onWakePool = viewModel::wakePool,

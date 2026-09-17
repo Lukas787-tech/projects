@@ -42,10 +42,11 @@ class ConnectionTest(private val client: LlmClient) {
         }
 
         // Then check tool calling separately, because a model can answer fine
-        // and still be unable to drive memory or trackers.
+        // and still be unable to drive memory or trackers. The answer is whether
+        // the request that succeeded still had `tools` on it — a reply can come
+        // back perfectly well from a rung of the ladder that dropped them.
         val toolsWork = try {
-            val probed = client.chat(small, probe, listOf(PROBE_TOOL))
-            probed.content != null || probed.toolCalls.isNotEmpty()
+            client.chat(small, probe, listOf(PROBE_TOOL)).capability.tools
         } catch (_: Exception) {
             false
         }

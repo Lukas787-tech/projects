@@ -94,6 +94,41 @@ class SettingsStore(context: Context) {
         _state.value = next
     }
 
+    /**
+     * What is stored for one provider, whether or not it is the selected one.
+     *
+     * Keys are already namespaced per provider, so this is just reading them
+     * back — which is what lets the pool enrol every provider you have ever
+     * pasted a key for without walking the picker one entry at a time.
+     */
+    fun saved(providerId: String): Settings {
+        val preset = Providers.byId(providerId)
+        return _state.value.copy(
+            providerId = providerId,
+            baseUrl = prefs.getString(scoped(KEY_BASE_URL, providerId), null) ?: preset.baseUrl,
+            apiKey = prefs.getString(scoped(KEY_API_KEY, providerId), null).orEmpty(),
+            model = prefs.getString(scoped(KEY_MODEL, providerId), null) ?: preset.defaultModel
+        )
+    }
+
+    /**
+     * Every provider worth asking to enrol: one with a key pasted, or a keyless
+     * one whose URL you have actually edited.
+     *
+     * The "actually edited" part matters. The local presets ship pointing at a
+     * guessed LAN address, and asking four imaginary servers for their model
+     * lists means four connection timeouts before anything useful happens.
+     */
+    fun savedProviders(): List<Settings> = Providers.ALL
+        .filter { preset ->
+            if (preset.needsKey) {
+                !prefs.getString(scoped(KEY_API_KEY, preset.id), null).isNullOrBlank()
+            } else {
+                prefs.contains(scoped(KEY_BASE_URL, preset.id))
+            }
+        }
+        .map { saved(it.id) }
+
     /** Switching provider pulls that provider's own saved URL/key/model back in. */
     fun switchProvider(providerId: String) {
         val preset = Providers.byId(providerId)
