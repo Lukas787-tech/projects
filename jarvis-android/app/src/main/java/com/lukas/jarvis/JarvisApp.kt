@@ -27,6 +27,9 @@ import com.lukas.jarvis.web.WebTools
  * would cost more build time and indirection than it saves.
  */
 class AppContainer(context: Context) {
+    /** Kept for the things that need a Context after construction, like backups. */
+    val app: Context = context.applicationContext
+
     val settings = SettingsStore(context)
     val brain = Brain(context)
     val reminders = Reminders(context)

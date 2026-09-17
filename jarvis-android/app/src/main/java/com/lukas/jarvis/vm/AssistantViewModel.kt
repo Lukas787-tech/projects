@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.lukas.jarvis.AppContainer
 import com.lukas.jarvis.JarvisApp
 import com.lukas.jarvis.core.Settings
+import com.lukas.jarvis.core.Vault
 import com.lukas.jarvis.core.SettingsStore
 import com.lukas.jarvis.data.ChatMessage
 import com.lukas.jarvis.data.Entry
@@ -588,6 +589,34 @@ class AssistantViewModel(
             refreshModels()
         }
     }
+
+    // --------------------------------------------------------------- backup
+
+    /** The backup file's contents, for the caller to write wherever it likes. */
+    fun exportBackup(): String = Vault.export(container.app)
+
+    /**
+     * Puts a backup back, then rebuilds everything that had read the old values.
+     *
+     * Both stores cache their contents in memory, so a restore that only wrote
+     * to disk would appear to do nothing until the next launch.
+     */
+    fun restoreBackup(text: String): String =
+        when (val result = Vault.import(container.app, text)) {
+            is Vault.Result.Failed -> result.reason
+            is Vault.Result.Restored -> {
+                settingsStore.reload()
+                container.pool.reload()
+                val next = settingsStore.current
+                speaker.configure(next.speechRate, next.speechPitch)
+                // The old provider's model list and test result describe
+                // settings that no longer exist.
+                _availableModels.value = emptyList()
+                _modelsState.value = ModelsState.Idle
+                _testState.value = TestState.Idle
+                "Restored ${result.keys} settings, including every saved API key."
+            }
+        }
 
     fun previewVoice() {
         speaker.configure(settingsStore.current.speechRate, settingsStore.current.speechPitch)

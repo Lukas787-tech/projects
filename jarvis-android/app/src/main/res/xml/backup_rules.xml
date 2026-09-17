@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What Android's cloud backup takes (API 30 and below).
+
+  The settings and the model pool hold the API keys, which are the one thing in
+  this app a user cannot simply type again from memory. The cached location is
+  deliberately left out: restoring a fix from another phone and another week
+  would have the assistant answer "what is near me" about the wrong city.
+-->
+<full-backup-content>
+    <include domain="sharedpref" path="jarvis_settings.xml" />
+    <include domain="sharedpref" path="jarvis_pool.xml" />
+    <exclude domain="sharedpref" path="jarvis_location.xml" />
+</full-backup-content>

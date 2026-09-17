@@ -132,6 +132,14 @@ class ModelPool(context: Context) {
 
     val isEmpty: Boolean get() = _entries.value.isEmpty()
 
+    /** Re-reads everything from storage, for when a restored backup replaced it. */
+    fun reload() {
+        _entries.value = load()
+        accountRests.clear()
+        accountRests.putAll(loadAccountRests())
+        _lastUsed.value = null
+    }
+
     // ------------------------------------------------------------------ edits
 
     fun add(endpoints: List<Endpoint>): Int {

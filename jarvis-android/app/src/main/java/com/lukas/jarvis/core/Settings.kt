@@ -79,6 +79,14 @@ class SettingsStore(context: Context) {
         )
     }
 
+    /**
+     * Re-reads the store, for when something changed it from outside — which
+     * today means a restored backup.
+     */
+    fun reload() {
+        _state.value = read()
+    }
+
     fun update(transform: (Settings) -> Settings) {
         val next = transform(_state.value)
         val providerId = next.providerId

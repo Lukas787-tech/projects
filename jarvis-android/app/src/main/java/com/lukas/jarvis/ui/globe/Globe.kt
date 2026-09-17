@@ -8,10 +8,13 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -26,12 +29,17 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import com.lukas.jarvis.maps.GeoPoint
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.AccentSoft
+import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.sin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 /** What the globe is doing, which is also what the assistant is doing. */
 enum class GlobeMood { Resting, Listening, Working, Speaking }
@@ -63,7 +71,9 @@ fun Globe(
     /** Fly here and close in. Null lets it drift. */
     focus: GeoPoint? = null,
     /** 0 = whole planet, 1 = fully closed in on [focus]. */
-    approach: Float = 0f
+    approach: Float = 0f,
+    /** A tap anywhere on the planet, which is how you start talking. */
+    onTap: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val world = remember(context) { World.load(context) }
@@ -72,6 +82,15 @@ fun Globe(
     // change of speed picks up from wherever the globe currently is instead of
     // snapping back to the start of an animation.
     var spin by remember { mutableFloatStateOf(0f) }
+    var tilt by remember { mutableFloatStateOf(TILT) }
+
+    // A dragged globe has to keep the position it was left in, so the drag
+    // writes straight into the same spin the idle drift integrates, and the
+    // drift is paused while a finger is down. Letting go hands the throw over
+    // as a velocity that decays, which is why a flick keeps turning.
+    var dragging by remember { mutableStateOf(false) }
+    var fling by remember { mutableFloatStateOf(0f) }
+
     val speed = when (mood) {
         GlobeMood.Resting -> 3.5f
         GlobeMood.Listening -> 6f
@@ -84,10 +103,16 @@ fun Globe(
         var last = 0L
         while (true) {
             withFrameNanos { now ->
-                if (last != 0L) {
-                    spin = (spin + speed * (now - last) / 1_000_000_000f) % 360f
-                }
+                val seconds = if (last == 0L) 0f else (now - last) / 1_000_000_000f
                 last = now
+                if (seconds <= 0f) return@withFrameNanos
+                if (!dragging) {
+                    spin = (spin + (speed + fling) * seconds) % 360f
+                    // Roughly halves the throw every quarter second, which stops
+                    // a flick well before it becomes a fairground ride.
+                    fling *= FLING_DECAY.pow(seconds)
+                    if (abs(fling) < 1f) fling = 0f
+                }
             }
         }
     }
@@ -119,7 +144,45 @@ fun Globe(
         label = "globe-swell"
     )
 
-    Canvas(modifier = modifier) {
+    // Tap and drag share one pointer handler. Wrapping the globe in a clickable
+    // instead would have the click consume the gesture before a drag could
+    // start, so a spin would only ever register as a tap.
+    val gestures = Modifier.pointerInput(turning) {
+        // While the camera is flying to a place, it is not the user's to turn.
+        if (!turning) return@pointerInput
+        coroutineScope {
+            launch { detectTapGestures { onTap() } }
+            launch {
+                var lastMoveNanos = 0L
+                detectDragGestures(
+                    onDragStart = {
+                        dragging = true
+                        fling = 0f
+                        lastMoveNanos = 0L
+                    },
+                    onDragEnd = { dragging = false },
+                    onDragCancel = { dragging = false; fling = 0f }
+                ) { change, delta ->
+                    change.consume()
+                    val degrees = delta.x * DEGREES_PER_PIXEL
+                    spin = (spin - degrees) % 360f
+                    // Clamped short of the poles: at ninety degrees the globe is
+                    // seen down its own axis and the graticule collapses.
+                    tilt = (tilt + delta.y * DEGREES_PER_PIXEL).coerceIn(-78f, 78f)
+
+                    val now = change.uptimeMillis * 1_000_000L
+                    if (lastMoveNanos != 0L && now > lastMoveNanos) {
+                        val seconds = (now - lastMoveNanos) / 1_000_000_000f
+                        // Smoothed, so one jittery sample cannot become the throw.
+                        fling = fling * 0.6f + (-degrees / seconds) * 0.4f
+                    }
+                    lastMoveNanos = now
+                }
+            }
+        }
+    }
+
+    Canvas(modifier = modifier.then(gestures)) {
         // Everything that changes per frame is read here rather than in the
         // composable body, so a turning globe redraws without recomposing the
         // screen around it.
@@ -127,7 +190,7 @@ fun Globe(
         // Once flying, the camera is the destination; before that, it drifts.
         val eased = approach * approach * (3f - 2f * approach)
         val cameraLon = focus?.lon?.toFloat()?.let { lerpAngle(spin, it, eased) } ?: spin
-        val cameraLat = lerp(TILT, focus?.lat?.toFloat() ?: TILT, eased)
+        val cameraLat = lerp(tilt, focus?.lat?.toFloat() ?: tilt, eased)
         val zoom = 1f + eased * 5.5f
 
         val centre = Offset(size.width / 2f, size.height / 2f)
@@ -348,6 +411,12 @@ private fun DrawScope.clipRound(centre: Offset, radius: Float, block: DrawScope.
 // ----------------------------------------------------------------------- maths
 
 private const val TILT = 18f
+
+/** A drag across the whole width turns the planet most of the way round. */
+private const val DEGREES_PER_PIXEL = 0.22f
+
+/** Per second: a throw keeps about a twentieth of its speed after one second. */
+private const val FLING_DECAY = 0.05f
 
 private fun Float.toRadians(): Float = (this * Math.PI / 180.0).toFloat()
 

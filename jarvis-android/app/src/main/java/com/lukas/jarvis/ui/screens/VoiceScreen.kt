@@ -214,10 +214,12 @@ private fun VoiceBody(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .clickable { onOrbTap() },
+                .weight(1f),
             contentAlignment = Alignment.Center
         ) {
+            // The globe owns its gestures: a wrapper that were clickable would
+            // consume the touch before a drag could start, so the planet could
+            // be tapped but never turned.
             Globe(
                 mood = mood,
                 level = state.level,
@@ -225,6 +227,7 @@ private fun VoiceBody(
                 marks = map.places.map { it.point },
                 focus = target,
                 approach = approach,
+                onTap = onOrbTap,
                 modifier = Modifier.fillMaxSize()
             )
 

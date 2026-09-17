@@ -330,7 +330,9 @@ private fun JarvisRoot(
                     onWakePool = viewModel::wakePool,
                     onClearPool = viewModel::clearPool,
                     onPreviewVoice = viewModel::previewVoice,
-                    onClearConversation = viewModel::clearConversation
+                    onClearConversation = viewModel::clearConversation,
+                    onExportBackup = viewModel::exportBackup,
+                    onRestoreBackup = viewModel::restoreBackup
                 )
             }
         }

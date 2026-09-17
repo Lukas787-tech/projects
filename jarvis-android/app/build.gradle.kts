@@ -12,8 +12,8 @@ android {
         applicationId = "com.lukas.jarvis"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.9"
+        versionCode = 10
+        versionName = "2.0"
         vectorDrawables { useSupportLibrary = true }
     }
 

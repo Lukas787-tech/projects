@@ -2,6 +2,8 @@ package com.lukas.jarvis.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Delete
@@ -49,6 +53,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.BuildConfig
 import com.lukas.jarvis.core.Settings
+import com.lukas.jarvis.core.Vault
 import com.lukas.jarvis.maps.Geo
 import com.lukas.jarvis.llm.PoolEntry
 import com.lukas.jarvis.llm.Providers
@@ -89,6 +94,8 @@ fun SettingsScreen(
     onClearPool: () -> Unit,
     onPreviewVoice: () -> Unit,
     onClearConversation: () -> Unit,
+    onExportBackup: () -> String,
+    onRestoreBackup: (String) -> String,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -496,6 +503,8 @@ fun SettingsScreen(
             }
         }
 
+        BackupPanel(onExport = onExportBackup, onRestore = onRestoreBackup)
+
         Panel(title = "Data", collapsible = true, initiallyExpanded = false) {
             ChipButton(
                 label = "Clear conversation history",
@@ -522,6 +531,79 @@ fun SettingsScreen(
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(40.dp))
+    }
+}
+
+/**
+ * Keeping the keys, which is the one thing here that cannot be re-created.
+ *
+ * Android's own cloud backup normally brings these back on reinstall, but only
+ * with a Google account, only with backup switched on, and only during the
+ * restore window at first setup — none of which this app can see, let alone
+ * promise. So there is a file as well, written through the system file picker
+ * to wherever the user wants it, which depends on none of that.
+ */
+@Composable
+private fun BackupPanel(onExport: () -> String, onRestore: (String) -> String) {
+    val context = LocalContext.current
+    var note by remember { mutableStateOf<String?>(null) }
+
+    val save = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        note = runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { stream ->
+                stream.write(onExport().toByteArray())
+            } ?: error("could not open that file for writing")
+            "Saved. Keep it somewhere private — it holds your working API keys."
+        }.getOrElse { "Could not save: ${it.message ?: "unknown error"}" }
+    }
+
+    val open = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val text = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                stream.readBytes().decodeToString()
+            }
+        }.getOrNull()
+        note = if (text == null) "Could not read that file." else onRestore(text)
+    }
+
+    Panel(
+        title = "Backup",
+        subtitle = "Your API keys, endpoints, model pool and settings in one file. " +
+            "Restore it after a reinstall and everything is back as it was."
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ChipButton(
+                label = "Save backup",
+                icon = Icons.Default.Save,
+                onClick = { save.launch(Vault.fileName()) },
+                modifier = Modifier.weight(1f)
+            )
+            ChipButton(
+                label = "Restore",
+                icon = Icons.Default.Restore,
+                // Some providers mislabel .json, so anything is offered and the
+                // contents decide whether it is a backup.
+                onClick = { open.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        note?.let {
+            Spacer(Modifier.height(10.dp))
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "Restoring replaces everything currently set, and the file is plain " +
+                "text so it can always be opened.",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextFaint
+        )
     }
 }
 
