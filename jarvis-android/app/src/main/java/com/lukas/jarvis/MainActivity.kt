@@ -21,7 +21,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Map
@@ -38,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -52,12 +57,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lukas.jarvis.ui.screens.BrainScreen
 import com.lukas.jarvis.ui.screens.HistoryScreen
+import com.lukas.jarvis.ui.screens.DevicesScreen
 import com.lukas.jarvis.ui.screens.HubScreen
+import com.lukas.jarvis.ui.screens.MusicScreen
 import com.lukas.jarvis.ui.screens.MapScreen
 import com.lukas.jarvis.ui.screens.SettingsScreen
 import com.lukas.jarvis.ui.screens.TasksScreen
 import com.lukas.jarvis.ui.screens.TrackersScreen
 import com.lukas.jarvis.ui.screens.VoiceScreen
+import com.lukas.jarvis.stage.Element
+import com.lukas.jarvis.ui.components.JarvisDot
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.Ink
 import com.lukas.jarvis.ui.theme.Hairline
@@ -123,17 +132,22 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * Four destinations, each with a label that fits.
+ * The icon for each element in the bar along the bottom.
  *
- * Memory, trackers and tasks used to be three of seven tabs; they are one now,
- * segmented inside the hub, and the chat log opens over the top of the voice
- * screen it belongs to instead of holding a slot of its own.
+ * The bar is no longer a set of destinations the user navigates between: the
+ * assistant puts elements up too, through its `show` tool, and both write the
+ * same state. So this is a lookup from element to icon rather than a navigation
+ * model of its own.
  */
-private enum class Tab(val label: String, val icon: ImageVector) {
-    Voice("Voice", Icons.Default.GraphicEq),
-    Brain("Brain", Icons.Default.Psychology),
-    Map("Map", Icons.Default.Map),
-    Settings("Settings", Icons.Default.Settings)
+private fun iconFor(element: Element): ImageVector = when (element) {
+    Element.Globe -> Icons.Default.Public
+    Element.Map -> Icons.Default.Map
+    Element.Notes -> Icons.Default.Psychology
+    Element.Tasks -> Icons.Default.CheckCircle
+    Element.Money -> Icons.Default.AccountBalanceWallet
+    Element.Music -> Icons.Default.MusicNote
+    Element.Devices -> Icons.Default.Bluetooth
+    Element.Settings -> Icons.Default.Settings
 }
 
 @Composable
@@ -159,8 +173,10 @@ private fun JarvisRoot(
     val lastUsedEndpoint by viewModel.lastUsedEndpoint.collectAsStateWithLifecycle()
     val map by viewModel.map.collectAsStateWithLifecycle()
     val routing by viewModel.routing.collectAsStateWithLifecycle()
+    val bluetooth by viewModel.bluetooth.collectAsStateWithLifecycle()
 
-    var tab by remember { mutableStateOf(Tab.Voice) }
+    val stage by viewModel.element.collectAsStateWithLifecycle()
+    val element = stage.element
     var showHistory by remember { mutableStateOf(false) }
 
     // The chat log is an overlay, so the system back gesture has to close it
@@ -169,7 +185,7 @@ private fun JarvisRoot(
 
     LaunchedEffect(autoStartListening) {
         if (autoStartListening) {
-            tab = Tab.Voice
+            viewModel.showElement(Element.Globe)
             showHistory = false
             viewModel.startListening()
             onAutoStartHandled()
@@ -187,7 +203,7 @@ private fun JarvisRoot(
         // Voice mode shows the result on its own stage — the globe is mid-flight
         // towards it — so jumping tabs would interrupt the thing being watched.
         // Text mode has nowhere to put a map, so it goes to the map tab.
-        if (!settings.voiceMode) tab = Tab.Map
+        if (!settings.voiceMode) viewModel.showElement(Element.Map)
     }
 
     // Only one thing may hold the microphone. The wake-word service listens
@@ -240,8 +256,8 @@ private fun JarvisRoot(
         ) {
             if (showHistory) {
                 HistoryScreen(messages = ui.messages, onBack = { showHistory = false })
-            } else when (tab) {
-                Tab.Voice -> VoiceScreen(
+            } else when (element) {
+                Element.Globe -> VoiceScreen(
                     state = ui,
                     assistantName = settings.assistantName,
                     configured = settings.isConfigured || poolEntries.isNotEmpty(),
@@ -251,15 +267,31 @@ private fun JarvisRoot(
                     },
                     map = map,
                     tiles = viewModel.tiles,
-                    onOrbTap = viewModel::toggleListening,
                     onSend = viewModel::sendTyped,
                     onDismissError = viewModel::dismissError,
                     onOpenHistory = { showHistory = true },
-                    onOpenSettings = { tab = Tab.Settings },
-                    onOpenMap = { tab = Tab.Map }
+                    onOpenSettings = { viewModel.showElement(Element.Settings) },
+                    onOpenMap = { viewModel.showElement(Element.Map) }
                 )
 
-                Tab.Brain -> HubScreen(
+                // Notes, tasks and money are one element with three segments,
+                // so each stays one tap from the others while the assistant can
+                // still name any of them directly.
+                Element.Notes, Element.Tasks, Element.Money -> HubScreen(
+                    selected = when (element) {
+                        Element.Money -> 1
+                        Element.Tasks -> 2
+                        else -> 0
+                    },
+                    onSelect = { index ->
+                        viewModel.showElement(
+                            when (index) {
+                                1 -> Element.Money
+                                2 -> Element.Tasks
+                                else -> Element.Notes
+                            }
+                        )
+                    },
                     memoryCount = memories.size,
                     trackerCount = trackers.size,
                     openTaskCount = tasks.count { !it.done },
@@ -295,7 +327,7 @@ private fun JarvisRoot(
                     }
                 )
 
-                Tab.Map -> MapScreen(
+                Element.Map -> MapScreen(
                     state = map,
                     tiles = viewModel.tiles,
                     travelMode = settings.travelMode,
@@ -307,7 +339,22 @@ private fun JarvisRoot(
                     onClear = viewModel::clearMap
                 )
 
-                Tab.Settings -> SettingsScreen(
+                Element.Music -> MusicScreen(
+                    onPlay = viewModel::playMusic,
+                    onPause = viewModel::pauseMusic,
+                    onNext = viewModel::nextTrack,
+                    onPrevious = viewModel::previousTrack,
+                    onVolume = viewModel::setMediaVolume,
+                    onOpenDevices = { viewModel.showElement(Element.Devices) }
+                )
+
+                Element.Devices -> DevicesScreen(
+                    status = bluetooth,
+                    onRefresh = viewModel::refreshBluetooth,
+                    onOpenSettings = viewModel::openBluetoothSettings
+                )
+
+                Element.Settings -> SettingsScreen(
                     settings = settings,
                     availableModels = availableModels,
                     modelsState = modelsState,
@@ -337,18 +384,37 @@ private fun JarvisRoot(
             }
         }
 
+        // The dot has a strip of its own between the elements and the bar. It
+        // could float over the content instead, but then it would sit on top of
+        // whatever is at the bottom of the element underneath — the text field,
+        // the last row of a list — and every element would have to leave a hole
+        // for it. A strip cannot overlap anything, and the dot that really does
+        // float over everything is the one outside the app.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(76.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            JarvisDot(
+                stage = ui.stage,
+                level = ui.level,
+                onTap = viewModel::toggleListening
+            )
+        }
+
         JarvisNavBar(
-            current = tab,
+            current = element,
             onSelect = {
                 showHistory = false
-                tab = it
+                viewModel.showElement(it)
             }
         )
     }
 }
 
 @Composable
-private fun JarvisNavBar(current: Tab, onSelect: (Tab) -> Unit) {
+private fun JarvisNavBar(current: Element, onSelect: (Element) -> Unit) {
     // A pane of glass rather than a painted strip: the film of white and the
     // lit hairline along its top edge are what separate it from the content
     // scrolling underneath, instead of a block of a different colour.
@@ -366,12 +432,14 @@ private fun JarvisNavBar(current: Tab, onSelect: (Tab) -> Unit) {
                 .background(Hairline)
         )
         NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp) {
-            Tab.entries.forEach { entry ->
+            // Only the elements worth a permanent slot. The rest are reached by
+            // asking for them, which is what the assistant is for.
+            Element.BAR.forEach { entry ->
                 NavigationBarItem(
                     selected = current == entry,
                     onClick = { onSelect(entry) },
-                    icon = { Icon(entry.icon, contentDescription = entry.label) },
-                    label = { Text(entry.label) },
+                    icon = { Icon(iconFor(entry), contentDescription = entry.title) },
+                    label = { Text(entry.title) },
                     alwaysShowLabel = true,
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Accent,

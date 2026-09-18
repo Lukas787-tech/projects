@@ -2,6 +2,7 @@ package com.lukas.jarvis
 
 import android.app.Application
 import android.content.Context
+import com.lukas.jarvis.control.Phone
 import com.lukas.jarvis.core.SettingsStore
 import com.lukas.jarvis.data.Brain
 import com.lukas.jarvis.llm.Agent
@@ -18,6 +19,7 @@ import com.lukas.jarvis.maps.Navigator
 import com.lukas.jarvis.maps.PlacesClient
 import com.lukas.jarvis.maps.TileCache
 import com.lukas.jarvis.notify.Reminders
+import com.lukas.jarvis.stage.StageStore
 import com.lukas.jarvis.voice.SpeechInput
 import com.lukas.jarvis.voice.Speaker
 import com.lukas.jarvis.web.WebTools
@@ -43,13 +45,16 @@ class AppContainer(context: Context) {
     private val web = WebTools()
     private val client = LlmClient()
 
+    val stage = StageStore()
+    val phone = Phone(context)
+
     val mapStore = MapStore(context)
     val tiles = TileCache(context)
     val locator = Locator(context)
     private val places = PlacesClient()
     val navigator = Navigator(locator, places, mapStore)
 
-    private val tools = Tools(brain, web, reminders, navigator)
+    private val tools = Tools(brain, web, reminders, navigator, stage, phone)
 
     val models = ModelCatalog()
     val pool = ModelPool(context)

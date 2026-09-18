@@ -55,7 +55,6 @@ import com.lukas.jarvis.maps.MapState
 import com.lukas.jarvis.maps.TileCache
 import com.lukas.jarvis.ui.components.ChipButton
 import com.lukas.jarvis.ui.components.ModeSwitch
-import com.lukas.jarvis.ui.components.Orb
 import com.lukas.jarvis.ui.globe.Globe
 import com.lukas.jarvis.ui.globe.GlobeMood
 import com.lukas.jarvis.ui.map.MapCanvas
@@ -89,7 +88,6 @@ fun VoiceScreen(
     onModeChange: (Boolean) -> Unit,
     map: MapState,
     tiles: TileCache,
-    onOrbTap: () -> Unit,
     onSend: (String) -> Unit,
     onDismissError: () -> Unit,
     onOpenHistory: () -> Unit,
@@ -106,20 +104,6 @@ fun VoiceScreen(
             modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // In text mode the globe is off screen, so this small orb is the
-            // only thing showing state — and it is also how you dictate without
-            // leaving the transcript.
-            if (!voiceMode) {
-                Orb(
-                    stage = state.stage,
-                    level = state.level,
-                    size = 26.dp,
-                    modifier = Modifier
-                        .padding(end = 10.dp)
-                        .clip(CircleShape)
-                        .clickable { onOrbTap() }
-                )
-            }
             Text(
                 text = assistantName.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
@@ -143,7 +127,6 @@ fun VoiceScreen(
                 configured = configured,
                 map = map,
                 tiles = tiles,
-                onOrbTap = onOrbTap,
                 onOpenMap = onOpenMap,
                 onOpenSettings = onOpenSettings,
                 modifier = Modifier.weight(1f)
@@ -189,7 +172,6 @@ private fun VoiceBody(
     configured: Boolean,
     map: MapState,
     tiles: TileCache,
-    onOrbTap: () -> Unit,
     onOpenMap: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
@@ -217,9 +199,10 @@ private fun VoiceBody(
                 .weight(1f),
             contentAlignment = Alignment.Center
         ) {
-            // The globe owns its gestures: a wrapper that were clickable would
-            // consume the touch before a drag could start, so the planet could
-            // be tapped but never turned.
+            // The globe turns and nothing else. Speaking moved to the dot
+            // below, which is on every element rather than only this one, so
+            // the microphone is no longer tied to whichever screen happens to
+            // be showing a planet.
             Globe(
                 mood = mood,
                 level = state.level,
@@ -227,7 +210,6 @@ private fun VoiceBody(
                 marks = map.places.map { it.point },
                 focus = target,
                 approach = approach,
-                onTap = onOrbTap,
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -318,7 +300,7 @@ private fun Readout(
             )
 
             else -> Text(
-                text = "Tap the globe and talk.",
+                text = "Tap the dot and talk.",
                 style = MaterialTheme.typography.headlineMedium,
                 color = TextFaint,
                 textAlign = TextAlign.Center
@@ -482,7 +464,7 @@ private fun statusText(state: AssistantUiState, configured: Boolean): String = w
     Stage.Idle -> when {
         !configured -> "NOT SET UP YET"
         !state.micAvailable -> "NO MIC — SWITCH TO TEXT"
-        else -> "TAP THE GLOBE TO SPEAK"
+        else -> "TAP THE DOT TO SPEAK"
     }
     Stage.Listening -> "LISTENING"
     Stage.Thinking -> state.stageLabel.uppercase().ifBlank { "WORKING" }

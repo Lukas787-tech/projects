@@ -9,7 +9,10 @@ import com.lukas.jarvis.data.Task
 import com.lukas.jarvis.data.Tracker
 import com.lukas.jarvis.data.TrackerStatus
 import com.lukas.jarvis.maps.Geo
+import com.lukas.jarvis.control.Phone
 import com.lukas.jarvis.maps.Navigator
+import com.lukas.jarvis.stage.Element
+import com.lukas.jarvis.stage.StageStore
 import com.lukas.jarvis.notify.Reminders
 import com.lukas.jarvis.web.WebTools
 import org.json.JSONArray
@@ -35,7 +38,9 @@ class Tools(
     private val brain: Brain,
     private val web: WebTools,
     private val reminders: Reminders,
-    private val navigator: Navigator
+    private val navigator: Navigator,
+    private val stage: StageStore,
+    private val phone: Phone
 ) {
 
     fun schemas(settings: Settings): List<JSONObject> {
@@ -213,6 +218,47 @@ class Tools(
                 emptyList()
             )
         }
+
+        list += tool(
+            "show",
+            "Put something on the user's screen. Call this whenever an answer is better " +
+                "looked at than listened to, and whenever the user asks to see something. " +
+                "Available: ${Element.names()}.",
+            props(
+                "element" to str("Which one to show.", Element.entries.map { it.title.lowercase(Locale.ROOT) }),
+                "note" to str("One short line about why, shown under it. Optional.")
+            ),
+            listOf("element")
+        )
+        list += tool(
+            "play_music",
+            "Start music. With a song, artist or album, the phone's music app searches for it; " +
+                "with nothing, whatever was last playing resumes.",
+            props("query" to str("What to play, e.g. 'Rammstein Sonne'. Leave out to just resume.")),
+            emptyList()
+        )
+        list += tool(
+            "control_playback",
+            "Pause, resume or skip what is playing, or set the media volume.",
+            props(
+                "action" to str(
+                    "What to do.",
+                    listOf("pause", "resume", "next", "previous", "volume")
+                ),
+                "percent" to int("For 'volume' only: 0 to 100.")
+            ),
+            listOf("action")
+        )
+        list += tool(
+            "bluetooth",
+            "List the phone's paired Bluetooth devices, or open the Bluetooth settings page. " +
+                "Android does not let this app connect a device itself, so say so plainly " +
+                "rather than claiming a connection was made.",
+            props(
+                "action" to str("What to do.", listOf("list", "open_settings"))
+            ),
+            listOf("action")
+        )
         return list
     }
 
@@ -237,6 +283,10 @@ class Tools(
                 "web_search" -> webSearch(args)
                 "open_url" -> web.readPage(args.optString("url"))
                 "now" -> nowText()
+                "show" -> show(args)
+                "play_music" -> phone.play(args.optString("query").takeIf { it.isNotBlank() })
+                "control_playback" -> playback(args)
+                "bluetooth" -> bluetooth(args)
                 else -> "Unknown tool '${call.name}'."
             }
         } catch (e: Exception) {
@@ -523,6 +573,37 @@ class Tools(
         val now = System.currentTimeMillis()
         return "Current local date and time: ${TimeUtil.format(now)} (ISO ${TimeUtil.iso(now)})."
     }
+
+    // ------------------------------------------------------------- the screen
+
+    private fun show(args: JSONObject): String {
+        val wanted = Element.match(args.optString("element"))
+            ?: return "I do not have an element called that. I have: ${Element.names()}."
+        stage.show(wanted, args.optString("note").trim())
+        return "Showing the ${wanted.title.lowercase(Locale.ROOT)}."
+    }
+
+    // -------------------------------------------------------------- the phone
+
+    private fun playback(args: JSONObject): String =
+        when (args.optString("action").trim().lowercase(Locale.ROOT)) {
+            "pause", "stop" -> phone.pause()
+            "resume", "play" -> phone.play(null)
+            "next", "skip" -> phone.next()
+            "previous", "back" -> phone.previous()
+            "volume" -> if (args.has("percent")) {
+                phone.setVolume(args.optInt("percent"))
+            } else {
+                phone.volume()
+            }
+            else -> "I can pause, resume, skip, go back, or set the volume."
+        }
+
+    private fun bluetooth(args: JSONObject): String =
+        when (args.optString("action").trim().lowercase(Locale.ROOT)) {
+            "open_settings", "settings", "open" -> phone.openBluetoothSettings()
+            else -> phone.bluetoothDevices()
+        }
 
     // ------------------------------------------------------------ schema sugar
 

@@ -8,10 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.ui.components.SegmentedTabs
@@ -23,11 +20,18 @@ import com.lukas.jarvis.ui.components.SegmentedTabs
  * are read one after another rather than one instead of another, so a segment is
  * a truer control for them than three separate destinations.
  *
+ * Which segment is showing is not kept here. It is an element like any other, so
+ * the assistant saying "show your tasks" and a finger on the segment move the
+ * same state, and the two can never end up disagreeing about what is in front of
+ * the user.
+ *
  * The sections arrive as composables rather than as twenty hoisted parameters:
  * this screen's job is which one is showing, not what any of them needs.
  */
 @Composable
 fun HubScreen(
+    selected: Int,
+    onSelect: (Int) -> Unit,
     memoryCount: Int,
     trackerCount: Int,
     openTaskCount: Int,
@@ -36,9 +40,6 @@ fun HubScreen(
     tasks: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Saveable, so a rotation does not throw you back to the first section.
-    var selected by rememberSaveable { mutableStateOf(0) }
-
     val badges = remember(memoryCount, trackerCount, openTaskCount) {
         listOf(
             memoryCount.takeIf { it > 0 }?.toString(),
@@ -51,7 +52,7 @@ fun HubScreen(
         SegmentedTabs(
             options = listOf("Memory", "Trackers", "Tasks"),
             selectedIndex = selected,
-            onSelect = { selected = it },
+            onSelect = onSelect,
             badges = badges,
             modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp)
         )

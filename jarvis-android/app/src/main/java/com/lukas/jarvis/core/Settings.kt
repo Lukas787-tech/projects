@@ -29,7 +29,10 @@ data class Settings(
     val travelMode: String = Geo.MODE_WALK,
     val searchRadiusMeters: Int = 1_500,
     /** Voice mode shows the globe and speaks; text mode shows the transcript. */
-    val voiceMode: Boolean = true
+    val voiceMode: Boolean = true,
+    /** The dot that floats over other apps. Off until asked for: it needs a
+     *  permission Android only grants from its own settings page. */
+    val floatingDot: Boolean = false
 ) {
     val isConfigured: Boolean
         get() = baseUrl.isNotBlank() && model.isNotBlank() &&
@@ -75,7 +78,8 @@ class SettingsStore(context: Context) {
             mapsEnabled = prefs.getBoolean(KEY_MAPS, true),
             travelMode = prefs.getString(KEY_TRAVEL_MODE, Geo.MODE_WALK) ?: Geo.MODE_WALK,
             searchRadiusMeters = prefs.getInt(KEY_SEARCH_RADIUS, 1_500),
-            voiceMode = prefs.getBoolean(KEY_VOICE_MODE, true)
+            voiceMode = prefs.getBoolean(KEY_VOICE_MODE, true),
+            floatingDot = prefs.getBoolean(KEY_FLOATING_DOT, false)
         )
     }
 
@@ -112,6 +116,7 @@ class SettingsStore(context: Context) {
             .putString(KEY_TRAVEL_MODE, next.travelMode)
             .putInt(KEY_SEARCH_RADIUS, next.searchRadiusMeters)
             .putBoolean(KEY_VOICE_MODE, next.voiceMode)
+            .putBoolean(KEY_FLOATING_DOT, next.floatingDot)
             .apply()
         _state.value = next
     }
@@ -186,6 +191,7 @@ class SettingsStore(context: Context) {
         const val KEY_MAPS = "maps_enabled"
         const val KEY_TRAVEL_MODE = "travel_mode"
         const val KEY_VOICE_MODE = "voice_mode"
+        const val KEY_FLOATING_DOT = "floating_dot"
         const val KEY_SEARCH_RADIUS = "search_radius"
     }
 }

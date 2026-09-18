@@ -35,6 +35,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +45,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -54,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.BuildConfig
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.core.Vault
+import com.lukas.jarvis.overlay.BubbleService
 import com.lukas.jarvis.maps.Geo
 import com.lukas.jarvis.llm.PoolEntry
 import com.lukas.jarvis.llm.Providers
@@ -503,6 +509,11 @@ fun SettingsScreen(
             }
         }
 
+        FloatingDotPanel(
+            enabled = settings.floatingDot,
+            onChange = { wanted -> onUpdate { it.copy(floatingDot = wanted) } }
+        )
+
         BackupPanel(onExport = onExportBackup, onRestore = onRestoreBackup)
 
         Panel(title = "Data", collapsible = true, initiallyExpanded = false) {
@@ -531,6 +542,87 @@ fun SettingsScreen(
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(40.dp))
+    }
+}
+
+/**
+ * The dot that floats over other apps.
+ *
+ * Android will not let an app grant itself the right to draw over everything
+ * else — for good reason, since that is how an overlay would fake a login
+ * screen — so the switch cannot simply be flipped. It opens the system page
+ * instead, and reads the permission back every time the screen is resumed, so
+ * returning from that page shows the truth rather than whatever was true when
+ * the screen was first drawn.
+ */
+@Composable
+private fun FloatingDotPanel(enabled: Boolean, onChange: (Boolean) -> Unit) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var granted by remember { mutableStateOf(BubbleService.canDraw(context)) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                granted = BubbleService.canDraw(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // The service is the thing that can really be running or not, so the switch
+    // follows it rather than the other way round.
+    LaunchedEffect(enabled, granted) {
+        if (enabled && granted) BubbleService.start(context) else BubbleService.stop(context)
+    }
+
+    Panel(
+        title = "Floating dot",
+        subtitle = "Jarvis on top of whatever you are doing. Tap it to talk, " +
+            "hold it to open the app, drag it to park it against an edge."
+    ) {
+        ToggleRow(
+            title = "Show the dot everywhere",
+            subtitle = if (granted) {
+                "Runs as a notification you can tap to put it away."
+            } else {
+                "Needs permission to draw over other apps."
+            },
+            checked = enabled && granted,
+            onChange = { wanted ->
+                if (wanted && !granted) {
+                    runCatching {
+                        context.startActivity(BubbleService.permissionIntent(context))
+                    }
+                    // Left on, so granting the permission and coming back
+                    // starts it without a second tap.
+                    onChange(true)
+                } else {
+                    onChange(wanted)
+                }
+            }
+        )
+        if (enabled && !granted) {
+            Spacer(Modifier.height(10.dp))
+            ChipButton(
+                label = "Grant permission",
+                onClick = {
+                    runCatching {
+                        context.startActivity(BubbleService.permissionIntent(context))
+                    }
+                },
+                prominent = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "The dot answers where you are — it speaks without bringing the app " +
+                "to the front. It listens only while you are holding a turn with it.",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextFaint
+        )
     }
 }
 

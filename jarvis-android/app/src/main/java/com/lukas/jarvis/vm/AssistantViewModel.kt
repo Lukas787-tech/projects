@@ -9,6 +9,8 @@ import com.lukas.jarvis.AppContainer
 import com.lukas.jarvis.JarvisApp
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.core.Vault
+import com.lukas.jarvis.stage.Element
+import com.lukas.jarvis.stage.StageStore
 import com.lukas.jarvis.core.SettingsStore
 import com.lukas.jarvis.data.ChatMessage
 import com.lukas.jarvis.data.Entry
@@ -588,6 +590,41 @@ class AssistantViewModel(
         if (settingsStore.current.let { Providers.byId(it.providerId).needsKey.not() || it.apiKey.isNotBlank() }) {
             refreshModels()
         }
+    }
+
+    // -------------------------------------------------------------- elements
+
+    /** Which element is on the stage, written by the user and by the assistant. */
+    val element: StateFlow<StageStore.State> = container.stage.state
+
+    fun showElement(element: Element) {
+        container.stage.show(element)
+    }
+
+    // ----------------------------------------------------------- the phone
+
+    fun playMusic() = report(container.phone.play(null))
+    fun pauseMusic() = report(container.phone.pause())
+    fun nextTrack() = report(container.phone.next())
+    fun previousTrack() = report(container.phone.previous())
+    fun setMediaVolume(percent: Int) = report(container.phone.setVolume(percent))
+
+    private val _bluetooth = MutableStateFlow("")
+    val bluetooth: StateFlow<String> = _bluetooth.asStateFlow()
+
+    fun refreshBluetooth() {
+        _bluetooth.value = container.phone.bluetoothDevices()
+    }
+
+    fun openBluetoothSettings() = report(container.phone.openBluetoothSettings())
+
+    /**
+     * Phone actions answer in a sentence whether or not they worked, and a
+     * control that silently does nothing is the thing worth avoiding here, so
+     * the sentence is shown rather than dropped.
+     */
+    private fun report(message: String) {
+        _poolMessage.value = message
     }
 
     // --------------------------------------------------------------- backup
