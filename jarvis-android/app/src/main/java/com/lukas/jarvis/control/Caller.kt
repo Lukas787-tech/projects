@@ -74,17 +74,15 @@ class Caller(context: Context) {
         pending = null
 
         if (!mayCall) {
-            // Falling back to the dialler is not the promise that was made, so
-            // it is said plainly rather than dressed up as success.
-            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${target.number}"))
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            return if (start(intent)) {
-                "I do not have permission to place calls, so ${target.number} is in " +
-                    "the dialler — press call. Grant it in settings and I will ring " +
-                    "next time."
-            } else {
-                "I do not have permission to place calls, and no dialler took it either."
-            }
+            // Opening the dialler instead would push Jarvis into the background,
+            // which is what made this look like the app closing. Asking for the
+            // permission leaves the user where they were.
+            AskPermissionActivity.ask(app, Manifest.permission.CALL_PHONE)
+            pending = Pending(target.number, target.who, System.currentTimeMillis())
+            return "I need permission to place calls — it is asking you now. " +
+                "Say yes again once you have allowed it and I will ring ${
+                    target.who.ifBlank { target.number }
+                }."
         }
 
         val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:${target.number}"))

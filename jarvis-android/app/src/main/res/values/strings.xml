@@ -3,4 +3,7 @@
     <string name="app_name">Jarvis</string>
     <string name="wake_channel_name">Always listening</string>
     <string name="reminder_channel_name">Reminders</string>
+    <!-- Shown by Android on the accessibility page, where the user decides
+         whether to allow this. It should say exactly what it does. -->
+    <string name="tapper_description">Lets Jarvis press send in WhatsApp, Telegram and Signal after it has written a message you asked for. It does nothing at any other time and reads nothing back.</string>
 </resources>

@@ -61,6 +61,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.BuildConfig
 import com.lukas.jarvis.core.Settings
+import com.lukas.jarvis.control.Tapper
 import com.lukas.jarvis.core.Vault
 import com.lukas.jarvis.notify.ReplyListener
 import com.lukas.jarvis.overlay.BubbleService
@@ -605,6 +606,7 @@ private fun AutomaticPanel() {
     var canReply by remember { mutableStateOf(ReplyListener.isEnabled(context)) }
     var canText by remember { mutableStateOf(granted(context, Manifest.permission.SEND_SMS)) }
     var canCall by remember { mutableStateOf(granted(context, Manifest.permission.CALL_PHONE)) }
+    var canTap by remember { mutableStateOf(Tapper.isEnabled(context)) }
 
     // Both are granted on a system page, so the truth is whatever is true on
     // returning from it, not whatever was true when this was first drawn.
@@ -614,6 +616,7 @@ private fun AutomaticPanel() {
                 canReply = ReplyListener.isEnabled(context)
                 canText = granted(context, Manifest.permission.SEND_SMS)
                 canCall = granted(context, Manifest.permission.CALL_PHONE)
+                canTap = Tapper.isEnabled(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -664,12 +667,32 @@ private fun AutomaticPanel() {
             style = MaterialTheme.typography.bodyMedium,
             color = if (canCall) Positive else TextSecondary
         )
+
+        Spacer(Modifier.height(14.dp))
+        Text(
+            if (canTap) {
+                "New WhatsApp, Telegram and Signal messages are sent outright. Ready."
+            } else {
+                "A new WhatsApp message is typed out for you and waits on one press. " +
+                    "Switching Jarvis on under accessibility lets it press send itself."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (canTap) Positive else TextSecondary
+        )
+        if (!canTap) {
+            Spacer(Modifier.height(12.dp))
+            ChipButton(
+                label = "Let Jarvis press send",
+                onClick = { runCatching { context.startActivity(Tapper.permissionIntent()) } },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
         Spacer(Modifier.height(12.dp))
         Text(
             "Jarvis reads notifications only to find the ones that can be answered, " +
                 "keeps them in memory while they are on screen, and writes none of it " +
-                "down. A new message to someone who has not written first still has to " +
-                "go by text — no other app lets a third one start a conversation.",
+                "down. Pressing send is armed for a few seconds after it writes a " +
+                "message and is inert the rest of the time.",
             style = MaterialTheme.typography.labelSmall,
             color = TextFaint
         )

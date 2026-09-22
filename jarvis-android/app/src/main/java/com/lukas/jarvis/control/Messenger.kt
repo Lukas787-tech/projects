@@ -26,6 +26,11 @@ class Messenger(context: Context) {
 
     private val app = context.applicationContext
 
+    /** Raises the system dialog, rather than routing round the missing permission. */
+    fun requestPermission() {
+        AskPermissionActivity.ask(app, Manifest.permission.SEND_SMS)
+    }
+
     val maySend: Boolean
         get() = ContextCompat.checkSelfPermission(app, Manifest.permission.SEND_SMS) ==
             PackageManager.PERMISSION_GRANTED
@@ -42,8 +47,8 @@ class Messenger(context: Context) {
         if (digits.isBlank()) return "I need a number to send to."
         if (body.isBlank()) return "There was no message to send."
         if (!maySend) {
-            return "I do not have permission to send texts yet. " +
-                "Grant it in Jarvis settings and I will send it without asking again."
+            requestPermission()
+            return "I do not have permission to send texts yet — it is asking you now."
         }
 
         val manager = runCatching {

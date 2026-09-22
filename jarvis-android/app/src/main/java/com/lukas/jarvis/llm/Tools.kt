@@ -3,6 +3,8 @@ package com.lukas.jarvis.llm
 import com.lukas.jarvis.brief.Briefer
 import com.lukas.jarvis.control.Agenda
 import com.lukas.jarvis.control.Caller
+import com.lukas.jarvis.control.Chat
+import com.lukas.jarvis.control.Chats
 import com.lukas.jarvis.control.Device
 import com.lukas.jarvis.control.Launcher
 import com.lukas.jarvis.control.Messenger
@@ -70,7 +72,8 @@ class Tools(
     private val agenda: Agenda,
     private val briefer: Briefer,
     private val messenger: Messenger,
-    private val caller: Caller
+    private val caller: Caller,
+    private val chats: Chats
 ) {
 
     fun schemas(settings: Settings): List<JSONObject> = buildList {
@@ -495,6 +498,19 @@ class Tools(
             listOf("number", "text")
         ),
         tool(
+            "send_chat_message",
+            "Start a conversation in WhatsApp, Telegram or Signal — 'message Ralf on WhatsApp'. " +
+                "Give the person's name as the user said it; it is looked up in contacts here. " +
+                "Read the answer back honestly: it says whether the message went or is sitting " +
+                "typed out waiting for one press.",
+            props(
+                "app" to str("Which app.", listOf("whatsapp", "telegram", "signal")),
+                "who" to str("The person's name as the user said it, or a phone number."),
+                "text" to str("The message, in the user's own voice and language.")
+            ),
+            listOf("app", "who", "text")
+        ),
+        tool(
             "reply_to_message",
             "Answer a message that has just arrived in WhatsApp, Signal, Telegram, SMS or any " +
                 "other app, straight from its notification. It really sends. With no name, the " +
@@ -649,6 +665,7 @@ class Tools(
                 "place_call" -> caller.place()
                 "cancel_call" -> caller.cancel()
                 "send_message" -> sendMessage(args)
+                "send_chat_message" -> sendChatMessage(args)
                 "reply_to_message" -> replyToMessage(args)
                 "unread_messages" -> unreadMessages()
                 "send_email" -> launcher.composeEmail(
@@ -1198,15 +1215,33 @@ class Tools(
         val text = args.optString("text").trim()
         if (text.isBlank()) return "There was no message to send."
         val number = args.optString("number")
-        // Without the permission the message would simply be refused, and a
-        // refusal helps nobody who is holding two bags of shopping. The draft is
-        // the worse outcome, not a wrong one, so it is offered rather than
-        // nothing — and said out loud, so the tap is not missed.
+        // This used to hand the message to the phone's own messaging app when
+        // the permission was missing, which pushed Jarvis into the background
+        // and looked exactly like the app closing. Asking for the permission
+        // keeps everything where the user left it.
         if (!messenger.maySend) {
-            return launcher.composeSms(number, text) +
-                " I could send it outright if you grant the SMS permission in settings."
+            messenger.requestPermission()
+            return "I need permission to send texts — it is asking you now. " +
+                "Say it again once you have allowed it."
         }
         return messenger.sendSms(number, text)
+    }
+
+    /**
+     * A new conversation in WhatsApp, Telegram or Signal.
+     *
+     * The name is resolved against contacts here rather than by the model,
+     * because a model guessing a phone number is how the right message reaches
+     * the wrong person.
+     */
+    private fun sendChatMessage(args: JSONObject): String {
+        val chat = Chat.match(args.optString("app"))
+            ?: return "I can start a conversation in WhatsApp, Telegram or Signal."
+        val who = args.optString("who").trim()
+        val text = args.optString("text").trim()
+        if (who.isBlank()) return "Who should it go to?"
+        if (text.isBlank()) return "There was no message to send."
+        return chats.send(chat, who, text)
     }
 
     /**

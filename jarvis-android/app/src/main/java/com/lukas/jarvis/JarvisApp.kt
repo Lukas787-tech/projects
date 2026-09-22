@@ -5,6 +5,7 @@ import android.content.Context
 import com.lukas.jarvis.brief.Briefer
 import com.lukas.jarvis.control.Agenda
 import com.lukas.jarvis.control.Caller
+import com.lukas.jarvis.control.Chats
 import com.lukas.jarvis.control.Device
 import com.lukas.jarvis.control.Launcher
 import com.lukas.jarvis.control.Messenger
@@ -65,6 +66,7 @@ class AppContainer(context: Context) {
     val messenger = Messenger(context)
     val caller = Caller(context)
     val people = People(context)
+    val chats = Chats(context, people)
     val agenda = Agenda(context)
 
     val mapStore = MapStore(context)
@@ -92,7 +94,8 @@ class AppContainer(context: Context) {
         agenda = agenda,
         briefer = briefer,
         messenger = messenger,
-        caller = caller
+        caller = caller,
+        chats = chats
     )
 
     val models = ModelCatalog()

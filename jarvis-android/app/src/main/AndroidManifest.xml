@@ -110,6 +110,28 @@
         </activity>
         <!-- Holds the floating dot over other apps and runs a spoken turn
              without the app itself coming to the front. -->
+        <!-- Invisible, lives for a second: raises a permission dialog from a
+             tool that is running nowhere near an activity. -->
+        <activity
+            android:name=".control.AskPermissionActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- Presses send in a messaging app, and only when armed to. -->
+        <service
+            android:name=".control.Tapper"
+            android:exported="false"
+            android:label="Jarvis"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/tapper" />
+        </service>
+
         <!-- Answers a message in its own notification, the way a watch does.
              The system grants this only from its notification-access page. -->
         <service
