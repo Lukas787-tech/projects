@@ -260,6 +260,26 @@ class Brain(context: Context) {
         ).use { it.readAll { c -> c.toEntry() } }
     }
 
+    /**
+     * Every movement in a window, for the reports.
+     *
+     * Kept apart from [recentEntries] because a report is bounded by dates and
+     * a list is bounded by a row count, and conflating the two is how a "this
+     * month" answer quietly ends up including last month's tail.
+     */
+    fun entriesBetween(from: Long, to: Long, trackerId: Long? = null): List<Entry> {
+        val where = StringBuilder("occurred_at >= ? AND occurred_at <= ?")
+        val args = mutableListOf(from.toString(), to.toString())
+        if (trackerId != null) {
+            where.append(" AND tracker_id = ?")
+            args.add(trackerId.toString())
+        }
+        return db.rawQuery(
+            "SELECT * FROM entries WHERE $where ORDER BY occurred_at DESC",
+            args.toTypedArray()
+        ).use { it.readAll { c -> c.toEntry() } }
+    }
+
     fun trackerStatus(tracker: Tracker): TrackerStatus {
         val periodStart = periodStart(tracker.period)
         var periodSpent = 0.0
@@ -389,6 +409,25 @@ class Brain(context: Context) {
             "SELECT * FROM messages ORDER BY created_at DESC, id DESC LIMIT ?",
             arrayOf(limit.toString())
         ).use { it.readAll { c -> c.toChatMessage() } }.reversed()
+
+    /**
+     * Past turns containing [query].
+     *
+     * A plain LIKE rather than the BM25 index: the index is built for memories,
+     * and what this answers — "what did we say about the landlord last week" —
+     * is a literal search through a transcript, where a substring match is both
+     * what the user means and cheap enough to run on every call.
+     */
+    fun searchMessages(query: String, limit: Int = 10): List<ChatMessage> {
+        val needle = query.trim()
+        if (needle.isBlank()) return emptyList()
+        val escaped = "%" + needle.replace("%", "\\%").replace("_", "\\_") + "%"
+        return db.rawQuery(
+            "SELECT * FROM messages WHERE content LIKE ? ESCAPE '\\' " +
+                "ORDER BY created_at DESC LIMIT ?",
+            arrayOf(escaped, limit.toString())
+        ).use { it.readAll { c -> c.toChatMessage() } }
+    }
 
     fun clearMessages() {
         db.delete("messages", null, null)

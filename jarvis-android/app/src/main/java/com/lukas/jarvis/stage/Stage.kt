@@ -22,6 +22,10 @@ enum class Element(
     val title: String,
     val spoken: List<String>
 ) {
+    Today(
+        "Today",
+        listOf("today", "dashboard", "overview", "brief", "briefing", "morning", "day", "summary")
+    ),
     Globe("Globe", listOf("globe", "world", "earth", "planet", "home", "idle")),
     Map("Map", listOf("map", "places", "route", "directions", "navigation", "where")),
     Notes("Notes", listOf("notes", "note", "memory", "memories", "brain", "remember")),
@@ -33,7 +37,7 @@ enum class Element(
 
     companion object {
         /** The ones worth a permanent place in the bar along the bottom. */
-        val BAR = listOf(Globe, Notes, Map, Music, Settings)
+        val BAR = listOf(Today, Globe, Notes, Map, Settings)
 
         /** Loose matching, because this is fed by whatever the model said. */
         fun match(raw: String?): Element? {

@@ -45,9 +45,15 @@ TOOLS
   <tool>{"name":"tool_name","arguments":{"key":"value"}}</tool>
   Only do that as a last resort; native tool calls are always preferred.
 
-INTERNET
+NEVER GUESS A NUMBER OR A FACT
+- Arithmetic goes through `calculate`, every time, even when it looks easy. A number
+  you worked out in your head is a number you might have invented.
+- Unit and temperature conversions go through `convert_units`.
+- Weather goes through `weather`. Never describe a sky you have not looked at.
 - Your knowledge has a cutoff. For news, prices, hours, scores, or anything current,
   use `web_search` rather than guessing, then answer in your own words.
+- "How does my day look", "good morning", "catch me up" -> `briefing`, which gathers
+  the weather, what is due, the next appointment and the budgets in one call.
 ${placesRules(settings)}
 
 THE SCREEN
@@ -62,6 +68,13 @@ THE PHONE
 - `bluetooth` lists what is paired and opens the settings page. Android does not let you
   connect a device. If asked to connect one, say plainly that you can only open the page,
   and do that. Never say a device is connected.
+${deviceRules(settings)}
+
+WHAT YOU HAND OVER RATHER THAN DO
+- `dial` puts a number in the dialler; it does not ring anyone. `send_message` and
+  `send_email` write a draft; they do not send. `add_calendar_event` fills the event in;
+  the user saves it. In each case say it is ready and waiting for them — never say you
+  called, sent, or booked anything.
 
 HONESTY
 - If you do not know and cannot find out, say so plainly.
@@ -129,6 +142,20 @@ PLACES AND GETTING AROUND
             }
         }
 
+        if (settings.deviceControlEnabled || settings.calendarEnabled) {
+            builder.appendLine()
+            builder.appendLine(
+                "Switched on: " + listOfNotNull(
+                    "phone control".takeIf { settings.deviceControlEnabled },
+                    "calendar".takeIf { settings.calendarEnabled },
+                    "contacts".takeIf { settings.contactsEnabled },
+                    "weather".takeIf { settings.weatherEnabled },
+                    "maps".takeIf { settings.mapsEnabled },
+                    "web".takeIf { settings.webSearchEnabled }
+                ).joinToString(", ")
+            )
+        }
+
         val memories = runCatching { brain.searchMemories(utterance, limit = 8) }
             .getOrDefault(emptyList())
         if (memories.isNotEmpty()) {
@@ -152,6 +179,29 @@ PLACES AND GETTING AROUND
      * The autoCapture setting is the difference between an assistant that
      * quietly writes things down and one that only does so on request.
      */
+    /**
+     * The phone's own switches, listed only when they are switched on.
+     *
+     * These are written as the words a user would say rather than as tool names,
+     * for the same reason the places rules are: nobody asks for `set_timer`, they
+     * say "ten minutes for the pasta".
+     */
+    private fun deviceRules(settings: Settings): String =
+        if (!settings.deviceControlEnabled) {
+            ""
+        } else {
+            """
+- "wake me at seven", "remind me at half eight" -> `set_alarm`. "ten minutes for the
+  pasta" -> `set_timer`. A thing to do rather than a time to be woken -> `add_task`.
+- "open Spotify", "launch the camera" -> `open_app`, using the name they said.
+- "how much battery", "am I online", "how much space" -> `device_status`.
+- "turn on the light" with nothing else to go on means the torch -> `torch`.
+- "put it on silent" -> `ringer`. "copy that" -> `clipboard`.
+- Something only the system may change (Wi-Fi, airplane mode, brightness) ->
+  `open_settings_page`, and say that the last tap is theirs.
+            """.trim()
+        }
+
     private fun captureRules(settings: Settings, user: String): String =
         if (settings.autoCapture) {
             """

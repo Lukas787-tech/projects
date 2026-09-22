@@ -1,22 +1,34 @@
 package com.lukas.jarvis.llm
 
+import com.lukas.jarvis.brief.Briefer
+import com.lukas.jarvis.control.Agenda
+import com.lukas.jarvis.control.Device
+import com.lukas.jarvis.control.Launcher
+import com.lukas.jarvis.control.People
+import com.lukas.jarvis.control.Phone
+import com.lukas.jarvis.core.Calculator
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.core.TimeUtil
+import com.lukas.jarvis.core.Units
 import com.lukas.jarvis.data.Brain
+import com.lukas.jarvis.data.ChatMessage
 import com.lukas.jarvis.data.Entry
 import com.lukas.jarvis.data.Memory
 import com.lukas.jarvis.data.Task
 import com.lukas.jarvis.data.Tracker
 import com.lukas.jarvis.data.TrackerStatus
 import com.lukas.jarvis.maps.Geo
-import com.lukas.jarvis.control.Phone
+import com.lukas.jarvis.maps.Locator
 import com.lukas.jarvis.maps.Navigator
+import com.lukas.jarvis.maps.PlacesClient
 import com.lukas.jarvis.stage.Element
 import com.lukas.jarvis.stage.StageStore
 import com.lukas.jarvis.notify.Reminders
+import com.lukas.jarvis.web.Weather
 import com.lukas.jarvis.web.WebTools
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
 
@@ -33,211 +45,459 @@ data class ToolEffects(
  * The bridge between the model and the phone. Every tool returns plain text
  * rather than JSON: small free-tier models read prose far more reliably than
  * they read nested objects.
+ *
+ * The schema list is assembled in groups rather than as one long literal, and
+ * each group is gated on the setting that owns it. That is not only tidier to
+ * read — a free-tier model handed forty tool definitions starts picking the
+ * wrong one, so the surface a given user sees is the one they have switched on.
  */
 class Tools(
     private val brain: Brain,
     private val web: WebTools,
+    private val weather: Weather,
     private val reminders: Reminders,
     private val navigator: Navigator,
+    private val locator: Locator,
+    private val places: PlacesClient,
     private val stage: StageStore,
-    private val phone: Phone
+    private val phone: Phone,
+    private val device: Device,
+    private val launcher: Launcher,
+    private val people: People,
+    private val agenda: Agenda,
+    private val briefer: Briefer
 ) {
 
-    fun schemas(settings: Settings): List<JSONObject> {
-        val list = mutableListOf(
-            tool(
-                "remember",
-                "Save something to long-term memory. Use whenever the user states a fact, " +
-                    "preference, plan, name, place, or anything worth recalling later.",
-                props(
-                    "content" to str("The fact, written as a clear standalone sentence in third person, e.g. 'Lukas's bike lock code is 4821'."),
-                    "kind" to str("Category of memory.", Memory.ALL_KINDS),
-                    "tags" to arr("Short lowercase keywords to help find this later."),
-                    "importance" to int("1 trivial to 5 critical. Default 3.")
-                ),
-                listOf("content")
-            ),
-            tool(
-                "recall",
-                "Search long-term memory. Use before answering anything about the user's own life, " +
-                    "belongings, plans or past statements.",
-                props(
-                    "query" to str("What to look for, in keywords."),
-                    "kind" to str("Restrict to one category.", Memory.ALL_KINDS),
-                    "limit" to int("How many to return. Default 6.")
-                ),
-                listOf("query")
-            ),
-            tool(
-                "forget",
-                "Delete a memory by its id. Only use when the user asks to forget something.",
-                props("id" to int("The memory id shown by recall.")),
-                listOf("id")
-            ),
-            tool(
-                "log_entry",
-                "Record one movement on a tracker: money spent or received, calories eaten, " +
-                    "kilometres run, hours worked. Creates the tracker automatically if it is new. " +
-                    "Use this every time the user mentions buying something or doing a countable thing.",
-                props(
-                    "tracker" to str("Short name of the thing being tracked, e.g. 'groceries', 'card', 'calories'."),
-                    "amount" to num("How much. Always positive."),
-                    "direction" to str("'out' for spending/using, 'in' for income/adding.", listOf("out", "in")),
-                    "note" to str("What it was, e.g. 'chips'."),
-                    "unit" to str("Currency code or unit, e.g. 'EUR', 'kcal', 'km'. Defaults to ${settings.defaultCurrency}."),
-                    "kind" to str("What sort of quantity this is.", Tracker.ALL_KINDS),
-                    "occurred_at" to str("ISO time if it did not happen just now, e.g. '2026-09-15T18:30'.")
-                ),
-                listOf("tracker", "amount")
-            ),
-            tool(
-                "tracker_status",
-                "Read current totals: money left on a card, budget remaining this period, " +
-                    "calories today. Call this whenever the user asks how much of anything is left.",
-                props("tracker" to str("Name of one tracker, or omit for all of them.")),
-                emptyList()
-            ),
-            tool(
-                "configure_tracker",
-                "Create a tracker or change its budget, starting balance, reset period or unit. " +
-                    "Use when the user says things like 'my card has 50 euros on it' or " +
-                    "'my food budget is 200 a month'.",
-                props(
-                    "tracker" to str("Short name."),
-                    "label" to str("Nicer display name."),
-                    "kind" to str("What sort of quantity.", Tracker.ALL_KINDS),
-                    "unit" to str("Currency code or unit."),
-                    "budget" to num("Spending cap per period. Omit to leave unchanged."),
-                    "starting_balance" to num("Starting amount, for card or wallet style balances."),
-                    "period" to str("When the budget resets.", Tracker.ALL_PERIODS)
-                ),
-                listOf("tracker")
-            ),
-            tool(
-                "list_entries",
-                "List recent movements on a tracker, newest first.",
-                props(
-                    "tracker" to str("Name of the tracker, or omit for everything."),
-                    "limit" to int("How many. Default 10.")
-                ),
-                emptyList()
-            ),
-            tool(
-                "add_task",
-                "Add a task or reminder. The phone will notify at the due time.",
-                props(
-                    "title" to str("What to do."),
-                    "due" to str("ISO local time such as '2026-09-17T09:00', or a relative value like '+2h'."),
-                    "repeat" to str("How often it repeats.", Task.ALL_REPEATS),
-                    "notes" to str("Extra detail.")
-                ),
-                listOf("title")
-            ),
-            tool(
-                "list_tasks",
-                "List tasks. Open ones by default.",
-                props("include_done" to bool("Include completed tasks too.")),
-                emptyList()
-            ),
-            tool(
-                "complete_task",
-                "Mark a task done by its id.",
-                props("id" to int("The task id shown by list_tasks.")),
-                listOf("id")
-            ),
-            tool(
-                "now",
-                "Get the current date, time and day of week.",
-                props(),
-                emptyList()
-            )
-        )
+    fun schemas(settings: Settings): List<JSONObject> = buildList {
+        addAll(memoryTools())
+        addAll(trackerTools(settings))
+        addAll(taskTools())
+        addAll(thinkingTools())
+        if (settings.webSearchEnabled) addAll(webTools())
+        if (settings.weatherEnabled) add(weatherTool())
+        if (settings.mapsEnabled) addAll(placeTools(settings))
+        if (settings.calendarEnabled) addAll(calendarTools())
+        if (settings.contactsEnabled) add(contactTool())
+        if (settings.deviceControlEnabled) addAll(deviceTools())
+        addAll(mediaTools())
+        add(showTool())
+    }
 
-        if (settings.webSearchEnabled) {
-            list += tool(
-                "web_search",
-                "Search the live internet. Use for news, prices, opening hours, facts you are " +
-                    "unsure about, or anything after your training cutoff.",
-                props(
-                    "query" to str("Search terms."),
-                    "limit" to int("How many results. Default 5.")
-                ),
-                listOf("query")
-            )
-            list += tool(
-                "open_url",
-                "Fetch a web page and read its text. Use to follow up on a search result.",
-                props("url" to str("Full URL to open.")),
-                listOf("url")
-            )
-        }
+    // ------------------------------------------------------------ the schemas
 
-        if (settings.mapsEnabled) {
-            list += tool(
-                "find_places",
-                "Find real places around the user: restaurants, cafes, shops, pharmacies, " +
-                    "cash machines, stations, anything with an address. Use this whenever the " +
-                    "user wonders where to eat, drink, buy or go, or says something like " +
-                    "'I'm hungry' or 'is there one near me'. The results are pinned on the map.",
-                props(
-                    "query" to str("What to look for in plain words, e.g. 'restaurants', 'pizza', 'pharmacy', 'Aldi'."),
-                    "near" to str("Area to search around, e.g. 'Berlin Mitte'. Omit to search around the user."),
-                    "radius_m" to int("How far to look, in metres. Default ${settings.searchRadiusMeters}."),
-                    "limit" to int("How many results. Default 5.")
-                ),
-                listOf("query")
-            )
-            list += tool(
-                "route_to",
-                "Work out the way from the user to a place and draw it on the map. Use after " +
-                    "find_places, or whenever the user asks how to get somewhere or how far it is.",
-                props(
-                    "destination" to str(
-                        "Where to: a name from find_places, a result number like '2', or an address. " +
-                            "Omit to route to the currently selected pin."
-                    ),
-                    "mode" to str("How they are travelling. Defaults to ${settings.travelMode}.", Geo.ALL_MODES)
-                ),
-                emptyList()
-            )
-            list += tool(
-                "start_navigation",
-                "Hand turn-by-turn directions to the phone's maps app. Only use when the user " +
-                    "asks to start or open navigation, not for a simple 'how far is it'.",
-                props(
-                    "destination" to str("Where to. Omit to use the place already on the map."),
-                    "mode" to str("How they are travelling.", Geo.ALL_MODES)
-                ),
-                emptyList()
-            )
-            list += tool(
-                "where_am_i",
-                "Get the user's current street and area. Use when they ask where they are, or " +
-                    "when an answer depends on which part of town they are in.",
-                props(),
-                emptyList()
-            )
-        }
-
-        list += tool(
-            "show",
-            "Put something on the user's screen. Call this whenever an answer is better " +
-                "looked at than listened to, and whenever the user asks to see something. " +
-                "Available: ${Element.names()}.",
+    private fun memoryTools(): List<JSONObject> = listOf(
+        tool(
+            "remember",
+            "Save something to long-term memory. Use whenever the user states a fact, " +
+                "preference, plan, name, place, or anything worth recalling later.",
             props(
-                "element" to str("Which one to show.", Element.entries.map { it.title.lowercase(Locale.ROOT) }),
-                "note" to str("One short line about why, shown under it. Optional.")
+                "content" to str("The fact, written as a clear standalone sentence in third person, e.g. 'Lukas's bike lock code is 4821'."),
+                "kind" to str("Category of memory.", Memory.ALL_KINDS),
+                "tags" to arr("Short lowercase keywords to help find this later."),
+                "importance" to int("1 trivial to 5 critical. Default 3.")
             ),
-            listOf("element")
+            listOf("content")
+        ),
+        tool(
+            "recall",
+            "Search long-term memory. Use before answering anything about the user's own life, " +
+                "belongings, plans or past statements.",
+            props(
+                "query" to str("What to look for, in keywords."),
+                "kind" to str("Restrict to one category.", Memory.ALL_KINDS),
+                "limit" to int("How many to return. Default 6.")
+            ),
+            listOf("query")
+        ),
+        tool(
+            "update_memory",
+            "Correct something already remembered. Use when the user says a stored fact has " +
+                "changed rather than asking to forget it — a new address, a new password, a " +
+                "changed plan.",
+            props(
+                "id" to int("The memory id shown by recall."),
+                "content" to str("The corrected sentence."),
+                "importance" to int("1 to 5, if it should change."),
+                "pinned" to bool("Keep it permanently at hand.")
+            ),
+            listOf("id")
+        ),
+        tool(
+            "forget",
+            "Delete a memory by its id. Only use when the user asks to forget something.",
+            props("id" to int("The memory id shown by recall.")),
+            listOf("id")
+        ),
+        tool(
+            "recall_conversation",
+            "Search everything the two of you have said before. Use for 'what did I tell you " +
+                "about', 'what did you say when', or anything referring back to an earlier talk.",
+            props(
+                "query" to str("Words that would appear in that conversation."),
+                "limit" to int("How many turns. Default 8.")
+            ),
+            listOf("query")
         )
-        list += tool(
+    )
+
+    private fun trackerTools(settings: Settings): List<JSONObject> = listOf(
+        tool(
+            "log_entry",
+            "Record one movement on a tracker: money spent or received, calories eaten, " +
+                "kilometres run, hours worked. Creates the tracker automatically if it is new. " +
+                "Use this every time the user mentions buying something or doing a countable thing.",
+            props(
+                "tracker" to str("Short name of the thing being tracked, e.g. 'groceries', 'card', 'calories'."),
+                "amount" to num("How much. Always positive."),
+                "direction" to str("'out' for spending/using, 'in' for income/adding.", listOf("out", "in")),
+                "note" to str("What it was, e.g. 'chips'."),
+                "unit" to str("Currency code or unit, e.g. 'EUR', 'kcal', 'km'. Defaults to ${settings.defaultCurrency}."),
+                "kind" to str("What sort of quantity this is.", Tracker.ALL_KINDS),
+                "occurred_at" to str("ISO time if it did not happen just now, e.g. '2026-09-15T18:30'.")
+            ),
+            listOf("tracker", "amount")
+        ),
+        tool(
+            "tracker_status",
+            "Read current totals: money left on a card, budget remaining this period, " +
+                "calories today. Call this whenever the user asks how much of anything is left.",
+            props("tracker" to str("Name of one tracker, or omit for all of them.")),
+            emptyList()
+        ),
+        tool(
+            "configure_tracker",
+            "Create a tracker or change its budget, starting balance, reset period or unit. " +
+                "Use when the user says things like 'my card has 50 euros on it' or " +
+                "'my food budget is 200 a month'.",
+            props(
+                "tracker" to str("Short name."),
+                "label" to str("Nicer display name."),
+                "kind" to str("What sort of quantity.", Tracker.ALL_KINDS),
+                "unit" to str("Currency code or unit."),
+                "budget" to num("Spending cap per period. Omit to leave unchanged."),
+                "starting_balance" to num("Starting amount, for card or wallet style balances."),
+                "period" to str("When the budget resets.", Tracker.ALL_PERIODS)
+            ),
+            listOf("tracker")
+        ),
+        tool(
+            "list_entries",
+            "List recent movements on a tracker, newest first.",
+            props(
+                "tracker" to str("Name of the tracker, or omit for everything."),
+                "limit" to int("How many. Default 10.")
+            ),
+            emptyList()
+        ),
+        tool(
+            "spending_report",
+            "Add up a period and break it down: totals per tracker, the biggest single items, " +
+                "and the daily average. Use for 'where did my money go', 'how much did I spend " +
+                "this week', 'what am I averaging'.",
+            props(
+                "days" to int("How far back to look. Default 30."),
+                "tracker" to str("Restrict to one tracker, or omit for all of them.")
+            ),
+            emptyList()
+        )
+    )
+
+    private fun taskTools(): List<JSONObject> = listOf(
+        tool(
+            "add_task",
+            "Add a task or reminder. The phone will notify at the due time.",
+            props(
+                "title" to str("What to do."),
+                "due" to str("ISO local time such as '2026-09-17T09:00', or a relative value like '+2h'."),
+                "repeat" to str("How often it repeats.", Task.ALL_REPEATS),
+                "notes" to str("Extra detail.")
+            ),
+            listOf("title")
+        ),
+        tool(
+            "list_tasks",
+            "List tasks. Open ones by default.",
+            props("include_done" to bool("Include completed tasks too.")),
+            emptyList()
+        ),
+        tool(
+            "complete_task",
+            "Mark a task done by its id.",
+            props("id" to int("The task id shown by list_tasks.")),
+            listOf("id")
+        )
+    )
+
+    private fun thinkingTools(): List<JSONObject> = listOf(
+        tool(
+            "now",
+            "Get the current date, time and day of week.",
+            props(),
+            emptyList()
+        ),
+        tool(
+            "calculate",
+            "Work out an arithmetic expression exactly. ALWAYS use this instead of doing sums " +
+                "in your head — percentages, splitting a bill, totals, unit prices. Supports " +
+                "+ - * / ^ %, brackets, sqrt, ln, log, sin, cos, tan, abs, round, pi and e.",
+            props("expression" to str("The sum, e.g. '(249.99 * 0.175) + 12' or '15% of 80'.")),
+            listOf("expression")
+        ),
+        tool(
+            "convert_units",
+            "Convert between units exactly. Known units — ${Units.known()}.",
+            props(
+                "amount" to num("How much of the source unit."),
+                "from" to str("The unit it is in now, e.g. 'miles'."),
+                "to" to str("The unit wanted, e.g. 'km'.")
+            ),
+            listOf("amount", "from", "to")
+        ),
+        tool(
+            "briefing",
+            "The whole day in one call: weather, what is due, the next appointment, budgets and " +
+                "the phone's own state. Use for 'how does my day look', 'good morning', " +
+                "'catch me up', or any question that spans more than one of those.",
+            props(),
+            emptyList()
+        )
+    )
+
+    private fun webTools(): List<JSONObject> = listOf(
+        tool(
+            "web_search",
+            "Search the live internet. Use for news, prices, opening hours, facts you are " +
+                "unsure about, or anything after your training cutoff.",
+            props(
+                "query" to str("Search terms."),
+                "limit" to int("How many results. Default 5.")
+            ),
+            listOf("query")
+        ),
+        tool(
+            "open_url",
+            "Fetch a web page and read its text. Use to follow up on a search result.",
+            props("url" to str("Full URL to open.")),
+            listOf("url")
+        )
+    )
+
+    private fun weatherTool(): JSONObject = tool(
+        "weather",
+        "The real forecast for where the user is, or for a named place. Use for anything about " +
+            "rain, temperature, wind, or whether to take a coat. Never guess the weather.",
+        props(
+            "place" to str("A town or area to look up. Omit for where the user is now."),
+            "days" to int("How many days of forecast. 1 for right now, up to 7.")
+        ),
+        emptyList()
+    )
+
+    private fun placeTools(settings: Settings): List<JSONObject> = listOf(
+        tool(
+            "find_places",
+            "Find real places around the user: restaurants, cafes, shops, pharmacies, " +
+                "cash machines, stations, anything with an address. Use this whenever the " +
+                "user wonders where to eat, drink, buy or go, or says something like " +
+                "'I'm hungry' or 'is there one near me'. The results are pinned on the map.",
+            props(
+                "query" to str("What to look for in plain words, e.g. 'restaurants', 'pizza', 'pharmacy', 'Aldi'."),
+                "near" to str("Area to search around, e.g. 'Berlin Mitte'. Omit to search around the user."),
+                "radius_m" to int("How far to look, in metres. Default ${settings.searchRadiusMeters}."),
+                "limit" to int("How many results. Default 5.")
+            ),
+            listOf("query")
+        ),
+        tool(
+            "route_to",
+            "Work out the way from the user to a place and draw it on the map. Use after " +
+                "find_places, or whenever the user asks how to get somewhere or how far it is.",
+            props(
+                "destination" to str(
+                    "Where to: a name from find_places, a result number like '2', or an address. " +
+                        "Omit to route to the currently selected pin."
+                ),
+                "mode" to str("How they are travelling. Defaults to ${settings.travelMode}.", Geo.ALL_MODES)
+            ),
+            emptyList()
+        ),
+        tool(
+            "start_navigation",
+            "Hand turn-by-turn directions to the phone's maps app. Only use when the user " +
+                "asks to start or open navigation, not for a simple 'how far is it'.",
+            props(
+                "destination" to str("Where to. Omit to use the place already on the map."),
+                "mode" to str("How they are travelling.", Geo.ALL_MODES)
+            ),
+            emptyList()
+        ),
+        tool(
+            "where_am_i",
+            "Get the user's current street and area. Use when they ask where they are, or " +
+                "when an answer depends on which part of town they are in.",
+            props(),
+            emptyList()
+        )
+    )
+
+    private fun calendarTools(): List<JSONObject> = listOf(
+        tool(
+            "calendar",
+            "Read what is on the phone's calendar. Use for 'what have I got on', 'am I free', " +
+                "'when is my next meeting'.",
+            props(
+                "days" to int("How far ahead to look. 1 for today, 7 for the week. Default 1."),
+                "limit" to int("How many entries. Default 10.")
+            ),
+            emptyList()
+        ),
+        tool(
+            "add_calendar_event",
+            "Put an appointment in the user's real calendar. Use for meetings, appointments and " +
+                "anything with other people in it; use add_task for a private to-do.",
+            props(
+                "title" to str("What the event is."),
+                "start" to str("ISO local start time, e.g. '2026-09-24T14:30', or '+2h'."),
+                "end" to str("ISO local end time. Defaults to an hour after the start."),
+                "location" to str("Where it is."),
+                "description" to str("Any detail worth keeping with it.")
+            ),
+            listOf("title", "start")
+        )
+    )
+
+    private fun contactTool(): JSONObject = tool(
+        "find_contact",
+        "Look a person up in the address book and get their number. Call this before dial or " +
+            "send_message whenever the user names a person rather than reading out digits.",
+        props(
+            "name" to str("The person's name, or part of it."),
+            "limit" to int("How many matches. Default 3.")
+        ),
+        listOf("name")
+    )
+
+    private fun deviceTools(): List<JSONObject> = listOf(
+        tool(
+            "set_alarm",
+            "Set an alarm in the phone's clock app. Use for wake-ups and fixed times of day; " +
+                "use add_task when it is a thing to do rather than a time to be woken.",
+            props(
+                "time" to str("When, as 'HH:MM' or an ISO time. Relative values like '+30m' work too."),
+                "label" to str("What the alarm is for.")
+            ),
+            listOf("time")
+        ),
+        tool(
+            "set_timer",
+            "Start a countdown in the phone's clock app: pasta, laundry, a break.",
+            props(
+                "minutes" to num("How long, in minutes. Decimals are fine."),
+                "label" to str("What it is timing.")
+            ),
+            listOf("minutes")
+        ),
+        tool(
+            "device_status",
+            "How the phone itself is doing: battery, charging, network, free storage, ringer, " +
+                "make and model. Use for 'how much battery', 'am I online', 'what phone is this'.",
+            props(
+                "what" to str(
+                    "Which part, or 'all'.",
+                    listOf("all", "battery", "network", "storage", "ringer", "hardware")
+                )
+            ),
+            emptyList()
+        ),
+        tool(
+            "torch",
+            "Switch the phone's flashlight on or off.",
+            props("on" to bool("True to light it, false to put it out.")),
+            listOf("on")
+        ),
+        tool(
+            "ringer",
+            "Set the ringer to normal, vibrate or silent.",
+            props("mode" to str("Which one.", listOf("normal", "vibrate", "silent"))),
+            listOf("mode")
+        ),
+        tool(
+            "clipboard",
+            "Copy text to the phone's clipboard, or read what is on it.",
+            props(
+                "action" to str("What to do.", listOf("copy", "read")),
+                "text" to str("For 'copy': what to put there.")
+            ),
+            listOf("action")
+        ),
+        tool(
+            "open_app",
+            "Open an app that is installed on the phone, by whatever the user calls it.",
+            props("name" to str("The app's name, e.g. 'spotify', 'whatsapp', 'camera'.")),
+            listOf("name")
+        ),
+        tool(
+            "open_settings_page",
+            "Open a page of Android settings — wifi, bluetooth, battery, display, sound, " +
+                "location, storage, apps, notifications, airplane. Use when something needs " +
+                "changing that only the system itself may change.",
+            props("page" to str("Which page.")),
+            listOf("page")
+        ),
+        tool(
+            "dial",
+            "Put a number in the dialler, ready for the user to press call. This does NOT place " +
+                "the call — say so. Use find_contact first when given a name.",
+            props("number" to str("The phone number, digits and an optional leading +.")),
+            listOf("number")
+        ),
+        tool(
+            "send_message",
+            "Write a text message and leave it open for the user to send. It is NOT sent by you; " +
+                "say that it is waiting for them. Use find_contact first when given a name.",
+            props(
+                "number" to str("Who to write to."),
+                "text" to str("The message, in the user's own voice and language.")
+            ),
+            listOf("number")
+        ),
+        tool(
+            "send_email",
+            "Draft an email and leave it open for the user to send. It is NOT sent by you.",
+            props(
+                "to" to str("Recipient address."),
+                "subject" to str("Subject line."),
+                "body" to str("The message.")
+            ),
+            emptyList()
+        ),
+        tool(
+            "share",
+            "Hand some text to whichever app the user picks — a note to a friend, a link, a list.",
+            props(
+                "text" to str("What to share."),
+                "title" to str("A subject line, if the target app uses one.")
+            ),
+            listOf("text")
+        ),
+        tool(
+            "open_link",
+            "Open a web page in the user's browser. Use when they want to look at something " +
+                "themselves; use open_url when YOU need to read it.",
+            props("url" to str("The address to open.")),
+            listOf("url")
+        )
+    )
+
+    private fun mediaTools(): List<JSONObject> = listOf(
+        tool(
             "play_music",
             "Start music. With a song, artist or album, the phone's music app searches for it; " +
                 "with nothing, whatever was last playing resumes.",
             props("query" to str("What to play, e.g. 'Rammstein Sonne'. Leave out to just resume.")),
             emptyList()
-        )
-        list += tool(
+        ),
+        tool(
             "control_playback",
             "Pause, resume or skip what is playing, or set the media volume.",
             props(
@@ -248,8 +508,8 @@ class Tools(
                 "percent" to int("For 'volume' only: 0 to 100.")
             ),
             listOf("action")
-        )
-        list += tool(
+        ),
+        tool(
             "bluetooth",
             "List the phone's paired Bluetooth devices, or open the Bluetooth settings page. " +
                 "Android does not let this app connect a device itself, so say so plainly " +
@@ -259,34 +519,99 @@ class Tools(
             ),
             listOf("action")
         )
-        return list
-    }
+    )
+
+    private fun showTool(): JSONObject = tool(
+        "show",
+        "Put something on the user's screen. Call this whenever an answer is better " +
+            "looked at than listened to, and whenever the user asks to see something. " +
+            "Available: ${Element.names()}.",
+        props(
+            "element" to str("Which one to show.", Element.entries.map { it.title.lowercase(Locale.ROOT) }),
+            "note" to str("One short line about why, shown under it. Optional.")
+        ),
+        listOf("element")
+    )
+
+    // ---------------------------------------------------------------- dispatch
 
     suspend fun execute(call: ToolCall, settings: Settings, effects: ToolEffects): String {
         val args = runCatching { JSONObject(call.argumentsJson) }.getOrDefault(JSONObject())
         return try {
             when (call.name) {
+                // memory
                 "remember" -> remember(args, effects)
                 "recall" -> recall(args)
+                "update_memory" -> updateMemory(args, effects)
                 "forget" -> forget(args, effects)
+                "recall_conversation" -> recallConversation(args)
+
+                // trackers
                 "log_entry" -> logEntry(args, settings, effects)
                 "tracker_status" -> trackerStatus(args)
                 "configure_tracker" -> configureTracker(args, settings, effects)
                 "list_entries" -> listEntries(args)
+                "spending_report" -> spendingReport(args)
+
+                // tasks
                 "add_task" -> addTask(args, effects)
                 "list_tasks" -> listTasks(args)
                 "complete_task" -> completeTask(args, effects)
+
+                // thinking
+                "now" -> nowText()
+                "calculate" -> calculate(args)
+                "convert_units" -> convert(args)
+                "briefing" -> briefer.build(settings).speak()
+
+                // the world
+                "web_search" -> webSearch(args)
+                "open_url" -> web.readPage(args.optString("url"))
+                "weather" -> weather(args)
                 "find_places" -> findPlaces(args, settings)
                 "route_to" -> routeTo(args, settings)
                 "start_navigation" -> startNavigation(args, settings)
                 "where_am_i" -> navigator.whereAmI()
-                "web_search" -> webSearch(args)
-                "open_url" -> web.readPage(args.optString("url"))
-                "now" -> nowText()
-                "show" -> show(args)
+
+                // calendar and people
+                "calendar" -> agenda.describe(args.optInt("days", 1), args.optInt("limit", 10))
+                "add_calendar_event" -> addEvent(args)
+                "find_contact" -> people.describe(
+                    args.optString("name"),
+                    args.optInt("limit", 3).coerceIn(1, 10)
+                )
+
+                // the phone
+                "set_alarm" -> setAlarm(args)
+                "set_timer" -> setTimer(args)
+                "device_status" -> deviceStatus(args)
+                "torch" -> device.torch(args.optBoolean("on", true))
+                "ringer" -> device.setRinger(args.optString("mode"))
+                "clipboard" -> clipboard(args)
+                "open_app" -> launcher.openApp(args.optString("name"))
+                "open_settings_page" -> device.openSettings(args.optString("page"))
+                "dial" -> launcher.dial(args.optString("number"))
+                "send_message" -> launcher.composeSms(
+                    args.optString("number"),
+                    args.optString("text").takeIf { it.isNotBlank() }
+                )
+                "send_email" -> launcher.composeEmail(
+                    args.optString("to").takeIf { it.isNotBlank() },
+                    args.optString("subject").takeIf { it.isNotBlank() },
+                    args.optString("body").takeIf { it.isNotBlank() }
+                )
+                "share" -> launcher.share(
+                    args.optString("text"),
+                    args.optString("title").takeIf { it.isNotBlank() }
+                )
+                "open_link" -> launcher.openUrl(args.optString("url"))
+
+                // media and the screen
                 "play_music" -> phone.play(args.optString("query").takeIf { it.isNotBlank() })
                 "control_playback" -> playback(args)
                 "bluetooth" -> bluetooth(args)
+                "show" -> show(args)
+
                 else -> "Unknown tool '${call.name}'."
             }
         } catch (e: Exception) {
@@ -326,6 +651,24 @@ class Tools(
         }.trim()
     }
 
+    private fun updateMemory(args: JSONObject, effects: ToolEffects): String {
+        val id = args.optLong("id", -1L)
+        if (id <= 0) return "Need a valid memory id."
+        val existing = brain.getMemory(id) ?: return "No memory with id $id."
+        val updated = existing.copy(
+            content = args.optString("content").trim().ifBlank { existing.content },
+            importance = if (args.has("importance")) {
+                args.optInt("importance", existing.importance)
+            } else {
+                existing.importance
+            },
+            pinned = if (args.has("pinned")) args.optBoolean("pinned") else existing.pinned
+        )
+        brain.updateMemory(updated)
+        effects.memoriesChanged = true
+        return "Updated (id $id): ${updated.content}"
+    }
+
     private fun forget(args: JSONObject, effects: ToolEffects): String {
         val id = args.optLong("id", -1L)
         if (id <= 0) return "Need a valid memory id."
@@ -333,6 +676,17 @@ class Tools(
         brain.deleteMemory(id)
         effects.memoriesChanged = true
         return "Forgot: ${existing.content}"
+    }
+
+    private fun recallConversation(args: JSONObject): String {
+        val query = args.optString("query").trim()
+        if (query.isBlank()) return "Need something to look for."
+        val hits = brain.searchMessages(query, args.optInt("limit", 8).coerceIn(1, 25))
+        if (hits.isEmpty()) return "Nothing in your past conversations mentions '$query'."
+        return hits.reversed().joinToString("\n") { message ->
+            val who = if (message.role == ChatMessage.ROLE_USER) "They said" else "You said"
+            "$who (${TimeUtil.relative(message.createdAt)}): ${message.content.take(220)}"
+        }
     }
 
     // ---------------------------------------------------------------- trackers
@@ -439,6 +793,60 @@ class Tools(
         }
     }
 
+    /**
+     * The arithmetic done here rather than in the model.
+     *
+     * "Where did my money go" is the question most likely to be answered with a
+     * plausible invention, so every number in this reply is summed from the rows
+     * and the model is left with nothing to do but read it out.
+     */
+    private fun spendingReport(args: JSONObject): String {
+        val days = args.optInt("days", 30).coerceIn(1, 365)
+        val name = args.optString("tracker").trim()
+        val only = if (name.isBlank()) null else brain.findTracker(name)
+        if (name.isNotBlank() && only == null) return "No tracker called '$name'."
+
+        val now = System.currentTimeMillis()
+        val from = now - days * 86_400_000L
+        val entries = brain.entriesBetween(from, now, only?.id)
+        if (entries.isEmpty()) return "Nothing recorded in the last $days days."
+
+        val byId = brain.allTrackers().associateBy { it.id }
+        val grouped = entries.groupBy { it.trackerId }
+
+        return buildString {
+            appendLine("Last $days days:")
+            grouped.entries
+                .sortedByDescending { (_, rows) ->
+                    rows.filter { it.direction == Entry.DIR_OUT }.sumOf { it.amount }
+                }
+                .forEach { (trackerId, rows) ->
+                    val tracker = byId[trackerId]
+                    val out = rows.filter { it.direction == Entry.DIR_OUT }.sumOf { it.amount }
+                    val income = rows.filter { it.direction == Entry.DIR_IN }.sumOf { it.amount }
+                    append("- ${tracker?.label ?: "Unknown"}: ${money(out, tracker)} out")
+                    if (income > 0) append(", ${money(income, tracker)} in")
+                    append(" across ${rows.size} entries")
+                    append(", averaging ${money(out / days, tracker)} a day")
+                    appendLine(".")
+                }
+
+            val biggest = entries.filter { it.direction == Entry.DIR_OUT }
+                .sortedByDescending { it.amount }
+                .take(3)
+            if (biggest.isNotEmpty()) {
+                appendLine("Biggest single items:")
+                biggest.forEach { e ->
+                    val tracker = byId[e.trackerId]
+                    appendLine(
+                        "- ${money(e.amount, tracker)} ${e.note ?: tracker?.label ?: ""}" +
+                            " (${TimeUtil.relative(e.occurredAt)})"
+                    )
+                }
+            }
+        }.trim()
+    }
+
     private fun inferKind(unit: String, settings: Settings): String {
         val candidate = unit.ifBlank { settings.defaultCurrency }.uppercase(Locale.ROOT)
         return if (candidate in CURRENCIES) Tracker.KIND_MONEY else Tracker.KIND_QUANTITY
@@ -518,6 +926,62 @@ class Tools(
         return "Completed: ${done.title}"
     }
 
+    // ---------------------------------------------------------------- thinking
+
+    private fun nowText(): String {
+        val now = System.currentTimeMillis()
+        return "Current local date and time: ${TimeUtil.format(now)} (ISO ${TimeUtil.iso(now)})."
+    }
+
+    private fun calculate(args: JSONObject): String {
+        val expression = args.optString("expression").trim()
+        if (expression.isBlank()) return "Need an expression."
+        return when (val result = Calculator.evaluate(expression)) {
+            is Calculator.Result.Ok -> "$expression = ${Calculator.format(result.value)}"
+            is Calculator.Result.Error -> "I could not work that out: ${result.reason}."
+        }
+    }
+
+    private fun convert(args: JSONObject): String {
+        val amount = args.optDouble("amount", Double.NaN)
+        if (amount.isNaN()) return "Need an amount to convert."
+        return when (
+            val result = Units.convert(amount, args.optString("from"), args.optString("to"))
+        ) {
+            is Units.Result.Ok -> result.spoken + "."
+            is Units.Result.Error -> result.reason
+        }
+    }
+
+    // ----------------------------------------------------------------- weather
+
+    private suspend fun weather(args: JSONObject): String {
+        val placeQuery = args.optString("place").trim()
+        val days = args.optInt("days", 3).coerceIn(1, 7)
+
+        // A named place is geocoded through the same client the map uses; with
+        // no name it is wherever the phone is, which is what "will it rain"
+        // means nine times in ten.
+        val (point, label) = if (placeQuery.isNotBlank()) {
+            val hit = runCatching { places.geocode(placeQuery, limit = 1) }
+                .getOrDefault(emptyList())
+                .firstOrNull()
+                ?: return "I could not find $placeQuery on the map."
+            hit.point to hit.name
+        } else {
+            val here = locator.current()
+                ?: return "I do not have your location yet, so I cannot tell you the weather " +
+                    "here. Name a town and I will look that up instead."
+            val described = runCatching { places.describe(here) }.getOrNull()
+                ?.split(",")?.firstOrNull()?.trim()
+            here to (described ?: "where you are")
+        }
+
+        val forecast = weather.at(point, label, days)
+            ?: return "The weather service did not answer just now."
+        return weather.speak(forecast)
+    }
+
     // -------------------------------------------------------------------- maps
     //
     // These write their results onto the map as well as returning prose, so the
@@ -569,21 +1033,72 @@ class Tools(
         }.trim()
     }
 
-    private fun nowText(): String {
-        val now = System.currentTimeMillis()
-        return "Current local date and time: ${TimeUtil.format(now)} (ISO ${TimeUtil.iso(now)})."
-    }
+    // ---------------------------------------------------------------- calendar
 
-    // ------------------------------------------------------------- the screen
-
-    private fun show(args: JSONObject): String {
-        val wanted = Element.match(args.optString("element"))
-            ?: return "I do not have an element called that. I have: ${Element.names()}."
-        stage.show(wanted, args.optString("note").trim())
-        return "Showing the ${wanted.title.lowercase(Locale.ROOT)}."
+    private fun addEvent(args: JSONObject): String {
+        val title = args.optString("title").trim()
+        val start = TimeUtil.parse(args.optString("start").takeIf { it.isNotBlank() })
+            ?: return "I need a start time I can read, like '2026-09-24T14:30' or '+2h'."
+        val end = TimeUtil.parse(args.optString("end").takeIf { it.isNotBlank() })
+        return launcher.createEvent(
+            title = title,
+            startMillis = start,
+            endMillis = end,
+            location = args.optString("location").takeIf { it.isNotBlank() },
+            description = args.optString("description").takeIf { it.isNotBlank() }
+        )
     }
 
     // -------------------------------------------------------------- the phone
+
+    private fun setAlarm(args: JSONObject): String {
+        val raw = args.optString("time").trim()
+        if (raw.isBlank()) return "Need a time for the alarm."
+
+        // "07:30" on its own is the common case and is not an ISO timestamp, so
+        // it is read directly rather than forced through the parser.
+        val short = Regex("^(\\d{1,2})[:.](\\d{2})$").find(raw)
+        if (short != null) {
+            return launcher.setAlarm(
+                hour = short.groupValues[1].toInt(),
+                minute = short.groupValues[2].toInt(),
+                label = args.optString("label").takeIf { it.isNotBlank() }
+            )
+        }
+
+        val at = TimeUtil.parse(raw) ?: return "I could not read '$raw' as a time."
+        val calendar = Calendar.getInstance().apply { timeInMillis = at }
+        return launcher.setAlarm(
+            hour = calendar.get(Calendar.HOUR_OF_DAY),
+            minute = calendar.get(Calendar.MINUTE),
+            label = args.optString("label").takeIf { it.isNotBlank() }
+        )
+    }
+
+    private fun setTimer(args: JSONObject): String {
+        val minutes = args.optDouble("minutes", Double.NaN)
+        if (minutes.isNaN() || minutes <= 0) return "A timer needs a length in minutes."
+        return launcher.setTimer(
+            seconds = (minutes * 60).toInt(),
+            label = args.optString("label").takeIf { it.isNotBlank() }
+        )
+    }
+
+    private fun deviceStatus(args: JSONObject): String =
+        when (args.optString("what").trim().lowercase(Locale.ROOT)) {
+            "battery" -> device.battery()
+            "network", "internet", "connection" -> device.connection()
+            "storage", "space" -> device.storage()
+            "ringer", "sound" -> device.ringer()
+            "hardware", "model", "phone" -> device.hardware()
+            else -> device.status()
+        }
+
+    private fun clipboard(args: JSONObject): String =
+        when (args.optString("action").trim().lowercase(Locale.ROOT)) {
+            "read", "paste", "get" -> device.paste()
+            else -> device.copy(args.optString("text"))
+        }
 
     private fun playback(args: JSONObject): String =
         when (args.optString("action").trim().lowercase(Locale.ROOT)) {
@@ -604,6 +1119,15 @@ class Tools(
             "open_settings", "settings", "open" -> phone.openBluetoothSettings()
             else -> phone.bluetoothDevices()
         }
+
+    // ------------------------------------------------------------- the screen
+
+    private fun show(args: JSONObject): String {
+        val wanted = Element.match(args.optString("element"))
+            ?: return "I do not have an element called that. I have: ${Element.names()}."
+        stage.show(wanted, args.optString("note").trim())
+        return "Showing the ${wanted.title.lowercase(Locale.ROOT)}."
+    }
 
     // ------------------------------------------------------------ schema sugar
 

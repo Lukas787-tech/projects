@@ -20,6 +20,15 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Reading which devices are paired; connecting one stays the system's job. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- "What have I got on today". Read only: events are written by handing the
+         insert intent to the user's own calendar app, which needs no permission. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- "Call Anna" needs a number to dial. Read only, and the call is never placed. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Alarms and timers are set through the clock app rather than scheduled here. -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <!-- The flash, driven through CameraManager, which needs no camera permission. -->
+    <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
 
     <!-- Lets the app resolve the on-device speech recognition / TTS services on API 30+. -->
     <queries>
@@ -28,6 +37,31 @@
         </intent>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <!-- "Open Spotify": the launchable apps, which API 30+ hides by default. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- Dialler, messaging, email, browser and calendar handovers. -->
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="smsto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.INSERT" />
+            <data android:mimeType="vnd.android.cursor.dir/event" />
         </intent>
         <!-- Lets the app tell whether any maps app can take a handover. -->
         <intent>

@@ -57,13 +57,17 @@ import com.lukas.jarvis.ui.components.ChipButton
 import com.lukas.jarvis.ui.components.ModeSwitch
 import com.lukas.jarvis.ui.globe.Globe
 import com.lukas.jarvis.ui.globe.GlobeMood
+import com.lukas.jarvis.ui.components.Tag
 import com.lukas.jarvis.ui.map.MapCanvas
 import com.lukas.jarvis.ui.theme.Accent
+import com.lukas.jarvis.ui.theme.Corner
 import com.lukas.jarvis.ui.theme.Hairline
+import com.lukas.jarvis.ui.theme.Space
 import com.lukas.jarvis.ui.theme.Negative
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
 import com.lukas.jarvis.ui.theme.TextSecondary
+import com.lukas.jarvis.ui.theme.sheen
 import com.lukas.jarvis.vm.AssistantUiState
 import com.lukas.jarvis.vm.Stage
 
@@ -98,7 +102,7 @@ fun VoiceScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = Space.gutter)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
@@ -136,6 +140,7 @@ fun VoiceScreen(
                 state = state,
                 configured = configured,
                 onOpenSettings = onOpenSettings,
+                onSend = onSend,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -145,13 +150,15 @@ fun VoiceScreen(
         if (!voiceMode) {
             Composer(onSend = onSend, onOpenHistory = onOpenHistory)
         } else {
-            Text(
-                text = statusText(state, configured),
-                style = MaterialTheme.typography.labelSmall,
-                color = if (state.stage == Stage.Idle) TextFaint else Accent,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 22.dp)
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(bottom = Space.gutter),
+                contentAlignment = Alignment.Center
+            ) {
+                Tag(
+                    text = statusText(state, configured),
+                    tint = if (state.stage == Stage.Idle) TextFaint else Accent
+                )
+            }
         }
     }
 }
@@ -249,7 +256,11 @@ private fun Readout(
     val lastAssistant = state.messages.lastOrNull { it.role == ChatMessage.ROLE_ASSISTANT }
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = Space.snug)
+            .sheen(RoundedCornerShape(Corner.card))
+            .padding(horizontal = Space.gutter, vertical = Space.step),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         when {
@@ -317,6 +328,7 @@ private fun TextBody(
     state: AssistantUiState,
     configured: Boolean,
     onOpenSettings: () -> Unit,
+    onSend: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -340,6 +352,9 @@ private fun TextBody(
             if (!configured) {
                 Spacer(Modifier.height(14.dp))
                 ChipButton(label = "Open setup", prominent = true, onClick = onOpenSettings)
+            } else {
+                Spacer(Modifier.height(Space.gutter))
+                Suggestions(onSend = onSend)
             }
         }
         return
@@ -456,6 +471,33 @@ private fun Composer(onSend: (String) -> Unit, onOpenHistory: () -> Unit) {
                 contentDescription = "Send",
                 tint = if (draft.isBlank()) TextFaint else MaterialTheme.colorScheme.onPrimary
             )
+        }
+    }
+}
+
+/**
+ * Four things worth asking on the first run.
+ *
+ * An empty assistant screen is the hardest screen in the app: nothing tells a
+ * new user that it can set a timer, do arithmetic exactly, or read the weather.
+ * These are the shortest sentences that each reach a different tool, and tapping
+ * one sends it rather than pasting it into the field — a suggestion you have to
+ * edit before it works is not a suggestion.
+ */
+@Composable
+private fun Suggestions(onSend: (String) -> Unit) {
+    val prompts = listOf(
+        "How does my day look?",
+        "What's the weather like?",
+        "Set a timer for 10 minutes",
+        "I spent 3 euros on coffee"
+    )
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Space.tight)
+    ) {
+        prompts.forEach { prompt ->
+            Tag(text = prompt, tint = TextSecondary, onClick = { onSend(prompt) })
         }
     }
 }

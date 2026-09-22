@@ -70,6 +70,7 @@ import com.lukas.jarvis.ui.components.ChipButton
 import com.lukas.jarvis.ui.components.Panel
 import com.lukas.jarvis.ui.components.Picker
 import com.lukas.jarvis.ui.components.StatusDot
+import com.lukas.jarvis.ui.components.ToggleRow
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
@@ -509,6 +510,39 @@ fun SettingsScreen(
             }
         }
 
+        Panel(
+            title = "Abilities",
+            subtitle = "What Jarvis is allowed to reach beyond the conversation. " +
+                "Each one adds its tools to the assistant; switching a group off " +
+                "keeps the model's choices short and its answers quicker."
+        ) {
+            ToggleRow(
+                title = "Weather",
+                subtitle = "Real forecasts for where you are. No key, no account.",
+                checked = settings.weatherEnabled,
+                onChange = { value -> onUpdate { it.copy(weatherEnabled = value) } }
+            )
+            ToggleRow(
+                title = "Phone control",
+                subtitle = "Alarms, timers, the torch, opening apps, dialling a number, " +
+                    "drafting a message. Nothing is ever sent or called without you.",
+                checked = settings.deviceControlEnabled,
+                onChange = { value -> onUpdate { it.copy(deviceControlEnabled = value) } }
+            )
+            ToggleRow(
+                title = "Calendar",
+                subtitle = "Read what is on today. Android will ask for the permission.",
+                checked = settings.calendarEnabled,
+                onChange = { value -> onUpdate { it.copy(calendarEnabled = value) } }
+            )
+            ToggleRow(
+                title = "Contacts",
+                subtitle = "Look up a number so \"text Anna\" works. Read only.",
+                checked = settings.contactsEnabled,
+                onChange = { value -> onUpdate { it.copy(contactsEnabled = value) } }
+            )
+        }
+
         FloatingDotPanel(
             enabled = settings.floatingDot,
             onChange = { wanted -> onUpdate { it.copy(floatingDot = wanted) } }
@@ -792,30 +826,6 @@ private fun DiagnosticsBlock(diagnostics: String, clipboard: ClipboardManager) {
         icon = Icons.Default.ContentCopy,
         onClick = { clipboard.setText(AnnotatedString(diagnostics)) }
     )
-}
-
-@Composable
-private fun ToggleRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
-            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = TextFaint)
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onChange,
-            colors = SwitchDefaults.colors(checkedTrackColor = Accent)
-        )
-    }
 }
 
 @Composable

@@ -248,7 +248,9 @@ fun ScreenHeader(
         }
         Column(modifier = Modifier.weight(1f)) {
             if (title != null) {
-                Text(title, style = MaterialTheme.typography.displayLarge, color = TextPrimary)
+                // displayLarge is reserved for figures now — a balance, a count —
+                // so a screen title sits one step down the scale.
+                Text(title, style = MaterialTheme.typography.displayMedium, color = TextPrimary)
             }
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         }

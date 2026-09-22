@@ -7,10 +7,12 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.lukas.jarvis.AppContainer
 import com.lukas.jarvis.JarvisApp
+import com.lukas.jarvis.brief.DayBrief
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.core.Vault
 import com.lukas.jarvis.stage.Element
 import com.lukas.jarvis.stage.StageStore
+import com.lukas.jarvis.brief.DayBrief
 import com.lukas.jarvis.core.SettingsStore
 import com.lukas.jarvis.data.ChatMessage
 import com.lukas.jarvis.data.Entry
@@ -106,6 +108,13 @@ class AssistantViewModel(
 
     val map: StateFlow<MapState> = container.mapStore.state
     val tiles: TileCache get() = container.tiles
+
+    /** The day, as both the dashboard and the spoken brief see it. */
+    private val _brief = MutableStateFlow<DayBrief?>(null)
+    val brief: StateFlow<DayBrief?> = _brief.asStateFlow()
+
+    private val _briefLoading = MutableStateFlow(false)
+    val briefLoading: StateFlow<Boolean> = _briefLoading.asStateFlow()
 
     /** True while a pin tapped by hand is being routed to. */
     private val _routing = MutableStateFlow(false)
@@ -290,7 +299,29 @@ class AssistantViewModel(
 
     // -------------------------------------------------------------------- data
 
+    /**
+     * Gathers the day.
+     *
+     * Two of the four sources are network calls, so this is never on the path of
+     * anything else: the dashboard asks for it when it opens, and a turn that
+     * changed a task refreshes it only if it was already on screen.
+     */
+    fun refreshBrief() {
+        if (_briefLoading.value) return
+        _briefLoading.value = true
+        viewModelScope.launch {
+            val day = runCatching {
+                withContext(Dispatchers.IO) { container.briefer.build(settingsStore.current) }
+            }.getOrNull()
+            if (day != null) _brief.value = day
+            _briefLoading.value = false
+        }
+    }
+
     fun refreshAll() {
+        // A brief already on screen is stale the moment a task or a balance
+        // moves, and nothing else would tell it.
+        if (_brief.value != null) refreshBrief()
         viewModelScope.launch {
             val snapshot = withContext(Dispatchers.IO) {
                 Snapshot(

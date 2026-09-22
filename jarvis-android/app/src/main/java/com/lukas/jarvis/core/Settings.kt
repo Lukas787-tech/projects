@@ -26,6 +26,14 @@ data class Settings(
     val autoCapture: Boolean = true,
     val defaultCurrency: String = "EUR",
     val mapsEnabled: Boolean = true,
+    /** Weather, from a keyless public endpoint, using the phone's location. */
+    val weatherEnabled: Boolean = true,
+    /** Alarms, timers, torch, app launching, dialling, drafting a message. */
+    val deviceControlEnabled: Boolean = true,
+    /** Reading the phone's calendar. Off until the permission is granted. */
+    val calendarEnabled: Boolean = false,
+    /** Looking names up in the address book. Off until the permission is granted. */
+    val contactsEnabled: Boolean = false,
     val travelMode: String = Geo.MODE_WALK,
     val searchRadiusMeters: Int = 1_500,
     /** Voice mode shows the globe and speaks; text mode shows the transcript. */
@@ -76,6 +84,10 @@ class SettingsStore(context: Context) {
             autoCapture = prefs.getBoolean(KEY_AUTO_CAPTURE, true),
             defaultCurrency = prefs.getString(KEY_CURRENCY, "EUR") ?: "EUR",
             mapsEnabled = prefs.getBoolean(KEY_MAPS, true),
+            weatherEnabled = prefs.getBoolean(KEY_WEATHER, true),
+            deviceControlEnabled = prefs.getBoolean(KEY_DEVICE_CONTROL, true),
+            calendarEnabled = prefs.getBoolean(KEY_CALENDAR, false),
+            contactsEnabled = prefs.getBoolean(KEY_CONTACTS, false),
             travelMode = prefs.getString(KEY_TRAVEL_MODE, Geo.MODE_WALK) ?: Geo.MODE_WALK,
             searchRadiusMeters = prefs.getInt(KEY_SEARCH_RADIUS, 1_500),
             voiceMode = prefs.getBoolean(KEY_VOICE_MODE, true),
@@ -113,6 +125,10 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_AUTO_CAPTURE, next.autoCapture)
             .putString(KEY_CURRENCY, next.defaultCurrency)
             .putBoolean(KEY_MAPS, next.mapsEnabled)
+            .putBoolean(KEY_WEATHER, next.weatherEnabled)
+            .putBoolean(KEY_DEVICE_CONTROL, next.deviceControlEnabled)
+            .putBoolean(KEY_CALENDAR, next.calendarEnabled)
+            .putBoolean(KEY_CONTACTS, next.contactsEnabled)
             .putString(KEY_TRAVEL_MODE, next.travelMode)
             .putInt(KEY_SEARCH_RADIUS, next.searchRadiusMeters)
             .putBoolean(KEY_VOICE_MODE, next.voiceMode)
@@ -189,6 +205,10 @@ class SettingsStore(context: Context) {
         const val KEY_AUTO_CAPTURE = "auto_capture"
         const val KEY_CURRENCY = "currency"
         const val KEY_MAPS = "maps_enabled"
+        const val KEY_WEATHER = "weather_enabled"
+        const val KEY_DEVICE_CONTROL = "device_control"
+        const val KEY_CALENDAR = "calendar_enabled"
+        const val KEY_CONTACTS = "contacts_enabled"
         const val KEY_TRAVEL_MODE = "travel_mode"
         const val KEY_VOICE_MODE = "voice_mode"
         const val KEY_FLOATING_DOT = "floating_dot"

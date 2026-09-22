@@ -2,9 +2,12 @@ package com.lukas.jarvis.ui.theme
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 
@@ -48,6 +51,50 @@ fun Modifier.glass(
         )
 }
 
+/**
+ * A card of glass: the same material, at the card radius, with the padding a
+ * card always wanted.
+ *
+ * Every screen used to spell this out as `.glass(RoundedCornerShape(18.dp))
+ * .padding(16.dp)`, which is three chances per call site to be a couple of
+ * pixels off the one next to it. One name, one radius, one inset.
+ */
+fun Modifier.glassCard(
+    radius: androidx.compose.ui.unit.Dp = Corner.card,
+    raised: Boolean = false
+): Modifier = this.glass(RoundedCornerShape(radius), raised)
+
+/**
+ * A pane lit from one corner rather than evenly.
+ *
+ * Used for the few surfaces that should read as the subject of the screen — the
+ * hero card at the top of the dashboard, the card behind a spoken answer. The
+ * diagonal is what separates it from the panels underneath: same material,
+ * caught at a different angle.
+ */
+fun Modifier.sheen(shape: Shape): Modifier = this
+    .clip(shape)
+    .background(
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0x26FFFFFF),
+                Color(0x14FFFFFF),
+                Color(0x08FFFFFF)
+            ),
+            start = Offset.Zero,
+            end = Offset(900f, 700f)
+        )
+    )
+    .border(
+        width = 1.dp,
+        brush = Brush.linearGradient(
+            colors = listOf(Color(0x3DFFFFFF), Color(0x0FFFFFFF)),
+            start = Offset.Zero,
+            end = Offset(600f, 600f)
+        ),
+        shape = shape
+    )
+
 /** Raises a translucent white towards opaque without changing its hue. */
-private fun androidx.compose.ui.graphics.Color.lighten(amount: Float) =
+private fun Color.lighten(amount: Float) =
     if (amount <= 0f) this else copy(alpha = (alpha + amount * alpha).coerceAtMost(1f))

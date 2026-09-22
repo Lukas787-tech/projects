@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,12 +30,8 @@ import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Map
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -44,8 +41,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -63,15 +58,16 @@ import com.lukas.jarvis.ui.screens.MusicScreen
 import com.lukas.jarvis.ui.screens.MapScreen
 import com.lukas.jarvis.ui.screens.SettingsScreen
 import com.lukas.jarvis.ui.screens.TasksScreen
+import com.lukas.jarvis.ui.screens.TodayScreen
 import com.lukas.jarvis.ui.screens.TrackersScreen
 import com.lukas.jarvis.ui.screens.VoiceScreen
 import com.lukas.jarvis.stage.Element
 import com.lukas.jarvis.ui.components.JarvisDot
-import com.lukas.jarvis.ui.theme.Accent
+import com.lukas.jarvis.ui.components.JarvisNavBar
+import com.lukas.jarvis.ui.components.NavEntry
 import com.lukas.jarvis.ui.theme.Ink
-import com.lukas.jarvis.ui.theme.Hairline
 import com.lukas.jarvis.ui.theme.JarvisTheme
-import com.lukas.jarvis.ui.theme.TextFaint
+import com.lukas.jarvis.ui.theme.PageBackground
 import com.lukas.jarvis.voice.WakeWordService
 import com.lukas.jarvis.vm.AssistantViewModel
 
@@ -140,6 +136,7 @@ class MainActivity : ComponentActivity() {
  * model of its own.
  */
 private fun iconFor(element: Element): ImageVector = when (element) {
+    Element.Today -> Icons.Default.Today
     Element.Globe -> Icons.Default.Public
     Element.Map -> Icons.Default.Map
     Element.Notes -> Icons.Default.Psychology
@@ -174,10 +171,28 @@ private fun JarvisRoot(
     val map by viewModel.map.collectAsStateWithLifecycle()
     val routing by viewModel.routing.collectAsStateWithLifecycle()
     val bluetooth by viewModel.bluetooth.collectAsStateWithLifecycle()
+    val brief by viewModel.brief.collectAsStateWithLifecycle()
+    val briefLoading by viewModel.briefLoading.collectAsStateWithLifecycle()
 
     val stage by viewModel.element.collectAsStateWithLifecycle()
     val element = stage.element
     var showHistory by remember { mutableStateOf(false) }
+
+    // Calendar and contacts are asked for the moment they are switched on, not
+    // at first launch: a permission prompt for a feature the user has not chosen
+    // yet is the prompt most likely to be refused out of hand.
+    val requestOptional = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { }
+    LaunchedEffect(settings.calendarEnabled, settings.contactsEnabled) {
+        val missing = buildList {
+            if (settings.calendarEnabled) add(Manifest.permission.READ_CALENDAR)
+            if (settings.contactsEnabled) add(Manifest.permission.READ_CONTACTS)
+        }.filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) requestOptional.launch(missing.toTypedArray())
+    }
 
     // The chat log is an overlay, so the system back gesture has to close it
     // rather than leave the app — it is not a destination of its own.
@@ -234,16 +249,9 @@ private fun JarvisRoot(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            // Not a flat black: a faint lift at the very top, so the glass
-            // surfaces have something to pick up and are not all the same
-            // shade wherever they happen to sit.
-            .background(
-                Brush.verticalGradient(
-                    0f to Color(0xFF121216),
-                    0.35f to Color(0xFF07070A),
-                    1f to Ink
-                )
-            )
+            // One background for the whole app, defined with the rest of the
+            // palette rather than inline here.
+            .background(PageBackground)
             .windowInsetsPadding(WindowInsets.systemBars)
             // Without this the soft keyboard sits on top of the text field it
             // was opened for, which makes typing to Jarvis a guessing game.
@@ -257,6 +265,16 @@ private fun JarvisRoot(
             if (showHistory) {
                 HistoryScreen(messages = ui.messages, onBack = { showHistory = false })
             } else when (element) {
+                Element.Today -> TodayScreen(
+                    brief = brief,
+                    loading = briefLoading,
+                    trackers = trackers,
+                    onRefresh = viewModel::refreshBrief,
+                    onOpen = viewModel::showElement,
+                    onCompleteTask = viewModel::toggleTask,
+                    onPlayMusic = { viewModel.showElement(Element.Music) }
+                )
+
                 Element.Globe -> VoiceScreen(
                     state = ui,
                     assistantName = settings.assistantName,
@@ -393,7 +411,7 @@ private fun JarvisRoot(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(76.dp),
+                .height(72.dp),
             contentAlignment = Alignment.Center
         ) {
             JarvisDot(
@@ -404,53 +422,28 @@ private fun JarvisRoot(
         }
 
         JarvisNavBar(
-            current = element,
-            onSelect = {
+            entries = remember {
+                Element.BAR.map { NavEntry(it.name, it.title, iconFor(it)) }
+            },
+            selectedId = barSelection(element).name,
+            onSelect = { id ->
                 showHistory = false
-                viewModel.showElement(it)
+                Element.entries.firstOrNull { it.name == id }?.let(viewModel::showElement)
             }
         )
     }
 }
 
-@Composable
-private fun JarvisNavBar(current: Element, onSelect: (Element) -> Unit) {
-    // A pane of glass rather than a painted strip: the film of white and the
-    // lit hairline along its top edge are what separate it from the content
-    // scrolling underneath, instead of a block of a different colour.
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(listOf(Color(0x16FFFFFF), Color(0x0BFFFFFF)))
-            )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(Hairline)
-        )
-        NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp) {
-            // Only the elements worth a permanent slot. The rest are reached by
-            // asking for them, which is what the assistant is for.
-            Element.BAR.forEach { entry ->
-                NavigationBarItem(
-                    selected = current == entry,
-                    onClick = { onSelect(entry) },
-                    icon = { Icon(iconFor(entry), contentDescription = entry.title) },
-                    label = { Text(entry.title) },
-                    alwaysShowLabel = true,
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Accent,
-                        selectedTextColor = Accent,
-                        unselectedIconColor = TextFaint,
-                        unselectedTextColor = TextFaint,
-                        // White on white: the active pill is light, not a hue.
-                        indicatorColor = Color(0x1FFFFFFF)
-                    )
-                )
-            }
-        }
-    }
+/**
+ * Which bar item lights up for the element on screen.
+ *
+ * Not every element has a slot — devices and music are reached by asking, and
+ * the three list screens share one — so the bar shows the family an element
+ * belongs to rather than going blank whenever the assistant raises something
+ * that has no icon of its own.
+ */
+private fun barSelection(element: Element): Element = when (element) {
+    Element.Tasks, Element.Money -> Element.Notes
+    Element.Music, Element.Devices -> Element.Today
+    else -> element
 }
