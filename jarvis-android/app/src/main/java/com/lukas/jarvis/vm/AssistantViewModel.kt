@@ -647,6 +647,16 @@ class AssistantViewModel(
         _bluetooth.value = container.phone.bluetoothDevices()
     }
 
+    /** Battery, network, storage and ringer, as one line the screen can show. */
+    private val _deviceStatus = MutableStateFlow("")
+    val deviceStatus: StateFlow<String> = _deviceStatus.asStateFlow()
+
+    fun refreshDeviceStatus() {
+        _deviceStatus.value = container.device.status()
+    }
+
+    fun setTorch(on: Boolean) = report(container.device.torch(on))
+
     fun openBluetoothSettings() = report(container.phone.openBluetoothSettings())
 
     /**

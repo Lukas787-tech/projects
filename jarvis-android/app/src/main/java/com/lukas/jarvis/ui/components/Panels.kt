@@ -32,7 +32,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.ui.theme.Accent
+import com.lukas.jarvis.ui.theme.Corner
+import com.lukas.jarvis.ui.theme.Space
 import com.lukas.jarvis.ui.theme.glass
+import com.lukas.jarvis.ui.theme.glassCard
 import com.lukas.jarvis.ui.theme.Negative
 import com.lukas.jarvis.ui.theme.Positive
 import com.lukas.jarvis.ui.theme.TextFaint
@@ -55,7 +58,7 @@ fun Panel(
     // Saveable so a rotation does not fold everything the user opened back up.
     var expanded by rememberSaveable(title) { mutableStateOf(!collapsible || initiallyExpanded) }
 
-    Column(modifier = modifier.fillMaxWidth().padding(bottom = 18.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(bottom = Space.step + 2.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -90,8 +93,8 @@ fun Panel(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .glass(RoundedCornerShape(20.dp))
-                    .padding(16.dp)
+                    .glassCard(Corner.large)
+                    .padding(Space.step)
             ) {
                 subtitle?.let {
                     Text(
@@ -128,9 +131,9 @@ fun Banner(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .glass(RoundedCornerShape(14.dp))
-            .background(color.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .glass(RoundedCornerShape(Corner.medium))
+            .background(color.copy(alpha = 0.08f), RoundedCornerShape(Corner.medium))
+            .padding(horizontal = 14.dp, vertical = Space.snug)
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, color = color)
         body?.let {
@@ -151,7 +154,7 @@ fun ChipButton(
     enabled: Boolean = true,
     prominent: Boolean = false
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(Corner.small)
     val content = if (prominent) MaterialTheme.colorScheme.onPrimary else TextPrimary
     val alpha = if (enabled && !busy) 1f else 0.45f
 

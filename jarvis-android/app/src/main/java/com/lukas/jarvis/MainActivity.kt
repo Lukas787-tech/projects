@@ -171,6 +171,7 @@ private fun JarvisRoot(
     val map by viewModel.map.collectAsStateWithLifecycle()
     val routing by viewModel.routing.collectAsStateWithLifecycle()
     val bluetooth by viewModel.bluetooth.collectAsStateWithLifecycle()
+    val deviceStatus by viewModel.deviceStatus.collectAsStateWithLifecycle()
     val brief by viewModel.brief.collectAsStateWithLifecycle()
     val briefLoading by viewModel.briefLoading.collectAsStateWithLifecycle()
 
@@ -368,8 +369,13 @@ private fun JarvisRoot(
 
                 Element.Devices -> DevicesScreen(
                     status = bluetooth,
-                    onRefresh = viewModel::refreshBluetooth,
-                    onOpenSettings = viewModel::openBluetoothSettings
+                    phoneStatus = deviceStatus,
+                    onRefresh = {
+                        viewModel.refreshBluetooth()
+                        viewModel.refreshDeviceStatus()
+                    },
+                    onOpenSettings = viewModel::openBluetoothSettings,
+                    onTorch = viewModel::setTorch
                 )
 
                 Element.Settings -> SettingsScreen(

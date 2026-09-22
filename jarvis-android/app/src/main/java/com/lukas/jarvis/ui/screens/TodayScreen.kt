@@ -191,6 +191,9 @@ private fun HeroCard(brief: DayBrief?, loading: Boolean) {
             color = TextSecondary
         )
 
+        // Pulled out of the safe call: a lambda under `brief?.forecast?.let`
+        // does not smart-cast `brief` itself, and the place name lives there.
+        val placeName = brief?.placeName
         brief?.forecast?.let { forecast ->
             Spacer(Modifier.height(Space.step))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -210,7 +213,7 @@ private fun HeroCard(brief: DayBrief?, loading: Boolean) {
                     )
                     Text(
                         text = buildString {
-                            brief.placeName?.let { append(it).append(" · ") }
+                            placeName?.let { append(it).append(" · ") }
                             append("feels ${forecast.now.feelsLike.roundToInt()}°")
                             if (forecast.now.precipitationChance >= 20) {
                                 append(" · ${forecast.now.precipitationChance}% rain")

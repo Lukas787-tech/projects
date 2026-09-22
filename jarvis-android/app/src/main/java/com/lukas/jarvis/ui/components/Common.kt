@@ -25,7 +25,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.lukas.jarvis.ui.theme.Corner
+import com.lukas.jarvis.ui.theme.Space
 import com.lukas.jarvis.ui.theme.glass
+import com.lukas.jarvis.ui.theme.glassCard
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextSecondary
 
@@ -36,7 +39,7 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
         text = text.uppercase(),
         style = MaterialTheme.typography.labelSmall,
         color = TextFaint,
-        modifier = modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+        modifier = modifier.padding(horizontal = Space.hair, vertical = Space.tight)
     )
 }
 
@@ -48,7 +51,7 @@ fun JarvisCard(
 ) {
     val base = modifier
         .fillMaxWidth()
-        .glass(RoundedCornerShape(18.dp))
+        .glassCard(Corner.large)
     Column(
         modifier = if (onClick != null) base.clickable { onClick() } else base,
         content = content
@@ -58,9 +61,9 @@ fun JarvisCard(
 @Composable
 fun EmptyState(title: String, subtitle: String, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(32.dp),
+        modifier = modifier.fillMaxWidth().padding(Space.section),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(Space.hair + 2.dp)
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, color = TextSecondary)
         Text(
@@ -91,9 +94,9 @@ fun Picker(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .glass(RoundedCornerShape(14.dp))
+                    .glass(RoundedCornerShape(Corner.medium))
                     .clickable { open = true }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = Space.step, vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {

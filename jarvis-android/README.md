@@ -77,6 +77,30 @@ notification. Repeating tasks roll themselves forward.
 
 **Searches the web.** For anything current or outside the model's knowledge.
 
+**Does the arithmetic itself.** Percentages, splitting a bill, unit prices and
+conversions go through a parser rather than through the model, which is the
+difference between a number that is right and a number that looks right.
+
+**Tells you the weather.** Real forecasts for where you are or anywhere you
+name, from Open-Meteo — no key, no account.
+
+**Runs the phone.** Alarms and timers in your own clock app, the torch, the
+ringer, the clipboard, battery and network and storage readouts, any installed
+app by name, and any page of Android settings.
+
+**Reaches people, without acting as you.** It dials a number rather than
+placing the call, drafts a text or an email rather than sending it, and fills in
+a calendar event rather than saving it. The last tap is always yours, and it
+says so instead of claiming the job is done.
+
+**Reads your day.** With calendar and contacts switched on it knows what is on
+today and who is in your address book. Ask "how does my day look" and it
+gathers the weather, what is due, the next appointment and your budgets in one
+pass — the same day the **Today** screen draws.
+
+**Looks back.** It searches not only its memory but the conversations
+themselves: "what did I tell you about the landlord" finds the turn.
+
 **Finds places and draws the way there.** "I'm hungry, what's around here" pins
 real restaurants on a map with distances; "how do I get to the second one" draws
 the route and tells you the distance, the time and the first turns. Tap
@@ -88,6 +112,11 @@ only ever sent as the coordinates of a lookup.
 
 **Speaks.** Replies are read aloud, and hands-free mode hands the microphone
 straight back so you can keep talking.
+
+Each group of abilities is a switch in **Settings -> Abilities**. Turning one
+off takes its tools away from the model entirely, which keeps a small free-tier
+model's choices short — and calendar and contacts only ask for their Android
+permission at the moment you switch them on.
 
 The key trick is that before every reply, the app injects your current tracker
 balances, open tasks and the memories most relevant to what you just said. So
@@ -127,14 +156,17 @@ Needs JDK 17 and the Android SDK (platform 35).
 
 ```
 app/src/main/java/com/lukas/jarvis/
-  core/       settings, time parsing
+  brief/      the day, gathered once for the screen and the spoken answer
+  control/    the phone: media, device switches, app and intent handovers,
+              contacts, calendar
+  core/       settings, time parsing, the calculator, unit conversion
   data/       SQLite schema, models, BM25 retrieval, tracker maths
   llm/        OpenAI-compatible client, tool definitions, agent loop, prompt
   voice/      speech recognition, text to speech, wake word service
   maps/       places, routing, location, map tiles and state
-  web/        DuckDuckGo search, page reader
+  web/        DuckDuckGo search, page reader, weather
   notify/     alarms and notifications
-  ui/         theme, orb, screens, the map canvas
+  ui/         theme and design tokens, shared parts, screens, the map canvas
   vm/         view model
 ```
 

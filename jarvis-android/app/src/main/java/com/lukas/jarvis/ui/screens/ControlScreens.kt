@@ -12,6 +12,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.FlashlightOff
+import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -139,8 +141,10 @@ fun MusicScreen(
 @Composable
 fun DevicesScreen(
     status: String,
+    phoneStatus: String,
     onRefresh: () -> Unit,
     onOpenSettings: () -> Unit,
+    onTorch: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(Unit) { onRefresh() }
@@ -148,11 +152,39 @@ fun DevicesScreen(
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         ScreenHeader(
             title = "Devices",
-            subtitle = "Bluetooth, as far as Android allows",
+            subtitle = "This phone, and what is paired with it",
             actionIcon = Icons.Default.Refresh,
             actionLabel = "Check again",
             onAction = onRefresh
         )
+
+        // The same sentences the assistant reads out when asked how the phone is
+        // doing, so the screen and the answer cannot disagree.
+        Panel(title = "This phone") {
+            Text(
+                phoneStatus.ifBlank { "Checking…" },
+                style = MaterialTheme.typography.bodyLarge,
+                color = TextSecondary
+            )
+            Spacer(Modifier.height(14.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ChipButton(
+                    label = "Torch on",
+                    icon = Icons.Default.FlashlightOn,
+                    onClick = { onTorch(true) },
+                    modifier = Modifier.weight(1f)
+                )
+                ChipButton(
+                    label = "Torch off",
+                    icon = Icons.Default.FlashlightOff,
+                    onClick = { onTorch(false) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
 
         Panel(title = "Paired") {
             Text(
