@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -95,7 +96,9 @@ fun JarvisNavBar(
                 modifier = Modifier
                     .offset(x = indicator)
                     .width(slotWidth)
-                    .fillMaxSize()
+                    // Height only: a fillMaxSize here would take the whole bar's
+                    // width back and the indicator would stop being a slot.
+                    .fillMaxHeight()
                     .padding(horizontal = Space.hair)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color(0x1FFFFFFF))
@@ -117,7 +120,7 @@ fun JarvisNavBar(
                     Column(
                         modifier = Modifier
                             .width(slotWidth)
-                            .fillMaxSize()
+                            .fillMaxHeight()
                             .selectable(
                                 selected = selected,
                                 interactionSource = interaction,
