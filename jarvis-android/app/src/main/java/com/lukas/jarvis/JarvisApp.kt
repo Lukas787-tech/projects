@@ -6,6 +6,7 @@ import com.lukas.jarvis.brief.Briefer
 import com.lukas.jarvis.control.Agenda
 import com.lukas.jarvis.control.Device
 import com.lukas.jarvis.control.Launcher
+import com.lukas.jarvis.control.Messenger
 import com.lukas.jarvis.control.People
 import com.lukas.jarvis.control.Phone
 import com.lukas.jarvis.core.SettingsStore
@@ -60,6 +61,7 @@ class AppContainer(context: Context) {
     val phone = Phone(context)
     val device = Device(context)
     val launcher = Launcher(context)
+    val messenger = Messenger(context)
     val people = People(context)
     val agenda = Agenda(context)
 
@@ -86,7 +88,8 @@ class AppContainer(context: Context) {
         launcher = launcher,
         people = people,
         agenda = agenda,
-        briefer = briefer
+        briefer = briefer,
+        messenger = messenger
     )
 
     val models = ModelCatalog()

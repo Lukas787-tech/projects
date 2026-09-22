@@ -111,7 +111,10 @@ class MainActivity : ComponentActivity() {
             // Coarse is enough to answer "what is near me", and it is the one
             // users grant without thinking twice.
             Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            // Without this a text can only be drafted, and a draft waiting on a
+            // screen is not what "send Anna a message" asked for.
+            Manifest.permission.SEND_SMS
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             wanted += Manifest.permission.POST_NOTIFICATIONS

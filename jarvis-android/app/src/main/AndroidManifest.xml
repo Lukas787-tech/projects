@@ -25,6 +25,11 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <!-- "Call Anna" needs a number to dial. Read only, and the call is never placed. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Texts are sent outright rather than drafted, which is the whole point
+         of asking an assistant to send one. -->
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <!-- Placing a call rather than only dialling it. Off unless switched on. -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
     <!-- Alarms and timers are set through the clock app rather than scheduled here. -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <!-- The flash, driven through CameraManager, which needs no camera permission. -->
@@ -105,6 +110,18 @@
         </activity>
         <!-- Holds the floating dot over other apps and runs a spoken turn
              without the app itself coming to the front. -->
+        <!-- Answers a message in its own notification, the way a watch does.
+             The system grants this only from its notification-access page. -->
+        <service
+            android:name=".notify.ReplyListener"
+            android:exported="false"
+            android:label="Jarvis"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".overlay.BubbleService"
             android:exported="false"

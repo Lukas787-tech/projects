@@ -12,12 +12,16 @@ import java.util.Locale
 /**
  * Everything that is done by handing an intent to another app.
  *
- * This is the widest a sandboxed assistant can reach, and it reaches further
- * than it first looks: alarms, timers, a dialled number, a drafted message, a
- * calendar entry and any installed app all go through the same door. What none
- * of them do is act *as* the user — a call is dialled but not placed, a message
- * is written but not sent — so the last tap stays where it belongs. Saying that
- * plainly in each reply is why every method returns prose.
+ * This is the widest a sandboxed assistant can reach without a permission of its
+ * own, and it reaches further than it first looks: alarms, timers, a dialled
+ * number, a calendar entry and any installed app all go through the same door.
+ * What none of them do is act *as* the user — a call is dialled but not placed —
+ * so the last tap stays where it belongs. Saying that plainly in each reply is
+ * why every method returns prose.
+ *
+ * Texts are the exception and no longer live here: with the SMS permission they
+ * are sent outright by [com.lukas.jarvis.control.Messenger]. [composeSms] stays
+ * as the fallback for when that permission has not been granted.
  */
 class Launcher(context: Context) {
 

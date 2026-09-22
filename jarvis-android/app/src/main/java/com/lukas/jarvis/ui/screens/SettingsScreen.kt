@@ -1,6 +1,8 @@
 package com.lukas.jarvis.ui.screens
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -45,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -59,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.BuildConfig
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.core.Vault
+import com.lukas.jarvis.notify.ReplyListener
 import com.lukas.jarvis.overlay.BubbleService
 import com.lukas.jarvis.maps.Geo
 import com.lukas.jarvis.llm.PoolEntry
@@ -71,6 +75,7 @@ import com.lukas.jarvis.ui.components.Panel
 import com.lukas.jarvis.ui.components.Picker
 import com.lukas.jarvis.ui.components.StatusDot
 import com.lukas.jarvis.ui.components.ToggleRow
+import com.lukas.jarvis.ui.theme.Positive
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
@@ -543,6 +548,8 @@ fun SettingsScreen(
             )
         }
 
+        AutomaticPanel()
+
         FloatingDotPanel(
             enabled = settings.floatingDot,
             onChange = { wanted -> onUpdate { it.copy(floatingDot = wanted) } }
@@ -576,6 +583,89 @@ fun SettingsScreen(
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(40.dp))
+    }
+}
+
+/**
+ * What Jarvis is allowed to finish on its own.
+ *
+ * A text it can send outright; a WhatsApp or Signal message it can answer
+ * through the notification that message arrived on, which is the only route
+ * Android offers and the same one a smartwatch uses. Both need permissions the
+ * app cannot grant itself, so this shows whether each is really in place rather
+ * than whether it was asked for.
+ */
+@Composable
+private fun AutomaticPanel() {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var canReply by remember { mutableStateOf(ReplyListener.isEnabled(context)) }
+    var canText by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    // Both are granted on a system page, so the truth is whatever is true on
+    // returning from it, not whatever was true when this was first drawn.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                canReply = ReplyListener.isEnabled(context)
+                canText = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.SEND_SMS
+                ) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    Panel(
+        title = "Sending things",
+        subtitle = "Jarvis finishes these itself. Nothing waits on a screen for you " +
+            "to press send."
+    ) {
+        Text(
+            if (canText) {
+                "Texts go out as soon as you ask. Ready."
+            } else {
+                "Texts are only drafted until the SMS permission is granted."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (canText) Positive else TextSecondary
+        )
+        Spacer(Modifier.height(14.dp))
+        Text(
+            if (canReply) {
+                "Replies to WhatsApp, Signal, Telegram and the rest go out too. Ready."
+            } else {
+                "Replying to other apps needs notification access. Without it, a " +
+                    "message that arrives cannot be answered."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (canReply) Positive else TextSecondary
+        )
+        if (!canReply) {
+            Spacer(Modifier.height(12.dp))
+            ChipButton(
+                label = "Allow notification access",
+                onClick = { runCatching { context.startActivity(ReplyListener.permissionIntent()) } },
+                prominent = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Jarvis reads notifications only to find the ones that can be answered, " +
+                "keeps them in memory while they are on screen, and writes none of it " +
+                "down. A new message to someone who has not written first still has to " +
+                "go by text — no other app lets a third one start a conversation.",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextFaint
+        )
     }
 }
 

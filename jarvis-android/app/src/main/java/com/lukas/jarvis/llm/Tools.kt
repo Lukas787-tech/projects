@@ -4,6 +4,7 @@ import com.lukas.jarvis.brief.Briefer
 import com.lukas.jarvis.control.Agenda
 import com.lukas.jarvis.control.Device
 import com.lukas.jarvis.control.Launcher
+import com.lukas.jarvis.control.Messenger
 import com.lukas.jarvis.control.People
 import com.lukas.jarvis.control.Phone
 import com.lukas.jarvis.core.Calculator
@@ -23,6 +24,7 @@ import com.lukas.jarvis.maps.Navigator
 import com.lukas.jarvis.maps.PlacesClient
 import com.lukas.jarvis.stage.Element
 import com.lukas.jarvis.stage.StageStore
+import com.lukas.jarvis.notify.ReplyListener
 import com.lukas.jarvis.notify.Reminders
 import com.lukas.jarvis.web.Weather
 import com.lukas.jarvis.web.WebTools
@@ -65,7 +67,8 @@ class Tools(
     private val launcher: Launcher,
     private val people: People,
     private val agenda: Agenda,
-    private val briefer: Briefer
+    private val briefer: Briefer,
+    private val messenger: Messenger
 ) {
 
     fun schemas(settings: Settings): List<JSONObject> = buildList {
@@ -453,13 +456,32 @@ class Tools(
         ),
         tool(
             "send_message",
-            "Write a text message and leave it open for the user to send. It is NOT sent by you; " +
-                "say that it is waiting for them. Use find_contact first when given a name.",
+            "Send a text message. This really sends it — there is no draft and nothing for the " +
+                "user to press. Say it has been sent, in the past tense. Use find_contact first " +
+                "when given a name.",
             props(
-                "number" to str("Who to write to."),
+                "number" to str("Who to send to."),
                 "text" to str("The message, in the user's own voice and language.")
             ),
-            listOf("number")
+            listOf("number", "text")
+        ),
+        tool(
+            "reply_to_message",
+            "Answer a message that has just arrived in WhatsApp, Signal, Telegram, SMS or any " +
+                "other app, straight from its notification. It really sends. With no name, the " +
+                "newest message is answered, which is usually the one meant.",
+            props(
+                "text" to str("The reply, in the user's own voice and language."),
+                "who" to str("The sender or the app, if the user named one. Leave out for the newest.")
+            ),
+            listOf("text")
+        ),
+        tool(
+            "unread_messages",
+            "List the messages waiting that can be answered, with who they are from and what " +
+                "they say. Use before replying when the user asks what came in.",
+            props(),
+            emptyList()
         ),
         tool(
             "send_email",
@@ -591,10 +613,9 @@ class Tools(
                 "open_app" -> launcher.openApp(args.optString("name"))
                 "open_settings_page" -> device.openSettings(args.optString("page"))
                 "dial" -> launcher.dial(args.optString("number"))
-                "send_message" -> launcher.composeSms(
-                    args.optString("number"),
-                    args.optString("text").takeIf { it.isNotBlank() }
-                )
+                "send_message" -> sendMessage(args)
+                "reply_to_message" -> replyToMessage(args)
+                "unread_messages" -> unreadMessages()
                 "send_email" -> launcher.composeEmail(
                     args.optString("to").takeIf { it.isNotBlank() },
                     args.optString("subject").takeIf { it.isNotBlank() },
@@ -1127,6 +1148,67 @@ class Tools(
             ?: return "I do not have an element called that. I have: ${Element.names()}."
         stage.show(wanted, args.optString("note").trim())
         return "Showing the ${wanted.title.lowercase(Locale.ROOT)}."
+    }
+
+    // ---------------------------------------------------------------- messages
+
+    /**
+     * A text, sent rather than drafted.
+     *
+     * The point of asking an assistant to send something is not having to pick
+     * the phone up, so a draft waiting on a screen is a job half done. The
+     * sentence that comes back is in the past tense only when it really went.
+     */
+    private fun sendMessage(args: JSONObject): String {
+        val text = args.optString("text").trim()
+        if (text.isBlank()) return "There was no message to send."
+        val number = args.optString("number")
+        // Without the permission the message would simply be refused, and a
+        // refusal helps nobody who is holding two bags of shopping. The draft is
+        // the worse outcome, not a wrong one, so it is offered rather than
+        // nothing — and said out loud, so the tap is not missed.
+        if (!messenger.maySend) {
+            return launcher.composeSms(number, text) +
+                " I could send it outright if you grant the SMS permission in settings."
+        }
+        return messenger.sendSms(number, text)
+    }
+
+    /**
+     * An answer to whatever just came in, through the notification it arrived on.
+     *
+     * This is the only route into WhatsApp and the like that Android supports,
+     * and it only exists while the notification does — once the message has been
+     * read on the phone, its notification is gone and so is the way back in.
+     * Saying that is more use than a generic failure.
+     */
+    private fun replyToMessage(args: JSONObject): String {
+        val text = args.optString("text").trim()
+        if (text.isBlank()) return "There was no reply to send."
+
+        val target = ReplyListener.match(args.optString("who").takeIf { it.isNotBlank() })
+            ?: return if (ReplyListener.waiting().isEmpty()) {
+                "Nothing is waiting that I can answer. A message can only be answered " +
+                    "while its notification is still there."
+            } else {
+                "I cannot find that conversation among the ones waiting."
+            }
+
+        return if (ReplyListener.reply(target, text)) {
+            "Replied to ${target.from.ifBlank { target.appLabel }}."
+        } else {
+            "${target.appLabel} would not take the reply."
+        }
+    }
+
+    private fun unreadMessages(): String {
+        val waiting = ReplyListener.waiting()
+        if (waiting.isEmpty()) return "Nothing is waiting to be answered."
+        return waiting.take(8).joinToString("\n") { item ->
+            val who = item.from.ifBlank { "Someone" }
+            "$who on ${item.appLabel} (${TimeUtil.relative(item.postedAt)}): " +
+                item.text.take(200)
+        }
     }
 
     // ------------------------------------------------------------ schema sugar
