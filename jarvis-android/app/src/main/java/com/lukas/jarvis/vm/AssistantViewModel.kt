@@ -12,7 +12,6 @@ import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.core.Vault
 import com.lukas.jarvis.stage.Element
 import com.lukas.jarvis.stage.StageStore
-import com.lukas.jarvis.brief.DayBrief
 import com.lukas.jarvis.core.SettingsStore
 import com.lukas.jarvis.data.ChatMessage
 import com.lukas.jarvis.data.Entry
