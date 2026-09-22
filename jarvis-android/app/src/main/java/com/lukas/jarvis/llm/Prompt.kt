@@ -176,10 +176,6 @@ PLACES AND GETTING AROUND
     }
 
     /**
-     * The autoCapture setting is the difference between an assistant that
-     * quietly writes things down and one that only does so on request.
-     */
-    /**
      * The phone's own switches, listed only when they are switched on.
      *
      * These are written as the words a user would say rather than as tool names,
@@ -202,6 +198,10 @@ PLACES AND GETTING AROUND
             """.trim()
         }
 
+    /**
+     * The autoCapture setting is the difference between an assistant that
+     * quietly writes things down and one that only does so on request.
+     */
     private fun captureRules(settings: Settings, user: String): String =
         if (settings.autoCapture) {
             """
