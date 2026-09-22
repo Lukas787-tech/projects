@@ -114,7 +114,10 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.ACCESS_FINE_LOCATION,
             // Without this a text can only be drafted, and a draft waiting on a
             // screen is not what "send Anna a message" asked for.
-            Manifest.permission.SEND_SMS
+            Manifest.permission.SEND_SMS,
+            // Ringing rather than only dialling. The call is still confirmed
+            // out loud first; this only decides who presses the green button.
+            Manifest.permission.CALL_PHONE
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             wanted += Manifest.permission.POST_NOTIFICATIONS

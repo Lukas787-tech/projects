@@ -2,6 +2,7 @@ package com.lukas.jarvis.llm
 
 import com.lukas.jarvis.brief.Briefer
 import com.lukas.jarvis.control.Agenda
+import com.lukas.jarvis.control.Caller
 import com.lukas.jarvis.control.Device
 import com.lukas.jarvis.control.Launcher
 import com.lukas.jarvis.control.Messenger
@@ -68,7 +69,8 @@ class Tools(
     private val people: People,
     private val agenda: Agenda,
     private val briefer: Briefer,
-    private val messenger: Messenger
+    private val messenger: Messenger,
+    private val caller: Caller
 ) {
 
     fun schemas(settings: Settings): List<JSONObject> = buildList {
@@ -448,9 +450,36 @@ class Tools(
             listOf("page")
         ),
         tool(
+            "call",
+            "Step one of ringing someone: this does NOT ring yet. It readies the call and hands " +
+                "you back a question. Read that question out and wait for the user to answer. " +
+                "Use find_contact first when given a name.",
+            props(
+                "number" to str("The phone number, digits and an optional leading +."),
+                "who" to str("The person's name, if you have it, so it can be read back.")
+            ),
+            listOf("number")
+        ),
+        tool(
+            "place_call",
+            "Step two: actually rings the number readied by `call`. Only ever use this after " +
+                "you asked and the user clearly said yes in their next message. If they said " +
+                "anything else, or said nothing about it, use `cancel_call` instead. Never call " +
+                "this in the same turn as `call`.",
+            props(),
+            emptyList()
+        ),
+        tool(
+            "cancel_call",
+            "Drop a readied call, when the user says no, names someone else, or changes the " +
+                "subject.",
+            props(),
+            emptyList()
+        ),
+        tool(
             "dial",
-            "Put a number in the dialler, ready for the user to press call. This does NOT place " +
-                "the call — say so. Use find_contact first when given a name.",
+            "Put a number in the dialler without ringing it, for when the user wants to press " +
+                "call themselves. Prefer `call` when they asked you to ring someone.",
             props("number" to str("The phone number, digits and an optional leading +.")),
             listOf("number")
         ),
@@ -613,6 +642,12 @@ class Tools(
                 "open_app" -> launcher.openApp(args.optString("name"))
                 "open_settings_page" -> device.openSettings(args.optString("page"))
                 "dial" -> launcher.dial(args.optString("number"))
+                "call" -> caller.arm(
+                    args.optString("number"),
+                    args.optString("who").takeIf { it.isNotBlank() }
+                )
+                "place_call" -> caller.place()
+                "cancel_call" -> caller.cancel()
                 "send_message" -> sendMessage(args)
                 "reply_to_message" -> replyToMessage(args)
                 "unread_messages" -> unreadMessages()

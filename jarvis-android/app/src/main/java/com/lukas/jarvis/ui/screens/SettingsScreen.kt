@@ -595,17 +595,16 @@ fun SettingsScreen(
  * app cannot grant itself, so this shows whether each is really in place rather
  * than whether it was asked for.
  */
+private fun granted(context: android.content.Context, permission: String): Boolean =
+    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
 @Composable
 private fun AutomaticPanel() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var canReply by remember { mutableStateOf(ReplyListener.isEnabled(context)) }
-    var canText by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) ==
-                PackageManager.PERMISSION_GRANTED
-        )
-    }
+    var canText by remember { mutableStateOf(granted(context, Manifest.permission.SEND_SMS)) }
+    var canCall by remember { mutableStateOf(granted(context, Manifest.permission.CALL_PHONE)) }
 
     // Both are granted on a system page, so the truth is whatever is true on
     // returning from it, not whatever was true when this was first drawn.
@@ -613,10 +612,8 @@ private fun AutomaticPanel() {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 canReply = ReplyListener.isEnabled(context)
-                canText = ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.SEND_SMS
-                ) == PackageManager.PERMISSION_GRANTED
+                canText = granted(context, Manifest.permission.SEND_SMS)
+                canCall = granted(context, Manifest.permission.CALL_PHONE)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -657,6 +654,16 @@ private fun AutomaticPanel() {
                 modifier = Modifier.fillMaxWidth()
             )
         }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            if (canCall) {
+                "Calls are placed after Jarvis reads the number back and you say yes."
+            } else {
+                "Calls only reach the dialler until the call permission is granted."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (canCall) Positive else TextSecondary
+        )
         Spacer(Modifier.height(12.dp))
         Text(
             "Jarvis reads notifications only to find the ones that can be answered, " +
