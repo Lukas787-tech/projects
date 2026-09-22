@@ -45,8 +45,20 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # The log is kept so the next step can pull the compiler's own lines out
+      # of it. A Kotlin failure prints its errors thousands of stack frames
+      # before the end of the log, which is the one part nobody scrolls to.
       - name: Build release APK
-        run: ./gradlew assembleRelease --stacktrace --no-daemon
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon 2>&1 | tee build.log
+
+      - name: What failed
+        if: failure()
+        run: |
+          echo "--- Kotlin and resource errors ---"
+          grep -E "^(e: |error: |ERROR:)|FAILURE: |What went wrong" build.log | head -n 60 \
+            || echo "No compiler error lines in the log; see the step above."
 
       - name: Stage APK
         run: |
