@@ -399,6 +399,7 @@ class Brain(context: Context) {
             put("role", message.role)
             put("content", message.content)
             put("created_at", message.createdAt)
+            put("tools", message.tools.joinToString(","))
         }
         return db.insert("messages", null, values)
     }
@@ -511,6 +512,7 @@ class Brain(context: Context) {
         id = getLong(getColumnIndexOrThrow("id")),
         role = getString(getColumnIndexOrThrow("role")),
         content = getString(getColumnIndexOrThrow("content")),
-        createdAt = getLong(getColumnIndexOrThrow("created_at"))
+        createdAt = getLong(getColumnIndexOrThrow("created_at")),
+        tools = stringOrNull("tools").orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() }
     )
 }

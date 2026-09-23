@@ -25,11 +25,14 @@ import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.core.TimeUtil
 import com.lukas.jarvis.data.ChatMessage
 import com.lukas.jarvis.ui.components.EmptyState
+import com.lukas.jarvis.ui.components.ToolTrail
+import com.lukas.jarvis.ui.theme.Film
+import com.lukas.jarvis.ui.theme.Space
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
 
-private val BubbleMine = androidx.compose.ui.graphics.Color(0x24FFFFFF)
-private val BubbleTheirs = androidx.compose.ui.graphics.Color(0x12FFFFFF)
+private val BubbleMine = Film.selected
+private val BubbleTheirs = Film.resting
 
 @Composable
 fun HistoryScreen(
@@ -56,7 +59,7 @@ fun HistoryScreen(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(messages, key = { it.id }) { message ->
+                items(messages, key = { messageKey(it) }) { message ->
                     MessageBubble(message)
                 }
                 item { Spacer(Modifier.height(24.dp)) }
@@ -94,6 +97,12 @@ internal fun MessageBubble(message: ChatMessage) {
                 style = MaterialTheme.typography.bodyLarge,
                 color = TextPrimary
             )
+            // How this reply was reached. Old replies, stored before tools were
+            // recorded, simply have none and show nothing.
+            if (!fromUser && message.tools.isNotEmpty()) {
+                Spacer(Modifier.height(Space.tight))
+                ToolTrail(tools = message.tools)
+            }
             Spacer(Modifier.height(4.dp))
             Text(
                 TimeUtil.relative(message.createdAt),
@@ -103,3 +112,13 @@ internal fun MessageBubble(message: ChatMessage) {
         }
     }
 }
+
+/**
+ * A row key that stays unique even for a message not yet stored.
+ *
+ * The id alone was the key, and a message shown before its insert returns has
+ * id 0 — two of those in a lazy list is a crash, not a glitch. The time and the
+ * role keep them apart until the real id arrives.
+ */
+internal fun messageKey(message: ChatMessage): String =
+    "${message.id}:${message.createdAt}:${message.role}"

@@ -1,9 +1,7 @@
 package com.lukas.jarvis.ui.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -25,17 +23,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.Corner
+import com.lukas.jarvis.ui.theme.Film
+import com.lukas.jarvis.ui.theme.Motion
 import com.lukas.jarvis.ui.theme.Space
 import com.lukas.jarvis.ui.theme.TextSecondary
 import com.lukas.jarvis.ui.theme.glass
 
 /** The lit pane behind the active segment. */
-private val SelectedFill = Color(0x24FFFFFF)
+private val SelectedFill = Film.selected
 
 /**
  * A row of pills, one of which is on.
@@ -71,10 +70,7 @@ fun SegmentedTabs(
         val slot = maxWidth / options.size
         val travel by animateDpAsState(
             targetValue = slot * index,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            ),
+            animationSpec = Motion.glide(),
             label = "segment-travel"
         )
 

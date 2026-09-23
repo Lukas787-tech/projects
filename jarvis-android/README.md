@@ -73,13 +73,23 @@ calories, kilometres and gym sessions work identically. The totals are computed
 in SQL, so they are exact.
 
 **Reminds.** Anything with a time becomes a task with a real Android alarm and
-notification. Repeating tasks roll themselves forward.
+notification. Repeating tasks roll themselves forward. "Move that to Friday",
+"snooze it ten minutes" and "cancel the dentist" move or remove the task and its
+alarm rather than adding a second one.
 
 **Searches the web.** For anything current or outside the model's knowledge.
 
 **Does the arithmetic itself.** Percentages, splitting a bill, unit prices and
 conversions go through a parser rather than through the model, which is the
-difference between a number that is right and a number that looks right.
+difference between a number that is right and a number that looks right. The
+same goes for dates — "how many days until Christmas", "what date is three weeks
+from now" are counted by `java.time`, not guessed — and for money in another
+currency, which is converted at the day's European Central Bank rate
+(Frankfurter, with open.er-api.com as the fallback; no key either way).
+
+**Takes things back.** "Undo that" removes the last entry from its tracker and
+reads out the corrected balance, so a misheard amount is one sentence away from
+fixed.
 
 **Tells you the weather.** Real forecasts for where you are or anywhere you
 name, from Open-Meteo — no key, no account.
@@ -88,10 +98,12 @@ name, from Open-Meteo — no key, no account.
 ringer, the clipboard, battery and network and storage readouts, any installed
 app by name, and any page of Android settings.
 
-**Reaches people, without acting as you.** It dials a number rather than
-placing the call, drafts a text or an email rather than sending it, and fills in
-a calendar event rather than saving it. The last tap is always yours, and it
-says so instead of claiming the job is done.
+**Reaches people, and finishes the job.** Texts are sent, WhatsApp, Signal and
+Telegram messages are answered straight from their notification, and new chats
+are typed out and sent where accessibility allows. A call is read back — name
+and number — and only rings after you say yes. Emails and calendar events are
+still filled in for you to send or save, and it says so rather than claiming
+the job is done.
 
 **Reads your day.** With calendar and contacts switched on it knows what is on
 today and who is in your address book. Ask "how does my day look" and it
@@ -113,10 +125,20 @@ only ever sent as the coordinates of a lookup.
 **Speaks.** Replies are read aloud, and hands-free mode hands the microphone
 straight back so you can keep talking.
 
-Each group of abilities is a switch in **Settings -> Abilities**. Turning one
-off takes its tools away from the model entirely, which keeps a small free-tier
-model's choices short — and calendar and contacts only ask for their Android
-permission at the moment you switch them on.
+**Shows its work.** While a turn runs, the tools it reaches for appear one by
+one under the dot — *Memory*, *Weather*, *Calendar* — with the newest one
+pulsing, so a slow answer says what it is waiting on. Once it has answered, the
+same chips stay under the reply as a receipt for where each number came from.
+
+**Says what it can do.** The **Skills** screen (the sparkle on the assistant
+screen, or just ask "what can you do") lists every ability with the sentences
+that reach it. Tap one and it is asked for real.
+
+Each group of abilities is a switch, on the Skills screen and in **Settings ->
+Abilities**. Turning one off takes its tools away from the model entirely, which
+keeps a small free-tier model's choices short — and calendar and contacts only
+ask for their Android permission at the moment you switch them on. A switched-off
+tool is never run behind your back, even if a model asks for it by name.
 
 The key trick is that before every reply, the app injects your current tracker
 balances, open tasks and the memories most relevant to what you just said. So
@@ -159,12 +181,13 @@ app/src/main/java/com/lukas/jarvis/
   brief/      the day, gathered once for the screen and the spoken answer
   control/    the phone: media, device switches, app and intent handovers,
               contacts, calendar
-  core/       settings, time parsing, the calculator, unit conversion
+  core/       settings, time parsing, the calculator, unit conversion, dates
   data/       SQLite schema, models, BM25 retrieval, tracker maths
-  llm/        OpenAI-compatible client, tool definitions, agent loop, prompt
+  llm/        OpenAI-compatible client, tool definitions and catalog, agent
+              loop, prompt
   voice/      speech recognition, text to speech, wake word service
   maps/       places, routing, location, map tiles and state
-  web/        DuckDuckGo search, page reader, weather
+  web/        DuckDuckGo search, page reader, weather, exchange rates
   notify/     alarms and notifications
   ui/         theme and design tokens, shared parts, screens, the map canvas
   vm/         view model
@@ -198,3 +221,8 @@ around not hitting limits rather than recovering from them:
   the second and says the same thing.
 - **Prompts are kept small.** History is trimmed and tool output clamped, since
   tokens per minute are metered as strictly as requests.
+- **A small model's mistakes are caught, not paid for.** `get_weather` is taken
+  to mean `weather`, a lookup asked for twice in one turn is answered from the
+  first result, and a turn that starts asking for what it already has is told
+  to answer instead of spending more rounds. Lookups that do not depend on each
+  other run side by side, so weather, calendar and a web search cost one wait.

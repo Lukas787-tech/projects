@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.ui.theme.Accent
+import com.lukas.jarvis.ui.theme.Film
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.glass
 
@@ -77,4 +78,4 @@ private fun Side(
     )
 }
 
-private val SelectedPane = Color(0x24FFFFFF)
+private val SelectedPane = Film.selected

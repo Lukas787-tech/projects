@@ -1,5 +1,8 @@
 package com.lukas.jarvis.ui.theme
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.spring
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -46,6 +49,22 @@ val GlassEdgeDim = Color(0x14FFFFFF)
 /** Hairline separators. Translucent, so they sit correctly on any surface. */
 val Hairline = Color(0x1AFFFFFF)
 
+/**
+ * The films of white every flat fill is made of, from barely there to lit.
+ *
+ * Components used to carry their own private copies of these — a selected pane
+ * here, a resting field there — and they had drifted a few alpha steps apart.
+ */
+object Film {
+    val faint = Color(0x0AFFFFFF)
+    val resting = Color(0x12FFFFFF)
+    val lifted = Color(0x1AFFFFFF)
+    val selected = Color(0x24FFFFFF)
+}
+
+/** The one opaque pane: dialogs, which float over everything and must not show through. */
+val DialogPane = Color(0xFF151518)
+
 /** Polished silver: the active state, and the only "bright" in the palette. */
 val Accent = Color(0xFFE8EAED)
 
@@ -80,6 +99,25 @@ object Space {
     val section = 36.dp
 }
 
+/**
+ * How things move.
+ *
+ * Three durations and one spring. Every indicator in the app slides on the same
+ * spring, so a segment, the bar and a chip all settle with one feel instead of
+ * three slightly different ones.
+ */
+object Motion {
+    const val quick = 160
+    const val standard = 280
+    const val slow = 520
+
+    /** Settles without overshoot: a switch that bounces reads as a toy. */
+    fun <T> glide(): SpringSpec<T> = spring(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMediumLow
+    )
+}
+
 /** The corner radii, likewise picked from a scale rather than per call site. */
 object Corner {
     val small = 12.dp
@@ -101,24 +139,48 @@ val PageBackground = Brush.verticalGradient(
     1f to Ink
 )
 
+// Every role is spelled out, including the container tones. Left unset they
+// fall back to Material's baseline, which is violet: dialogs, dropdown menus and
+// the date field were quietly purple-grey against a black and silver app. The
+// ladder below is the same neutral from lowest to highest, one step apart.
 private val JarvisColors = darkColorScheme(
     primary = Accent,
     // Silver is a light fill, so anything on top of it is black.
     onPrimary = Color(0xFF0A0A0C),
     primaryContainer = Color(0xFF2A2A2E),
     onPrimaryContainer = TextPrimary,
+    inversePrimary = Color(0xFF3A3A3F),
     secondary = AccentSoft,
     onSecondary = Ink,
+    secondaryContainer = Color(0xFF2A2A2E),
+    onSecondaryContainer = TextPrimary,
+    tertiary = AccentSoft,
+    onTertiary = Ink,
+    tertiaryContainer = Color(0xFF2A2A2E),
+    onTertiaryContainer = TextPrimary,
     background = Ink,
     onBackground = TextPrimary,
     surface = InkRaised,
     onSurface = TextPrimary,
     surfaceVariant = InkCard,
     onSurfaceVariant = TextSecondary,
+    surfaceTint = AccentSoft,
+    inverseSurface = TextPrimary,
+    inverseOnSurface = Ink,
+    error = Negative,
+    onError = Color(0xFF0A0A0C),
+    errorContainer = Color(0xFF3A1311),
+    onErrorContainer = Color(0xFFFFDAD6),
     outline = Hairline,
     outlineVariant = Hairline,
-    error = Negative,
-    onError = Color(0xFF0A0A0C)
+    scrim = Ink,
+    surfaceDim = Ink,
+    surfaceBright = Color(0xFF2C2C30),
+    surfaceContainerLowest = Color(0xFF050506),
+    surfaceContainerLow = Color(0xFF0E0E10),
+    surfaceContainer = InkCard,
+    surfaceContainerHigh = DialogPane,
+    surfaceContainerHighest = Color(0xFF222226)
 )
 
 // Sized and tracked the way a system typeface is: large text set tight and with

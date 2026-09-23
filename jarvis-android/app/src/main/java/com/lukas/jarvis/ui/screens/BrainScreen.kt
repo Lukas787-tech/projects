@@ -17,13 +17,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +29,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.lukas.jarvis.ui.components.GlassDialog
+import com.lukas.jarvis.ui.components.GlassField
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.core.TimeUtil
 import com.lukas.jarvis.data.Memory
@@ -76,10 +76,11 @@ fun BrainScreen(
             onAction = { showAdd = true }
         )
 
-        OutlinedTextField(
+        GlassField(
             value = query,
             onValueChange = { query = it },
-            placeholder = { Text("Search memory", color = TextFaint) },
+            placeholder = "Search memory",
+            leadingIcon = Icons.Default.Search,
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -168,50 +169,34 @@ private fun AddMemoryDialog(
     var kind by remember { mutableStateOf(Memory.KIND_FACT) }
     var tags by remember { mutableStateOf("") }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New memory") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = content,
-                    onValueChange = { content = it },
-                    label = { Text("What should I remember?") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = tags,
-                    onValueChange = { tags = it },
-                    label = { Text("Tags, comma separated") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Picker(
-                    label = "Kind",
-                    value = kind,
-                    options = Memory.ALL_KINDS,
-                    onSelect = { kind = it }
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(
-                        content,
-                        kind,
-                        tags.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() },
-                        3
-                    )
-                },
-                enabled = content.isNotBlank()
-            ) { Text("Save") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+    GlassDialog(
+        title = "New memory",
+        onDismiss = onDismiss,
+        confirmLabel = "Save",
+        confirmEnabled = content.isNotBlank(),
+        onConfirm = {
+            onConfirm(
+                content,
+                kind,
+                tags.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() },
+                3
+            )
         }
-    )
+    ) {
+        GlassField(
+            value = content,
+            onValueChange = { content = it },
+            label = "What should I remember?",
+            singleLine = false
+        )
+        GlassField(value = tags, onValueChange = { tags = it }, label = "Tags, comma separated")
+        Picker(
+            label = "Kind",
+            value = kind,
+            options = Memory.ALL_KINDS,
+            onSelect = { kind = it }
+        )
+    }
 }
 
 /**

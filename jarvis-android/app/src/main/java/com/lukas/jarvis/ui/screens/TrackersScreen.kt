@@ -17,13 +17,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +28,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.lukas.jarvis.ui.components.GlassDialog
+import com.lukas.jarvis.ui.components.GlassField
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -279,70 +278,44 @@ private fun TrackerDialog(
     var budget by remember { mutableStateOf("") }
     var balance by remember { mutableStateOf("") }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New tracker") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Name, e.g. groceries") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+    GlassDialog(
+        title = "New tracker",
+        onDismiss = onDismiss,
+        confirmLabel = "Create",
+        confirmEnabled = name.isNotBlank(),
+        onConfirm = {
+            onConfirm(
+                Tracker(
+                    name = name.trim(),
+                    label = name.trim().replaceFirstChar {
+                        it.titlecase(Locale.getDefault())
+                    },
+                    kind = kind,
+                    unit = unit.trim(),
+                    budget = budget.toDoubleOrNull(),
+                    period = period,
+                    startingBalance = balance.toDoubleOrNull()
                 )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = unit,
-                    onValueChange = { unit = it },
-                    label = { Text("Unit, e.g. EUR or kcal") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = balance,
-                    onValueChange = { balance = it },
-                    label = { Text("Starting balance (optional)") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = budget,
-                    onValueChange = { budget = it },
-                    label = { Text("Budget per period (optional)") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Picker("Kind", kind, Tracker.ALL_KINDS, { kind = it })
-                Picker("Resets", period, Tracker.ALL_PERIODS, { period = it })
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(
-                        Tracker(
-                            name = name.trim(),
-                            label = name.trim().replaceFirstChar {
-                                it.titlecase(Locale.getDefault())
-                            },
-                            kind = kind,
-                            unit = unit.trim(),
-                            budget = budget.toDoubleOrNull(),
-                            period = period,
-                            startingBalance = balance.toDoubleOrNull()
-                        )
-                    )
-                },
-                enabled = name.isNotBlank()
-            ) { Text("Create") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+            )
+        }
+    ) {
+        GlassField(value = name, onValueChange = { name = it }, label = "Name, e.g. groceries")
+        GlassField(value = unit, onValueChange = { unit = it }, label = "Unit, e.g. EUR or kcal")
+        GlassField(
+            value = balance,
+            onValueChange = { balance = it },
+            label = "Starting balance (optional)",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+        )
+        GlassField(
+            value = budget,
+            onValueChange = { budget = it },
+            label = "Budget per period (optional)",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+        )
+        Picker("Kind", kind, Tracker.ALL_KINDS, { kind = it })
+        Picker("Resets", period, Tracker.ALL_PERIODS, { period = it })
+    }
 }
 
 @Composable
@@ -355,48 +328,32 @@ private fun EntryDialog(
     var note by remember { mutableStateOf("") }
     var direction by remember { mutableStateOf(Entry.DIR_OUT) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(tracker.label) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = { Text("Amount in ${tracker.unit}") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = note,
-                    onValueChange = { note = it },
-                    label = { Text("What for?") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Picker(
-                    label = "Direction",
-                    value = direction,
-                    options = listOf(Entry.DIR_OUT, Entry.DIR_IN),
-                    onSelect = { direction = it },
-                    display = { if (it == Entry.DIR_OUT) "Spent / used" else "Added / received" }
-                )
+    GlassDialog(
+        title = tracker.label,
+        onDismiss = onDismiss,
+        confirmLabel = "Log",
+        confirmEnabled = amount.toDoubleOrNull() != null,
+        onConfirm = {
+            amount.toDoubleOrNull()?.let {
+                onConfirm(it, direction, note.takeIf { n -> n.isNotBlank() })
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    amount.toDoubleOrNull()?.let {
-                        onConfirm(it, direction, note.takeIf { n -> n.isNotBlank() })
-                    }
-                },
-                enabled = amount.toDoubleOrNull() != null
-            ) { Text("Log") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+        }
+    ) {
+        GlassField(
+            value = amount,
+            onValueChange = { amount = it },
+            label = "Amount in ${tracker.unit}",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+        )
+        GlassField(value = note, onValueChange = { note = it }, label = "What for?")
+        Picker(
+            label = "Direction",
+            value = direction,
+            options = listOf(Entry.DIR_OUT, Entry.DIR_IN),
+            onSelect = { direction = it },
+            display = { if (it == Entry.DIR_OUT) "Spent / used" else "Added / received" }
+        )
+    }
 }
 
 private fun format(value: Double, tracker: Tracker?): String {

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MusicNote
@@ -57,10 +58,12 @@ import com.lukas.jarvis.ui.screens.HubScreen
 import com.lukas.jarvis.ui.screens.MusicScreen
 import com.lukas.jarvis.ui.screens.MapScreen
 import com.lukas.jarvis.ui.screens.SettingsScreen
+import com.lukas.jarvis.ui.screens.SkillsScreen
 import com.lukas.jarvis.ui.screens.TasksScreen
 import com.lukas.jarvis.ui.screens.TodayScreen
 import com.lukas.jarvis.ui.screens.TrackersScreen
 import com.lukas.jarvis.ui.screens.VoiceScreen
+import com.lukas.jarvis.llm.Abilities
 import com.lukas.jarvis.stage.Element
 import com.lukas.jarvis.ui.components.JarvisDot
 import com.lukas.jarvis.ui.components.JarvisNavBar
@@ -150,6 +153,7 @@ private fun iconFor(element: Element): ImageVector = when (element) {
     Element.Money -> Icons.Default.AccountBalanceWallet
     Element.Music -> Icons.Default.MusicNote
     Element.Devices -> Icons.Default.Bluetooth
+    Element.Skills -> Icons.Default.AutoAwesome
     Element.Settings -> Icons.Default.Settings
 }
 
@@ -292,10 +296,14 @@ private fun JarvisRoot(
                     },
                     map = map,
                     tiles = viewModel.tiles,
+                    // Only sentences whose ability is on, so a first tap never
+                    // earns "that is switched off".
+                    starters = remember(settings) { Abilities.starters(settings) },
                     onSend = viewModel::sendTyped,
                     onDismissError = viewModel::dismissError,
                     onOpenHistory = { showHistory = true },
                     onOpenSettings = { viewModel.showElement(Element.Settings) },
+                    onOpenSkills = { viewModel.showElement(Element.Skills) },
                     onOpenMap = { viewModel.showElement(Element.Map) }
                 )
 
@@ -384,6 +392,14 @@ private fun JarvisRoot(
                     onTorch = viewModel::setTorch
                 )
 
+                Element.Skills -> SkillsScreen(
+                    settings = settings,
+                    onToggle = { ability, on ->
+                        viewModel.updateSettings { ability.applyTo(it, on) }
+                    },
+                    onTry = viewModel::trySkill
+                )
+
                 Element.Settings -> SettingsScreen(
                     settings = settings,
                     availableModels = availableModels,
@@ -409,7 +425,8 @@ private fun JarvisRoot(
                     onPreviewVoice = viewModel::previewVoice,
                     onClearConversation = viewModel::clearConversation,
                     onExportBackup = viewModel::exportBackup,
-                    onRestoreBackup = viewModel::restoreBackup
+                    onRestoreBackup = viewModel::restoreBackup,
+                    onOpenSkills = { viewModel.showElement(Element.Skills) }
                 )
             }
         }
@@ -456,6 +473,6 @@ private fun JarvisRoot(
  */
 private fun barSelection(element: Element): Element = when (element) {
     Element.Tasks, Element.Money -> Element.Notes
-    Element.Music, Element.Devices -> Element.Today
+    Element.Music, Element.Devices, Element.Skills -> Element.Today
     else -> element
 }

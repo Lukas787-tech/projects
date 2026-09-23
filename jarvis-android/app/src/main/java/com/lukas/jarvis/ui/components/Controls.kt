@@ -308,3 +308,36 @@ fun GroupHeader(
         }
     }
 }
+
+/**
+ * A sentence to say, as a capsule you can tap to say it.
+ *
+ * Set in body type rather than the tracked capitals of a [Tag]: it is
+ * something to read and speak, not a label.
+ */
+@Composable
+fun SayChip(
+    text: String,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null
+) {
+    val base = modifier.glass(CircleShape)
+    Row(
+        modifier = (if (onClick != null) base.clickable { onClick() } else base)
+            .padding(horizontal = Space.snug + 2.dp, vertical = Space.tight),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = TextFaint, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(Space.tight - 2.dp))
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (onClick != null) TextPrimary else TextFaint,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ContentCopy
@@ -31,7 +32,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -45,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.lukas.jarvis.ui.components.GlassField
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
@@ -109,6 +110,7 @@ fun SettingsScreen(
     onClearConversation: () -> Unit,
     onExportBackup: () -> String,
     onRestoreBackup: (String) -> String,
+    onOpenSkills: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -162,27 +164,27 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(14.dp))
-            OutlinedTextField(
+            GlassField(
                 value = settings.baseUrl,
                 onValueChange = { value -> onUpdate { it.copy(baseUrl = value) } },
-                label = { Text("Base URL") },
+                label = "Base URL",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
             if (preset.needsKey || settings.apiKey.isNotBlank()) {
                 Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
+                GlassField(
                     value = settings.apiKey,
                     onValueChange = { value -> onUpdate { it.copy(apiKey = value.trim()) } },
-                    label = { Text("API key") },
+                    label = "API key",
                     singleLine = true,
                     visualTransformation = if (showKey) {
                         VisualTransformation.None
                     } else {
                         PasswordVisualTransformation()
                     },
-                    trailingIcon = {
+                    trailing = {
                         Text(
                             text = if (showKey) "HIDE" else "SHOW",
                             style = MaterialTheme.typography.labelSmall,
@@ -248,10 +250,10 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
+            GlassField(
                 value = settings.model,
                 onValueChange = { value -> onUpdate { it.copy(model = value.trim()) } },
-                label = { Text("Or type a model id") },
+                label = "Or type a model id",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -376,28 +378,28 @@ fun SettingsScreen(
         }
 
         Panel(title = "You", collapsible = true, initiallyExpanded = false) {
-            OutlinedTextField(
+            GlassField(
                 value = settings.userName,
                 onValueChange = { value -> onUpdate { it.copy(userName = value) } },
-                label = { Text("Your name") },
+                label = "Your name",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
+            GlassField(
                 value = settings.assistantName,
                 onValueChange = { value -> onUpdate { it.copy(assistantName = value) } },
-                label = { Text("Assistant name") },
+                label = "Assistant name",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
+            GlassField(
                 value = settings.defaultCurrency,
                 onValueChange = { value ->
                     onUpdate { it.copy(defaultCurrency = value.uppercase().take(5)) }
                 },
-                label = { Text("Default currency") },
+                label = "Default currency",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -425,10 +427,10 @@ fun SettingsScreen(
             )
             if (settings.wakeWordEnabled) {
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
+                GlassField(
                     value = settings.wakePhrase,
                     onValueChange = { value -> onUpdate { it.copy(wakePhrase = value.lowercase()) } },
-                    label = { Text("Wake phrase") },
+                    label = "Wake phrase",
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -473,14 +475,14 @@ fun SettingsScreen(
                 onChange = { value -> onUpdate { it.copy(temperature = value) } }
             )
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
+            GlassField(
                 value = settings.maxTokens.toString(),
                 onValueChange = { value ->
                     value.toIntOrNull()?.let { parsed ->
                         onUpdate { it.copy(maxTokens = parsed.coerceIn(128, 8192)) }
                     }
                 },
-                label = { Text("Max reply length (tokens)") },
+                label = "Max reply length (tokens)",
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
@@ -530,8 +532,8 @@ fun SettingsScreen(
             )
             ToggleRow(
                 title = "Phone control",
-                subtitle = "Alarms, timers, the torch, opening apps, dialling a number, " +
-                    "drafting a message. Nothing is ever sent or called without you.",
+                subtitle = "Alarms, timers, the torch, apps, texts, WhatsApp replies and " +
+                    "calls. A call is always read back and confirmed before it rings.",
                 checked = settings.deviceControlEnabled,
                 onChange = { value -> onUpdate { it.copy(deviceControlEnabled = value) } }
             )
@@ -546,6 +548,15 @@ fun SettingsScreen(
                 subtitle = "Look up a number so \"text Anna\" works. Read only.",
                 checked = settings.contactsEnabled,
                 onChange = { value -> onUpdate { it.copy(contactsEnabled = value) } }
+            )
+            Spacer(Modifier.height(10.dp))
+            // The switches say what can be turned off; the Skills screen says
+            // what each one is for, with sentences to try it.
+            ChipButton(
+                label = "See what each one can do",
+                icon = Icons.Default.AutoAwesome,
+                onClick = onOpenSkills,
+                modifier = Modifier.fillMaxWidth()
             )
         }
 

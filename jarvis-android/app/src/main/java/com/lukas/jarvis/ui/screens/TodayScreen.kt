@@ -17,11 +17,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.CircularProgressIndicator
@@ -283,7 +283,13 @@ private fun Vitals(brief: DayBrief) {
     }
 }
 
-/** The five places a thumb goes most often. */
+/**
+ * The five places a thumb goes most often that the bar does not already hold.
+ *
+ * Notes and the map used to sit here as well as in the bar along the bottom,
+ * which spent two of five slots on a second way to the same place. Devices and
+ * Skills had no way in at all except by asking.
+ */
 @Composable
 private fun Shortcuts(onOpen: (Element) -> Unit, onPlayMusic: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(Space.tight)) {
@@ -291,12 +297,6 @@ private fun Shortcuts(onOpen: (Element) -> Unit, onPlayMusic: () -> Unit) {
             icon = Icons.Default.CheckCircle,
             label = "Tasks",
             onClick = { onOpen(Element.Tasks) },
-            modifier = Modifier.weight(1f)
-        )
-        QuickAction(
-            icon = Icons.Default.Psychology,
-            label = "Notes",
-            onClick = { onOpen(Element.Notes) },
             modifier = Modifier.weight(1f)
         )
         QuickAction(
@@ -312,9 +312,15 @@ private fun Shortcuts(onOpen: (Element) -> Unit, onPlayMusic: () -> Unit) {
             modifier = Modifier.weight(1f)
         )
         QuickAction(
-            icon = Icons.Default.Map,
-            label = "Map",
-            onClick = { onOpen(Element.Map) },
+            icon = Icons.Default.Bluetooth,
+            label = "Devices",
+            onClick = { onOpen(Element.Devices) },
+            modifier = Modifier.weight(1f)
+        )
+        QuickAction(
+            icon = Icons.Default.AutoAwesome,
+            label = "Skills",
+            onClick = { onOpen(Element.Skills) },
             modifier = Modifier.weight(1f)
         )
     }

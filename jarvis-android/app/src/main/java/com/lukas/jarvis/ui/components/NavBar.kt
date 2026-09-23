@@ -1,9 +1,7 @@
 package com.lukas.jarvis.ui.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -36,7 +34,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.ui.theme.Accent
+import com.lukas.jarvis.ui.theme.Film
 import com.lukas.jarvis.ui.theme.Hairline
+import com.lukas.jarvis.ui.theme.Motion
 import com.lukas.jarvis.ui.theme.Space
 import com.lukas.jarvis.ui.theme.TextFaint
 
@@ -85,10 +85,7 @@ fun JarvisNavBar(
             val slotWidth = maxWidth / entries.size
             val indicator by animateDpAsState(
                 targetValue = slotWidth * index,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                ),
+                animationSpec = Motion.glide(),
                 label = "nav-indicator"
             )
 
@@ -101,7 +98,7 @@ fun JarvisNavBar(
                     .fillMaxHeight()
                     .padding(horizontal = Space.hair)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0x1FFFFFFF))
+                    .background(Film.selected)
             )
 
             Row(

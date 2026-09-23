@@ -33,6 +33,16 @@ enum class Element(
     Money("Trackers", listOf("trackers", "tracker", "money", "budget", "spending", "expenses")),
     Music("Music", listOf("music", "songs", "song", "player", "playing", "audio")),
     Devices("Devices", listOf("devices", "device", "bluetooth", "headphones", "speaker")),
+
+    /**
+     * Everything the assistant can do, with sentences to try. It is an element
+     * rather than a page in Settings because "what can you do" is a question
+     * asked of the assistant, and the answer should be something it can raise.
+     */
+    Skills(
+        "Skills",
+        listOf("skills", "abilities", "capabilities", "help", "what can you do", "tools")
+    ),
     Settings("Settings", listOf("settings", "setup", "config", "preferences", "keys"));
 
     companion object {

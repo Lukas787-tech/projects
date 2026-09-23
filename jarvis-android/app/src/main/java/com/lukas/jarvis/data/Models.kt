@@ -133,7 +133,9 @@ data class ChatMessage(
     val id: Long = 0,
     val role: String,
     val content: String,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    /** The tools a reply used, by name, so the thread can show how it was answered. */
+    val tools: List<String> = emptyList()
 ) {
     companion object {
         const val ROLE_USER = "user"

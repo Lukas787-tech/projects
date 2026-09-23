@@ -109,7 +109,8 @@ class Conversation(private val container: AppContainer) {
 
                 val reply = ChatMessage(
                     role = ChatMessage.ROLE_ASSISTANT,
-                    content = result.reply
+                    content = result.reply,
+                    tools = result.toolsUsed
                 )
                 withContext(Dispatchers.IO) { container.brain.addMessage(reply) }
                 _lastReply.value = result.reply

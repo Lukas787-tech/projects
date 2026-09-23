@@ -11,6 +11,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +20,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -26,10 +30,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,34 +52,38 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.data.ChatMessage
+import com.lukas.jarvis.llm.ToolGroup
 import com.lukas.jarvis.maps.MapState
 import com.lukas.jarvis.maps.TileCache
 import com.lukas.jarvis.ui.components.ChipButton
 import com.lukas.jarvis.ui.components.ModeSwitch
+import com.lukas.jarvis.ui.components.SayChip
+import com.lukas.jarvis.ui.components.Tag
+import com.lukas.jarvis.ui.components.ToolTrail
+import com.lukas.jarvis.ui.components.icon
 import com.lukas.jarvis.ui.globe.Globe
 import com.lukas.jarvis.ui.globe.GlobeMood
-import com.lukas.jarvis.ui.components.Tag
 import com.lukas.jarvis.ui.map.MapCanvas
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.Corner
-import com.lukas.jarvis.ui.theme.Hairline
-import com.lukas.jarvis.ui.theme.Space
+import com.lukas.jarvis.ui.theme.Film
+import com.lukas.jarvis.ui.theme.GlassEdgeBright
+import com.lukas.jarvis.ui.theme.GlassEdgeDim
 import com.lukas.jarvis.ui.theme.Negative
+import com.lukas.jarvis.ui.theme.Space
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
 import com.lukas.jarvis.ui.theme.TextSecondary
+import com.lukas.jarvis.ui.theme.glass
 import com.lukas.jarvis.ui.theme.sheen
 import com.lukas.jarvis.vm.AssistantUiState
 import com.lukas.jarvis.vm.Stage
-
-// The two states of the text field, as films of white rather than as greys.
-private val FieldResting = Color(0x12FFFFFF)
-private val FieldFocused = Color(0x1FFFFFFF)
 
 /**
  * The assistant, in whichever of its two forms is wanted.
@@ -82,6 +92,10 @@ private val FieldFocused = Color(0x1FFFFFFF)
  * and nothing to read; typing wants the whole transcript and a keyboard. The
  * old screen tried to be both and was cluttered in both directions, so the two
  * are separate layouts behind a switch now, and each gets the full screen.
+ *
+ * Both now show the work as well as the answer. While a turn runs, the tools it
+ * reaches for appear one by one as a trail; once it has answered, the same
+ * chips stay under the reply as a receipt for where each number came from.
  */
 @Composable
 fun VoiceScreen(
@@ -92,10 +106,12 @@ fun VoiceScreen(
     onModeChange: (Boolean) -> Unit,
     map: MapState,
     tiles: TileCache,
+    starters: List<Pair<ToolGroup, String>>,
     onSend: (String) -> Unit,
     onDismissError: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSkills: () -> Unit,
     onOpenMap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -105,7 +121,7 @@ fun VoiceScreen(
             .padding(horizontal = Space.gutter)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = Space.snug, bottom = Space.hair),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -115,6 +131,14 @@ fun VoiceScreen(
                 modifier = Modifier.weight(1f)
             )
             ModeSwitch(voice = voiceMode, onChange = onModeChange)
+            IconButton(onClick = onOpenSkills, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = "What Jarvis can do",
+                    tint = TextFaint,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
             IconButton(onClick = onOpenSettings, modifier = Modifier.size(40.dp)) {
                 Icon(
                     Icons.Default.Settings,
@@ -131,6 +155,8 @@ fun VoiceScreen(
                 configured = configured,
                 map = map,
                 tiles = tiles,
+                starters = starters,
+                onSend = onSend,
                 onOpenMap = onOpenMap,
                 onOpenSettings = onOpenSettings,
                 modifier = Modifier.weight(1f)
@@ -139,7 +165,9 @@ fun VoiceScreen(
             TextBody(
                 state = state,
                 configured = configured,
+                starters = starters,
                 onOpenSettings = onOpenSettings,
+                onOpenSkills = onOpenSkills,
                 onSend = onSend,
                 modifier = Modifier.weight(1f)
             )
@@ -179,6 +207,8 @@ private fun VoiceBody(
     configured: Boolean,
     map: MapState,
     tiles: TileCache,
+    starters: List<Pair<ToolGroup, String>>,
+    onSend: (String) -> Unit,
     onOpenMap: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
@@ -240,20 +270,26 @@ private fun VoiceBody(
             state = state,
             configured = configured,
             map = map,
+            starters = starters,
+            onSend = onSend,
             onOpenSettings = onOpenSettings
         )
     }
 }
 
-/** One line: what was found, or what was said, or what is missing. */
+/** One line: what was found, what is being done, what was said, or what is missing. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Readout(
     state: AssistantUiState,
     configured: Boolean,
     map: MapState,
+    starters: List<Pair<ToolGroup, String>>,
+    onSend: (String) -> Unit,
     onOpenSettings: () -> Unit
 ) {
     val lastAssistant = state.messages.lastOrNull { it.role == ChatMessage.ROLE_ASSISTANT }
+    val centred = Arrangement.spacedBy(Space.hair + 2.dp, Alignment.CenterHorizontally)
 
     Column(
         modifier = Modifier
@@ -283,6 +319,22 @@ private fun Readout(
                 ChipButton(label = "Open setup", prominent = true, onClick = onOpenSettings)
             }
 
+            // The work in progress, named. A silent planet for eight seconds is
+            // indistinguishable from a hung one; "searching the web" is not.
+            state.stage == Stage.Thinking -> {
+                Text(
+                    text = doingLine(state.stageLabel),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2
+                )
+                if (state.activity.isNotEmpty()) {
+                    Spacer(Modifier.height(Space.snug))
+                    ToolTrail(tools = state.activity, live = true, horizontalArrangement = centred)
+                }
+            }
+
             map.places.isNotEmpty() -> {
                 Text(
                     text = map.title.ifBlank { "Found nearby" },
@@ -302,20 +354,45 @@ private fun Readout(
                 }
             }
 
-            lastAssistant != null -> Text(
-                text = lastAssistant.content,
-                style = MaterialTheme.typography.headlineMedium,
-                color = TextPrimary,
-                textAlign = TextAlign.Center,
-                maxLines = 4
-            )
+            lastAssistant != null -> {
+                Text(
+                    text = lastAssistant.content,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = TextPrimary,
+                    textAlign = TextAlign.Center,
+                    maxLines = 4
+                )
+                if (lastAssistant.tools.isNotEmpty()) {
+                    Spacer(Modifier.height(Space.snug))
+                    ToolTrail(tools = lastAssistant.tools, horizontalArrangement = centred)
+                }
+            }
 
-            else -> Text(
-                text = "Tap the dot and talk.",
-                style = MaterialTheme.typography.headlineMedium,
-                color = TextFaint,
-                textAlign = TextAlign.Center
-            )
+            else -> {
+                Text(
+                    text = "Tap the dot and talk.",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = TextFaint,
+                    textAlign = TextAlign.Center
+                )
+                if (starters.isNotEmpty()) {
+                    Spacer(Modifier.height(Space.snug))
+                    Text(
+                        text = "OR TRY",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextFaint
+                    )
+                    Spacer(Modifier.height(Space.tight))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(Space.tight, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(Space.tight)
+                    ) {
+                        starters.take(3).forEach { (_, phrase) ->
+                            SayChip(text = phrase, onClick = { onSend(phrase) })
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -327,14 +404,20 @@ private fun Readout(
 private fun TextBody(
     state: AssistantUiState,
     configured: Boolean,
+    starters: List<Pair<ToolGroup, String>>,
     onOpenSettings: () -> Unit,
+    onOpenSkills: () -> Unit,
     onSend: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
+    val working = state.stage == Stage.Thinking
 
-    LaunchedEffect(state.messages.size) {
-        if (state.messages.isNotEmpty()) listState.animateScrollToItem(state.messages.lastIndex)
+    // Follows the thread and the trail alike, so a tool chip appearing below the
+    // fold is scrolled to rather than missed.
+    LaunchedEffect(state.messages.size, state.activity.size, working) {
+        val last = state.messages.size + (if (working) 1 else 0) - 1
+        if (last >= 0) listState.animateScrollToItem(last)
     }
 
     if (state.messages.isEmpty()) {
@@ -354,7 +437,13 @@ private fun TextBody(
                 ChipButton(label = "Open setup", prominent = true, onClick = onOpenSettings)
             } else {
                 Spacer(Modifier.height(Space.gutter))
-                Suggestions(onSend = onSend)
+                Starters(starters = starters, onSend = onSend)
+                Spacer(Modifier.height(Space.step))
+                ChipButton(
+                    label = "Everything Jarvis can do",
+                    icon = Icons.Default.AutoAwesome,
+                    onClick = onOpenSkills
+                )
             }
         }
         return
@@ -365,10 +454,15 @@ private fun TextBody(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items(state.messages, key = { it.id }) { message ->
+        items(state.messages, key = { messageKey(it) }) { message ->
             MessageBubble(message)
         }
-        item {
+        if (working) {
+            item(key = "working") {
+                WorkingBubble(label = state.stageLabel, activity = state.activity)
+            }
+        }
+        item(key = "tail") {
             // The partial transcript belongs at the bottom of the thread, where
             // the reply to it will appear.
             if (state.partial.isNotBlank()) {
@@ -384,29 +478,96 @@ private fun TextBody(
     }
 }
 
+/**
+ * Jarvis's side of the thread while it is still working: what it is doing in
+ * words, and the tools it has reached for so far.
+ */
+@Composable
+private fun WorkingBubble(label: String, activity: List<String>) {
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 300.dp)
+                .clip(
+                    RoundedCornerShape(
+                        topStart = 18.dp,
+                        topEnd = 18.dp,
+                        bottomStart = 4.dp,
+                        bottomEnd = 18.dp
+                    )
+                )
+                .background(Film.faint)
+                .padding(horizontal = 14.dp, vertical = 10.dp)
+        ) {
+            Text(
+                text = doingLine(label),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
+            )
+            if (activity.isNotEmpty()) {
+                Spacer(Modifier.height(Space.tight))
+                ToolTrail(tools = activity, live = true)
+            }
+        }
+    }
+}
+
+/**
+ * The first things worth asking, drawn from whichever abilities are switched
+ * on — so the calendar is never suggested to someone who turned it off, and
+ * every tap reaches a tool rather than a refusal.
+ */
+@Composable
+private fun Starters(starters: List<Pair<ToolGroup, String>>, onSend: (String) -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Space.tight)
+    ) {
+        starters.forEach { (group, phrase) ->
+            SayChip(text = phrase, icon = group.icon(), onClick = { onSend(phrase) })
+        }
+    }
+}
+
 // -------------------------------------------------------------------- shared
 
+/**
+ * The failure line, as the same glass as everything else with the faintest
+ * wash of red — an error is news, not an alarm going off.
+ */
 @Composable
 private fun ErrorStrip(error: String?, onDismiss: () -> Unit) {
+    val shape = RoundedCornerShape(Corner.medium)
     AnimatedVisibility(visible = error != null, enter = fadeIn(), exit = fadeOut()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 12.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Negative.copy(alpha = 0.12f))
-                .border(1.dp, Negative.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(bottom = Space.snug)
+                .glass(shape)
+                .background(Negative.copy(alpha = 0.10f), shape)
+                .padding(start = 14.dp, end = Space.hair, top = Space.hair, bottom = Space.hair),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Icon(
+                Icons.Default.Warning,
+                contentDescription = null,
+                tint = Negative,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(Space.tight + 2.dp))
             Text(
                 text = error.orEmpty(),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Negative,
-                modifier = Modifier.weight(1f)
+                color = TextPrimary,
+                modifier = Modifier.weight(1f).padding(vertical = Space.tight)
             )
-            IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = Negative)
+            IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Dismiss",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
@@ -415,6 +576,7 @@ private fun ErrorStrip(error: String?, onDismiss: () -> Unit) {
 @Composable
 private fun Composer(onSend: (String) -> Unit, onOpenHistory: () -> Unit) {
     var draft by remember { mutableStateOf("") }
+    val shape = RoundedCornerShape(24.dp)
 
     fun send() {
         if (draft.isNotBlank()) {
@@ -424,9 +586,9 @@ private fun Composer(onSend: (String) -> Unit, onOpenHistory: () -> Unit) {
     }
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = Space.step),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(Space.tight)
     ) {
         IconButton(onClick = onOpenHistory, modifier = Modifier.size(40.dp)) {
             Icon(
@@ -445,11 +607,15 @@ private fun Composer(onSend: (String) -> Unit, onOpenHistory: () -> Unit) {
             singleLine = true,
             modifier = Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(24.dp))
-                .border(1.dp, Hairline, RoundedCornerShape(24.dp)),
+                .clip(shape)
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(listOf(GlassEdgeBright, GlassEdgeDim)),
+                    shape = shape
+                ),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = FieldFocused,
-                unfocusedContainerColor = FieldResting,
+                focusedContainerColor = Film.lifted,
+                unfocusedContainerColor = Film.resting,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 cursorColor = Accent,
@@ -464,7 +630,7 @@ private fun Composer(onSend: (String) -> Unit, onOpenHistory: () -> Unit) {
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(if (draft.isBlank()) FieldResting else Accent)
+                .background(if (draft.isBlank()) Film.resting else Accent)
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.Send,
@@ -475,32 +641,9 @@ private fun Composer(onSend: (String) -> Unit, onOpenHistory: () -> Unit) {
     }
 }
 
-/**
- * Four things worth asking on the first run.
- *
- * An empty assistant screen is the hardest screen in the app: nothing tells a
- * new user that it can set a timer, do arithmetic exactly, or read the weather.
- * These are the shortest sentences that each reach a different tool, and tapping
- * one sends it rather than pasting it into the field — a suggestion you have to
- * edit before it works is not a suggestion.
- */
-@Composable
-private fun Suggestions(onSend: (String) -> Unit) {
-    val prompts = listOf(
-        "How does my day look?",
-        "What's the weather like?",
-        "Set a timer for 10 minutes",
-        "I spent 3 euros on coffee"
-    )
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Space.tight)
-    ) {
-        prompts.forEach { prompt ->
-            Tag(text = prompt, tint = TextSecondary, onClick = { onSend(prompt) })
-        }
-    }
-}
+/** "searching the web" -> "Searching the web…", and a word when there is none. */
+private fun doingLine(label: String): String =
+    label.ifBlank { "working" }.replaceFirstChar { it.uppercase() } + "…"
 
 private fun statusText(state: AssistantUiState, configured: Boolean): String = when (state.stage) {
     Stage.Idle -> when {

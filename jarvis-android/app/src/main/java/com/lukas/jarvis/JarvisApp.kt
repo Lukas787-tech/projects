@@ -30,6 +30,7 @@ import com.lukas.jarvis.notify.Reminders
 import com.lukas.jarvis.stage.StageStore
 import com.lukas.jarvis.voice.SpeechInput
 import com.lukas.jarvis.voice.Speaker
+import com.lukas.jarvis.web.Currency
 import com.lukas.jarvis.web.Weather
 import com.lukas.jarvis.web.WebTools
 
@@ -53,6 +54,7 @@ class AppContainer(context: Context) {
 
     private val web = WebTools()
     private val weather = Weather()
+    private val currency = Currency()
     private val client = LlmClient()
 
     val stage = StageStore()
@@ -95,7 +97,8 @@ class AppContainer(context: Context) {
         briefer = briefer,
         messenger = messenger,
         caller = caller,
-        chats = chats
+        chats = chats,
+        currency = currency
     )
 
     val models = ModelCatalog()

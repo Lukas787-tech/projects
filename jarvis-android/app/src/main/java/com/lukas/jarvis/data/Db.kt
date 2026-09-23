@@ -109,7 +109,8 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
-                created_at INTEGER NOT NULL
+                created_at INTEGER NOT NULL,
+                tools TEXT NOT NULL DEFAULT ''
             )
             """.trimIndent()
         )
@@ -117,12 +118,16 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // Nothing has shipped before v1, so there is no migration path to honour yet.
-        // Future versions add ALTER TABLE statements here rather than dropping data.
+        // Each step adds to what is there and drops nothing: this file is the
+        // user's memory, and an upgrade that cost it would cost everything.
+        if (oldVersion < 2) {
+            // Which tools answered each reply. Old replies simply have none.
+            db.execSQL("ALTER TABLE messages ADD COLUMN tools TEXT NOT NULL DEFAULT ''")
+        }
     }
 
     companion object {
         const val NAME = "jarvis.db"
-        const val VERSION = 1
+        const val VERSION = 2
     }
 }

@@ -11,6 +11,7 @@ import com.lukas.jarvis.control.Messenger
 import com.lukas.jarvis.control.People
 import com.lukas.jarvis.control.Phone
 import com.lukas.jarvis.core.Calculator
+import com.lukas.jarvis.core.DateMath
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.core.TimeUtil
 import com.lukas.jarvis.core.Units
@@ -29,6 +30,7 @@ import com.lukas.jarvis.stage.Element
 import com.lukas.jarvis.stage.StageStore
 import com.lukas.jarvis.notify.ReplyListener
 import com.lukas.jarvis.notify.Reminders
+import com.lukas.jarvis.web.Currency
 import com.lukas.jarvis.web.Weather
 import com.lukas.jarvis.web.WebTools
 import org.json.JSONArray
@@ -73,7 +75,8 @@ class Tools(
     private val briefer: Briefer,
     private val messenger: Messenger,
     private val caller: Caller,
-    private val chats: Chats
+    private val chats: Chats,
+    private val currency: Currency
 ) {
 
     fun schemas(settings: Settings): List<JSONObject> = buildList {
@@ -190,7 +193,7 @@ class Tools(
         ),
         tool(
             "list_entries",
-            "List recent movements on a tracker, newest first.",
+            "List recent movements on a tracker, newest first, with their ids.",
             props(
                 "tracker" to str("Name of the tracker, or omit for everything."),
                 "limit" to int("How many. Default 10.")
@@ -206,6 +209,13 @@ class Tools(
                 "days" to int("How far back to look. Default 30."),
                 "tracker" to str("Restrict to one tracker, or omit for all of them.")
             ),
+            emptyList()
+        ),
+        tool(
+            "delete_entry",
+            "Take a logged movement back off its tracker: 'undo that', 'I did not actually " +
+                "buy it', 'that was logged twice'. With no id, the most recent entry is removed.",
+            props("id" to int("The entry id shown by list_entries. Omit for the latest entry.")),
             emptyList()
         )
     )
@@ -233,6 +243,27 @@ class Tools(
             "Mark a task done by its id.",
             props("id" to int("The task id shown by list_tasks.")),
             listOf("id")
+        ),
+        tool(
+            "update_task",
+            "Change a task that already exists: move it to a new time, snooze it, rename it, " +
+                "or change how it repeats. 'Move the dentist to Friday', 'remind me again in " +
+                "ten minutes'. The alarm moves with it.",
+            props(
+                "id" to int("The task id shown by list_tasks or in the context block."),
+                "title" to str("A new title, if it should change."),
+                "due" to str("The new time: ISO local time, or relative like '+10m' to snooze. 'none' clears it."),
+                "repeat" to str("How often it repeats.", Task.ALL_REPEATS),
+                "notes" to str("Replacement notes.")
+            ),
+            listOf("id")
+        ),
+        tool(
+            "delete_task",
+            "Remove a task entirely, with its alarm. Use when the user cancels a plan or says " +
+                "a reminder is no longer needed; use complete_task when it was done.",
+            props("id" to int("The task id.")),
+            listOf("id")
         )
     )
 
@@ -250,6 +281,20 @@ class Tools(
                 "+ - * / ^ %, brackets, sqrt, ln, log, sin, cos, tan, abs, round, pi and e.",
             props("expression" to str("The sum, e.g. '(249.99 * 0.175) + 12' or '15% of 80'.")),
             listOf("expression")
+        ),
+        tool(
+            "date_calc",
+            "Calendar arithmetic, exactly. ALWAYS use this for 'how many days until', 'how long " +
+                "ago was', 'what date is three weeks from now', 'what weekday is the 24th'. " +
+                "Never count days in your head.",
+            props(
+                "operation" to str("What to work out.", listOf("between", "add", "weekday")),
+                "from" to str("Start date: ISO like '2026-12-24', '24.12.', 'tomorrow'. Omit for today."),
+                "to" to str("For 'between': the other date. For 'weekday': the date to look at."),
+                "amount" to int("For 'add': how many units to add. Negative goes back."),
+                "unit" to str("For 'add'.", listOf("days", "weeks", "months", "years"))
+            ),
+            listOf("operation")
         ),
         tool(
             "convert_units",
@@ -287,6 +332,17 @@ class Tools(
             "Fetch a web page and read its text. Use to follow up on a search result.",
             props("url" to str("Full URL to open.")),
             listOf("url")
+        ),
+        tool(
+            "convert_currency",
+            "Convert money at today's real exchange rate. ALWAYS use this for any amount in " +
+                "one currency asked for in another; never use a rate you remember.",
+            props(
+                "amount" to num("How much."),
+                "from" to str("Currency it is in: a code like 'USD' or a word like 'dollars'."),
+                "to" to str("Currency wanted, e.g. 'EUR'.")
+            ),
+            listOf("amount", "from", "to")
         )
     )
 
@@ -404,6 +460,13 @@ class Tools(
                 "label" to str("What it is timing.")
             ),
             listOf("minutes")
+        ),
+        tool(
+            "show_alarms",
+            "Open the clock app's list of alarms, for 'what alarms have I got' or to switch one " +
+                "off. Android does not let other apps read or delete alarms, so say it is on screen.",
+            props(),
+            emptyList()
         ),
         tool(
             "device_status",
@@ -619,21 +682,26 @@ class Tools(
                 "configure_tracker" -> configureTracker(args, settings, effects)
                 "list_entries" -> listEntries(args)
                 "spending_report" -> spendingReport(args)
+                "delete_entry" -> deleteEntry(args, effects)
 
                 // tasks
                 "add_task" -> addTask(args, effects)
                 "list_tasks" -> listTasks(args)
                 "complete_task" -> completeTask(args, effects)
+                "update_task" -> updateTask(args, effects)
+                "delete_task" -> deleteTask(args, effects)
 
                 // thinking
                 "now" -> nowText()
                 "calculate" -> calculate(args)
                 "convert_units" -> convert(args)
+                "date_calc" -> dateCalc(args)
                 "briefing" -> briefer.build(settings).speak()
 
                 // the world
                 "web_search" -> webSearch(args)
                 "open_url" -> web.readPage(args.optString("url"))
+                "convert_currency" -> convertCurrency(args)
                 "weather" -> weather(args)
                 "find_places" -> findPlaces(args, settings)
                 "route_to" -> routeTo(args, settings)
@@ -651,6 +719,7 @@ class Tools(
                 // the phone
                 "set_alarm" -> setAlarm(args)
                 "set_timer" -> setTimer(args)
+                "show_alarms" -> launcher.showAlarms()
                 "device_status" -> deviceStatus(args)
                 "torch" -> device.torch(args.optBoolean("on", true))
                 "ringer" -> device.setRinger(args.optString("mode"))
@@ -860,10 +929,36 @@ class Tools(
         return entries.joinToString("\n") { e ->
             val owner = byId[e.trackerId]
             val sign = if (e.direction == Entry.DIR_OUT) "-" else "+"
-            "$sign${money(e.amount, owner)} ${owner?.label ?: "?"}" +
+            "[id ${e.id}] $sign${money(e.amount, owner)} ${owner?.label ?: "?"}" +
                 (e.note?.let { " ($it)" } ?: "") +
                 " — ${TimeUtil.relative(e.occurredAt)}"
         }
+    }
+
+    /**
+     * Undo, for the tracker.
+     *
+     * Speech recognition mishears amounts and small models sometimes log the
+     * same purchase twice, so a balance that can only ever grow wrong is one
+     * nobody trusts. With no id the newest entry goes, because "undo that" is
+     * nearly always about the last thing said.
+     */
+    private fun deleteEntry(args: JSONObject, effects: ToolEffects): String {
+        val requested = args.optLong("id", -1L)
+        val entry = if (requested > 0) {
+            brain.recentEntries(null, 200).firstOrNull { it.id == requested }
+                ?: return "No entry with id $requested."
+        } else {
+            brain.recentEntries(null, 1).firstOrNull() ?: return "There are no entries to undo."
+        }
+        val tracker = brain.allTrackers().firstOrNull { it.id == entry.trackerId }
+        if (!brain.deleteEntry(entry.id)) return "That entry would not delete."
+        effects.trackersChanged = true
+
+        val what = entry.note?.let { " for $it" }.orEmpty()
+        val head = "Removed ${money(entry.amount, tracker)}$what from ${tracker?.label ?: "its tracker"}."
+        val status = tracker?.let { brain.trackerStatus(it) } ?: return head
+        return "$head ${summaryLine(status)}"
     }
 
     /**
@@ -999,6 +1094,58 @@ class Tools(
         return "Completed: ${done.title}"
     }
 
+    /**
+     * Moves, renames or re-repeats a task, and moves its alarm with it.
+     *
+     * The alarm is cancelled and set again rather than adjusted, because a
+     * PendingIntent carries the title it was made with and a renamed task should
+     * not ring under its old name.
+     */
+    private fun updateTask(args: JSONObject, effects: ToolEffects): String {
+        val id = args.optLong("id", -1L)
+        if (id <= 0) return "Need a valid task id."
+        val existing = brain.getTask(id) ?: return "No task with id $id."
+
+        val dueRaw = args.optString("due").trim()
+        val clearing = dueRaw.lowercase(Locale.ROOT) in setOf("none", "no", "clear", "never")
+        val dueAt = when {
+            dueRaw.isBlank() -> existing.dueAt
+            clearing -> null
+            else -> TimeUtil.parse(dueRaw)
+                ?: return "I could not read '$dueRaw' as a time. Try '2026-09-24T09:00' or '+30m'."
+        }
+        val updated = existing.copy(
+            title = args.optString("title").trim().ifBlank { existing.title },
+            notes = if (args.has("notes")) args.optString("notes").takeIf { it.isNotBlank() } else existing.notes,
+            dueAt = dueAt,
+            repeatRule = args.optString("repeat").trim()
+                .takeIf { it in Task.ALL_REPEATS } ?: existing.repeatRule,
+            // Moving a finished task into the future means it is wanted again.
+            done = if (dueAt != null && dueAt != existing.dueAt) false else existing.done,
+            completedAt = if (dueAt != null && dueAt != existing.dueAt) null else existing.completedAt
+        )
+        brain.updateTask(updated)
+        reminders.cancel(id)
+        if (updated.dueAt != null && !updated.done) reminders.schedule(updated)
+        effects.tasksChanged = true
+
+        return when {
+            updated.dueAt == null -> "Updated (id $id): ${updated.title} — no due time now."
+            else -> "Updated (id $id): ${updated.title} — due ${TimeUtil.format(updated.dueAt)} " +
+                "(${TimeUtil.relative(updated.dueAt)})."
+        }
+    }
+
+    private fun deleteTask(args: JSONObject, effects: ToolEffects): String {
+        val id = args.optLong("id", -1L)
+        if (id <= 0) return "Need a valid task id."
+        val existing = brain.getTask(id) ?: return "No task with id $id."
+        reminders.cancel(id)
+        brain.deleteTask(id)
+        effects.tasksChanged = true
+        return "Removed the task: ${existing.title}."
+    }
+
     // ---------------------------------------------------------------- thinking
 
     private fun nowText(): String {
@@ -1024,6 +1171,33 @@ class Tools(
             is Units.Result.Ok -> result.spoken + "."
             is Units.Result.Error -> result.reason
         }
+    }
+
+    private fun dateCalc(args: JSONObject): String {
+        val from = args.optString("from").takeIf { it.isNotBlank() }
+        val to = args.optString("to").takeIf { it.isNotBlank() }
+        return when (args.optString("operation").trim().lowercase(Locale.ROOT)) {
+            "add", "plus", "offset" -> {
+                if (!args.has("amount")) return "For 'add' I need an amount."
+                DateMath.add(from, args.optLong("amount", 0L), args.optString("unit"))
+            }
+            "weekday", "day", "which_day" -> DateMath.weekday(to ?: from)
+            else -> {
+                // "between" with only one date given means "from today to that one",
+                // which is what "how long until" is always asking.
+                if (to == null && from == null) return "Which date should I count to?"
+                if (to == null) DateMath.between(null, from) else DateMath.between(from, to)
+            }
+        }
+    }
+
+    private suspend fun convertCurrency(args: JSONObject): String {
+        val amount = args.optDouble("amount", Double.NaN)
+        if (amount.isNaN()) return "Need an amount to convert."
+        val from = args.optString("from").trim()
+        val to = args.optString("to").trim()
+        if (from.isBlank() || to.isBlank()) return "Need both currencies."
+        return currency.convert(amount, from, to)
     }
 
     // ----------------------------------------------------------------- weather

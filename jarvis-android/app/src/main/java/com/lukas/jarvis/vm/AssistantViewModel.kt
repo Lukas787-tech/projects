@@ -31,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -64,7 +65,13 @@ data class AssistantUiState(
     val level: Float = 0f,
     val messages: List<ChatMessage> = emptyList(),
     val error: String? = null,
-    val micAvailable: Boolean = true
+    val micAvailable: Boolean = true,
+    /**
+     * The tools the turn in progress has reached for so far, in order. Drawn as
+     * a trail of chips while Jarvis works, so a slow answer shows what it is
+     * waiting on instead of a spinner that could mean anything.
+     */
+    val activity: List<String> = emptyList()
 )
 
 class AssistantViewModel(
@@ -236,12 +243,18 @@ class AssistantViewModel(
             stageLabel = "thinking",
             partial = "",
             error = null,
+            activity = emptyList(),
             messages = _ui.value.messages + userMessage
         )
 
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { brain.addMessage(userMessage) }
+                val userId = withContext(Dispatchers.IO) { brain.addMessage(userMessage) }
+                _ui.update { state ->
+                    state.copy(
+                        messages = state.messages.map { if (it === userMessage) it.copy(id = userId) else it }
+                    )
+                }
                 val history = _ui.value.messages.dropLast(1).takeLast(HISTORY_TURNS)
 
                 // The agent hits SQLite and the network throughout, so the whole
@@ -253,14 +266,26 @@ class AssistantViewModel(
                         settings = current,
                         history = history,
                         onStage = { label ->
-                            _ui.value = _ui.value.copy(stage = Stage.Thinking, stageLabel = label)
+                            _ui.update { it.copy(stage = Stage.Thinking, stageLabel = label) }
+                        },
+                        onTool = { name ->
+                            _ui.update { it.copy(activity = it.activity + name) }
                         }
                     )
                 }
 
-                val reply = ChatMessage(role = ChatMessage.ROLE_ASSISTANT, content = result.reply)
-                withContext(Dispatchers.IO) { brain.addMessage(reply) }
-                _ui.value = _ui.value.copy(messages = _ui.value.messages + reply)
+                val reply = ChatMessage(
+                    role = ChatMessage.ROLE_ASSISTANT,
+                    content = result.reply,
+                    tools = result.toolsUsed
+                )
+                val id = withContext(Dispatchers.IO) { brain.addMessage(reply) }
+                // The stored id, not the default 0: the thread keys its rows on
+                // it, and two replies both keyed 0 is a crash in a lazy list.
+                _ui.value = _ui.value.copy(
+                    messages = _ui.value.messages + reply.copy(id = id),
+                    activity = emptyList()
+                )
 
                 if (result.effects.any) refreshAll()
 
@@ -282,7 +307,12 @@ class AssistantViewModel(
     }
 
     private fun fail(message: String) {
-        _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "", error = message)
+        _ui.value = _ui.value.copy(
+            stage = Stage.Idle,
+            stageLabel = "",
+            error = message,
+            activity = emptyList()
+        )
     }
 
     fun dismissError() {
@@ -629,6 +659,15 @@ class AssistantViewModel(
 
     fun showElement(element: Element) {
         container.stage.show(element)
+    }
+
+    /**
+     * A sentence tapped on the Skills screen: sent as if typed, and answered on
+     * the assistant's own screen, where the reply and its tools can be seen.
+     */
+    fun trySkill(phrase: String) {
+        container.stage.show(Element.Globe)
+        sendTyped(phrase)
     }
 
     // ----------------------------------------------------------- the phone

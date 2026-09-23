@@ -11,19 +11,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +27,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.lukas.jarvis.ui.components.GlassDialog
+import com.lukas.jarvis.ui.components.GlassField
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.core.TimeUtil
@@ -160,52 +158,23 @@ private fun AddTaskDialog(
 
     val parsedDue = remember(due) { TimeUtil.parse(due.takeIf { it.isNotBlank() }) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New task") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("What needs doing?") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = due,
-                    onValueChange = { due = it },
-                    label = { Text("When? e.g. tomorrow, +2h, 2026-09-20 18:00") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions.Default,
-                    supportingText = {
-                        Text(
-                            parsedDue?.let { "Reminder at ${TimeUtil.format(it)}" }
-                                ?: if (due.isBlank()) "No reminder" else "Could not read that time",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (due.isNotBlank() && parsedDue == null) Negative else TextFaint
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Notes (optional)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Picker("Repeat", repeat, Task.ALL_REPEATS, { repeat = it })
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(title, parsedDue, repeat, notes.takeIf { it.isNotBlank() }) },
-                enabled = title.isNotBlank()
-            ) { Text("Add") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+    GlassDialog(
+        title = "New task",
+        onDismiss = onDismiss,
+        confirmLabel = "Add",
+        confirmEnabled = title.isNotBlank(),
+        onConfirm = { onConfirm(title, parsedDue, repeat, notes.takeIf { it.isNotBlank() }) }
+    ) {
+        GlassField(value = title, onValueChange = { title = it }, label = "What needs doing?")
+        GlassField(
+            value = due,
+            onValueChange = { due = it },
+            label = "When? e.g. tomorrow, +2h, 2026-09-20 18:00",
+            supportingText = parsedDue?.let { "Reminder at ${TimeUtil.format(it)}" }
+                ?: if (due.isBlank()) "No reminder" else "Could not read that time",
+            isError = due.isNotBlank() && parsedDue == null
+        )
+        GlassField(value = notes, onValueChange = { notes = it }, label = "Notes (optional)")
+        Picker("Repeat", repeat, Task.ALL_REPEATS, { repeat = it })
+    }
 }
