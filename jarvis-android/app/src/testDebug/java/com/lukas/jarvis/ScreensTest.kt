@@ -95,7 +95,6 @@ class ScreensTest {
             Element.Money to "07-trackers",
             Element.Lists to "07b-lists",
             Element.Skills to "08-skills",
-            Element.Settings to "09-settings",
             Element.Devices to "10-devices",
             Element.Music to "11-music"
         ).forEach { (element, name) ->
@@ -103,6 +102,16 @@ class ScreensTest {
             settle()
             shot(activity, name)
         }
+
+        listOf("You", "Voice", "Look", "Brain", "Powers", "Data").forEachIndexed { index, tab ->
+            runCatching { vm.showElement(Element.Settings, "settings:tab:$index") }
+            settle()
+            shot(activity, "09-settings-$index-${tab.lowercase()}")
+        }
+
+        runCatching { vm.showElement(Element.Map) }
+        settle(2400)
+        shot(activity, "15-map")
 
         runCatching { vm.showElement(Element.Globe) }
         container.settings.update {

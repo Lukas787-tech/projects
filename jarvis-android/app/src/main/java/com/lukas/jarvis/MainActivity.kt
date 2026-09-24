@@ -804,7 +804,13 @@ private fun JarvisRoot(
                 )
 
                 Element.Settings -> SettingsScreen(
-                    initialTab = if (stage.note == SETTINGS_POWERS) 4 else 0,
+                    initialTab = when {
+                        stage.note == SETTINGS_POWERS -> 4
+                        // "settings:tab:2" opens a tab by number, for links and the screenshots.
+                        stage.note?.startsWith("settings:tab:") == true ->
+                            stage.note?.substringAfterLast(':')?.toIntOrNull() ?: 0
+                        else -> 0
+                    },
                     settings = settings,
                     availableModels = availableModels,
                     modelsState = modelsState,
