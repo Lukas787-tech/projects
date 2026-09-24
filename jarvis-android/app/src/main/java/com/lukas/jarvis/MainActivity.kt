@@ -172,13 +172,10 @@ class MainActivity : ComponentActivity() {
             // Coarse is enough to answer "what is near me", and it is the one
             // users grant without thinking twice.
             Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            // Without this a text can only be drafted, and a draft waiting on a
-            // screen is not what "send Anna a message" asked for.
-            Manifest.permission.SEND_SMS,
-            // Ringing rather than only dialling. The call is still confirmed
-            // out loud first; this only decides who presses the green button.
-            Manifest.permission.CALL_PHONE
+            Manifest.permission.ACCESS_FINE_LOCATION
+            // Texting and calling are not asked for here: the first "send Anna
+            // a message" or "call mum" asks for exactly the one it needs, when
+            // the reason is obvious, instead of a wall of dialogs at first start.
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             wanted += Manifest.permission.POST_NOTIFICATIONS
