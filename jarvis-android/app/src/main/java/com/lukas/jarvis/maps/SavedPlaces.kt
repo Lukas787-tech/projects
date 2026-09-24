@@ -40,6 +40,11 @@ class SavedPlaces(context: Context) {
 
     val all: List<SavedPlace> get() = _places.value
 
+    /** Reads the store again, after a restore wrote it behind this class's back. */
+    fun reload() {
+        _places.value = read()
+    }
+
     /** Saving under a name that exists moves it: there is one "car". */
     fun save(name: String, point: GeoPoint, note: String? = null): SavedPlace {
         val clean = canonical(name)

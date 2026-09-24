@@ -1,17 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   The same, for API 31 and above, which splits cloud backup from the
-  phone-to-phone transfer during setup. The keys should survive both, and
-  nothing else needs to: an include list is exhaustive, so the cached location
-  stays on the phone that measured it.
+  phone-to-phone transfer during setup. The keys, memories, tasks, routines and
+  saved places should survive both; an include list is exhaustive, so the
+  cached location stays on the phone that measured it.
 -->
 <data-extraction-rules>
     <cloud-backup>
         <include domain="sharedpref" path="jarvis_settings.xml" />
         <include domain="sharedpref" path="jarvis_pool.xml" />
+        <include domain="sharedpref" path="jarvis_places.xml" />
+        <include domain="sharedpref" path="jarvis_routines.xml" />
+        <include domain="database" path="jarvis.db" />
     </cloud-backup>
     <device-transfer>
         <include domain="sharedpref" path="jarvis_settings.xml" />
         <include domain="sharedpref" path="jarvis_pool.xml" />
+        <include domain="sharedpref" path="jarvis_places.xml" />
+        <include domain="sharedpref" path="jarvis_routines.xml" />
+        <include domain="database" path="jarvis.db" />
     </device-transfer>
 </data-extraction-rules>

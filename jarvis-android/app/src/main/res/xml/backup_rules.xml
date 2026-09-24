@@ -2,10 +2,11 @@
 <!--
   What Android's cloud backup takes (API 30 and below).
 
-  The settings and the model pool hold the API keys, which are the one thing in
-  this app a user cannot simply type again from memory.
+  The settings and the model pool hold the API keys; the database holds every
+  memory, task and tracker, and the conversation. None of it can be typed again
+  from memory.
 
-  Only these two are listed, and an include list is exhaustive: everything not
+  Only these are listed, and an include list is exhaustive: everything not
   named here is already left behind. That covers the cached location, which
   should not travel — a fix from another phone and another week would have the
   assistant answer "what is near me" about the wrong city.
@@ -13,4 +14,7 @@
 <full-backup-content>
     <include domain="sharedpref" path="jarvis_settings.xml" />
     <include domain="sharedpref" path="jarvis_pool.xml" />
+    <include domain="sharedpref" path="jarvis_places.xml" />
+    <include domain="sharedpref" path="jarvis_routines.xml" />
+    <include domain="database" path="jarvis.db" />
 </full-backup-content>

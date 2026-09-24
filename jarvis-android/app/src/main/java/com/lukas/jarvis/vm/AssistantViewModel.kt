@@ -1178,29 +1178,52 @@ class AssistantViewModel(
     // --------------------------------------------------------------- backup
 
     /** The backup file's contents, for the caller to write wherever it likes. */
-    fun exportBackup(): String = Vault.export(container.app)
+    suspend fun exportBackup(): String =
+        withContext(Dispatchers.IO) { Vault.export(container.app, brain) }
 
     /**
      * Puts a backup back, then rebuilds everything that had read the old values.
      *
-     * Both stores cache their contents in memory, so a restore that only wrote
-     * to disk would appear to do nothing until the next launch.
+     * Every store caches its contents in memory, and alarms were set from the
+     * old tasks and routines, so a restore that only wrote to disk would
+     * appear to do nothing until the next launch — and ring for things that
+     * no longer exist.
      */
-    fun restoreBackup(text: String): String =
-        when (val result = Vault.import(container.app, text)) {
+    suspend fun restoreBackup(text: String): String {
+        if (busy) cancelTurn()
+        val before = withContext(Dispatchers.IO) { brain.pendingReminders() }
+        val result = withContext(Dispatchers.IO) { Vault.import(container.app, text, brain) }
+        return when (result) {
             is Vault.Result.Failed -> result.reason
             is Vault.Result.Restored -> {
+                withContext(Dispatchers.IO) {
+                    before.forEach { container.reminders.cancel(it.id) }
+                    container.reminders.rescheduleAll(brain.pendingReminders())
+                }
                 settingsStore.reload()
                 container.pool.reload()
+                container.routines.reload()
+                container.savedPlaces.reload()
                 configureVoice()
                 // The old provider's model list and test result describe
                 // settings that no longer exist.
                 _availableModels.value = emptyList()
                 _modelsState.value = ModelsState.Idle
                 _testState.value = TestState.Idle
-                "Restored ${result.keys} settings, including every saved API key."
+                val since = settingsStore.conversationStart()
+                val messages = withContext(Dispatchers.IO) { brain.recentMessages(40) }
+                    .filter { it.createdAt >= since }
+                _ui.update { it.copy(messages = messages, error = null, draft = "") }
+                _history.value = emptyList()
+                refreshAll()
+                buildString {
+                    append("Restored ${result.keys} settings")
+                    if (result.rows > 0) append(" and ${result.rows} memories, tasks, entries and messages")
+                    append(".")
+                }
             }
         }
+    }
 
     fun previewVoice() {
         configureVoice()

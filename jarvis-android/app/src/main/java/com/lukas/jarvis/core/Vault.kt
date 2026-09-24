@@ -15,6 +15,11 @@ import org.json.JSONObject
  * there is also a file, written wherever the user points it, which works with
  * none of that.
  *
+ * Since version 2 it also carries the database — every memory, task, tracker,
+ * entry and the conversation — because those are what make Jarvis the user's
+ * own, and a reinstall that brings back the keys but forgets who they are is
+ * only half a restore.
+ *
  * It copies the preference stores wholesale rather than a hand-listed set of
  * fields. Keys and endpoints are stored namespaced per provider, so a list of
  * fields would silently miss every provider nobody thought to enumerate; the
@@ -26,11 +31,11 @@ import org.json.JSONObject
  */
 object Vault {
 
-    private const val VERSION = 1
+    private const val VERSION = 2
     private val STORES = listOf("jarvis_settings", "jarvis_pool", "jarvis_places", "jarvis_routines")
 
     /** The current state of every store, as text to write to a file. */
-    fun export(context: Context): String {
+    fun export(context: Context, brain: com.lukas.jarvis.data.Brain? = null): String {
         val root = JSONObject()
         root.put("version", VERSION)
         root.put("exportedAt", System.currentTimeMillis())
@@ -44,12 +49,13 @@ object Vault {
             stores.put(name, entries)
         }
         root.put("stores", stores)
+        brain?.let { root.put("tables", it.exportTables()) }
         return root.toString(2)
     }
 
     /** How much came back, or why nothing did. */
     sealed interface Result {
-        data class Restored(val keys: Int, val exportedAt: Long) : Result
+        data class Restored(val keys: Int, val rows: Int, val exportedAt: Long) : Result
         data class Failed(val reason: String) : Result
     }
 
@@ -60,7 +66,7 @@ object Vault {
      * of provider keys, some from the backup and some from whatever was typed
      * since, is a state nobody asked for and nobody can reason about.
      */
-    fun import(context: Context, text: String): Result {
+    fun import(context: Context, text: String, brain: com.lukas.jarvis.data.Brain? = null): Result {
         val root = runCatching { JSONObject(text) }.getOrNull()
             ?: return Result.Failed("That file is not a Jarvis backup.")
         if (root.optString("app") != "jarvis") {
@@ -71,6 +77,17 @@ object Vault {
         }
         val stores = root.optJSONObject("stores")
             ?: return Result.Failed("That backup has nothing in it.")
+
+        // The database first: it is the part that can fail halfway, and it is
+        // all or nothing, so a bad file leaves the settings untouched too.
+        val tables = root.optJSONObject("tables")
+        val rows = if (tables != null && brain != null) {
+            runCatching { brain.importTables(tables) }.getOrElse {
+                return Result.Failed("The backup's memories could not be read back: ${it.message}")
+            }
+        } else {
+            0
+        }
 
         var restored = 0
         STORES.forEach store@{ name ->
@@ -85,8 +102,8 @@ object Vault {
             editor.apply()
         }
 
-        if (restored == 0) return Result.Failed("That backup has nothing in it.")
-        return Result.Restored(restored, root.optLong("exportedAt"))
+        if (restored == 0 && rows == 0) return Result.Failed("That backup has nothing in it.")
+        return Result.Restored(restored, rows, root.optLong("exportedAt"))
     }
 
     /** A suggested filename, dated so successive backups do not overwrite. */

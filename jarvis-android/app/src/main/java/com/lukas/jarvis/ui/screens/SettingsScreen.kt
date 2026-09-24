@@ -116,8 +116,8 @@ fun SettingsScreen(
     onClearPool: () -> Unit,
     onPreviewVoice: () -> Unit,
     onClearConversation: () -> Unit,
-    onExportBackup: () -> String,
-    onRestoreBackup: (String) -> String,
+    onExportBackup: suspend () -> String,
+    onRestoreBackup: suspend (String) -> String,
     onOpenSkills: () -> Unit,
     modifier: Modifier = Modifier,
     voices: () -> List<VoiceOption> = { emptyList() },
@@ -950,7 +950,8 @@ private fun FloatingDotPanel(enabled: Boolean, onChange: (Boolean) -> Unit) {
 }
 
 /**
- * Keeping the keys, which is the one thing here that cannot be re-created.
+ * Keeping everything: the memories and conversation that make Jarvis the
+ * user's own, and the keys, which cannot be re-created by pressing buttons.
  *
  * Android's own cloud backup normally brings these back on reinstall, but only
  * with a Google account, only with backup switched on, and only during the
@@ -959,38 +960,51 @@ private fun FloatingDotPanel(enabled: Boolean, onChange: (Boolean) -> Unit) {
  * to wherever the user wants it, which depends on none of that.
  */
 @Composable
-private fun BackupPanel(onExport: () -> String, onRestore: (String) -> String) {
+private fun BackupPanel(onExport: suspend () -> String, onRestore: suspend (String) -> String) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var note by remember { mutableStateOf<String?>(null) }
 
     val save = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        note = runCatching {
-            context.contentResolver.openOutputStream(uri)?.use { stream ->
-                stream.write(onExport().toByteArray())
-            } ?: error("could not open that file for writing")
-            "Saved. Keep it somewhere private — it holds your working API keys."
-        }.getOrElse { "Could not save: ${it.message ?: "unknown error"}" }
+        note = "Saving…"
+        scope.launch {
+            note = runCatching {
+                val text = onExport()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use { stream ->
+                        stream.write(text.toByteArray())
+                    } ?: error("could not open that file for writing")
+                }
+                "Saved. Keep it somewhere private — it holds your memories and working API keys."
+            }.getOrElse { "Could not save: ${it.message ?: "unknown error"}" }
+        }
     }
 
     val open = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        val text = runCatching {
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                stream.readBytes().decodeToString()
-            }
-        }.getOrNull()
-        note = if (text == null) "Could not read that file." else onRestore(text)
+        note = "Restoring…"
+        scope.launch {
+            val text = runCatching {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        stream.readBytes().decodeToString()
+                    }
+                }
+            }.getOrNull()
+            note = if (text == null) "Could not read that file." else onRestore(text)
+        }
     }
 
     Panel(
         title = "Backup",
-        subtitle = "Your API keys, endpoints, model pool and settings in one file. " +
-            "Restore it after a reinstall and everything is back as it was."
+        subtitle = "Everything Jarvis knows about you — memories, tasks, trackers, the " +
+            "conversation, routines, places, settings and keys — in one file. Restore it " +
+            "after a reinstall or on a new phone and everything is back as it was."
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ChipButton(

@@ -439,6 +439,86 @@ class Brain(context: Context) {
         db.delete("messages", null, null)
     }
 
+    // ------------------------------------------------------------------ backup
+
+    /**
+     * Every row worth keeping, table by table, as JSON.
+     *
+     * Columns are read as they are rather than through the model classes, so a
+     * column added later is carried without anyone remembering to list it.
+     */
+    fun exportTables(): org.json.JSONObject {
+        val out = org.json.JSONObject()
+        BACKUP_TABLES.forEach { table ->
+            val rows = org.json.JSONArray()
+            db.query(table, null, null, null, null, null, null).use { c ->
+                while (c.moveToNext()) {
+                    val row = org.json.JSONObject()
+                    for (i in 0 until c.columnCount) {
+                        val name = c.getColumnName(i)
+                        when (c.getType(i)) {
+                            Cursor.FIELD_TYPE_NULL -> row.put(name, org.json.JSONObject.NULL)
+                            Cursor.FIELD_TYPE_INTEGER -> row.put(name, c.getLong(i))
+                            Cursor.FIELD_TYPE_FLOAT -> row.put(name, c.getDouble(i))
+                            Cursor.FIELD_TYPE_STRING -> row.put(name, c.getString(i))
+                            else -> Unit // no blobs are stored; none are carried
+                        }
+                    }
+                    rows.put(row)
+                }
+            }
+            out.put(table, rows)
+        }
+        return out
+    }
+
+    /**
+     * Replaces the tables a backup holds with its rows, all or nothing.
+     *
+     * Only columns this version still has are written, so an older backup
+     * restores into a newer database, its missing columns left at their
+     * defaults. Returns how many rows came back.
+     */
+    fun importTables(tables: org.json.JSONObject): Int {
+        var count = 0
+        val database = db
+        database.beginTransaction()
+        try {
+            BACKUP_TABLES.filter { tables.has(it) }.forEach { table ->
+                val rows = tables.optJSONArray(table) ?: return@forEach
+                val columns = columnsOf(table)
+                database.delete(table, null, null)
+                for (i in 0 until rows.length()) {
+                    val row = rows.optJSONObject(i) ?: continue
+                    val values = ContentValues()
+                    row.keys().forEach { key ->
+                        if (key !in columns) return@forEach
+                        when (val value = row.opt(key)) {
+                            null, org.json.JSONObject.NULL -> values.putNull(key)
+                            is Int -> values.put(key, value.toLong())
+                            is Long -> values.put(key, value)
+                            is Double -> values.put(key, value)
+                            is Number -> values.put(key, value.toDouble())
+                            is Boolean -> values.put(key, if (value) 1 else 0)
+                            else -> values.put(key, value.toString())
+                        }
+                    }
+                    if (values.size() > 0 && database.insert(table, null, values) != -1L) count++
+                }
+            }
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
+        return count
+    }
+
+    private fun columnsOf(table: String): Set<String> =
+        db.rawQuery("PRAGMA table_info($table)", null).use { c ->
+            val name = c.getColumnIndexOrThrow("name")
+            buildSet { while (c.moveToNext()) add(c.getString(name)) }
+        }
+
     // ----------------------------------------------------------------- cursors
 
     private fun <T> Cursor.readAll(map: (Cursor) -> T): List<T> {
@@ -521,4 +601,9 @@ class Brain(context: Context) {
         tools = stringOrNull("tools").orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() },
         image = stringOrNull("image")
     )
+
+    private companion object {
+        /** Parents before children, so a restore never inserts an orphan. */
+        val BACKUP_TABLES = listOf("memories", "memory_tokens", "trackers", "entries", "tasks", "messages")
+    }
 }

@@ -82,6 +82,16 @@ class Routines(private val context: Context) {
         write(_all.value.map { if (it === target) it.copy(lastRunAt = System.currentTimeMillis()) else it })
     }
 
+    /**
+     * Reads the store again after a restore wrote it: the old routines' alarms
+     * are cancelled while their times are still known, then the new ones set.
+     */
+    fun reload() {
+        _all.value.forEach { cancel(it) }
+        _all.value = read()
+        rescheduleAll()
+    }
+
     /** Alarms do not survive a reboot or a reinstall; this puts them back. */
     fun rescheduleAll() {
         _all.value.forEach { schedule(it) }
