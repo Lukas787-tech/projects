@@ -80,6 +80,8 @@ import com.lukas.jarvis.ui.components.ToggleRow
 import com.lukas.jarvis.ui.components.SegmentedTabs
 import com.lukas.jarvis.voice.VoiceOption
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.lukas.jarvis.ui.theme.Positive
 import com.lukas.jarvis.ui.theme.Accent
@@ -119,7 +121,8 @@ fun SettingsScreen(
     voices: () -> List<VoiceOption> = { emptyList() },
     hasFreeBrain: Boolean = true,
     onRestoreFreeBrain: () -> Unit = {},
-    onReplayIntro: () -> Unit = {}
+    onReplayIntro: () -> Unit = {},
+    onCheckHome: suspend () -> String = { "" }
 ) {
     val context = LocalContext.current
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -526,6 +529,10 @@ fun SettingsScreen(
 
         AutomaticPanel()
 
+        ScreenReadingPanel()
+
+        HomePanel(settings = settings, onUpdate = onUpdate, onCheck = onCheckHome)
+
         FloatingDotPanel(
             enabled = settings.floatingDot,
             onChange = { wanted -> onUpdate { it.copy(floatingDot = wanted) } }
@@ -612,6 +619,135 @@ private fun FreeBrainPanel(hasFreeBrain: Boolean, lastUsedEndpoint: String?, onR
         Text(
             "Want it faster and smarter? Add a free key below — Groq and Google Gemini both " +
                 "take a minute to sign up for, and cost nothing. Gemini also lets Jarvis see photos.",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextFaint
+        )
+    }
+}
+
+/**
+ * The house, through the user's own Home Assistant: its address, a long-lived
+ * token made on the Home Assistant profile page, and a button that proves the
+ * two work before anything is asked of them.
+ */
+@Composable
+private fun HomePanel(
+    settings: Settings,
+    onUpdate: ((Settings) -> Settings) -> Unit,
+    onCheck: suspend () -> String
+) {
+    val scope = rememberCoroutineScope()
+    var result by remember { mutableStateOf<String?>(null) }
+    var checking by remember { mutableStateOf(false) }
+    var showToken by remember { mutableStateOf(false) }
+    Panel(
+        title = "Smart home",
+        subtitle = "Lights, heating, blinds, locks and scenes through your own Home Assistant — " +
+            "free, local, no cloud account.",
+        collapsible = true,
+        initiallyExpanded = settings.homeUrl.isNotBlank()
+    ) {
+        GlassField(
+            value = settings.homeUrl,
+            onValueChange = { value -> onUpdate { it.copy(homeUrl = value.trim()) } },
+            label = "Home Assistant address",
+            placeholder = "http://homeassistant.local:8123",
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(10.dp))
+        GlassField(
+            value = settings.homeToken,
+            onValueChange = { value -> onUpdate { it.copy(homeToken = value.trim()) } },
+            label = "Long-lived access token",
+            visualTransformation = if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
+            trailing = {
+                Text(
+                    text = if (showToken) "HIDE" else "SHOW",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Accent,
+                    modifier = Modifier.padding(end = 12.dp).clickable { showToken = !showToken }
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Make a token in Home Assistant: your profile -> Security -> Long-lived access tokens.",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextFaint
+        )
+        ToggleRow(
+            title = "Let Jarvis run the house",
+            checked = settings.homeEnabled,
+            onChange = { value -> onUpdate { it.copy(homeEnabled = value) } }
+        )
+        ChipButton(
+            label = "Test the connection",
+            icon = Icons.Default.Bolt,
+            busy = checking,
+            onClick = {
+                checking = true
+                scope.launch {
+                    result = onCheck()
+                    checking = false
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+        result?.let {
+            Spacer(Modifier.height(10.dp))
+            Banner(
+                tone = if (it.startsWith("Connected")) BannerTone.Good else BannerTone.Bad,
+                title = it
+            )
+        }
+    }
+}
+
+/**
+ * Whether Jarvis may read the screen for "summarise this". Granted on the
+ * system's accessibility page, so the truth is re-read on every return.
+ */
+@Composable
+private fun ScreenReadingPanel() {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var enabled by remember { mutableStateOf(com.lukas.jarvis.control.ScreenReader.isEnabled(context)) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                enabled = com.lukas.jarvis.control.ScreenReader.isEnabled(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    Panel(
+        title = "Screen reading",
+        subtitle = "\"Summarise this\", \"what does this say\", \"reply to this\" — about whatever " +
+            "app you are in, asked through the floating dot or the wake word."
+    ) {
+        Text(
+            if (enabled) "Ready. Jarvis reads the screen only when you ask."
+            else "Off. Android grants this on its accessibility page, under \"Jarvis screen reading\".",
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (enabled) Positive else TextSecondary
+        )
+        if (!enabled) {
+            Spacer(Modifier.height(12.dp))
+            ChipButton(
+                label = "Allow screen reading",
+                prominent = true,
+                onClick = {
+                    runCatching { context.startActivity(com.lukas.jarvis.control.ScreenReader.permissionIntent()) }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "It reads nothing at any other time, never reads Jarvis itself or the keyboard, and " +
+                "stores nothing — the words go to the one question that asked for them.",
             style = MaterialTheme.typography.labelSmall,
             color = TextFaint
         )

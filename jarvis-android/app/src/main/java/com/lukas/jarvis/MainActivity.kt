@@ -499,6 +499,7 @@ private fun JarvisRoot(
                     // message logged from the floating dot, changed things
                     // while the app was away.
                     viewModel.refreshAll()
+                    viewModel.greetIfFirstThisMorning()
                 }
                 Lifecycle.Event.ON_PAUSE -> {
                     if (settings.wakeWordEnabled) WakeWordService.start(context)
@@ -767,7 +768,8 @@ private fun JarvisRoot(
                     voices = viewModel::voices,
                     hasFreeBrain = poolEntries.any { it.endpoint.preset.tier == Tier.Keyless },
                     onRestoreFreeBrain = viewModel::restoreFreeBrain,
-                    onReplayIntro = { viewModel.updateSettings { it.copy(onboarded = false) } }
+                    onReplayIntro = { viewModel.updateSettings { it.copy(onboarded = false) } },
+                    onCheckHome = viewModel::checkHome
                 )
             } }
 

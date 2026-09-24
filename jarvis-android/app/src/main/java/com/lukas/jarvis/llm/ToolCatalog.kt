@@ -13,7 +13,7 @@ import java.util.Locale
 enum class ToolGroup {
     Memory, Money, Tasks, Thinking, Web, Weather, Places,
     Calendar, People, Phone, Messages, Media, Screen, Vision, Automation,
-    News, Language, Create, Markets, Knowledge, Fun
+    News, Language, Create, Markets, Knowledge, Fun, Home
 }
 
 /**
@@ -93,6 +93,10 @@ object ToolCatalog {
         ToolInfo("random", ToolGroup.Fun, "rolling the dice", "Random"),
         ToolInfo("generate_image", ToolGroup.Create, "drawing", "Picture"),
 
+        // the house
+        ToolInfo("home_status", ToolGroup.Home, "checking the house", "Home", readOnly = true),
+        ToolInfo("home_control", ToolGroup.Home, "working the house", "Home"),
+
         // places; these draw on the map, so none of them counts as a pure read
         ToolInfo("find_places", ToolGroup.Places, "looking around you", "Places"),
         ToolInfo("route_to", ToolGroup.Places, "finding the way", "Route"),
@@ -140,6 +144,7 @@ object ToolCatalog {
 
         // eyes
         ToolInfo("take_photo", ToolGroup.Vision, "opening the camera", "Camera"),
+        ToolInfo("read_screen", ToolGroup.Vision, "reading your screen", "Screen", readOnly = true),
         ToolInfo("open_camera", ToolGroup.Vision, "opening the camera app", "Camera"),
 
         // doing several things at once
@@ -232,7 +237,12 @@ object ToolCatalog {
         "find_book" to "book", "joke" to "fun", "tell_joke" to "fun", "fact" to "fun", "quote" to "fun",
         "coin_flip" to "random", "flip_coin" to "random", "roll_dice" to "random", "dice" to "random",
         "random_number" to "random", "image" to "generate_image", "draw" to "generate_image",
-        "create_image" to "generate_image", "imagine" to "generate_image", "text_to_image" to "generate_image"
+        "create_image" to "generate_image", "imagine" to "generate_image", "text_to_image" to "generate_image",
+        "screen" to "read_screen", "read_the_screen" to "read_screen", "screen_text" to "read_screen",
+        "summarize_screen" to "read_screen", "get_screen" to "read_screen",
+        "turn_on" to "home_control", "turn_off" to "home_control", "lights" to "home_control",
+        "smart_home" to "home_control", "home_assistant" to "home_control", "set_light" to "home_control",
+        "house_status" to "home_status", "get_devices" to "home_status", "devices" to "home_status"
     )
 
     /**
@@ -288,7 +298,7 @@ object ToolCatalog {
 
 /** The switches in Settings -> Abilities, each owning some of the families. */
 enum class AbilitySwitch {
-    Web, Weather, Maps, Calendar, Contacts, Phone;
+    Web, Weather, Maps, Calendar, Contacts, Phone, Home;
 
     fun isOn(settings: Settings): Boolean = when (this) {
         Web -> settings.webSearchEnabled
@@ -297,6 +307,7 @@ enum class AbilitySwitch {
         Calendar -> settings.calendarEnabled
         Contacts -> settings.contactsEnabled
         Phone -> settings.deviceControlEnabled
+        Home -> settings.homeReady
     }
 
     fun applyTo(settings: Settings, on: Boolean): Settings = when (this) {
@@ -306,6 +317,7 @@ enum class AbilitySwitch {
         Calendar -> settings.copy(calendarEnabled = on)
         Contacts -> settings.copy(contactsEnabled = on)
         Phone -> settings.copy(deviceControlEnabled = on)
+        Home -> settings.copy(homeEnabled = on)
     }
 }
 
@@ -451,11 +463,13 @@ object Abilities {
             ToolGroup.Vision,
             "Camera and photos",
             "Takes a picture and looks at it: reads signs and menus, logs a receipt, " +
-                "copies an event off a poster, tells you what something is.",
+                "copies an event off a poster, tells you what something is. With screen " +
+                "reading on, it can read and summarise whatever app you are looking at.",
             listOf(
                 "What am I looking at?",
                 "Scan this receipt and log it",
-                "Translate this sign"
+                "Translate this sign",
+                "Summarise what's on my screen"
             )
         ),
         Ability(
@@ -513,6 +527,19 @@ object Abilities {
             "Fun",
             "Jokes, odd facts, quotes, coin flips and dice — really random, not a model's favourite number.",
             listOf("Tell me a joke", "Flip a coin", "Roll two dice", "Give me a quote")
+        ),
+        Ability(
+            ToolGroup.Home,
+            "Smart home",
+            "Lights, plugs, heating, blinds, locks and scenes through your own Home Assistant — " +
+                "free, local, no cloud. Set it up in Settings -> Powers.",
+            listOf(
+                "Turn off all the lights",
+                "Set the living room to 21 degrees",
+                "Is the front door locked?",
+                "Dim the bedroom light to 30 percent"
+            ),
+            AbilitySwitch.Home
         ),
         Ability(
             ToolGroup.Screen,

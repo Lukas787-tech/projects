@@ -164,7 +164,7 @@ class Briefer(
         resolved?.second?.let { lastPlace = it }
 
         DayBrief(
-            greeting = greeting(settings.userName),
+            greeting = greeting(com.lukas.jarvis.llm.Personas.address(settings)),
             dateLine = TimeUtil.format(now),
             forecast = resolved?.first,
             placeName = resolved?.second,

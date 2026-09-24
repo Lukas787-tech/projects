@@ -12,9 +12,14 @@ android {
         applicationId = "com.lukas.jarvis"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "5.0"
+        versionCode = 19
+        versionName = "5.1"
         vectorDrawables { useSupportLibrary = true }
+
+        // Phones only. The on-device vision models ship native code for every
+        // processor family; the two x86 ones are emulators, and carrying them
+        // doubled the download for no one.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     // A throwaway key committed to the repo on purpose: it keeps every CI build

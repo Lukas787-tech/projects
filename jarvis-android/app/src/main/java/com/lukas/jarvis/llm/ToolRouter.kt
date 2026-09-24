@@ -99,7 +99,10 @@ object ToolRouter {
         ToolGroup.Vision to listOf(
             "photo", "picture", "camera", "look at", "see this", "scan", "read this",
             "what is this", "what's this", "receipt", "identify", "this sign", "menu",
-            "foto", "bild", "kamera", "schau", "scann", "was ist das", "lies das", "erkenn"
+            "foto", "bild", "kamera", "schau", "scann", "was ist das", "lies das", "erkenn",
+            "screen", "this page", "this article", "summarise this", "summarize this",
+            "what does it say", "what does this say", "reply to this", "bildschirm", "diese seite",
+            "diesen artikel", "fasse das zusammen", "fass das zusammen"
         ),
         ToolGroup.Automation to listOf(
             "routine", "every morning", "every evening", "every day", "every night",
@@ -125,6 +128,14 @@ object ToolRouter {
             "episode", "book", "author", "team", "match", "game ", "football", "soccer",
             "basketball", "league", "feiertag", "rezept", "kochen", "serie", "buch", "autor",
             "spiel ", "fußball", "mannschaft", "verein"
+        ),
+        ToolGroup.Home to listOf(
+            "light", "lamp", "heating", "thermostat", "radiator", "degrees", "door", "lock",
+            "blind", "shutter", "curtain", "plug", "socket", "fan", "scene", "turn on", "turn off",
+            "switch on", "switch off", "dim", "brighter", "house", "home", "living room", "bedroom",
+            "kitchen", "bathroom", "garage", "garden", "licht", "lampe", "heizung", "thermostat",
+            "tür", "schloss", "rollo", "jalousie", "steckdose", "schalte", "mach das", "dimm",
+            "wohnzimmer", "schlafzimmer", "küche", "bad ", "flur"
         ),
         ToolGroup.Fun to listOf(
             "joke", "fun fact", "random fact", "quote", "inspire", "motivat", "bored",

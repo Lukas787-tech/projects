@@ -1,5 +1,6 @@
 package com.lukas.jarvis.ui.components
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -10,7 +11,10 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -85,7 +89,7 @@ fun Reactor(
         label = "breath"
     )
 
-    val energy by animateFloatAsState(
+    val energyTarget by animateFloatAsState(
         targetValue = when (mood) {
             GlobeMood.Resting -> 0.45f
             GlobeMood.Listening -> 0.9f
@@ -115,11 +119,21 @@ fun Reactor(
     val bright = AccentBright
     val deep = AccentDeep
 
-    Canvas(modifier = modifier) {
+    // Powering up: the first time the core appears its light comes up from
+    // nothing and the rings arrive from the outside in, the way a display
+    // wakes rather than simply being there.
+    val boot = remember { Animatable(if (calm) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        if (boot.value < 1f) boot.animateTo(1f, tween(1400, easing = FastOutSlowInEasing))
+    }
+    val power = boot.value
+
+    Canvas(modifier = modifier.graphicsLayer { alpha = (0.25f + 0.75f * power).coerceIn(0f, 1f) }) {
         val c = Offset(size.width / 2f, size.height / 2f)
-        val r = size.minDimension / 2f
+        val r = size.minDimension / 2f * (0.86f + 0.14f * power)
         val px = r / 160f
         val open = aperture.coerceIn(0f, 1f)
+        val energy = energyTarget * power
 
         halo(c, r, accent, energy)
 

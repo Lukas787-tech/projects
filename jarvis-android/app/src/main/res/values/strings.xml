@@ -19,4 +19,7 @@
     <string name="widget_subtitle">Tap to talk · no key needed</string>
     <string name="widget_description">Talk, type or show Jarvis something, straight from the home screen.</string>
     <string name="share_label">Ask Jarvis</string>
+    <string name="screen_reader_label">Jarvis screen reading</string>
+    <!-- Shown by Android on the accessibility page. It should say exactly what it does. -->
+    <string name="screen_reader_description">Lets Jarvis read the text on your screen when you ask it to — "summarise this page", "what does this say". It reads nothing at any other time, never reads Jarvis itself or the keyboard, and stores nothing.</string>
 </resources>

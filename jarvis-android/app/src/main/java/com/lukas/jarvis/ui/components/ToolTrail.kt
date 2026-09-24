@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CandlestickChart
 import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Palette
@@ -84,6 +85,7 @@ fun ToolGroup.icon(): ImageVector = when (this) {
     ToolGroup.Markets -> Icons.Default.CandlestickChart
     ToolGroup.Knowledge -> Icons.Default.Lightbulb
     ToolGroup.Fun -> Icons.Default.Casino
+    ToolGroup.Home -> Icons.Default.Home
 }
 
 /**

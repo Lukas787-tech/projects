@@ -290,6 +290,12 @@ fun VoiceSection(
             onChange = { value -> onUpdate { it.copy(handsFree = value) } }
         )
         ToggleRow(
+            title = "Morning brief",
+            subtitle = "On the first open of a morning, say how the day looks — weather, what's due, the top story",
+            checked = settings.morningBrief,
+            onChange = { value -> onUpdate { it.copy(morningBrief = value) } }
+        )
+        ToggleRow(
             title = "Listening tones",
             subtitle = "A short tone when the microphone opens and when it heard you",
             checked = settings.earcons,

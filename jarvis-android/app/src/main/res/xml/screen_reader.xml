@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Reads the screen only when a request asks it to. It subscribes to one event
+  type because Android requires one, and ignores it; the window list is needed
+  so the app underneath the floating dot can be read rather than the dot.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows"
+    android:canRetrieveWindowContent="true"
+    android:notificationTimeout="1000"
+    android:description="@string/screen_reader_description" />

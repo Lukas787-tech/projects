@@ -52,6 +52,10 @@ class LogicTest {
         assertTrue(ToolGroup.Language in groups("how do you say thank you in japanese"))
         assertTrue(ToolGroup.Fun in groups("flip a coin"))
         assertTrue(ToolGroup.Knowledge in groups("give me a recipe for lasagne"))
+        assertTrue(ToolGroup.Home in groups("turn off the living room lights"))
+        assertTrue(ToolGroup.Home in groups("Schalte das Licht im Wohnzimmer aus"))
+        assertTrue(ToolGroup.Vision in groups("summarise this article for me"))
+        assertTrue(ToolGroup.Vision in groups("what does this say"))
     }
 
     @Test fun followUpKeepsTheThread() {

@@ -12,6 +12,7 @@ import com.lukas.jarvis.control.Launcher
 import com.lukas.jarvis.control.Messenger
 import com.lukas.jarvis.control.People
 import com.lukas.jarvis.control.Phone
+import com.lukas.jarvis.control.ScreenReader
 import com.lukas.jarvis.core.Calculator
 import com.lukas.jarvis.core.DateMath
 import com.lukas.jarvis.core.Settings
@@ -33,6 +34,7 @@ import com.lukas.jarvis.stage.StageStore
 import com.lukas.jarvis.notify.ReplyListener
 import com.lukas.jarvis.notify.Reminders
 import com.lukas.jarvis.web.Currency
+import com.lukas.jarvis.web.Home
 import com.lukas.jarvis.web.Imagine
 import com.lukas.jarvis.web.Knowledge
 import com.lukas.jarvis.web.Weather
@@ -87,7 +89,8 @@ class Tools(
     private val camera: CameraBus,
     private val routines: Routines,
     private val knowledge: Knowledge,
-    private val imagine: Imagine
+    private val imagine: Imagine,
+    private val home: Home
 ) {
 
     /**
@@ -106,6 +109,7 @@ class Tools(
         if (settings.webSearchEnabled) addAll(webTools())
         if (settings.webSearchEnabled) addAll(worldTools())
         add(randomTool())
+        if (settings.homeReady) addAll(homeTools())
         if (settings.weatherEnabled) add(weatherTool())
         if (settings.mapsEnabled) addAll(placeTools(settings))
         if (settings.calendarEnabled) addAll(calendarTools())
@@ -466,6 +470,35 @@ class Tools(
                 "shape" to str("The picture's shape.", listOf("square", "portrait", "landscape"))
             ),
             listOf("prompt")
+        )
+    )
+
+    private fun homeTools(): List<JSONObject> = listOf(
+        tool(
+            "home_status",
+            "What the house is doing: which lights are on, doors and locks, heating and " +
+                "temperatures. With a name, just those devices.",
+            props("query" to str("A device or room name, e.g. 'front door', 'living room'. Omit for an overview.")),
+            emptyList()
+        ),
+        tool(
+            "home_control",
+            "Operate devices in the user's house through Home Assistant: lights, plugs, fans, " +
+                "blinds, locks, thermostats, media players, scenes and scripts. Use the names " +
+                "the user says, e.g. 'living room lights', 'all lights', 'movie scene'.",
+            props(
+                "target" to str("The device, room or scene as the user named it."),
+                "action" to str(
+                    "What to do.",
+                    listOf(
+                        "on", "off", "toggle", "open", "close", "stop", "lock", "unlock",
+                        "set_brightness", "set_temperature", "set_position", "set_volume", "set_speed",
+                        "activate"
+                    )
+                ),
+                "value" to num("For set_*: brightness %, temperature in degrees, position %, volume % or speed %.")
+            ),
+            listOf("target", "action")
         )
     )
 
@@ -852,6 +885,16 @@ class Tools(
                 listOf("question")
             )
         )
+        add(
+            tool(
+                "read_screen",
+                "Read the text on the phone's screen — the app the user is looking at. Use for " +
+                    "'summarise this', 'what does this say', 'what's on my screen', 'explain this " +
+                    "page', 'reply to this'. Then answer from what it returns.",
+                props(),
+                emptyList()
+            )
+        )
         if (settings.deviceControlEnabled) {
             add(
                 tool(
@@ -986,6 +1029,20 @@ class Tools(
                 )
                 "generate_image" -> generateImage(args, effects)
 
+                // the house
+                "home_status" -> home.status(
+                    settings.homeUrl,
+                    settings.homeToken,
+                    args.optString("query").takeIf { it.isNotBlank() }
+                )
+                "home_control" -> home.control(
+                    settings.homeUrl,
+                    settings.homeToken,
+                    args.optString("target"),
+                    args.optString("action").ifBlank { "toggle" },
+                    optDoubleOrNull(args, "value")
+                )
+
                 // calendar and people
                 "calendar" -> agenda.describe(args.optInt("days", 1), args.optInt("limit", 10))
                 "add_calendar_event" -> addEvent(args)
@@ -1034,6 +1091,7 @@ class Tools(
 
                 // eyes
                 "take_photo" -> takePhoto(args)
+                "read_screen" -> readScreen()
                 "open_camera" -> launcher.openCamera(args.optString("mode") == "video")
 
                 // routines
@@ -1050,6 +1108,18 @@ class Tools(
         } catch (e: Exception) {
             "Tool '${call.name}' failed: ${e.message ?: e::class.java.simpleName}"
         }
+    }
+
+    private fun readScreen(): String {
+        val reading = ScreenReader.capture()
+            ?: return "Screen reading is switched off. Tell the user it is in Settings -> Powers -> " +
+                "Screen reading, and that Android asks once on its accessibility page."
+        if (reading.app.isBlank()) {
+            return "Only Jarvis is on screen right now, so there is nothing else to read. Tell the " +
+                "user to ask from the floating dot or with the wake word while the other app is open."
+        }
+        if (reading.text.isBlank()) return "The screen (${reading.app}) shows no readable text."
+        return "On screen in ${reading.app}:\n${reading.text}"
     }
 
     private suspend fun generateImage(args: JSONObject, effects: ToolEffects): String {

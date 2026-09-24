@@ -75,6 +75,8 @@ data class Settings(
     val earcons: Boolean = true,
     /** A tick under the finger on the main controls. */
     val haptics: Boolean = true,
+    /** On the first open of a morning, say how the day looks without being asked. */
+    val morningBrief: Boolean = true,
 
     // ------------------------------------------------------------ its looks
 
@@ -90,8 +92,19 @@ data class Settings(
     val showHud: Boolean = true,
 
     /** False until the first-run introduction has been completed or skipped. */
-    val onboarded: Boolean = false
+    val onboarded: Boolean = false,
+
+    // ----------------------------------------------------------- the house
+
+    /** Home Assistant's address, e.g. http://homeassistant.local:8123. */
+    val homeUrl: String = "",
+    /** A Home Assistant long-lived access token. */
+    val homeToken: String = "",
+    val homeEnabled: Boolean = true
 ) {
+    val homeReady: Boolean
+        get() = homeEnabled && homeUrl.isNotBlank() && homeToken.isNotBlank()
+
     val isConfigured: Boolean
         get() = baseUrl.isNotBlank() && model.isNotBlank() &&
             (apiKey.isNotBlank() || !Providers.byId(providerId).needsKey)
@@ -156,13 +169,17 @@ class SettingsStore(context: Context) {
             speechLanguage = prefs.getString(KEY_SPEECH_LANGUAGE, "").orEmpty(),
             earcons = prefs.getBoolean(KEY_EARCONS, true),
             haptics = prefs.getBoolean(KEY_HAPTICS, true),
+            morningBrief = prefs.getBoolean(KEY_MORNING_BRIEF, true),
             accent = prefs.getString(KEY_ACCENT, "arc") ?: "arc",
             backdrop = prefs.getString(KEY_BACKDROP, "space") ?: "space",
             textScale = prefs.getFloat(KEY_TEXT_SCALE, 1f),
             reduceMotion = prefs.getBoolean(KEY_REDUCE_MOTION, false),
             coreStyle = prefs.getString(KEY_CORE_STYLE, "reactor") ?: "reactor",
             showHud = prefs.getBoolean(KEY_SHOW_HUD, true),
-            onboarded = prefs.getBoolean(KEY_ONBOARDED, false)
+            onboarded = prefs.getBoolean(KEY_ONBOARDED, false),
+            homeUrl = prefs.getString(KEY_HOME_URL, "").orEmpty(),
+            homeToken = prefs.getString(KEY_HOME_TOKEN, "").orEmpty(),
+            homeEnabled = prefs.getBoolean(KEY_HOME_ENABLED, true)
         )
     }
 
@@ -218,6 +235,7 @@ class SettingsStore(context: Context) {
             .putString(KEY_SPEECH_LANGUAGE, next.speechLanguage)
             .putBoolean(KEY_EARCONS, next.earcons)
             .putBoolean(KEY_HAPTICS, next.haptics)
+            .putBoolean(KEY_MORNING_BRIEF, next.morningBrief)
             .putString(KEY_ACCENT, next.accent)
             .putString(KEY_BACKDROP, next.backdrop)
             .putFloat(KEY_TEXT_SCALE, next.textScale)
@@ -225,6 +243,9 @@ class SettingsStore(context: Context) {
             .putString(KEY_CORE_STYLE, next.coreStyle)
             .putBoolean(KEY_SHOW_HUD, next.showHud)
             .putBoolean(KEY_ONBOARDED, next.onboarded)
+            .putString(KEY_HOME_URL, next.homeUrl)
+            .putString(KEY_HOME_TOKEN, next.homeToken)
+            .putBoolean(KEY_HOME_ENABLED, next.homeEnabled)
             .apply()
         _state.value = next
     }
@@ -276,6 +297,17 @@ class SettingsStore(context: Context) {
         update { next }
     }
 
+    /**
+     * Claims today's morning brief: true the first time it is asked on a given
+     * day, false after that, so the brief is said once however often the app
+     * is opened.
+     */
+    fun claimMorning(day: String): Boolean {
+        if (prefs.getString(KEY_GREETED_DAY, null) == day) return false
+        prefs.edit().putString(KEY_GREETED_DAY, day).apply()
+        return true
+    }
+
     private fun scoped(key: String, providerId: String) = "$key.$providerId"
 
     private companion object {
@@ -319,6 +351,8 @@ class SettingsStore(context: Context) {
         const val KEY_SPEECH_LANGUAGE = "speech_language"
         const val KEY_EARCONS = "earcons"
         const val KEY_HAPTICS = "haptics"
+        const val KEY_MORNING_BRIEF = "morning_brief"
+        const val KEY_GREETED_DAY = "greeted_day"
         const val KEY_ACCENT = "accent"
         const val KEY_BACKDROP = "backdrop"
         const val KEY_TEXT_SCALE = "text_scale"
@@ -326,5 +360,8 @@ class SettingsStore(context: Context) {
         const val KEY_CORE_STYLE = "core_style"
         const val KEY_SHOW_HUD = "show_hud"
         const val KEY_ONBOARDED = "onboarded"
+        const val KEY_HOME_URL = "home_url"
+        const val KEY_HOME_TOKEN = "home_token"
+        const val KEY_HOME_ENABLED = "home_enabled"
     }
 }

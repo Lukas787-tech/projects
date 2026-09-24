@@ -994,6 +994,46 @@ class AssistantViewModel(
         configureVoice()
     }
 
+    /**
+     * The morning brief, said once on the first open of a morning: the
+     * weather, what is due, the next appointment, the budgets and the top
+     * story. It is gathered on the phone and spoken as it is, so it costs no
+     * model quota at all.
+     */
+    fun greetIfFirstThisMorning() {
+        val settings = settingsStore.current
+        if (!settings.onboarded || !settings.morningBrief || !settings.speakReplies) return
+        if (busy || _ui.value.stage != Stage.Idle) return
+        val now = java.util.Calendar.getInstance()
+        if (now.get(java.util.Calendar.HOUR_OF_DAY) !in 5..11) return
+        val day = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(now.time)
+        if (!settingsStore.claimMorning(day)) return
+
+        viewModelScope.launch {
+            val brief = runCatching {
+                withContext(Dispatchers.IO) { container.briefer.build(settingsStore.current) }
+            }.getOrNull() ?: return@launch
+            _brief.value = brief
+            if (busy || _ui.value.stage != Stage.Idle) return@launch
+            val words = brief.speak()
+            val message = ChatMessage(role = ChatMessage.ROLE_ASSISTANT, content = words, tools = listOf("briefing"))
+            val id = withContext(Dispatchers.IO) { brain.addMessage(message) }
+            _ui.update { it.copy(messages = it.messages + message.copy(id = id), stage = Stage.Speaking, stageLabel = "speaking") }
+            speaker.speak(words) {
+                viewModelScope.launch {
+                    if (_ui.value.stage == Stage.Speaking) _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "")
+                }
+            }
+        }
+    }
+
+    /** Asks Home Assistant whether the saved address and token work. */
+    suspend fun checkHome(): String {
+        val s = settingsStore.current
+        if (s.homeUrl.isBlank() || s.homeToken.isBlank()) return "Add the address and a token first."
+        return container.home.check(s.homeUrl, s.homeToken)
+    }
+
     /** The voices the phone's speech engine offers in the current language. */
     fun voices(): List<com.lukas.jarvis.voice.VoiceOption> = speaker.voices()
 

@@ -110,6 +110,12 @@ EYES
   `add_task`, a business card -> `remember`.
                     """.trim()
                 )
+                if (has("read_screen")) {
+                    appendLine(
+                        "- \"Summarise this\", \"what does this say\", \"what's on my screen\" -> " +
+                            "`read_screen`, then answer from what it returns."
+                    )
+                }
             }
 
             if (has("generate_image")) {
@@ -142,6 +148,21 @@ MUSIC AND DEVICES
   no library of your own, so never claim to know what is in $user's collection.
 - `bluetooth` lists paired devices and opens the settings page. Android does not let you
   connect a device; say so plainly and open the page. Never say a device is connected.
+                    """.trim()
+                )
+            }
+
+            if (has("home_control", "home_status")) {
+                appendLine()
+                appendLine(
+                    """
+THE HOUSE
+- $user's home is connected through Home Assistant. Lights, plugs, heating, blinds, locks,
+  scenes -> `home_control` with the names they say; "is the door locked", "which lights are
+  on", "how warm is it inside" -> `home_status`.
+- "Turn on the light" means a light in the house, not the phone's torch — unless they say
+  torch or flashlight. Confirm what was done in a few words.
+- Unlocking a door or opening a garage: say what you did plainly.
                     """.trim()
                 )
             }

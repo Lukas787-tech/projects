@@ -62,6 +62,7 @@ class AppContainer(context: Context) {
     private val currency = Currency()
     private val knowledge = Knowledge()
     val imagine = Imagine(context)
+    val home = com.lukas.jarvis.web.Home()
     private val client = LlmClient()
 
     val stage = StageStore()
@@ -117,7 +118,8 @@ class AppContainer(context: Context) {
         camera = camera,
         routines = routines,
         knowledge = knowledge,
-        imagine = imagine
+        imagine = imagine,
+        home = home
     )
 
     val models = ModelCatalog()
