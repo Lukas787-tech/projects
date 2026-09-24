@@ -38,6 +38,12 @@ import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Dehaze
+import androidx.compose.material.icons.filled.Umbrella
+import androidx.compose.material.icons.filled.AcUnit
+import androidx.compose.material.icons.filled.Thunderstorm
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -365,7 +371,7 @@ private fun HeroCard(brief: DayBrief?, loading: Boolean) {
             Spacer(Modifier.height(Space.step))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    Icons.Default.WbSunny,
+                    skyIcon(forecast.now.description, forecast.now.isDay),
                     contentDescription = null,
                     tint = Accent,
                     modifier = Modifier.size(22.dp)
@@ -742,3 +748,17 @@ private fun format(value: Double): String =
     } else {
         String.format(Locale.US, "%.2f", value)
     }
+
+/** The sky as an icon: a sun at noon is wrong for overcast, and wrong at night. */
+private fun skyIcon(description: String, isDay: Boolean): androidx.compose.ui.graphics.vector.ImageVector {
+    val sky = description.lowercase()
+    return when {
+        "thunder" in sky -> Icons.Default.Thunderstorm
+        "snow" in sky -> Icons.Default.AcUnit
+        "rain" in sky || "drizzle" in sky || "shower" in sky -> Icons.Default.Umbrella
+        "fog" in sky -> Icons.Default.Dehaze
+        "overcast" in sky || "cloud" in sky -> Icons.Default.Cloud
+        !isDay -> Icons.Default.NightsStay
+        else -> Icons.Default.WbSunny
+    }
+}
