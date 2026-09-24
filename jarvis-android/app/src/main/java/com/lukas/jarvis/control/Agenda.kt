@@ -99,6 +99,74 @@ class Agenda(context: Context) {
         }
     }.getOrNull()
 
+    /**
+     * Moves or cancels an upcoming appointment found by its title, in the
+     * next [daysAhead] days. Only single events are changed here: moving one
+     * meeting out of a weekly series means deciding about the rest, which
+     * belongs in the calendar app, so those are handed over by name.
+     */
+    fun change(title: String, newStart: Long?, cancel: Boolean, daysAhead: Int = 60): String {
+        if (!hasPermission) return "Calendar access is off, so I cannot see the appointment."
+        if (!canWrite) return "I can read the calendar but not change it; allow calendar access fully and ask again."
+        val wanted = title.trim().lowercase()
+        if (wanted.isBlank()) return "Which appointment?"
+        val now = System.currentTimeMillis()
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().let { builder ->
+            ContentUris.appendId(builder, now - 60 * 60 * 1000L)
+            ContentUris.appendId(builder, now + daysAhead * 24L * 60 * 60 * 1000)
+            builder.build()
+        }
+        data class Hit(val eventId: Long, val title: String, val begin: Long, val end: Long, val repeating: Boolean)
+        val hits = ArrayList<Hit>()
+        runCatching {
+            app.contentResolver.query(
+                uri,
+                arrayOf(
+                    CalendarContract.Instances.EVENT_ID,
+                    CalendarContract.Instances.TITLE,
+                    CalendarContract.Instances.BEGIN,
+                    CalendarContract.Instances.END,
+                    CalendarContract.Instances.RRULE
+                ),
+                null,
+                null,
+                "${CalendarContract.Instances.BEGIN} ASC"
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val name = c.getString(1).orEmpty()
+                    if (name.lowercase().contains(wanted) || wanted.contains(name.lowercase().ifBlank { "\u0000" })) {
+                        hits += Hit(c.getLong(0), name, c.getLong(2), c.getLong(3), !c.getString(4).isNullOrBlank())
+                    }
+                }
+            }
+        }
+        val hit = hits.firstOrNull() ?: return "Nothing called '$title' is on the calendar in the next $daysAhead days."
+        if (hit.repeating) {
+            return "'${hit.title}' is part of a repeating series; change it in the calendar app so the rest " +
+                "of the series is handled the way you want."
+        }
+        val event = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, hit.eventId)
+        return runCatching {
+            if (cancel) {
+                app.contentResolver.delete(event, null, null)
+                "Cancelled '${hit.title}' on ${TimeUtil.format(hit.begin)}."
+            } else {
+                val start = newStart ?: return "When should it move to?"
+                val length = (hit.end - hit.begin).coerceAtLeast(15 * 60 * 1000L)
+                app.contentResolver.update(
+                    event,
+                    ContentValues().apply {
+                        put(CalendarContract.Events.DTSTART, start)
+                        put(CalendarContract.Events.DTEND, start + length)
+                    },
+                    null,
+                    null
+                )
+                "Moved '${hit.title}' to ${TimeUtil.format(start)}."
+            }
+        }.getOrElse { "The calendar would not let me change '${hit.title}'." }
+    }
+
     fun between(from: Long, to: Long, limit: Int = 12): List<Appointment> {
         if (!hasPermission) return emptyList()
         val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().let { builder ->

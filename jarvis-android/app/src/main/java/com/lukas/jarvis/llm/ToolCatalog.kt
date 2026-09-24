@@ -110,6 +110,7 @@ object ToolCatalog {
 
         // calendar and people
         ToolInfo("calendar", ToolGroup.Calendar, "reading your calendar", "Calendar", readOnly = true),
+        ToolInfo("change_calendar_event", ToolGroup.Calendar, "changing the appointment", "Calendar"),
         ToolInfo("add_calendar_event", ToolGroup.Calendar, "filling in the event", "Event"),
         ToolInfo("find_contact", ToolGroup.People, "looking them up", "Contacts", readOnly = true),
 

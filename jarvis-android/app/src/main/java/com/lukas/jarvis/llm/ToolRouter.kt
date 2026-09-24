@@ -76,7 +76,9 @@ object ToolRouter {
         ),
         ToolGroup.Calendar to listOf(
             "calendar", "meeting", "appointment", "event", "schedule", "agenda", "busy",
-            "free on", "free at", "kalender", "termin", "besprechung", "treffen", "verabredung"
+            "free on", "free at", "kalender", "termin", "besprechung", "treffen", "verabredung",
+            "reschedule", "move my", "move the", "cancel my", "cancel the", "dentist", "doctor",
+            "lunch with", "dinner with", "call with", "verschieb", "absagen", "arzt"
         ),
         ToolGroup.People to listOf(
             "number", "contact", "phone number", "nummer", "kontakt", "telefonnummer"

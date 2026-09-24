@@ -656,6 +656,17 @@ class Tools(
                 "description" to str("Any detail worth keeping with it.")
             ),
             listOf("title", "start")
+        ),
+        tool(
+            "change_calendar_event",
+            "Move or cancel an upcoming appointment in the user's calendar, found by its title. " +
+                "'Move the dentist to Friday at ten', 'cancel lunch with Anna'.",
+            props(
+                "title" to str("The appointment's name, or a word from it."),
+                "action" to str("What to do.", listOf("move", "cancel")),
+                "start" to str("For 'move': the new ISO local start time, e.g. '2026-09-25T10:00'. It keeps its length.")
+            ),
+            listOf("title", "action")
         )
     )
 
@@ -1122,6 +1133,15 @@ class Tools(
                 // calendar and people
                 "calendar" -> agenda.describe(args.optInt("days", 1), args.optInt("limit", 10))
                 "add_calendar_event" -> addEvent(args)
+                "change_calendar_event" -> {
+                    val cancel = args.optString("action").trim().lowercase(Locale.ROOT) in setOf("cancel", "delete", "remove")
+                    val start = TimeUtil.parse(args.optString("start").takeIf { it.isNotBlank() })
+                    if (!cancel && start == null) {
+                        "I need the new time as something I can read, like '2026-09-25T10:00'."
+                    } else {
+                        agenda.change(args.optString("title"), start, cancel)
+                    }
+                }
                 "find_contact" -> people.describe(
                     args.optString("name"),
                     args.optInt("limit", 3).coerceIn(1, 10)
