@@ -41,7 +41,7 @@ data class ListBook(val lists: List<NamedList> = emptyList()) {
         val current = find(key) ?: NamedList(key)
         var items = current.items
         clean.forEach { text ->
-            val existing = items.indexOfFirst { it.text.equals(text, ignoreCase = true) }
+            val existing = items.indexOfFirst { same(it.text, text) }
             items = if (existing >= 0) {
                 items.toMutableList().also { it[existing] = it[existing].copy(done = false) }
             } else {
@@ -77,6 +77,13 @@ data class ListBook(val lists: List<NamedList> = emptyList()) {
     private fun withList(list: NamedList): ListBook {
         val index = lists.indexOfFirst { it.name == list.name }
         return copy(lists = if (index >= 0) lists.toMutableList().also { it[index] = list } else lists + list)
+    }
+
+    /** One thing however it is counted: "egg" and "Eggs", "tomato" and "tomatoes". */
+    private fun same(a: String, b: String): Boolean {
+        fun stem(text: String) = text.trim().lowercase(Locale.ROOT)
+            .removeSuffix("es").removeSuffix("s")
+        return a.equals(b, ignoreCase = true) || (stem(a) == stem(b) && stem(a).length >= 3)
     }
 
     /** Exactly, then a word match either way: "eggs" finds "free-range eggs". */

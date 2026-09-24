@@ -32,6 +32,11 @@ class ListsTest {
         assertFalse(list.items.first { it.text == "eggs" }.done)
     }
 
+    @Test fun singularAndPluralAreOneThing() {
+        val book = ListBook().add("shopping", listOf("Eggs", "tomato")).add("shopping", listOf("egg", "Tomatoes", "grass"))
+        assertEquals(listOf("Eggs", "tomato", "grass"), book.find("shopping")!!.items.map { it.text })
+    }
+
     @Test fun tickingAndRemovingFindWords() {
         var book = ListBook().add("shopping", listOf("free-range eggs", "bread"))
         val (checked, hit) = book.check("shopping", listOf("eggs"), true)
