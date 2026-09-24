@@ -101,6 +101,14 @@ class Conversation(private val container: AppContainer) {
             onDone()
             return
         }
+        // "Jarvis, stop" with a timer sounding is about the timer.
+        val ringing = container.timers.ringing.value
+        if (ringing.isNotEmpty() && SILENCE.matches(text.lowercase().trimEnd('.', '!'))) {
+            ringing.forEach { container.timers.silence(it.id) }
+            _stage.value = Stage.Idle
+            onDone()
+            return
+        }
         busy = true
         _stage.value = Stage.Thinking
 
@@ -187,5 +195,9 @@ class Conversation(private val container: AppContainer) {
 
     private companion object {
         const val HISTORY_TURNS = 12
+        val SILENCE = Regex(
+            "^(stop|stop it|stop the (timer|alarm)|ok|okay|thanks|thank you|silence|quiet|enough|" +
+                "aus|stopp|halt|danke|ruhe)$"
+        )
     }
 }
