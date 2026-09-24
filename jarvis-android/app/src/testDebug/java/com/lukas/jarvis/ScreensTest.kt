@@ -170,6 +170,8 @@ class ScreensTest {
 
         runCatching { vm.showElement(Element.Map) }
         settle(2400)
+        // The tiles come over the network, which needs real seconds.
+        live(seconds = 12)
         shot(activity, "15-map")
 
         // The core powers up over a second and a half each time it appears,
