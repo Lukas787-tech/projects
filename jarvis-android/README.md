@@ -28,6 +28,33 @@ workflow (any commit whose message contains `[screens]`); all of them are in
 [`docs/screens`](../docs/screens). The second is a live turn: the free, keyless
 model was asked to add eggs to the shopping list and read it back, and did.
 
+## What's new in 5.2
+
+- **Lists** — shopping, packing, anything without a time, by voice or on the
+  new Lists tab; "Einkaufsliste" and "groceries" are the same list.
+- **Timers Jarvis runs itself** — named, on screen and in the shade, ringing
+  until stopped, and "how long is left on the pasta" has an answer.
+- **The phone's controls** — volume, brightness, Do Not Disturb with an end
+  time, and the Devices screen as a control centre.
+- **Calendar that finishes the job** — events are added, moved and cancelled
+  in your calendar, not just filled in.
+- **What's playing** — the song, artist and app, and controls that reach the
+  app that is playing.
+- **Weather with more in it** — when the rain starts, sunrise and sunset, UV,
+  air quality and pollen; the town's name and the weekday.
+- **Morning brief and evening wrap-up** as notifications at times you choose.
+- **Works offline** — timers, alarms, reminders, the torch, volume, music,
+  lists, apps, sums and more are understood with no connection at all, and
+  the header says when you are offline.
+- **Backup that keeps everything** — memories, tasks, trackers, lists and the
+  conversation, not only settings and keys.
+- **Your own colour** — any accent from a rainbow slider.
+- **Fixes** — a Today screen that crashed on phones that do not report their
+  battery, a clock squeezed into one column, a core that stayed open whenever
+  the location was known, repeating tasks that ended when ticked off, numbers
+  like "2,50" or "50%" misread, and more — most of them found by rendering
+  the app in CI.
+
 ## Getting the APK
 
 There is no Android SDK in this repo, so the APK is built by GitHub Actions.
