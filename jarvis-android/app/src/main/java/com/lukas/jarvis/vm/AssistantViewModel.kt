@@ -197,7 +197,9 @@ class AssistantViewModel(
 
         _ui.value = _ui.value.copy(micAvailable = speech.available)
         viewModelScope.launch {
+            val since = settingsStore.conversationStart()
             val history = withContext(Dispatchers.IO) { brain.recentMessages(40) }
+                .filter { it.createdAt >= since }
             _ui.value = _ui.value.copy(messages = history)
             refreshAll()
         }
@@ -418,7 +420,7 @@ class AssistantViewModel(
     ) {
         if (busy) {
             // Dropping a typed message without a word looked like a broken send button.
-            _ui.value = _ui.value.copy(error = "Still on the last one — tap the dot to stop it.")
+            _ui.value = _ui.value.copy(error = "Still on the last one — tap the core to stop it.")
             return
         }
         val current = settingsStore.current
@@ -587,10 +589,33 @@ class AssistantViewModel(
         _ui.value = _ui.value.copy(error = null)
     }
 
+    /**
+     * A fresh conversation: the thread empties and the model starts without the
+     * last one as context. Nothing is deleted — the history keeps every word,
+     * and what was remembered stays remembered.
+     */
+    fun newConversation() {
+        if (busy) cancelTurn()
+        settingsStore.startConversation(System.currentTimeMillis())
+        _ui.update { it.copy(messages = emptyList(), photos = emptyMap(), error = null, draft = "") }
+    }
+
+    private val _history = MutableStateFlow<List<ChatMessage>>(emptyList())
+
+    /** Every stored exchange, newest last, for the history screen. */
+    val history: StateFlow<List<ChatMessage>> = _history.asStateFlow()
+
+    fun loadHistory() {
+        viewModelScope.launch {
+            _history.value = withContext(Dispatchers.IO) { brain.recentMessages(500) }
+        }
+    }
+
     fun clearConversation() {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { brain.clearMessages() }
             _ui.value = _ui.value.copy(messages = emptyList())
+            _history.value = emptyList()
         }
     }
 
@@ -1047,6 +1072,7 @@ class AssistantViewModel(
     /** Removes one message from the thread and from history. */
     fun deleteMessage(message: ChatMessage) {
         _ui.update { state -> state.copy(messages = state.messages.filterNot { it.id == message.id && it.createdAt == message.createdAt }) }
+        _history.update { list -> list.filterNot { it.id == message.id && it.createdAt == message.createdAt } }
         if (message.id > 0) {
             viewModelScope.launch { withContext(Dispatchers.IO) { brain.deleteMessage(message.id) } }
         }
@@ -1086,8 +1112,8 @@ class AssistantViewModel(
     /** Which element is on the stage, written by the user and by the assistant. */
     val element: StateFlow<StageStore.State> = container.stage.state
 
-    fun showElement(element: Element) {
-        container.stage.show(element)
+    fun showElement(element: Element, note: String = "") {
+        container.stage.show(element, note)
     }
 
     /**

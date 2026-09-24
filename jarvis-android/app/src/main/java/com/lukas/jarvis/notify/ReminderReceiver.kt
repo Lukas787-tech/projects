@@ -70,6 +70,18 @@ class ReminderReceiver : BroadcastReceiver() {
         context.getSystemService(NotificationManager::class.java)
             ?.notify(notificationId(taskId), builder.build())
 
+        // With the app in front of them, the assistant says it, the way a
+        // person sitting beside them would — in its own form of address.
+        val app = context.applicationContext as? JarvisApp
+        if (app != null && app.inForeground) {
+            val settings = app.container.settings.current
+            if (settings.speakReplies) {
+                val address = com.lukas.jarvis.llm.Personas.address(settings)
+                val lead = if (address.isBlank()) "A reminder" else "A reminder, $address"
+                runCatching { app.container.speaker.speak("$lead: $title.") { } }
+            }
+        }
+
         // A repeating task rolls forward to its next slot instead of going quiet
         // — but not when this was the extra ring of a snooze, which the roll
         // already happened for.

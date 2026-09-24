@@ -19,6 +19,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -44,30 +52,74 @@ fun HistoryScreen(
     actions: MessageActions = MessageActions()
 ) {
     val listState = rememberLazyListState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var query by rememberSaveable { mutableStateOf("") }
+    val shown = remember(messages, query) {
+        val q = query.trim()
+        if (q.isBlank()) messages else messages.filter { it.content.contains(q, ignoreCase = true) }
+    }
 
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
+    LaunchedEffect(shown.size) {
+        if (shown.isNotEmpty()) listState.scrollToItem(shown.lastIndex)
     }
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         ScreenHeader(
-            title = "Chat",
-            subtitle = if (messages.isEmpty()) "Nothing yet" else "${messages.size} messages",
+            title = "History",
+            subtitle = when {
+                messages.isEmpty() -> "Nothing yet"
+                query.isNotBlank() -> "${shown.size} of ${messages.size} messages"
+                else -> "${messages.size} messages"
+            },
+            actionIcon = Icons.Default.Share,
+            actionLabel = "Share the conversation",
+            onAction = if (messages.isEmpty()) null else {
+                { shareTranscript(context, shown) }
+            },
             onBack = onBack
         )
+        if (messages.isNotEmpty()) {
+            com.lukas.jarvis.ui.components.GlassField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = "Search everything said",
+                leadingIcon = Icons.Default.Search,
+                modifier = Modifier.fillMaxWidth().padding(bottom = Space.snug)
+            )
+        }
         if (messages.isEmpty()) {
             EmptyState("No conversation yet", "Everything you say is kept here.")
+        } else if (shown.isEmpty()) {
+            EmptyState("Nothing matches", "No message contains “${query.trim()}”.")
         } else {
             LazyColumn(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(messages, key = { messageKey(it) }) { message ->
+                items(shown, key = { messageKey(it) }) { message ->
                     MessageBubble(message, actions = actions)
                 }
                 item { Spacer(Modifier.height(24.dp)) }
             }
         }
+    }
+}
+
+/** The conversation as plain text, handed to whichever app the user picks. */
+private fun shareTranscript(context: android.content.Context, messages: List<ChatMessage>) {
+    val text = messages.joinToString("\n\n") { message ->
+        val who = if (message.role == ChatMessage.ROLE_USER) "Me" else "Jarvis"
+        "$who (${TimeUtil.relative(message.createdAt)}):\n" +
+            com.lukas.jarvis.ui.components.Markdown.plain(message.content)
+    }
+    runCatching {
+        val send = android.content.Intent(android.content.Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(android.content.Intent.EXTRA_TEXT, text.take(90_000))
+        context.startActivity(
+            android.content.Intent.createChooser(send, "Share the conversation")
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
     }
 }
 

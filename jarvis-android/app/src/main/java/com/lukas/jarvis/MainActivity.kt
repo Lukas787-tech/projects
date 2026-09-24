@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -87,6 +88,7 @@ import com.lukas.jarvis.ui.screens.VoiceScreen
 import com.lukas.jarvis.ui.screens.Onboarding
 import com.lukas.jarvis.llm.Tier
 import com.lukas.jarvis.llm.Abilities
+import com.lukas.jarvis.llm.AbilitySwitch
 import com.lukas.jarvis.llm.Personas
 import com.lukas.jarvis.ui.components.CoreStyle
 import com.lukas.jarvis.ui.components.MessageActions
@@ -117,7 +119,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // Always dark, whatever the system theme: left on automatic, a phone in
+        // light mode drew dark status icons on Jarvis's dark background.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
         startListeningOnOpen = intent?.getBooleanExtra(EXTRA_START_LISTENING, false) == true
         routineOnOpen = intent?.getStringExtra(EXTRA_RUN_ROUTINE)
         // A recreation after rotation carries the same intent; it was handled.
@@ -217,7 +224,9 @@ sealed interface Launch {
 
     companion object {
         fun from(intent: Intent?): Launch? = when (intent?.action) {
-            Entry.TALK -> Talk
+            // The assistant gesture (long-press power or home, once Jarvis is
+            // the phone's assistant) means "listen", not merely "open".
+            Entry.TALK, Intent.ACTION_ASSIST, Intent.ACTION_VOICE_COMMAND -> Talk
             Entry.TYPE -> Type
             Entry.SCAN -> Scan
             Entry.TODAY -> Today
@@ -556,7 +565,9 @@ private fun JarvisRoot(
                 .weight(1f)
         ) {
             if (showHistory) {
-                HistoryScreen(messages = ui.messages, onBack = { showHistory = false }, actions = messageActions)
+                val everything by viewModel.history.collectAsStateWithLifecycle()
+                LaunchedEffect(Unit) { viewModel.loadHistory() }
+                HistoryScreen(messages = everything, onBack = { showHistory = false }, actions = messageActions)
             } else AnimatedContent(
                 targetState = element,
                 // The three list screens are one element with tabs; switching
@@ -635,7 +646,8 @@ private fun JarvisRoot(
                     address = Personas.address(settings),
                     actions = messageActions,
                     onStop = viewModel::cancelTurn,
-                    brainLabel = lastUsedEndpoint
+                    brainLabel = lastUsedEndpoint,
+                    onNewChat = viewModel::newConversation
                 )
 
                 // Notes, tasks and money are one element with three segments,
@@ -733,12 +745,21 @@ private fun JarvisRoot(
                 Element.Skills -> SkillsScreen(
                     settings = settings,
                     onToggle = { ability, on ->
-                        viewModel.updateSettings { ability.applyTo(it, on) }
+                        if (ability == AbilitySwitch.Home && on &&
+                            (settings.homeUrl.isBlank() || settings.homeToken.isBlank())
+                        ) {
+                            // Nothing to switch on yet: go to where it is set up.
+                            viewModel.updateSettings { it.copy(homeEnabled = true) }
+                            viewModel.showElement(Element.Settings, note = SETTINGS_POWERS)
+                        } else {
+                            viewModel.updateSettings { ability.applyTo(it, on) }
+                        }
                     },
                     onTry = viewModel::trySkill
                 )
 
                 Element.Settings -> SettingsScreen(
+                    initialTab = if (stage.note == SETTINGS_POWERS) 4 else 0,
                     settings = settings,
                     availableModels = availableModels,
                     modelsState = modelsState,
@@ -844,6 +865,9 @@ private fun JarvisRoot(
  * belongs to rather than going blank whenever the assistant raises something
  * that has no icon of its own.
  */
+/** The note that opens Settings on its Powers tab. */
+private const val SETTINGS_POWERS = "settings:powers"
+
 /** The three list screens, which share one element with tabs. */
 private val HUB = setOf(Element.Notes, Element.Tasks, Element.Money)
 

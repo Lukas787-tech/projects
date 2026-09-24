@@ -96,6 +96,24 @@ start with the first finished sentence instead of after the whole answer.
 **Draws.** "Draw a fox in a space suit" puts a picture in the chat, free
 and keyless (Pollinations). Tap it to save it to the gallery or share it.
 
+**Runs the house.** Connect your own Home Assistant (Settings → Powers →
+Smart home: its address and a long-lived token) and Jarvis switches and dims
+lights, plugs and fans, opens blinds, locks doors, sets the heating, runs
+scenes, and tells you which lights are on or whether the door is locked.
+Local and free — no cloud account.
+
+**Reads your screen, when asked.** With screen reading switched on (Settings
+→ Powers), "summarise this", "what does this say" or "reply to this" from the
+floating dot or the wake word works on whatever app you are in. It reads
+nothing at any other time and keeps nothing.
+
+**Greets the morning.** On the first open of a morning it says how the day
+looks — the weather, what is due, the next appointment, the budgets and the
+top story — gathered on the phone, so it costs no model quota.
+
+**Starts fresh when you want.** *New conversation* clears the thread and the
+model's context without deleting anything; the full history is one tap away.
+
 **Knows what's going on.** Headlines in your language (Google News, with the
 BBC behind it), share and crypto prices with the day's move, public
 holidays, recipes, football scores and fixtures, TV shows and when the next

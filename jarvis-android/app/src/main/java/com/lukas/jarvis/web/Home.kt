@@ -176,6 +176,9 @@ class Home {
             words.all { name.contains(it) }
         }
         if (holding.isNotEmpty()) return holding
+        // Doing something to a device on a partial guess is how "open the
+        // garage door" unlocks the front door. Only reading may guess.
+        if (controllable) return emptyList()
         // Fall back to the device whose name shares the most words.
         return pool.map { it to words.count { w -> normalize(it.name).contains(w) } }
             .filter { it.second > 0 }

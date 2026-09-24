@@ -35,6 +35,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AddComment
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BatteryStd
 import androidx.compose.material.icons.filled.Close
@@ -158,7 +159,9 @@ fun VoiceScreen(
     actions: MessageActions = MessageActions(),
     onStop: () -> Unit = {},
     /** The endpoint that answered last, shown small under the name. */
-    brainLabel: String? = null
+    brainLabel: String? = null,
+    /** Starts a fresh conversation; the old one stays in the history. */
+    onNewChat: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -173,7 +176,8 @@ fun VoiceScreen(
             onModeChange = onModeChange,
             onCamera = onCamera,
             onOpenSkills = onOpenSkills,
-            onOpenSettings = onOpenSettings
+            onOpenSettings = onOpenSettings,
+            onNewChat = if (state.messages.isNotEmpty()) onNewChat else null
         )
 
         if (voiceMode) {
@@ -245,7 +249,8 @@ private fun Header(
     onModeChange: (Boolean) -> Unit,
     onCamera: () -> Unit,
     onOpenSkills: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onNewChat: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = Space.snug, bottom = Space.hair),
@@ -278,6 +283,7 @@ private fun Header(
             )
         }
         ModeSwitch(voice = voiceMode, onChange = onModeChange)
+        onNewChat?.let { HeaderButton(Icons.Default.AddComment, "New conversation", it) }
         HeaderButton(Icons.Default.AutoAwesome, "What $name can do", onOpenSkills)
         HeaderButton(Icons.Default.Settings, "Settings", onOpenSettings)
     }

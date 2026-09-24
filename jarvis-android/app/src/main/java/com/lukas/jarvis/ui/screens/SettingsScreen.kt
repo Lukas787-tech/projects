@@ -94,6 +94,8 @@ import com.lukas.jarvis.vm.TestState
 @Composable
 fun SettingsScreen(
     settings: Settings,
+    /** Which tab to open on: 0 You, 1 Voice, 2 Look, 3 Brain, 4 Powers, 5 Data. */
+    initialTab: Int = 0,
     availableModels: List<String>,
     modelsState: ModelsState,
     testState: TestState,
@@ -125,7 +127,7 @@ fun SettingsScreen(
     onCheckHome: suspend () -> String = { "" }
 ) {
     val context = LocalContext.current
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var tab by rememberSaveable(initialTab) { mutableIntStateOf(initialTab) }
     val clipboard = LocalClipboardManager.current
     val preset = Providers.byId(settings.providerId)
     var showKey by remember { mutableStateOf(false) }

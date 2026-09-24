@@ -146,9 +146,25 @@ class JarvisApp : Application() {
     lateinit var container: AppContainer
         private set
 
+    /** How many of the app's activities are started; above zero means it is on screen. */
+    @Volatile
+    private var started = 0
+
+    /** True while Jarvis is the app in front of the user. */
+    val inForeground: Boolean get() = started > 0
+
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityStarted(activity: android.app.Activity) { started++ }
+            override fun onActivityStopped(activity: android.app.Activity) { started = (started - 1).coerceAtLeast(0) }
+            override fun onActivityCreated(activity: android.app.Activity, state: android.os.Bundle?) = Unit
+            override fun onActivityResumed(activity: android.app.Activity) = Unit
+            override fun onActivityPaused(activity: android.app.Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: android.app.Activity, state: android.os.Bundle) = Unit
+            override fun onActivityDestroyed(activity: android.app.Activity) = Unit
+        })
         // Alarms are lost on reinstall; rebuild them from what the brain holds.
         runCatching { container.reminders.rescheduleAll(container.brain.pendingReminders()) }
         runCatching { container.routines.rescheduleAll() }

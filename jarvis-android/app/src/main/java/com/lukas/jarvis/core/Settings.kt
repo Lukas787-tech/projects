@@ -298,6 +298,16 @@ class SettingsStore(context: Context) {
     }
 
     /**
+     * Where the current conversation began. Messages from before it are kept
+     * and searchable, but are not shown in the thread or sent as context.
+     */
+    fun conversationStart(): Long = runCatching { prefs.getLong(KEY_CONVERSATION_START, 0L) }.getOrDefault(0L)
+
+    fun startConversation(at: Long) {
+        prefs.edit().putLong(KEY_CONVERSATION_START, at).apply()
+    }
+
+    /**
      * Claims today's morning brief: true the first time it is asked on a given
      * day, false after that, so the brief is said once however often the app
      * is opened.
@@ -353,6 +363,7 @@ class SettingsStore(context: Context) {
         const val KEY_HAPTICS = "haptics"
         const val KEY_MORNING_BRIEF = "morning_brief"
         const val KEY_GREETED_DAY = "greeted_day"
+        const val KEY_CONVERSATION_START = "conversation_start"
         const val KEY_ACCENT = "accent"
         const val KEY_BACKDROP = "backdrop"
         const val KEY_TEXT_SCALE = "text_scale"
