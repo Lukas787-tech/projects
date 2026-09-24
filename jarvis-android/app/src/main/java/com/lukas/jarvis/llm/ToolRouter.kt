@@ -89,6 +89,7 @@ object ToolRouter {
             "kopier", "speicher", "flugmodus", "helligkeit", "volume", "louder", "quieter",
             "turn it up", "turn it down", "mute", "disturb", "dnd", "focus", "dimmer",
             "brighter", "screen", "lauter", "leiser", "stumm", "nicht stören", "bildschirm",
+            "how long", "left on", "more minutes", "noch übrig", "wie lange",
             "dunkler", "heller", "lautstärke"
         ),
         ToolGroup.Messages to listOf(

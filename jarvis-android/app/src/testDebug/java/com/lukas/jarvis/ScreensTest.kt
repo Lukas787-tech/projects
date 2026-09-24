@@ -156,6 +156,9 @@ class ScreensTest {
         }
         repeat(3) { i -> brain.addEntry(Entry(trackerId = gym.id, amount = 1.0, occurredAt = now - i * 48 * 60 * minute)) }
 
+        container.timers.start(7 * 60 + 30, "Pasta")
+        container.timers.start(42 * 60, "Laundry")
+
         container.lists.change { book ->
             book.add("shopping", listOf("Oat milk", "Free-range eggs", "Sourdough", "Basil", "Parmesan"))
                 .check("shopping", listOf("basil", "sourdough"), true).first

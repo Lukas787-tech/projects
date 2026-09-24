@@ -92,7 +92,8 @@ class Tools(
     private val knowledge: Knowledge,
     private val imagine: Imagine,
     private val home: Home,
-    private val lists: com.lukas.jarvis.data.Lists
+    private val lists: com.lukas.jarvis.data.Lists,
+    private val timers: com.lukas.jarvis.notify.Timers
 ) {
 
     /**
@@ -679,12 +680,24 @@ class Tools(
         ),
         tool(
             "set_timer",
-            "Start a countdown in the phone's clock app: pasta, laundry, a break.",
+            "Start a named countdown: pasta, laundry, a break. It shows on screen and in the " +
+                "notification shade, rings until stopped, and can be asked about with `timers`.",
             props(
                 "minutes" to num("How long, in minutes. Decimals are fine."),
                 "label" to str("What it is timing.")
             ),
             listOf("minutes")
+        ),
+        tool(
+            "timers",
+            "The timers Jarvis is running: how long is left, cancel one or all, or add time. " +
+                "'How long on the pasta', 'stop the timer', 'give it five more minutes'.",
+            props(
+                "action" to str("What to do.", listOf("list", "cancel", "add")),
+                "label" to str("Which timer, by its name, or 'all'. Omit for the newest."),
+                "minutes" to num("For 'add': minutes to add; negative takes time away.")
+            ),
+            listOf("action")
         ),
         tool(
             "show_alarms",
@@ -1108,6 +1121,7 @@ class Tools(
                 // the phone
                 "set_alarm" -> setAlarm(args)
                 "set_timer" -> setTimer(args)
+                "timers" -> timerAction(args)
                 "show_alarms" -> launcher.showAlarms()
                 "device_status" -> deviceStatus(args)
                 "torch" -> device.torch(args.optBoolean("on", true))
@@ -1862,10 +1876,32 @@ class Tools(
     private fun setTimer(args: JSONObject): String {
         val minutes = args.optDouble("minutes", Double.NaN)
         if (minutes.isNaN() || minutes <= 0) return "A timer needs a length in minutes."
-        return launcher.setTimer(
-            seconds = (minutes * 60).toInt(),
-            label = args.optString("label").takeIf { it.isNotBlank() }
-        )
+        val seconds = (minutes * 60).toInt().coerceAtLeast(1)
+        val label = args.optString("label").takeIf { it.isNotBlank() }
+        val timer = timers.start(seconds, label)
+        val length = com.lukas.jarvis.notify.Timers.spoken(timer.lengthMs)
+        val what = if (label == null) "Timer set for $length" else "${timer.label} timer set for $length"
+        return "$what — done at ${TimeUtil.formatTime(timer.endsAt)}."
+    }
+
+    private fun timerAction(args: JSONObject): String {
+        val which = args.optString("label").takeIf { it.isNotBlank() }
+        return when (args.optString("action").trim().lowercase(Locale.ROOT)) {
+            "cancel", "stop" -> {
+                val gone = timers.cancel(which)
+                if (gone.isEmpty()) "No timer like that is running. " + timers.describe()
+                else "Cancelled: ${gone.joinToString { it.label }}."
+            }
+            "add" -> {
+                val minutes = args.optDouble("minutes", Double.NaN)
+                if (minutes.isNaN() || minutes == 0.0) return "How many minutes to add?"
+                val moved = timers.extend(which, (minutes * 60).toInt())
+                    ?: return "No timer like that is running."
+                "${moved.label} now ends at ${TimeUtil.formatTime(moved.endsAt)} — " +
+                    "${com.lukas.jarvis.notify.Timers.spoken(moved.leftMs())} left."
+            }
+            else -> timers.describe()
+        }
     }
 
     private fun deviceStatus(args: JSONObject): String =

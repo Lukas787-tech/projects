@@ -303,6 +303,7 @@ private fun JarvisRoot(
     val routines by viewModel.routines.collectAsStateWithLifecycle()
     val levels by viewModel.levels.collectAsStateWithLifecycle()
     val lists by viewModel.lists.collectAsStateWithLifecycle()
+    val timers by viewModel.timers.collectAsStateWithLifecycle()
     val cameraRequest by viewModel.cameraRequests.collectAsStateWithLifecycle()
     val mapStyle = MapStyle.of(settings.mapStyle)
     val scope = rememberCoroutineScope()
@@ -658,7 +659,9 @@ private fun JarvisRoot(
                     actions = messageActions,
                     onStop = viewModel::cancelTurn,
                     brainLabel = lastUsedEndpoint,
-                    onNewChat = viewModel::newConversation
+                    onNewChat = viewModel::newConversation,
+                    timers = timers,
+                    onCancelTimer = viewModel::cancelTimer
                 )
 
                 // Notes, tasks and money are one element with three segments,

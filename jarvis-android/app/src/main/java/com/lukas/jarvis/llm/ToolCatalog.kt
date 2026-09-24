@@ -116,6 +116,7 @@ object ToolCatalog {
         // the phone itself
         ToolInfo("set_alarm", ToolGroup.Phone, "setting the alarm", "Alarm"),
         ToolInfo("set_timer", ToolGroup.Phone, "starting the timer", "Timer"),
+        ToolInfo("timers", ToolGroup.Phone, "checking the timers", "Timers"),
         ToolInfo("show_alarms", ToolGroup.Phone, "opening your alarms", "Alarms"),
         ToolInfo("device_status", ToolGroup.Phone, "checking the phone", "Phone", readOnly = true),
         ToolInfo("torch", ToolGroup.Phone, "the torch", "Torch"),

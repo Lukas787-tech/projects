@@ -20,6 +20,7 @@ object Reflexes {
         val text = raw.trim().lowercase(Locale.ROOT).trimEnd('?', '.', '!')
         if (text.isBlank()) return null
 
+        timerQuestion(text)?.let { return it }
         timer(text)?.let { return it }
         remind(text)?.let { return it }
         alarm(text)?.let { return it }
@@ -34,6 +35,12 @@ object Reflexes {
         if (TIME.containsMatchIn(text) || DATE.containsMatchIn(text)) return call("now", JSONObject())
         sum(text)?.let { return it }
         return null
+    }
+
+    private fun timerQuestion(text: String): ToolCall? = when {
+        TIMER_LEFT.containsMatchIn(text) -> call("timers", JSONObject().put("action", "list"))
+        TIMER_STOP.matches(text) -> call("timers", JSONObject().put("action", "cancel"))
+        else -> null
     }
 
     private fun timer(text: String): ToolCall? {
@@ -189,6 +196,8 @@ object Reflexes {
     private val LIST_ADD = Regex("^(?:please )?(?:add|put)\\s+(.+?)\\s+(?:to|on|onto)\\s+(?:my |the |our )?(.+?)\\s*list$")
     private val LIST_ADD_DE = Regex("^(?:setz(?:e)?|schreib(?:e)?|pack(?:e)?)?\\s*(.+?)\\s+auf\\s+(?:die |meine |unsere )?(.*?)liste$")
     private val LIST_SHOW = Regex("^what'?s on (?:my |the )?(.+?) list$|^(?:show|read)(?: me)? (?:my |the )?(.+?) list$|^was steht auf (?:der |meiner )?(.+?)liste$")
+    private val TIMER_LEFT = Regex("how (much time|long) (is )?(left|remaining)|time left on|wie lange (noch|läuft)|wie viel zeit (ist )?noch")
+    private val TIMER_STOP = Regex("^(cancel|stop|end|kill) (the |my |all )?(\\w+ )?timers?$|^timer (stoppen|abbrechen|aus)$")
     private val PAUSE = Regex("^(pause|stop)( (the )?(music|song|playback|it))?( please)?$|^(musik )?(pausieren|pause|stopp)( die musik)?$")
     private val RESUME = Regex("^(resume|play|continue|unpause)( (the )?(music|song|playback|it))?( please)?$|^(musik )?(weiter|fortsetzen|weiterspielen)$")
     private val NEXT = Regex("^(next|skip)( (the )?(song|track|one|this))?( please)?$|^(nächstes lied|nächster song|überspringen)$")

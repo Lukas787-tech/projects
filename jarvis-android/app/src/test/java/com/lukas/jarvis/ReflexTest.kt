@@ -75,6 +75,13 @@ class ReflexTest {
         assertEquals("set_timer", parsed("start a timer for 5 minutes")?.first)
     }
 
+    @Test fun timerQuestions() {
+        assertEquals("list", parsed("how long is left on the pasta?")!!.second.getString("action"))
+        assertEquals("cancel", parsed("stop the timer")!!.second.getString("action"))
+        assertEquals("cancel", parsed("cancel the pasta timer")!!.second.getString("action"))
+        assertEquals("set_timer", parsed("set a timer for 10 minutes")?.first)
+    }
+
     @Test fun ordinarySentencesAreLeftToTheModel() {
         assertNull(Reflexes.parse("tell me about the Brandenburg Gate"))
         assertNull(Reflexes.parse("what is 42"))

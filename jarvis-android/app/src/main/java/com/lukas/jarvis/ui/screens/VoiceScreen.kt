@@ -1,5 +1,11 @@
 package com.lukas.jarvis.ui.screens
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
+import com.lukas.jarvis.notify.RunningTimer
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -161,7 +167,10 @@ fun VoiceScreen(
     /** The endpoint that answered last, shown small under the name. */
     brainLabel: String? = null,
     /** Starts a fresh conversation; the old one stays in the history. */
-    onNewChat: () -> Unit = {}
+    onNewChat: () -> Unit = {},
+    /** The countdowns Jarvis is running, shown under the header. */
+    timers: List<RunningTimer> = emptyList(),
+    onCancelTimer: (Int) -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -179,6 +188,8 @@ fun VoiceScreen(
             onOpenSettings = onOpenSettings,
             onNewChat = if (state.messages.isNotEmpty()) onNewChat else null
         )
+
+        if (timers.isNotEmpty()) TimerStrip(timers = timers, onCancel = onCancelTimer)
 
         if (voiceMode) {
             if (showHud) Hud(brief = brief)
@@ -236,6 +247,93 @@ fun VoiceScreen(
             }
         }
     }
+}
+
+// -------------------------------------------------------------------- timers
+
+/**
+ * The running timers, counting down where the eye already is. Each is a small
+ * capsule with a ring that empties as the time runs out; tapping its cross
+ * stops it.
+ */
+@Composable
+private fun TimerStrip(timers: List<RunningTimer>, onCancel: (Int) -> Unit) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(timers) {
+        while (true) {
+            now = System.currentTimeMillis()
+            delay(250)
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(vertical = Space.hair),
+        horizontalArrangement = Arrangement.spacedBy(Space.tight)
+    ) {
+        timers.sortedBy { it.endsAt }.forEach { timer ->
+            val left = timer.leftMs(now)
+            val fraction = if (timer.lengthMs > 0) (left.toFloat() / timer.lengthMs).coerceIn(0f, 1f) else 0f
+            val ringColor = Accent
+            val trackColor = Film.lifted
+            Row(
+                modifier = Modifier
+                    .glass(CircleShape)
+                    .padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Canvas(modifier = Modifier.size(18.dp)) {
+                    val stroke = 2.5.dp.toPx()
+                    drawCircle(color = trackColor, style = Stroke(stroke))
+                    drawArc(
+                        color = ringColor,
+                        startAngle = -90f,
+                        sweepAngle = 360f * fraction,
+                        useCenter = false,
+                        style = Stroke(stroke, cap = StrokeCap.Round)
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    timer.label.removeSuffix(" timer").replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary,
+                    maxLines = 1
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    clock(left),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (left <= 10_000) AccentBright else TextPrimary
+                )
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .clickable { onCancel(timer.id) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Cancel ${timer.label}",
+                        tint = TextFaint,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** "4:07", or "1:02:30" past the hour. */
+private fun clock(ms: Long): String {
+    val total = ((ms + 999) / 1000).toInt()
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val s = total % 60
+    return if (h > 0) String.format(java.util.Locale.US, "%d:%02d:%02d", h, m, s)
+    else String.format(java.util.Locale.US, "%d:%02d", m, s)
 }
 
 // -------------------------------------------------------------------- header

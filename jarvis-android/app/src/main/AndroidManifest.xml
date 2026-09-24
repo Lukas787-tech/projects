@@ -241,6 +241,11 @@
             android:name=".brief.BriefReceiver"
             android:exported="false" />
 
+        <!-- A timer's end, and the buttons on its notifications. -->
+        <receiver
+            android:name=".notify.TimerReceiver"
+            android:exported="false" />
+
         <!-- Ends a Do Not Disturb that was asked for a set time. -->
         <receiver
             android:name=".notify.QuietReceiver"

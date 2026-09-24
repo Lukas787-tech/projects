@@ -421,7 +421,8 @@ PLACES AND GETTING AROUND
      */
     private fun deviceRules(house: Boolean): String =
         """
-- "wake me at seven" -> `set_alarm`. "ten minutes for the pasta" -> `set_timer`. A thing to
+- "wake me at seven" -> `set_alarm`. "ten minutes for the pasta" -> `set_timer` with the label
+  "pasta". "how long is left", "stop the timer", "five more minutes" -> `timers`. A thing to
   do rather than a time to be woken -> `add_task`.
 - "what alarms have I got" -> `show_alarms`; only the clock app may read alarms, so say
   they are on screen.

@@ -714,6 +714,11 @@ class AssistantViewModel(
         }
     }
 
+    /** The timers Jarvis is running, for the strip under the header. */
+    val timers: StateFlow<List<com.lukas.jarvis.notify.RunningTimer>> = container.timers.all
+
+    fun cancelTimer(id: Int) = container.timers.cancelId(id)
+
     /** The user's lists, straight from their store, which the tools write too. */
     val lists: StateFlow<com.lukas.jarvis.data.ListBook> = container.lists.book
 

@@ -96,6 +96,7 @@ class AppContainer(context: Context) {
     val eyes = com.lukas.jarvis.vision.OnDeviceVision()
     val routines = Routines(context)
     val lists = com.lukas.jarvis.data.Lists(context)
+    val timers = com.lukas.jarvis.notify.Timers(context)
 
     /** One day, gathered once, for the dashboard and the spoken brief alike. */
     val briefer = Briefer(brain, agenda, weather, locator, places, device, knowledge)
@@ -124,7 +125,8 @@ class AppContainer(context: Context) {
         knowledge = knowledge,
         imagine = imagine,
         home = home,
-        lists = lists
+        lists = lists,
+        timers = timers
     )
 
     val models = ModelCatalog()
@@ -181,6 +183,7 @@ class JarvisApp : Application() {
         appScope.launch {
             runCatching { container.reminders.rescheduleAll(container.brain.pendingReminders()) }
             runCatching { container.routines.rescheduleAll() }
+            runCatching { container.timers.rescheduleAll() }
         }
         // The written brief follows its setting wherever it changes — the
         // settings screen, a restored backup — and is set again at every
