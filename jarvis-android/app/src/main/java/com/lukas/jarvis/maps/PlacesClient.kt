@@ -119,6 +119,21 @@ class PlacesClient {
         json.optString("display_name").takeIf { it.isNotBlank() }
     }
 
+    /**
+     * The town or city a point is in — what a forecast is named after — rather
+     * than the street a full address starts with. Falls back through village,
+     * suburb and county for places that are not in a town.
+     */
+    suspend fun town(point: GeoPoint): String? = withContext(Dispatchers.IO) {
+        val url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2" +
+            "&lat=${fmt(point.lat)}&lon=${fmt(point.lon)}&zoom=12&addressdetails=1"
+        val body = runCatching { get(url) }.getOrNull() ?: return@withContext null
+        val address = runCatching { JSONObject(body).optJSONObject("address") }.getOrNull()
+            ?: return@withContext null
+        listOf("city", "town", "village", "municipality", "suburb", "county", "state")
+            .firstNotNullOfOrNull { key -> address.optString(key).takeIf { it.isNotBlank() } }
+    }
+
     private fun overpass(
         filters: List<String>,
         center: GeoPoint,

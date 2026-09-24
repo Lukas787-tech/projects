@@ -399,7 +399,7 @@ private fun HeroCard(brief: DayBrief?, loading: Boolean) {
                 forecast.rainFrom?.let { add("Rain from $it") }
                 if (today != null) {
                     if (forecast.now.isDay && today.sunset.isNotBlank()) add("Sunset ${today.sunset}")
-                    if (!forecast.now.isDay && today.sunrise.isNotBlank()) add("Sunrise ${today.sunrise}")
+                    if (!forecast.now.isDay) Weather.nextSunrise(forecast)?.let { add("Sunrise $it") }
                     if (!today.uvMax.isNaN() && today.uvMax >= 3) {
                         add("UV ${today.uvMax.roundToInt()} ${Weather.uvWord(today.uvMax)}")
                     }

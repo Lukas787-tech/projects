@@ -114,8 +114,14 @@ class Weather {
                             label = when (i) {
                                 0 -> "Today"
                                 1 -> "Tomorrow"
-                                else -> daily.optJSONArray("time")?.optString(i).orEmpty()
-                                    .ifBlank { "In $i days" }
+                                // The weekday, not "2026-09-27": that is how a
+                                // day ahead is said and fits under a figure.
+                                else -> daily.optJSONArray("time")?.optString(i).orEmpty().let { date ->
+                                    runCatching {
+                                        java.time.LocalDate.parse(date).dayOfWeek
+                                            .getDisplayName(java.time.format.TextStyle.FULL, Locale.getDefault())
+                                    }.getOrNull() ?: "In $i days"
+                                }
                             },
                             high = highs?.optDouble(i, Double.NaN) ?: Double.NaN,
                             low = lows?.optDouble(i, Double.NaN) ?: Double.NaN,
@@ -174,7 +180,7 @@ class Weather {
         val today = forecast.days.firstOrNull()
         if (today != null) {
             if (now.isDay && today.sunset.isNotBlank()) append(" Sunset at ${today.sunset}.")
-            if (!now.isDay && today.sunrise.isNotBlank()) append(" Sunrise at ${today.sunrise}.")
+            if (!now.isDay) nextSunrise(forecast)?.let { append(" Sunrise at $it.") }
             if (!today.uvMax.isNaN() && today.uvMax >= 3) {
                 append(" UV up to ${today.uvMax.roundToInt()} (${uvWord(today.uvMax)})")
                 append(if (today.uvMax >= 6) " — sunscreen." else ".")
@@ -211,6 +217,16 @@ class Weather {
             "ragweed_pollen" to "ragweed",
             "alder_pollen" to "alder"
         )
+
+        /**
+         * The sunrise still to come: this morning's before dawn, tomorrow's
+         * once the evening has begun.
+         */
+        fun nextSunrise(forecast: Forecast): String? {
+            val evening = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) >= 12
+            val day = if (evening) forecast.days.getOrNull(1) else forecast.days.firstOrNull()
+            return day?.sunrise?.takeIf { it.isNotBlank() }
+        }
 
         fun uvWord(uv: Double): String = when {
             uv < 3 -> "low"

@@ -1723,8 +1723,7 @@ class Tools(
             val here = locator.current()
                 ?: return "I do not have your location yet, so I cannot tell you the weather " +
                     "here. Name a town and I will look that up instead."
-            val described = runCatching { places.describe(here) }.getOrNull()
-                ?.split(",")?.firstOrNull()?.trim()
+            val described = runCatching { places.town(here) }.getOrNull()
             here to (described ?: "where you are")
         }
 

@@ -139,8 +139,7 @@ class Briefer(
                 null
             } else {
                 val here = locator.current() ?: return@async null
-                val name = runCatching { places.describe(here) }.getOrNull()
-                    ?.split(",")?.firstOrNull()?.trim()
+                val name = runCatching { places.town(here) }.getOrNull()
                 weather.at(here, name ?: "Here", days = 3)?.let { it to name }
             }
         }
