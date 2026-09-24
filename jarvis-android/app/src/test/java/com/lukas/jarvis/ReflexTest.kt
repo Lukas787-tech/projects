@@ -62,6 +62,19 @@ class ReflexTest {
         assertEquals(120, parsed("Nicht stören für 2 Stunden")!!.second.getInt("minutes"))
     }
 
+    @Test fun musicChanceBatteryAndApps() {
+        assertEquals("pause", parsed("pause the music")!!.second.getString("action"))
+        assertEquals("next", parsed("skip")!!.second.getString("action"))
+        assertEquals("resume", parsed("Weiter")!!.second.getString("action"))
+        assertEquals("coin", parsed("flip a coin")!!.second.getString("kind"))
+        assertEquals("dice", parsed("Würfeln")!!.second.getString("kind"))
+        assertEquals("battery", parsed("how much battery do I have?")!!.second.getString("what"))
+        assertEquals("spotify", parsed("open Spotify")!!.second.getString("name"))
+        assertEquals("whatsapp", parsed("Öffne WhatsApp")!!.second.getString("name"))
+        assertNull(Reflexes.parse("open the garage door"))
+        assertEquals("set_timer", parsed("start a timer for 5 minutes")?.first)
+    }
+
     @Test fun ordinarySentencesAreLeftToTheModel() {
         assertNull(Reflexes.parse("tell me about the Brandenburg Gate"))
         assertNull(Reflexes.parse("what is 42"))

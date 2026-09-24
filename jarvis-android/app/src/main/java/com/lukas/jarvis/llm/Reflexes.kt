@@ -8,7 +8,8 @@ import java.util.Locale
  *
  * No signal, or every free quota spent for the hour: the language model is out
  * of reach, but the clock, the calculator, the torch, the volume, Do Not
- * Disturb, timers, alarms and quick reminders never needed one. These are the sentences that mean one of those
+ * Disturb, the music, timers, alarms, quick reminders, a coin or a die, the
+ * battery and opening an app never needed one. These are the sentences that mean one of those
  * plainly enough to be read without a model — in English and German — and each
  * becomes the same tool call a model would have made, so the work is done by
  * the same code either way.
@@ -25,6 +26,10 @@ object Reflexes {
         torch(text)?.let { return it }
         quiet(text)?.let { return it }
         volume(text)?.let { return it }
+        playback(text)?.let { return it }
+        chance(text)?.let { return it }
+        if (BATTERY.containsMatchIn(text)) return call("device_status", JSONObject().put("what", "battery"))
+        openApp(text)?.let { return it }
         if (TIME.containsMatchIn(text) || DATE.containsMatchIn(text)) return call("now", JSONObject())
         sum(text)?.let { return it }
         return null
@@ -103,6 +108,33 @@ object Reflexes {
         return call("volume", args)
     }
 
+    private fun playback(text: String): ToolCall? {
+        val action = when {
+            PAUSE.matches(text) -> "pause"
+            RESUME.matches(text) -> "resume"
+            NEXT.matches(text) -> "next"
+            PREVIOUS.matches(text) -> "previous"
+            else -> return null
+        }
+        return call("control_playback", JSONObject().put("action", action))
+    }
+
+    private fun chance(text: String): ToolCall? = when {
+        COIN.containsMatchIn(text) -> call("random", JSONObject().put("kind", "coin"))
+        DICE.containsMatchIn(text) -> call("random", JSONObject().put("kind", "dice"))
+        else -> null
+    }
+
+    private fun openApp(text: String): ToolCall? {
+        val match = OPEN.matchEntire(text) ?: return null
+        val name = match.groupValues[2].trim().removeSuffix(" app").removePrefix("the ").removePrefix("die ")
+            .removePrefix("den ").removePrefix("das ").trim()
+        // Doors, windows and blinds are opened by the house, not the launcher,
+        // and that needs the model to know which one.
+        if (name.isBlank() || NOT_APPS.containsMatchIn(name) || name.split(' ').size > 3) return null
+        return call("open_app", JSONObject().put("name", name))
+    }
+
     private fun sum(text: String): ToolCall? {
         var expression = text
             .replace(Regex("^(what('s| is)|how much is|calculate|compute|was ist|was sind|wie viel ist|rechne|berechne)\\s+"), "")
@@ -133,6 +165,15 @@ object Reflexes {
     private val UP = listOf("volume up", "turn it up", "turn the volume up", "louder", "lauter")
     private val DOWN = listOf("volume down", "turn it down", "turn the volume down", "quieter", "leiser")
     private val MUTE = Regex("^(mute|stumm|mute (the )?(sound|music|media|volume|phone)|(schalte? )?(den ton|die musik) (stumm|aus))$")
+    private val PAUSE = Regex("^(pause|stop)( (the )?(music|song|playback|it))?( please)?$|^(musik )?(pausieren|pause|stopp)( die musik)?$")
+    private val RESUME = Regex("^(resume|play|continue|unpause)( (the )?(music|song|playback|it))?( please)?$|^(musik )?(weiter|fortsetzen|weiterspielen)$")
+    private val NEXT = Regex("^(next|skip)( (the )?(song|track|one|this))?( please)?$|^(nächstes lied|nächster song|überspringen)$")
+    private val PREVIOUS = Regex("^(previous|last|go back to the previous)( (song|track|one))?$|^(vorheriges lied|zurück)$")
+    private val COIN = Regex("\\b(flip|toss) a coin\\b|\\bheads or tails\\b|\\bmünze werfen\\b|\\bwirf eine münze\\b|\\bkopf oder zahl\\b")
+    private val DICE = Regex("\\broll (a|the|some) (die|dice)\\b|\\bwürfel(n|e)?\\b")
+    private val BATTERY = Regex("^(how much battery|battery( level| status)?|what'?s my battery|how'?s (my|the) battery|wie viel akku|akku(stand)?)( do i have| left| is left)?$")
+    private val OPEN = Regex("^(open|launch|start|öffne|starte)\\s+(.+?)(\\s+app)?$")
+    private val NOT_APPS = Regex("\\b(door|window|garage|blind|blinds|shutter|gate|tür|fenster|tor|rollo|curtain|timer|alarm|a |an )")
     private val DURATION = Regex("(\\d+(?:[.,]\\d+)?)\\s*(seconds?|secs?|sekunden?|minutes?|mins?|minuten?|hours?|hrs?|stunden?)\\b")
     private val REMIND = Regex(
         "(?:remind me|erinnere mich)\\s+(?:in|in)\\s+(\\d+(?:[.,]\\d+)?)\\s*(seconds?|minutes?|mins?|hours?|minuten?|stunden?|sekunden?)\\s+(?:to|zu|an|dass|that)?\\s*(.+)"
