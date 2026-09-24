@@ -103,9 +103,13 @@ class ScreensTest {
 
         // A real turn against the free keyless models, tool call and all: the
         // one picture that shows the assistant actually thinking.
+        // A fresh thread, so question and answer sit at the top: the list's
+        // scroll to the newest line is an animation the test clock does not run.
+        runCatching { vm.newConversation() }
+        settle(400)
         runCatching { vm.sendTyped("Add eggs to my shopping list, then tell me what's on it.") }
             .onFailure { note("live turn", it) }
-        live(seconds = 40)
+        live(seconds = 50)
         shot(activity, "03b-live-answer")
         listOf(
             Element.Today to "04-today",
