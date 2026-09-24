@@ -174,7 +174,9 @@ fun VoiceScreen(
     timers: List<RunningTimer> = emptyList(),
     onCancelTimer: (Int) -> Unit = {},
     /** Whether the phone can reach the internet; offline, only the reflexes answer. */
-    online: Boolean = true
+    online: Boolean = true,
+    ringing: List<RunningTimer> = emptyList(),
+    onStopRinging: (Int) -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -194,7 +196,9 @@ fun VoiceScreen(
             online = online
         )
 
-        if (timers.isNotEmpty()) TimerStrip(timers = timers, onCancel = onCancelTimer)
+        if (timers.isNotEmpty() || ringing.isNotEmpty()) {
+            TimerStrip(timers = timers, onCancel = onCancelTimer, ringing = ringing, onStop = onStopRinging)
+        }
 
         if (voiceMode) {
             if (showHud) Hud(brief = brief)
@@ -262,7 +266,12 @@ fun VoiceScreen(
  * stops it.
  */
 @Composable
-private fun TimerStrip(timers: List<RunningTimer>, onCancel: (Int) -> Unit) {
+private fun TimerStrip(
+    timers: List<RunningTimer>,
+    onCancel: (Int) -> Unit,
+    ringing: List<RunningTimer> = emptyList(),
+    onStop: (Int) -> Unit = {}
+) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(timers) {
         while (true) {
@@ -277,6 +286,26 @@ private fun TimerStrip(timers: List<RunningTimer>, onCancel: (Int) -> Unit) {
             .padding(vertical = Space.hair),
         horizontalArrangement = Arrangement.spacedBy(Space.tight)
     ) {
+        // One that has run out comes first, lit, with the button that stops it.
+        ringing.forEach { timer ->
+            Row(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Accent)
+                    .clickable { onStop(timer.id) }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "${timer.label.removeSuffix(" timer").replaceFirstChar { it.uppercase() }} — time's up",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = OnAccent,
+                    maxLines = 1
+                )
+                Spacer(Modifier.width(10.dp))
+                Text("STOP", style = MaterialTheme.typography.labelLarge, color = OnAccent)
+            }
+        }
         timers.sortedBy { it.endsAt }.forEach { timer ->
             val left = timer.leftMs(now)
             val fraction = if (timer.lengthMs > 0) (left.toFloat() / timer.lengthMs).coerceIn(0f, 1f) else 0f

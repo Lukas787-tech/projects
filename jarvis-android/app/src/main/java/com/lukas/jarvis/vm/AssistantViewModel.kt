@@ -753,6 +753,11 @@ class AssistantViewModel(
 
     fun cancelTimer(id: Int) = container.timers.cancelId(id)
 
+    /** Timers that ran out and are still sounding. */
+    val ringingTimers: StateFlow<List<com.lukas.jarvis.notify.RunningTimer>> = container.timers.ringing
+
+    fun stopTimerAlarm(id: Int) = container.timers.silence(id)
+
     /** The user's lists, straight from their store, which the tools write too. */
     val lists: StateFlow<com.lukas.jarvis.data.ListBook> = container.lists.book
 

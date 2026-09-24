@@ -50,6 +50,11 @@ class Timers(context: Context) {
     private val _all = MutableStateFlow(read())
     val all: StateFlow<List<RunningTimer>> = _all.asStateFlow()
 
+    private val _ringing = MutableStateFlow<List<RunningTimer>>(emptyList())
+
+    /** Timers that have run out and are still sounding, until stopped. */
+    val ringing: StateFlow<List<RunningTimer>> = _ringing.asStateFlow()
+
     init {
         ensureChannels()
     }
@@ -204,10 +209,12 @@ class Timers(context: Context) {
         // Keeps sounding until it is stopped, like a kitchen timer.
         notification.flags = notification.flags or Notification.FLAG_INSISTENT
         runCatching { notifications?.notify(doneId(timer.id), notification) }
+        _ringing.value = _ringing.value.filterNot { it.id == timer.id } + timer
     }
 
-    internal fun silence(id: Int) {
+    fun silence(id: Int) {
         notifications?.cancel(doneId(id))
+        _ringing.value = _ringing.value.filterNot { it.id == id }
     }
 
     private fun icon() = android.graphics.drawable.Icon.createWithResource(app, R.drawable.ic_notification)

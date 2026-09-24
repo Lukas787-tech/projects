@@ -302,6 +302,7 @@ private fun JarvisRoot(
     val lists by viewModel.lists.collectAsStateWithLifecycle()
     val timers by viewModel.timers.collectAsStateWithLifecycle()
     val online by viewModel.online.collectAsStateWithLifecycle()
+    val ringingTimers by viewModel.ringingTimers.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val canSeeMedia by viewModel.canSeeMedia.collectAsStateWithLifecycle()
     val cameraRequest by viewModel.cameraRequests.collectAsStateWithLifecycle()
@@ -670,7 +671,9 @@ private fun JarvisRoot(
                     onNewChat = viewModel::newConversation,
                     timers = timers,
                     onCancelTimer = viewModel::cancelTimer,
-                    online = online
+                    online = online,
+                    ringing = ringingTimers,
+                    onStopRinging = viewModel::stopTimerAlarm
                 )
 
                 // Notes, tasks and money are one element with three segments,
