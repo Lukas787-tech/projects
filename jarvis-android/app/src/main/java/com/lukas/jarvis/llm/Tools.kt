@@ -518,8 +518,9 @@ class Tools(
 
     private fun weatherTool(): JSONObject = tool(
         "weather",
-        "The real forecast for where the user is, or for a named place. Use for anything about " +
-            "rain, temperature, wind, or whether to take a coat. Never guess the weather.",
+        "The real forecast for where the user is, or for a named place: temperature, rain and " +
+            "when it starts, wind, sunrise and sunset, UV, air quality and pollen. Use for " +
+            "anything about the sky, the air or whether to take a coat. Never guess the weather.",
         props(
             "place" to str("A town or area to look up. Omit for where the user is now."),
             "days" to int("How many days of forecast. 1 for right now, up to 7.")
@@ -680,7 +681,7 @@ class Tools(
             props(
                 "what" to str(
                     "Which part, or 'all'.",
-                    listOf("all", "battery", "network", "storage", "ringer", "hardware")
+                    listOf("all", "battery", "network", "storage", "ringer", "volume", "brightness", "hardware")
                 )
             ),
             emptyList()
@@ -695,6 +696,39 @@ class Tools(
             "ringer",
             "Set the ringer to normal, vibrate or silent.",
             props("mode" to str("Which one.", listOf("normal", "vibrate", "silent"))),
+            listOf("mode")
+        ),
+        tool(
+            "volume",
+            "Set, raise, lower or mute one of the phone's volumes, or read them all. " +
+                "'Turn it up' while music plays means media.",
+            props(
+                "stream" to str("Which volume. Default media.", listOf("media", "ring", "notification", "alarm", "call")),
+                "action" to str("What to do.", listOf("set", "up", "down", "mute", "unmute", "max", "check")),
+                "level" to int("For 'set': the percentage, 0 to 100.")
+            ),
+            listOf("action")
+        ),
+        tool(
+            "brightness",
+            "Set the screen brightness as a percentage, make it brighter or dimmer, or switch " +
+                "automatic brightness on or off.",
+            props(
+                "level" to int("The percentage, 1 to 100."),
+                "change" to str("A relative change instead of a level.", listOf("up", "down", "max", "min")),
+                "auto" to bool("True for automatic brightness, false for manual.")
+            ),
+            emptyList()
+        ),
+        tool(
+            "do_not_disturb",
+            "Switch Do Not Disturb on or off, or read whether it is on. 'Priority' lets " +
+                "favourites and alarms through; 'alarms' only alarms; 'total' nothing at all. " +
+                "Give minutes for 'for an hour', 'until my meeting ends'.",
+            props(
+                "mode" to str("What to set.", listOf("priority", "alarms", "total", "off", "check")),
+                "minutes" to int("End it again by itself after this many minutes.")
+            ),
             listOf("mode")
         ),
         tool(
@@ -1058,6 +1092,20 @@ class Tools(
                 "device_status" -> deviceStatus(args)
                 "torch" -> device.torch(args.optBoolean("on", true))
                 "ringer" -> device.setRinger(args.optString("mode"))
+                "volume" -> device.volume(
+                    args.optString("stream"),
+                    args.optString("action"),
+                    if (args.has("level")) args.optInt("level") else null
+                )
+                "brightness" -> device.brightness(
+                    if (args.has("level")) args.optInt("level") else null,
+                    if (args.has("auto")) args.optBoolean("auto") else null,
+                    args.optString("change").ifBlank { null }
+                )
+                "do_not_disturb" -> device.doNotDisturb(
+                    args.optString("mode"),
+                    if (args.has("minutes")) args.optInt("minutes") else null
+                )
                 "clipboard" -> clipboard(args)
                 "open_app" -> launcher.openApp(args.optString("name"))
                 "open_settings_page" -> device.openSettings(args.optString("page"))
@@ -1721,7 +1769,9 @@ class Tools(
             "battery" -> device.battery()
             "network", "internet", "connection" -> device.connection()
             "storage", "space" -> device.storage()
-            "ringer", "sound" -> device.ringer()
+            "ringer", "sound" -> device.ringer() + " " + device.describeQuiet()
+            "volume" -> device.volumes()
+            "brightness", "screen" -> device.describeBrightness()
             "hardware", "model", "phone" -> device.hardware()
             else -> device.status()
         }

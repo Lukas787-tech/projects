@@ -7,8 +7,8 @@ import java.util.Locale
  * What Jarvis can still do with no model at all.
  *
  * No signal, or every free quota spent for the hour: the language model is out
- * of reach, but the clock, the calculator, the torch, timers, alarms and quick
- * reminders never needed one. These are the sentences that mean one of those
+ * of reach, but the clock, the calculator, the torch, the volume, Do Not
+ * Disturb, timers, alarms and quick reminders never needed one. These are the sentences that mean one of those
  * plainly enough to be read without a model — in English and German — and each
  * becomes the same tool call a model would have made, so the work is done by
  * the same code either way.
@@ -23,6 +23,8 @@ object Reflexes {
         remind(text)?.let { return it }
         alarm(text)?.let { return it }
         torch(text)?.let { return it }
+        quiet(text)?.let { return it }
+        volume(text)?.let { return it }
         if (TIME.containsMatchIn(text) || DATE.containsMatchIn(text)) return call("now", JSONObject())
         sum(text)?.let { return it }
         return null
@@ -74,6 +76,33 @@ object Reflexes {
         return call("torch", JSONObject().put("on", !off))
     }
 
+    private fun quiet(text: String): ToolCall? {
+        if (!QUIET_WORDS.any { text.contains(it) }) return null
+        if (Regex("\\b(off|aus|ausschalten|beenden|end|stop)\\b").containsMatchIn(text)) {
+            return call("do_not_disturb", JSONObject().put("mode", "off"))
+        }
+        val args = JSONObject().put("mode", "priority")
+        DURATION.find(text)?.let { span ->
+            val amount = span.groupValues[1].replace(',', '.').toDoubleOrNull() ?: return@let
+            val minutes = (amount * unitMinutes(span.groupValues[2])).toInt()
+            if (minutes > 0) args.put("minutes", minutes)
+        }
+        return call("do_not_disturb", args)
+    }
+
+    private fun volume(text: String): ToolCall? {
+        val args = JSONObject()
+        val level = Regex("\\b(?:volume|lautstärke)\\b.*?\\b(\\d{1,3})\\s*(?:%|percent|prozent)?").find(text)
+        when {
+            level != null -> args.put("action", "set").put("level", level.groupValues[1].toInt().coerceIn(0, 100))
+            UP.any { text.contains(it) } -> args.put("action", "up")
+            DOWN.any { text.contains(it) } -> args.put("action", "down")
+            MUTE.matches(text) -> args.put("action", "mute")
+            else -> return null
+        }
+        return call("volume", args)
+    }
+
     private fun sum(text: String): ToolCall? {
         var expression = text
             .replace(Regex("^(what('s| is)|how much is|calculate|compute|was ist|was sind|wie viel ist|rechne|berechne)\\s+"), "")
@@ -100,6 +129,10 @@ object Reflexes {
     private val TIMER_WORDS = listOf("timer", "countdown", "wecker für", "stoppuhr")
     private val ALARM_WORDS = listOf("alarm", "wake me", "wecker", "weck mich")
     private val TORCH_WORDS = listOf("torch", "flashlight", "taschenlampe")
+    private val QUIET_WORDS = listOf("do not disturb", "don't disturb", "dnd", "nicht stören", "bitte nicht stören")
+    private val UP = listOf("volume up", "turn it up", "turn the volume up", "louder", "lauter")
+    private val DOWN = listOf("volume down", "turn it down", "turn the volume down", "quieter", "leiser")
+    private val MUTE = Regex("^(mute|stumm|mute (the )?(sound|music|media|volume|phone)|(schalte? )?(den ton|die musik) (stumm|aus))$")
     private val DURATION = Regex("(\\d+(?:[.,]\\d+)?)\\s*(seconds?|secs?|sekunden?|minutes?|mins?|minuten?|hours?|hrs?|stunden?)\\b")
     private val REMIND = Regex(
         "(?:remind me|erinnere mich)\\s+(?:in|in)\\s+(\\d+(?:[.,]\\d+)?)\\s*(seconds?|minutes?|mins?|hours?|minuten?|stunden?|sekunden?)\\s+(?:to|zu|an|dass|that)?\\s*(.+)"

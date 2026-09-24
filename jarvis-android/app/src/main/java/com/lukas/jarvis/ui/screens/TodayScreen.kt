@@ -59,6 +59,7 @@ import com.lukas.jarvis.ui.components.ChipButton
 import com.lukas.jarvis.ui.components.GlassDialog
 import com.lukas.jarvis.ui.components.GlassField
 import com.lukas.jarvis.core.TimeUtil
+import com.lukas.jarvis.web.Weather
 import com.lukas.jarvis.data.Task
 import com.lukas.jarvis.data.Tracker
 import com.lukas.jarvis.data.TrackerStatus
@@ -387,6 +388,30 @@ private fun HeroCard(brief: DayBrief?, loading: Boolean) {
                         color = TextFaint
                     )
                 }
+            }
+
+            // The things worth a glance before leaving: when the rain comes,
+            // when the light goes, the sun and the air.
+            val today = forecast.days.firstOrNull()
+            val extras = buildList {
+                forecast.rainFrom?.let { add("Rain from $it") }
+                if (today != null) {
+                    if (forecast.now.isDay && today.sunset.isNotBlank()) add("Sunset ${today.sunset}")
+                    if (!forecast.now.isDay && today.sunrise.isNotBlank()) add("Sunrise ${today.sunrise}")
+                    if (!today.uvMax.isNaN() && today.uvMax >= 3) {
+                        add("UV ${today.uvMax.roundToInt()} ${Weather.uvWord(today.uvMax)}")
+                    }
+                }
+                forecast.air?.let { add("Air ${Weather.airWord(it.index)}") }
+                forecast.air?.pollen?.filter { it.value >= 50 }?.keys?.firstOrNull()?.let { add("${it.replaceFirstChar { c -> c.uppercase() }} pollen high") }
+            }
+            if (extras.isNotEmpty()) {
+                Spacer(Modifier.height(Space.hair))
+                Text(
+                    text = extras.joinToString("  ·  "),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary
+                )
             }
 
             val ahead = forecast.days.drop(1).take(3)

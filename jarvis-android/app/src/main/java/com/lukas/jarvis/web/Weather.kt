@@ -2,6 +2,7 @@ package com.lukas.jarvis.web
 
 import com.lukas.jarvis.maps.GeoPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -19,7 +20,8 @@ data class WeatherNow(
     val windKph: Double,
     val humidity: Int,
     val precipitationChance: Int,
-    val isDay: Boolean
+    val isDay: Boolean,
+    val uvIndex: Double = Double.NaN
 )
 
 data class WeatherDay(
@@ -27,10 +29,22 @@ data class WeatherDay(
     val high: Double,
     val low: Double,
     val description: String,
-    val precipitationChance: Int
+    val precipitationChance: Int,
+    val sunrise: String = "",
+    val sunset: String = "",
+    val uvMax: Double = Double.NaN
 )
 
-data class Forecast(val now: WeatherNow, val days: List<WeatherDay>)
+/** What is in the air: the European index, and pollen where it is measured. */
+data class Air(val index: Int, val pollen: Map<String, Double> = emptyMap())
+
+data class Forecast(
+    val now: WeatherNow,
+    val days: List<WeatherDay>,
+    /** When rain becomes likely in the next twelve hours, as "15:00", or null. */
+    val rainFrom: String? = null,
+    val air: Air? = null
+)
 
 /**
  * Weather from Open-Meteo.
@@ -56,12 +70,16 @@ class Weather {
                 append("?latitude=").append(String.format(Locale.US, "%.4f", point.lat))
                 append("&longitude=").append(String.format(Locale.US, "%.4f", point.lon))
                 append("&current=temperature_2m,apparent_temperature,relative_humidity_2m,")
-                append("precipitation_probability,weather_code,wind_speed_10m,is_day")
+                append("precipitation_probability,weather_code,wind_speed_10m,is_day,uv_index")
                 append("&daily=weather_code,temperature_2m_max,temperature_2m_min,")
-                append("precipitation_probability_max")
+                append("precipitation_probability_max,sunrise,sunset,uv_index_max")
+                append("&hourly=precipitation_probability&forecast_hours=12")
                 append("&timezone=auto&forecast_days=").append(wanted)
             }
 
+            // The air is a second service; asked at the same time, and the
+            // forecast does not wait on it failing.
+            val air = async { runCatching { air(point) }.getOrNull() }
             val body = runCatching { fetch(url) }.getOrNull() ?: return@withContext null
             val json = runCatching { JSONObject(body) }.getOrNull() ?: return@withContext null
             val current = json.optJSONObject("current") ?: return@withContext null
@@ -74,7 +92,8 @@ class Weather {
                 windKph = current.optDouble("wind_speed_10m", 0.0),
                 humidity = current.optInt("relative_humidity_2m", 0),
                 precipitationChance = current.optInt("precipitation_probability", 0),
-                isDay = current.optInt("is_day", 1) == 1
+                isDay = current.optInt("is_day", 1) == 1,
+                uvIndex = current.optDouble("uv_index", Double.NaN)
             )
             if (now.temperature.isNaN()) return@withContext null
 
@@ -85,6 +104,9 @@ class Weather {
                 val highs = daily.optJSONArray("temperature_2m_max")
                 val lows = daily.optJSONArray("temperature_2m_min")
                 val rain = daily.optJSONArray("precipitation_probability_max")
+                val rises = daily.optJSONArray("sunrise")
+                val sets = daily.optJSONArray("sunset")
+                val uv = daily.optJSONArray("uv_index_max")
                 val count = highs?.length() ?: 0
                 for (i in 0 until count) {
                     out.add(
@@ -98,13 +120,44 @@ class Weather {
                             high = highs?.optDouble(i, Double.NaN) ?: Double.NaN,
                             low = lows?.optDouble(i, Double.NaN) ?: Double.NaN,
                             description = describe(codes?.optInt(i, -1) ?: -1),
-                            precipitationChance = rain?.optInt(i, 0) ?: 0
+                            precipitationChance = rain?.optInt(i, 0) ?: 0,
+                            sunrise = rises?.optString(i).orEmpty().substringAfter('T', ""),
+                            sunset = sets?.optString(i).orEmpty().substringAfter('T', ""),
+                            uvMax = uv?.optDouble(i, Double.NaN) ?: Double.NaN
                         )
                     )
                 }
             }
-            Forecast(now, out)
+            // The first hour worth taking an umbrella for, unless it is
+            // already raining — then the sky has said so itself.
+            val hourly = json.optJSONObject("hourly")
+            val chances = hourly?.optJSONArray("precipitation_probability")
+            val times = hourly?.optJSONArray("time")
+            val rainFrom = if (chances == null || times == null || now.precipitationChance >= RAIN_LIKELY) {
+                null
+            } else {
+                (1 until chances.length()).firstOrNull { chances.optInt(it, 0) >= RAIN_LIKELY }
+                    ?.let { times.optString(it).substringAfter('T', "").ifBlank { null } }
+            }
+
+            Forecast(now, out, rainFrom, air.await())
         }
+
+    /** Open-Meteo's air-quality service: the European AQI and, in Europe, pollen. */
+    private fun air(point: GeoPoint): Air? {
+        val url = buildString {
+            append("https://air-quality-api.open-meteo.com/v1/air-quality")
+            append("?latitude=").append(String.format(Locale.US, "%.4f", point.lat))
+            append("&longitude=").append(String.format(Locale.US, "%.4f", point.lon))
+            append("&current=european_aqi,birch_pollen,grass_pollen,ragweed_pollen,alder_pollen")
+        }
+        val current = JSONObject(fetch(url)).optJSONObject("current") ?: return null
+        if (current.isNull("european_aqi")) return null
+        val pollen = POLLEN.mapNotNull { (key, name) ->
+            if (current.isNull(key)) null else current.optDouble(key, Double.NaN).takeIf { !it.isNaN() }?.let { name to it }
+        }.toMap()
+        return Air(current.optInt("european_aqi"), pollen)
+    }
 
     /** The one-paragraph version the assistant reads out. */
     fun speak(forecast: Forecast): String = buildString {
@@ -117,6 +170,21 @@ class Weather {
         append(". Wind ${now.windKph.roundToInt()} km/h")
         if (now.precipitationChance >= 20) append(", ${now.precipitationChance}% chance of rain")
         append(".")
+        forecast.rainFrom?.let { append(" Rain likely from about $it.") }
+        val today = forecast.days.firstOrNull()
+        if (today != null) {
+            if (now.isDay && today.sunset.isNotBlank()) append(" Sunset at ${today.sunset}.")
+            if (!now.isDay && today.sunrise.isNotBlank()) append(" Sunrise at ${today.sunrise}.")
+            if (!today.uvMax.isNaN() && today.uvMax >= 3) {
+                append(" UV up to ${today.uvMax.roundToInt()} (${uvWord(today.uvMax)})")
+                append(if (today.uvMax >= 6) " — sunscreen." else ".")
+            }
+        }
+        forecast.air?.let { air ->
+            append(" Air quality ${airWord(air.index)} (${air.index}).")
+            val high = air.pollen.filter { it.value >= POLLEN_HIGH }.keys
+            if (high.isNotEmpty()) append(" High ${high.joinToString(" and ")} pollen.")
+        }
         forecast.days.drop(1).take(3).forEach { day ->
             append(" ${day.label}: ${day.description.lowercase(Locale.ROOT)}, ")
             append("${day.low.roundToInt()}° to ${day.high.roundToInt()}°")
@@ -134,6 +202,34 @@ class Weather {
     }
 
     companion object {
+        private const val RAIN_LIKELY = 50
+        /** Grains per cubic metre above which allergy sufferers notice. */
+        private const val POLLEN_HIGH = 50.0
+        private val POLLEN = listOf(
+            "birch_pollen" to "birch",
+            "grass_pollen" to "grass",
+            "ragweed_pollen" to "ragweed",
+            "alder_pollen" to "alder"
+        )
+
+        fun uvWord(uv: Double): String = when {
+            uv < 3 -> "low"
+            uv < 6 -> "moderate"
+            uv < 8 -> "high"
+            uv < 11 -> "very high"
+            else -> "extreme"
+        }
+
+        /** The European AQI bands. */
+        fun airWord(index: Int): String = when {
+            index <= 20 -> "good"
+            index <= 40 -> "fair"
+            index <= 60 -> "moderate"
+            index <= 80 -> "poor"
+            index <= 100 -> "very poor"
+            else -> "extremely poor"
+        }
+
         /** WMO weather interpretation codes, in words a person would use. */
         fun describe(code: Int): String = when (code) {
             0 -> "Clear"

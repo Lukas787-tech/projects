@@ -60,7 +60,9 @@ object ToolRouter {
             "weather", "rain", "sunny", "sun ", "temperature", "forecast", "coat", "umbrella",
             "cold", "hot ", "warm", "wind", "snow", "storm", "degrees", "sunrise", "sunset",
             "air quality", "pollen", "wetter", "regen", "temperatur", "sonne", "kalt", "schnee",
-            "jacke", "schirm", "grad", "gewitter", "sonnenaufgang", "sonnenuntergang"
+            "jacke", "schirm", "grad", "gewitter", "sonnenaufgang", "sonnenuntergang", "uv",
+            "sunscreen", "allerg", "hay fever", "smog", "luftqualität", "pollen", "sonnencreme",
+            "heuschnupfen"
         ),
         ToolGroup.Places to listOf(
             "near", "nearby", "around here", "where", "restaurant", "food", "hungry", "eat",
@@ -83,7 +85,10 @@ object ToolRouter {
             "ringer", "vibrat", "open ", "launch", "app", "settings", "wifi", "wi-fi",
             "clipboard", "copy", "storage", "brightness", "airplane", "wecker", "weck mich",
             "taschenlampe", "licht", "akku", "lautlos", "öffne", "starte", "einstellung",
-            "kopier", "speicher", "flugmodus", "helligkeit"
+            "kopier", "speicher", "flugmodus", "helligkeit", "volume", "louder", "quieter",
+            "turn it up", "turn it down", "mute", "disturb", "dnd", "focus", "dimmer",
+            "brighter", "screen", "lauter", "leiser", "stumm", "nicht stören", "bildschirm",
+            "dunkler", "heller", "lautstärke"
         ),
         ToolGroup.Messages to listOf(
             "text ", "message", "sms", "whatsapp", "telegram", "signal", "send", "reply",

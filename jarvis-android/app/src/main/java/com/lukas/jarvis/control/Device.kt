@@ -40,7 +40,7 @@ class Device(context: Context) {
 
     /** Everything at once, which is what "how is my phone doing" actually asks. */
     fun status(): String {
-        val parts = listOf(battery(), connection(), storage(), ringer())
+        val parts = listOf(battery(), connection(), storage(), ringer(), describeQuiet())
         return parts.joinToString(" ")
     }
 
@@ -127,6 +127,161 @@ class Device(context: Context) {
     }
 
     /**
+     * Sets, raises or lowers one of the phone's volumes. Percentages are of
+     * that stream's own range, which differs between phones — 15 steps on one,
+     * 25 on another — so "half" means half on both.
+     */
+    fun volume(stream: String, action: String, level: Int?): String {
+        val audio = audio ?: return "No audio service on this phone."
+        val (type, label) = STREAMS[stream.trim().lowercase(Locale.ROOT)]
+            ?: (AudioManager.STREAM_MUSIC to "media")
+        val max = audio.getStreamMaxVolume(type).coerceAtLeast(1)
+        val min = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) audio.getStreamMinVolume(type) else 0
+        val now = audio.getStreamVolume(type)
+        val step = maxOf(1, (max / 10.0).roundToInt())
+        val target = when (action.trim().lowercase(Locale.ROOT)) {
+            "up", "louder", "raise" -> now + step
+            "down", "quieter", "lower" -> now - step
+            "mute", "off", "silence" -> min
+            "max", "full" -> max
+            "unmute", "on" -> if (now <= min) (max / 2).coerceAtLeast(min + 1) else now
+            "set" -> level?.let { (it.coerceIn(0, 100) * max / 100.0).roundToInt() }
+                ?: return "Say how loud, as a percentage."
+            else -> return volumes()
+        }.coerceIn(min, max)
+        return runCatching {
+            audio.setStreamVolume(type, target, AudioManager.FLAG_SHOW_UI)
+            val percent = audio.getStreamVolume(type) * 100 / max
+            "${label.replaceFirstChar { it.titlecase(Locale.ROOT) }} volume is at $percent%."
+        }.getOrElse {
+            // The ring and notification volumes reaching zero is a Do Not
+            // Disturb change, which Android refuses without that access.
+            if (it is SecurityException) {
+                "Do Not Disturb is holding the $label volume, so the system would not change it."
+            } else {
+                "The system would not change the $label volume."
+            }
+        }
+    }
+
+    /** Every volume at once, for "how loud is my phone". */
+    fun volumes(): String {
+        val audio = audio ?: return "No audio service on this phone."
+        return STREAMS.values.distinct().joinToString(", ", postfix = ".") { (type, label) ->
+            val max = audio.getStreamMaxVolume(type).coerceAtLeast(1)
+            "$label ${audio.getStreamVolume(type) * 100 / max}%"
+        }.replaceFirstChar { it.titlecase(Locale.ROOT) }
+    }
+
+    /**
+     * Screen brightness, as the percentage the system slider shows.
+     *
+     * The slider has not been linear since Android 9 — halfway along it is
+     * about a tenth of the panel's power — so the number said is turned into
+     * the stored value the way the system turns the slider into it, and "50%"
+     * looks like the slider at half.
+     */
+    fun brightness(level: Int?, auto: Boolean?, change: String?): String {
+        if (!Settings.System.canWrite(app)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                android.net.Uri.parse("package:${app.packageName}")
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { app.startActivity(intent) }
+            return "Changing the brightness needs the 'modify system settings' permission, which " +
+                "Android only grants from its own page. I have opened it — switch Jarvis on " +
+                "there and ask me again."
+        }
+        val resolver = app.contentResolver
+        return runCatching {
+            val current = sliderPercent(Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS, 128))
+            val target = when (change?.trim()?.lowercase(Locale.ROOT)) {
+                "up", "brighter" -> (current + 15).coerceAtMost(100)
+                "down", "dimmer", "darker" -> (current - 15).coerceAtLeast(1)
+                "max", "full" -> 100
+                "min", "lowest" -> 1
+                else -> level
+            }
+            if (auto != null && target == null) {
+                Settings.System.putInt(
+                    resolver,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE,
+                    if (auto) Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC
+                    else Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
+                )
+            }
+            if (target != null) {
+                // A level said out loud is a level wanted, not a hint for the
+                // light sensor to override a second later.
+                Settings.System.putInt(
+                    resolver,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
+                )
+                Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS, storedValue(target.coerceIn(1, 100)))
+            }
+            describeBrightness()
+        }.getOrElse { "The system would not change the brightness." }
+    }
+
+    fun describeBrightness(): String {
+        val resolver = app.contentResolver
+        val mode = Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE, 0)
+        val percent = sliderPercent(Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS, 128))
+        return if (mode == Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC) {
+            "Brightness is automatic, around $percent%."
+        } else {
+            "Brightness is at $percent%."
+        }
+    }
+
+    /**
+     * Do Not Disturb. [minutes] ends it again by itself — "for an hour" —
+     * with a one-off alarm, since Android has no public call for a timed one.
+     */
+    fun doNotDisturb(mode: String, minutes: Int?): String {
+        val manager = notifications ?: return "No notification service on this phone."
+        if (!manager.isNotificationPolicyAccessGranted) {
+            openSettings("dnd")
+            return "Do Not Disturb needs its own access, which Android only grants from its own " +
+                "settings page. I have opened it — switch Jarvis on there and ask me again."
+        }
+        val filter = when (mode.trim().lowercase(Locale.ROOT)) {
+            "on", "priority", "important" -> NotificationManager.INTERRUPTION_FILTER_PRIORITY
+            "alarms", "alarms_only" -> NotificationManager.INTERRUPTION_FILTER_ALARMS
+            "total", "silence", "none" -> NotificationManager.INTERRUPTION_FILTER_NONE
+            "off", "all" -> NotificationManager.INTERRUPTION_FILTER_ALL
+            else -> return describeQuiet()
+        }
+        return runCatching {
+            manager.setInterruptionFilter(filter)
+            com.lukas.jarvis.notify.QuietReceiver.schedule(
+                app,
+                if (filter != NotificationManager.INTERRUPTION_FILTER_ALL) minutes else null
+            )
+            describeQuiet() + if (filter != NotificationManager.INTERRUPTION_FILTER_ALL && minutes != null && minutes > 0) {
+                " It ends by itself in ${span(minutes)}."
+            } else {
+                ""
+            }
+        }.getOrElse { "The system would not change Do Not Disturb." }
+    }
+
+    private fun span(minutes: Int): String = when {
+        minutes % 60 == 0 && minutes >= 60 -> (minutes / 60).let { if (it == 1) "an hour" else "$it hours" }
+        minutes == 1 -> "a minute"
+        else -> "$minutes minutes"
+    }
+
+    fun describeQuiet(): String = when (notifications?.currentInterruptionFilter) {
+        NotificationManager.INTERRUPTION_FILTER_PRIORITY -> "Do Not Disturb is on — only priority interruptions get through."
+        NotificationManager.INTERRUPTION_FILTER_ALARMS -> "Do Not Disturb is on — alarms only."
+        NotificationManager.INTERRUPTION_FILTER_NONE -> "Do Not Disturb is on — total silence."
+        NotificationManager.INTERRUPTION_FILTER_ALL -> "Do Not Disturb is off."
+        else -> "I cannot read Do Not Disturb."
+    }
+
+    /**
      * The torch.
      *
      * CameraManager can drive it without the camera permission since Android 6,
@@ -193,6 +348,35 @@ class Device(context: Context) {
     }
 
     private companion object {
+        val STREAMS = linkedMapOf(
+            "media" to (AudioManager.STREAM_MUSIC to "media"),
+            "music" to (AudioManager.STREAM_MUSIC to "media"),
+            "ring" to (AudioManager.STREAM_RING to "ring"),
+            "ringer" to (AudioManager.STREAM_RING to "ring"),
+            "notification" to (AudioManager.STREAM_NOTIFICATION to "notification"),
+            "alarm" to (AudioManager.STREAM_ALARM to "alarm"),
+            "call" to (AudioManager.STREAM_VOICE_CALL to "call")
+        )
+
+        // The system's own slider curve (BrightnessUtils): a square law for the
+        // lower half, a log curve above, over a 0–12 range.
+        private const val HLG_R = 0.5
+        private const val HLG_A = 0.17883277
+        private const val HLG_B = 0.28466892
+        private const val HLG_C = 0.55991073
+
+        fun storedValue(percent: Int): Int {
+            val f = percent / 100.0
+            val ret = if (f <= HLG_R) (f / HLG_R) * (f / HLG_R) else kotlin.math.exp((f - HLG_C) / HLG_A) + HLG_B
+            return (1 + 254 * (ret.coerceIn(0.0, 12.0) / 12.0)).roundToInt().coerceIn(1, 255)
+        }
+
+        fun sliderPercent(stored: Int): Int {
+            val ret = (stored - 1).coerceAtLeast(0) / 254.0 * 12.0
+            val f = if (ret <= 1) HLG_R * kotlin.math.sqrt(ret) else HLG_A * kotlin.math.ln(ret - HLG_B) + HLG_C
+            return (f * 100).roundToInt().coerceIn(0, 100)
+        }
+
         val PAGES = linkedMapOf(
             "wifi" to Settings.ACTION_WIFI_SETTINGS,
             "wi-fi" to Settings.ACTION_WIFI_SETTINGS,
@@ -206,6 +390,11 @@ class Device(context: Context) {
             "apps" to Settings.ACTION_APPLICATION_SETTINGS,
             "notifications" to Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS,
             "dnd" to Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS,
+            "disturb" to Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS,
+            "brightness" to Settings.ACTION_DISPLAY_SETTINGS,
+            "volume" to Settings.ACTION_SOUND_SETTINGS,
+            "nfc" to Settings.ACTION_NFC_SETTINGS,
+            "hotspot" to Settings.ACTION_WIRELESS_SETTINGS,
             "accessibility" to Settings.ACTION_ACCESSIBILITY_SETTINGS,
             "date" to Settings.ACTION_DATE_SETTINGS,
             "language" to Settings.ACTION_LOCALE_SETTINGS,

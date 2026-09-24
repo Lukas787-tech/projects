@@ -47,10 +47,26 @@ class ReflexTest {
         assertEquals("100 / 4", parsed("was ist 100 geteilt durch 4")!!.second.getString("expression"))
     }
 
+    @Test fun volumeAndQuiet() {
+        assertEquals("up", parsed("turn it up")!!.second.getString("action"))
+        assertEquals("down", parsed("Leiser bitte")!!.second.getString("action"))
+        val set = parsed("set the volume to 30%")!!
+        assertEquals("set", set.second.getString("action"))
+        assertEquals(30, set.second.getInt("level"))
+        assertEquals("mute", parsed("mute")!!.second.getString("action"))
+        val quiet = parsed("do not disturb for 45 minutes")!!
+        assertEquals("do_not_disturb", quiet.first)
+        assertEquals("priority", quiet.second.getString("mode"))
+        assertEquals(45, quiet.second.getInt("minutes"))
+        assertEquals("off", parsed("turn off do not disturb")!!.second.getString("mode"))
+        assertEquals(120, parsed("Nicht stören für 2 Stunden")!!.second.getInt("minutes"))
+    }
+
     @Test fun ordinarySentencesAreLeftToTheModel() {
         assertNull(Reflexes.parse("tell me about the Brandenburg Gate"))
         assertNull(Reflexes.parse("what is 42"))
         assertNull(Reflexes.parse("I spent 12 euros on lunch"))
         assertNull(Reflexes.parse("how does my day look"))
+        assertNull(Reflexes.parse("mute the group chat with my cousins"))
     }
 }

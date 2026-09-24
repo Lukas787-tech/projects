@@ -10,6 +10,13 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Without this the app is never listed on Android's Do Not Disturb access
+         page, so neither "silent" nor "do not disturb" could ever be granted. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <!-- Screen brightness; granted by the user on the system's own page. -->
+    <uses-permission
+        android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -224,6 +231,11 @@
 
         <receiver
             android:name=".notify.ReminderReceiver"
+            android:exported="false" />
+
+        <!-- Ends a Do Not Disturb that was asked for a set time. -->
+        <receiver
+            android:name=".notify.QuietReceiver"
             android:exported="false" />
 
         <!-- A routine's daily time: posts the one-tap notification. -->

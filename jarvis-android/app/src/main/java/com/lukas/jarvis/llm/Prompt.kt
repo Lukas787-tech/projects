@@ -170,7 +170,7 @@ THE HOUSE
             if (has("set_alarm", "torch", "open_app")) {
                 appendLine()
                 appendLine("THE PHONE")
-                appendLine(deviceRules())
+                appendLine(deviceRules(house = has("home_control")))
             }
 
             if (has("send_message", "send_chat_message", "reply_to_message")) {
@@ -406,16 +406,20 @@ PLACES AND GETTING AROUND
      * than as tool names: nobody asks for `set_timer`, they say "ten minutes
      * for the pasta".
      */
-    private fun deviceRules(): String =
+    private fun deviceRules(house: Boolean): String =
         """
 - "wake me at seven" -> `set_alarm`. "ten minutes for the pasta" -> `set_timer`. A thing to
   do rather than a time to be woken -> `add_task`.
 - "what alarms have I got" -> `show_alarms`; only the clock app may read alarms, so say
   they are on screen.
 - "open Spotify" -> `open_app` with the name they said. "how much battery", "am I online"
-  -> `device_status`. "turn on the light" with nothing else to go on means the torch.
-- "put it on silent" -> `ringer`. "copy that" -> `clipboard`.
-- Something only the system may change (Wi-Fi, airplane mode, brightness) ->
+  -> `device_status`.${if (house) "" else " \"turn on the light\" with nothing else to go on means the torch."}
+- "put it on silent" -> `ringer`. "turn it up", "mute the music" -> `volume`. "dim the
+  screen" -> `brightness`. "no calls for an hour", "focus time" -> `do_not_disturb` with
+  minutes. "copy that" -> `clipboard`.
+- If one of those says the system needs a permission first, say that a settings page is
+  open and the switch there is theirs to flip.
+- Something only the system may change (Wi-Fi, airplane mode, hotspot) ->
   `open_settings_page`, and say that the last tap is theirs.
         """.trim()
 
