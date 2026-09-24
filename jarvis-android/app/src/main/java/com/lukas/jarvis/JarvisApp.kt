@@ -1,5 +1,8 @@
 package com.lukas.jarvis
 
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import android.app.Application
 import android.content.Context
 import com.lukas.jarvis.auto.Routines
@@ -166,7 +169,24 @@ class JarvisApp : Application() {
             override fun onActivityDestroyed(activity: android.app.Activity) = Unit
         })
         // Alarms are lost on reinstall; rebuild them from what the brain holds.
-        runCatching { container.reminders.rescheduleAll(container.brain.pendingReminders()) }
-        runCatching { container.routines.rescheduleAll() }
+        // Off the main thread: it is a database read, and startup is when a
+        // stutter is most visible.
+        appScope.launch {
+            runCatching { container.reminders.rescheduleAll(container.brain.pendingReminders()) }
+            runCatching { container.routines.rescheduleAll() }
+        }
+        // The written brief follows its setting wherever it changes — the
+        // settings screen, a restored backup — and is set again at every
+        // start, which covers reboots and updates too.
+        appScope.launch {
+            container.settings.state
+                .map { it.briefTime }
+                .distinctUntilChanged()
+                .collect { time -> runCatching { com.lukas.jarvis.brief.BriefAlarm.schedule(this@JarvisApp, time) } }
+        }
     }
+
+    private val appScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default
+    )
 }

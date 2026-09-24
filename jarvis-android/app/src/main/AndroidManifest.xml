@@ -233,6 +233,11 @@
             android:name=".notify.ReminderReceiver"
             android:exported="false" />
 
+        <!-- The morning brief as a notification, at the time the user chose. -->
+        <receiver
+            android:name=".brief.BriefReceiver"
+            android:exported="false" />
+
         <!-- Ends a Do Not Disturb that was asked for a set time. -->
         <receiver
             android:name=".notify.QuietReceiver"

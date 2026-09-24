@@ -309,6 +309,29 @@ fun VoiceSection(
             checked = settings.morningBrief,
             onChange = { value -> onUpdate { it.copy(morningBrief = value) } }
         )
+        Spacer(Modifier.height(Space.tight))
+        Text(
+            "Written brief",
+            style = MaterialTheme.typography.titleSmall,
+            color = TextPrimary
+        )
+        Text(
+            "The same brief as a notification at a set time, without opening the app",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary
+        )
+        Spacer(Modifier.height(Space.tight))
+        val briefTimes = remember(settings.briefTime) {
+            (listOf("", "06:00", "06:30", "07:00", "07:30", "08:00", "09:00") +
+                listOfNotNull(settings.briefTime.takeIf { it.isNotBlank() })).distinct().sortedBy { it }
+        }
+        ChoiceChips(
+            options = briefTimes,
+            selected = settings.briefTime,
+            display = { if (it.isBlank()) "Off" else it },
+            onSelect = { time -> onUpdate { it.copy(briefTime = time) } }
+        )
+        Spacer(Modifier.height(Space.snug))
         ToggleRow(
             title = "Listening tones",
             subtitle = "A short tone when the microphone opens and when it heard you",
