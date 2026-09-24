@@ -64,6 +64,8 @@ data class Settings(
     val proactive: Boolean = true,
     /** Emoji in typed replies. Never spoken either way. */
     val emoji: Boolean = false,
+    /** The user's own one-tap phrases, one per line, shown on the assistant. */
+    val quickCommands: String = "",
 
     // ------------------------------------------------------------- its voice
 
@@ -165,6 +167,7 @@ class SettingsStore(context: Context) {
             replyLanguage = prefs.getString(KEY_REPLY_LANGUAGE, "").orEmpty(),
             proactive = prefs.getBoolean(KEY_PROACTIVE, true),
             emoji = prefs.getBoolean(KEY_EMOJI, false),
+            quickCommands = prefs.getString(KEY_QUICK_COMMANDS, "").orEmpty(),
             voiceName = prefs.getString(KEY_VOICE_NAME, "").orEmpty(),
             speechLanguage = prefs.getString(KEY_SPEECH_LANGUAGE, "").orEmpty(),
             earcons = prefs.getBoolean(KEY_EARCONS, true),
@@ -231,6 +234,7 @@ class SettingsStore(context: Context) {
             .putString(KEY_REPLY_LANGUAGE, next.replyLanguage)
             .putBoolean(KEY_PROACTIVE, next.proactive)
             .putBoolean(KEY_EMOJI, next.emoji)
+            .putString(KEY_QUICK_COMMANDS, next.quickCommands)
             .putString(KEY_VOICE_NAME, next.voiceName)
             .putString(KEY_SPEECH_LANGUAGE, next.speechLanguage)
             .putBoolean(KEY_EARCONS, next.earcons)
@@ -357,6 +361,7 @@ class SettingsStore(context: Context) {
         const val KEY_REPLY_LANGUAGE = "reply_language"
         const val KEY_PROACTIVE = "proactive"
         const val KEY_EMOJI = "emoji"
+        const val KEY_QUICK_COMMANDS = "quick_commands"
         const val KEY_VOICE_NAME = "voice_name"
         const val KEY_SPEECH_LANGUAGE = "speech_language"
         const val KEY_EARCONS = "earcons"

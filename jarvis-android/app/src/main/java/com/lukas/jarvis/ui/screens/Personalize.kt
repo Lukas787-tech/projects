@@ -156,6 +156,20 @@ fun AssistantSection(settings: Settings, onUpdate: ((Settings) -> Settings) -> U
     }
 
     Panel(
+        title = "Quick commands",
+        subtitle = "Your own one-tap phrases on the assistant, one per line — anything you'd say."
+    ) {
+        GlassField(
+            value = settings.quickCommands,
+            onValueChange = { value -> onUpdate { it.copy(quickCommands = value.take(600)) } },
+            label = "One per line",
+            placeholder = "Brief me\nTurn off all the lights\nLog a coffee, 3 euros\nWhat's in the news?",
+            singleLine = false,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+
+    Panel(
         title = "Make it yours",
         subtitle = "Everything here goes into every conversation. Write it the way you'd brief a new assistant."
     ) {

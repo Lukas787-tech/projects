@@ -549,8 +549,24 @@ object Abilities {
         )
     )
 
-    /** What to offer on an empty screen: one sentence from each family that is on. */
-    fun starters(settings: Settings, limit: Int = 4): List<Pair<ToolGroup, String>> =
+    /**
+     * What to offer on an empty screen: the user's own quick commands when they
+     * have written some, otherwise one sentence from each family that is on.
+     */
+    fun starters(settings: Settings, limit: Int = 4): List<Pair<ToolGroup, String>> {
+        val own = settings.quickCommands.lines().map { it.trim() }.filter { it.isNotBlank() }
+        if (own.isNotEmpty()) {
+            return own.take(8).map { phrase ->
+                val group = ToolRouter.groupsFor(phrase, emptyList())
+                    .firstOrNull { it != ToolGroup.Memory && it != ToolGroup.Thinking && it != ToolGroup.Screen && it != ToolGroup.Web }
+                    ?: ToolGroup.Thinking
+                group to phrase
+            }
+        }
+        return suggested(settings, limit)
+    }
+
+    private fun suggested(settings: Settings, limit: Int): List<Pair<ToolGroup, String>> =
         ALL.filter { it.isOn(settings) && it.group != ToolGroup.Screen }
             .map { it.group to it.examples.first() }
             .let { firsts ->

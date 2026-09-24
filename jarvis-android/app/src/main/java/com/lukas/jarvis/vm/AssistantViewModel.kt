@@ -473,40 +473,21 @@ class AssistantViewModel(
                     storeUserMessage(userMessage, userMessage.copy(content = pendingDisplay ?: display))
                 }
 
-                val reply = ChatMessage(
-                    role = ChatMessage.ROLE_ASSISTANT,
-                    content = result.reply,
-                    tools = result.toolsUsed,
-                    image = result.effects.images.lastOrNull()
-                )
-                val id = withContext(Dispatchers.IO) { brain.addMessage(reply) }
-                // The stored id, not the default 0: the thread keys its rows on
-                // it, and two replies both keyed 0 is a crash in a lazy list.
-                _ui.value = _ui.value.copy(
-                    messages = _ui.value.messages + reply.copy(id = id),
-                    activity = emptyList(),
-                    draft = ""
-                )
-
-                if (result.effects.any) refreshAll()
-
-                if (current.speakReplies) {
-                    _ui.value = _ui.value.copy(stage = Stage.Speaking, stageLabel = "speaking")
-                    if (speaker.isStreaming && voice != null) {
-                        speaker.endStream(voice.rest(result.reply))
-                    } else {
-                        speaker.speak(result.reply)
-                    }
-                } else {
-                    _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "")
-                    if (lastTurnWasVoice && current.handsFree) startListening()
-                }
+                deliver(result, current, voice)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 // Stopped on purpose; cancelTurn already put the screen back.
                 throw e
             } catch (e: LlmException) {
                 if (rewriteDisplay) storeUserMessage(userMessage, userMessage)
-                fail(e.message ?: "The model call failed.")
+                // No model to be had: the plain requests are still answered.
+                val offline = if (rewriteDisplay) null else runCatching {
+                    withContext(Dispatchers.IO) { container.agent.offline(display, current) }
+                }.getOrNull()
+                if (offline != null) {
+                    deliver(offline, current)
+                } else {
+                    fail(e.message ?: "The model call failed.")
+                }
             } catch (e: Exception) {
                 if (rewriteDisplay) storeUserMessage(userMessage, userMessage)
                 fail(e.message ?: "Something went wrong.")
@@ -565,6 +546,39 @@ class AssistantViewModel(
             com.lukas.jarvis.voice.Sentences.boundary(text, from, MIN_SPOKEN_CHUNK)
 
         private fun squash(text: String) = text.replace(Regex("\\s+"), " ").trim()
+    }
+
+    /** Stores, shows and speaks a finished answer. */
+    private suspend fun deliver(result: AgentResult, current: Settings, voice: SpokenDraft? = null) {
+        val reply = ChatMessage(
+            role = ChatMessage.ROLE_ASSISTANT,
+            content = result.reply,
+            tools = result.toolsUsed,
+            image = result.effects.images.lastOrNull()
+        )
+        val id = withContext(Dispatchers.IO) { brain.addMessage(reply) }
+        // The stored id, not the default 0: the thread keys its rows on it,
+        // and two replies both keyed 0 is a crash in a lazy list.
+        _ui.value = _ui.value.copy(
+            messages = _ui.value.messages + reply.copy(id = id),
+            activity = emptyList(),
+            draft = "",
+            error = null
+        )
+
+        if (result.effects.any) refreshAll()
+
+        if (current.speakReplies) {
+            _ui.value = _ui.value.copy(stage = Stage.Speaking, stageLabel = "speaking")
+            if (speaker.isStreaming && voice != null) {
+                speaker.endStream(voice.rest(result.reply))
+            } else {
+                speaker.speak(result.reply)
+            }
+        } else {
+            _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "")
+            if (lastTurnWasVoice && current.handsFree) startListening()
+        }
     }
 
     /** Saves the user's line and swaps the on-screen copy for the stored one. */

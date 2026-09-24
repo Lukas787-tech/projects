@@ -147,9 +147,26 @@ class Conversation(private val container: AppContainer) {
                     }
                 }
             } catch (e: Exception) {
-                _stage.value = Stage.Idle
-                if (container.settings.current.earcons) earcon.failed()
-                onProblem(e.message?.lineSequence()?.firstOrNull() ?: "That did not work.")
+                // No model to be had: a timer, a sum or the time still get done.
+                val settings = container.settings.current
+                val offline = if (e is kotlinx.coroutines.CancellationException) null else runCatching {
+                    withContext(Dispatchers.IO) { container.agent.offline(text, settings) }
+                }.getOrNull()
+                if (offline != null) {
+                    _lastReply.value = offline.reply
+                    _stage.value = Stage.Speaking
+                    spoken = true
+                    container.speaker.speak(offline.reply) {
+                        scope.launch {
+                            if (_stage.value == Stage.Speaking) _stage.value = Stage.Idle
+                            onDone()
+                        }
+                    }
+                } else {
+                    _stage.value = Stage.Idle
+                    if (settings.earcons) earcon.failed()
+                    onProblem(e.message?.lineSequence()?.firstOrNull() ?: "That did not work.")
+                }
             } finally {
                 busy = false
                 if (!spoken) onDone()

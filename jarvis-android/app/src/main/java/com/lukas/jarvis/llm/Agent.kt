@@ -163,6 +163,25 @@ class Agent(
     }
 
     /**
+     * Answers without a model, for the plain requests that never needed one —
+     * the time, a sum, a timer, an alarm, the torch, a quick reminder. Used
+     * when no model can be reached; null when the sentence is not one of those.
+     */
+    suspend fun offline(utterance: String, settings: Settings): AgentResult? {
+        val call = Reflexes.parse(utterance) ?: return null
+        val available = names(tools.schemas(settings))
+        if (call.name !in available) return null
+        val effects = ToolEffects()
+        val result = tools.execute(call, settings, effects)
+        return AgentResult(
+            reply = "I can't reach my thinking right now, but that one I can do myself. " +
+                result.replace(Regex("\\s*\\(ISO [^)]*\\)"), ""),
+            effects = effects,
+            toolsUsed = listOf(call.name)
+        )
+    }
+
+    /**
      * Looks at a photo and says what is in it, in enough detail that a turn
      * with a text-only model can act on it: every number on a receipt, every
      * line of a sign, the date and place on a poster.
