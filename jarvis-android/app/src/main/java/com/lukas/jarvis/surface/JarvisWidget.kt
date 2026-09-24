@@ -29,10 +29,15 @@ class JarvisWidget : AppWidgetProvider() {
             else -> "Still up"
         }
 
+        // The day at a glance, written by the app whenever it gathers the
+        // day; until it has, the widget says what a tap does.
+        val glance = context.getSharedPreferences(STORE, Context.MODE_PRIVATE).getString(KEY_GLANCE, null)
+            ?.takeIf { it.isNotBlank() }
+
         ids.forEach { id ->
             val views = RemoteViews(context.packageName, R.layout.widget_jarvis).apply {
                 setTextViewText(R.id.widget_title, if (user != null) "$part, $user" else "Ask $name anything")
-                setTextViewText(R.id.widget_subtitle, "Tap to talk to $name")
+                setTextViewText(R.id.widget_subtitle, glance ?: "Tap to talk to $name")
                 setOnClickPendingIntent(R.id.widget_core, Entry.pending(context, Entry.TALK, 11))
                 setOnClickPendingIntent(R.id.widget_talk_area, Entry.pending(context, Entry.TALK, 12))
                 setOnClickPendingIntent(R.id.widget_talk, Entry.pending(context, Entry.TALK, 13))
@@ -40,6 +45,22 @@ class JarvisWidget : AppWidgetProvider() {
                 setOnClickPendingIntent(R.id.widget_scan, Entry.pending(context, Entry.SCAN, 15))
             }
             manager.updateAppWidget(id, views)
+        }
+    }
+
+    companion object {
+        private const val STORE = "jarvis_widget"
+        private const val KEY_GLANCE = "glance"
+
+        /** Keeps [glance] for the widget and redraws every one on the home screen. */
+        fun show(context: Context, glance: String) {
+            val app = context.applicationContext
+            app.getSharedPreferences(STORE, Context.MODE_PRIVATE).edit().putString(KEY_GLANCE, glance).apply()
+            runCatching {
+                val manager = AppWidgetManager.getInstance(app)
+                val ids = manager.getAppWidgetIds(android.content.ComponentName(app, JarvisWidget::class.java))
+                if (ids.isNotEmpty()) JarvisWidget().onUpdate(app, manager, ids)
+            }
         }
     }
 }

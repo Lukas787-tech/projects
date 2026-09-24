@@ -140,6 +140,22 @@ class AssistantViewModel(
     private val _briefLoading = MutableStateFlow(false)
     val briefLoading: StateFlow<Boolean> = _briefLoading.asStateFlow()
 
+    // Each time the day is gathered, the home-screen widget gets the same
+    // day in one line.
+    init {
+        viewModelScope.launch {
+            brief.collect { day ->
+                day?.let { runCatching { com.lukas.jarvis.surface.JarvisWidget.show(container.app, glance(it)) } }
+            }
+        }
+    }
+
+    private fun glance(day: DayBrief): String = listOfNotNull(
+        day.forecast?.let { "${kotlin.math.round(it.now.temperature).toInt()}° ${it.now.description.lowercase()}" },
+        (day.dueToday.size + day.overdue.size).takeIf { it > 0 }?.let { "$it due" },
+        day.appointments.firstOrNull()?.let { "${it.title} ${com.lukas.jarvis.core.TimeUtil.formatTime(it.startsAt)}" }
+    ).joinToString(" · ").ifBlank { "Nothing due today" }
+
     /** True while a pin tapped by hand is being routed to. */
     private val _routing = MutableStateFlow(false)
     val routing: StateFlow<Boolean> = _routing.asStateFlow()
