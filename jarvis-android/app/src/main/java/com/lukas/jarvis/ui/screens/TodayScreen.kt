@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Dehaze
@@ -226,7 +227,12 @@ fun TodayScreen(
             // Folded: the heading alone says what is there.
         } else if (routines.isEmpty()) {
             item {
-                RoutineHint(onCreate = { editing = Routine(name = "", steps = emptyList()) })
+                RoutineHint(
+                    onCreate = { editing = Routine(name = "", steps = emptyList()) },
+                    // A template opens in the editor, filled in, so it can be
+                    // looked at and changed before it is saved.
+                    onTemplate = { template -> editing = template }
+                )
             }
         } else {
             items(routines, key = { "routine-${it.name}" }) { routine ->
@@ -571,7 +577,8 @@ private fun Shortcuts(
 }
 
 @Composable
-private fun RoutineHint(onCreate: () -> Unit) {
+private fun RoutineHint(onCreate: () -> Unit, onTemplate: (Routine) -> Unit = {}) {
+    Column(verticalArrangement = Arrangement.spacedBy(Space.tight)) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -591,7 +598,43 @@ private fun RoutineHint(onCreate: () -> Unit) {
             )
         }
     }
+    Row(horizontalArrangement = Arrangement.spacedBy(Space.tight)) {
+        ROUTINE_TEMPLATES.forEach { template ->
+            QuickAction(
+                icon = when (template.name) {
+                    "morning" -> Icons.Default.WbSunny
+                    "bedtime" -> Icons.Default.NightsStay
+                    else -> Icons.Default.DirectionsWalk
+                },
+                label = template.name.replaceFirstChar { it.uppercase() },
+                onClick = { onTemplate(template) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+    }
 }
+
+/** Three routines worth having on day one, as starting points. */
+private val ROUTINE_TEMPLATES = listOf(
+    Routine(
+        name = "morning",
+        steps = listOf("Tell me how my day looks", "Play some music"),
+        time = "07:00"
+    ),
+    Routine(
+        name = "bedtime",
+        steps = listOf(
+            "Turn on do not disturb until seven tomorrow morning",
+            "Set an alarm for 7:00",
+            "Set the brightness to 10%"
+        )
+    ),
+    Routine(
+        name = "heading out",
+        steps = listOf("What's the weather for the next few hours", "What's on my shopping list")
+    )
+)
 
 @Composable
 private fun RoutineLine(routine: Routine, onRun: () -> Unit, onEdit: () -> Unit) {
