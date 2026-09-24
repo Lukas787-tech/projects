@@ -380,7 +380,8 @@ private fun Header(
             Text(
                 text = when {
                     !online -> "OFFLINE · REFLEXES ONLY"
-                    brainLabel != null -> "ONLINE · ${brainLabel.substringBefore(" · ").uppercase()}"
+                    brainLabel != null ->
+                        "ONLINE · ${brainLabel.substringBefore(" · ").substringBefore(" (").uppercase()}"
                     else -> "ONLINE"
                 },
                 style = MaterialTheme.typography.labelMedium.copy(fontSize = 9.sp),
