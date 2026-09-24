@@ -64,6 +64,26 @@ class ScreensTest {
             shadowOf(caps).addTransportType(android.net.NetworkCapabilities.TRANSPORT_WIFI)
             shadowOf(manager).setNetworkCapabilities(manager.activeNetwork, caps)
         }
+
+        // A phone standing in Berlin, so the weather, the HUD and the map have
+        // somewhere to be — the forecast itself is fetched live.
+        runCatching {
+            val app = RuntimeEnvironment.getApplication()
+            shadowOf(app).grantPermissions(
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+            val locations = app.getSystemService(android.location.LocationManager::class.java)
+            val here = android.location.Location(android.location.LocationManager.GPS_PROVIDER).apply {
+                latitude = 52.5200
+                longitude = 13.4050
+                accuracy = 12f
+                time = System.currentTimeMillis()
+                elapsedRealtimeNanos = android.os.SystemClock.elapsedRealtimeNanos()
+            }
+            shadowOf(locations).setProviderEnabled(android.location.LocationManager.GPS_PROVIDER, true)
+            shadowOf(locations).setLastKnownLocation(android.location.LocationManager.GPS_PROVIDER, here)
+        }
     }
 
     @Test
