@@ -33,7 +33,8 @@ model was asked to add eggs to the shopping list and read it back, and did.
 - **Lists** — shopping, packing, anything without a time, by voice or on the
   new Lists tab; "Einkaufsliste" and "groceries" are the same list.
 - **Timers Jarvis runs itself** — named, on screen and in the shade, ringing
-  until stopped, and "how long is left on the pasta" has an answer.
+  until stopped (a tap, or just "stop"), and "how long is left on the pasta"
+  has an answer.
 - **The phone's controls** — volume, brightness, Do Not Disturb with an end
   time, and the Devices screen as a control centre.
 - **Calendar that finishes the job** — events are added, moved and cancelled
