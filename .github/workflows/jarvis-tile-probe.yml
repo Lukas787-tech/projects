@@ -24,15 +24,17 @@ jobs:
             text=$(tesseract "$name.img" - 2>/dev/null | tr '\n' ' ' | head -c 80)
             echo "$name | HTTP $code | $type | $size B | md5 $md5 | text: $text"
           }
-          probe carto_dark_A      "https://basemaps.cartocdn.com/dark_all/10/550/335@2x.png"
-          probe carto_dark_B      "https://basemaps.cartocdn.com/dark_all/12/2200/1343@2x.png"
-          probe carto_dark_sub    "https://a.basemaps.cartocdn.com/dark_all/10/550/335@2x.png"
-          probe carto_voyager_A   "https://basemaps.cartocdn.com/rastertiles/voyager/10/550/335@2x.png"
-          probe carto_voyager_B   "https://basemaps.cartocdn.com/rastertiles/voyager/12/2200/1343@2x.png"
-          probe carto_voy_sub     "https://a.basemaps.cartocdn.com/rastertiles/voyager/10/550/335@2x.png"
-          probe esri_A            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/10/335/550"
-          probe esri_B            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/12/1343/2200"
-          probe esri_services_A   "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/10/335/550"
-          probe osm_A             "https://tile.openstreetmap.org/10/550/335.png"
-          probe osm_B             "https://tile.openstreetmap.org/12/2200/1343.png"
-          probe osm_de            "https://tile.openstreetmap.de/10/550/335.png"
+          probe eox_A        "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/10/335/550.jpg"
+          probe eox_B        "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/13/2686/4400.jpg"
+          probe eox_z15      "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/15/10745/17602.jpg"
+          probe osmde_B      "https://tile.openstreetmap.de/12/2200/1343.png"
+          probe osm_z17      "https://tile.openstreetmap.org/17/70410/42985.png"
+          echo "--- as Android's OkHttp asks: gzip, HTTP/1.1, no Accept ---"
+          okprobe() {
+            name=$1; url=$2
+            code=$(curl -sS --http1.1 -H 'Accept:' -H 'Accept-Encoding: gzip' -A "$UA" -o "$name.img" -w '%{http_code}' "$url" || echo 000)
+            echo "$name | HTTP $code | $(stat -c %s "$name.img") B | md5 $(md5sum "$name.img" | cut -c1-10) | $(tesseract "$name.img" - 2>/dev/null | tr '\n' ' ' | head -c 60)"
+          }
+          okprobe ok_carto_dark  "https://basemaps.cartocdn.com/dark_all/15/17205/11163@2x.png"
+          okprobe ok_carto_voy   "https://basemaps.cartocdn.com/rastertiles/voyager/15/17205/11163@2x.png"
+          okprobe ok_esri        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/15/11163/17205"
