@@ -498,8 +498,11 @@ private fun VoiceBody(
     onClearMap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val target = map.focusPoints.firstOrNull()
-    val hasResult = target != null
+    // Only an answer with places or a route opens the core. focusPoints falls
+    // back to the phone's own position, which alone left the centre open —
+    // an empty map inside the rings — whenever the location was known.
+    val hasResult = map.route != null || map.places.isNotEmpty()
+    val target = if (hasResult) map.focusPoints.firstOrNull() else null
 
     val approach by animateFloatAsState(
         targetValue = if (hasResult) 1f else 0f,

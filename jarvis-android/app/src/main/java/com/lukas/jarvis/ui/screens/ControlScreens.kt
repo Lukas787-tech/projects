@@ -1,5 +1,12 @@
 package com.lukas.jarvis.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import com.lukas.jarvis.ui.theme.OnAccent
+import com.lukas.jarvis.ui.theme.glass
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -143,36 +150,28 @@ fun MusicScreen(
             }
         }
 
-        Panel(title = "Playing") {
+        Panel(title = "Controls") {
+            // Round buttons, the way every player draws them: four words in
+            // four narrow boxes broke mid-word on a phone.
+            val playing = nowPlaying?.playing == true
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                ChipButton(
-                    label = "Back",
-                    icon = Icons.Default.SkipPrevious,
-                    onClick = onPrevious,
-                    modifier = Modifier.weight(1f)
-                )
-                ChipButton(
-                    label = "Play",
-                    icon = Icons.Default.PlayArrow,
-                    onClick = onPlay,
-                    prominent = true,
-                    modifier = Modifier.weight(1f)
-                )
-                ChipButton(
-                    label = "Pause",
-                    icon = Icons.Default.Pause,
-                    onClick = onPause,
-                    modifier = Modifier.weight(1f)
-                )
-                ChipButton(
-                    label = "Next",
-                    icon = Icons.Default.SkipNext,
-                    onClick = onNext,
-                    modifier = Modifier.weight(1f)
-                )
+                TransportButton(Icons.Default.SkipPrevious, "Previous track", onPrevious)
+                if (nowPlaying == null) {
+                    TransportButton(Icons.Default.PlayArrow, "Play", onPlay, prominent = true)
+                    TransportButton(Icons.Default.Pause, "Pause", onPause)
+                } else {
+                    TransportButton(
+                        if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        if (playing) "Pause" else "Play",
+                        if (playing) onPause else onPlay,
+                        prominent = true
+                    )
+                }
+                TransportButton(Icons.Default.SkipNext, "Next track", onNext)
             }
         }
 
@@ -184,7 +183,7 @@ fun MusicScreen(
                 colors = SliderDefaults.colors(
                     thumbColor = Accent,
                     activeTrackColor = Accent,
-                    inactiveTrackColor = TextFaint
+                    inactiveTrackColor = TextFaint.copy(alpha = 0.25f)
                 )
             )
             Text(
@@ -352,6 +351,33 @@ fun DevicesScreen(
     }
 }
 
+@Composable
+private fun TransportButton(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    prominent: Boolean = false
+) {
+    val size = if (prominent) 68.dp else 52.dp
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .then(
+                if (prominent) Modifier.background(Accent) else Modifier.glass(CircleShape)
+            )
+            .clickable(onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = if (prominent) OnAccent else TextPrimary,
+            modifier = Modifier.size(if (prominent) 34.dp else 26.dp)
+        )
+    }
+}
+
 /**
  * One level with its name and number. It follows the finger locally and only
  * tells the phone when the finger lifts, so dragging is one change, not fifty.
@@ -382,7 +408,7 @@ private fun LevelSlider(
         colors = SliderDefaults.colors(
             thumbColor = Accent,
             activeTrackColor = Accent,
-            inactiveTrackColor = TextFaint
+            inactiveTrackColor = TextFaint.copy(alpha = 0.25f)
         )
     )
 }

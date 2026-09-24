@@ -249,8 +249,16 @@ private fun EntryRow(entry: Entry, tracker: Tracker?, onDelete: () -> Unit) {
                 color = TextFaint
             )
         }
+        // Money going out is a minus; a gym session or a glass of water is a
+        // thing done, and reads as one.
+        val money = tracker == null || tracker.kind == Tracker.KIND_MONEY
+        val sign = when {
+            entry.direction == Entry.DIR_IN -> "+"
+            money -> "−"
+            else -> ""
+        }
         Text(
-            (if (entry.direction == Entry.DIR_OUT) "−" else "+") + format(entry.amount, tracker),
+            sign + format(entry.amount, tracker),
             style = MaterialTheme.typography.bodyMedium,
             color = if (entry.direction == Entry.DIR_OUT) TextPrimary else Positive
         )
@@ -364,6 +372,13 @@ private fun format(value: Double, tracker: Tracker?): String {
     } else {
         String.format(Locale.US, "%.2f", value)
     }
-    val unit = tracker?.unit.orEmpty()
+    val unit = tracker?.unit.orEmpty().let { unit ->
+        // "1 session", not "1 sessions": a plural unit loses its s for exactly one.
+        if (value == 1.0 && tracker?.kind != Tracker.KIND_MONEY && unit.length > 3 && unit.endsWith("s") && !unit.endsWith("ss")) {
+            unit.dropLast(1)
+        } else {
+            unit
+        }
+    }
     return if (unit.isBlank()) text else "$text $unit"
 }
