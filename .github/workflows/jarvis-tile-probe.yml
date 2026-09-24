@@ -1,0 +1,36 @@
+name: Jarvis tile probe
+# Temporary diagnostics: which map tile source answers with a placeholder
+# ("API Key Required") instead of a real tile. Two different tiles from the
+# same source that come back byte-identical are a placeholder, not a map.
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OCR
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr > /dev/null
+      - name: Fetch tiles
+        run: |
+          UA="JarvisAssistant/1.0 (personal Android assistant; +https://github.com/lukas787-tech/projects)"
+          probe() {
+            name=$1; url=$2
+            code=$(curl -sS -A "$UA" -D "$name.h" -o "$name.img" -w '%{http_code}' "$url" || echo 000)
+            type=$(grep -i '^content-type' "$name.h" | tr -d '\r' | cut -d' ' -f2)
+            md5=$(md5sum "$name.img" | cut -c1-10)
+            size=$(stat -c %s "$name.img")
+            text=$(tesseract "$name.img" - 2>/dev/null | tr '\n' ' ' | head -c 80)
+            echo "$name | HTTP $code | $type | $size B | md5 $md5 | text: $text"
+          }
+          probe carto_dark_A      "https://basemaps.cartocdn.com/dark_all/10/550/335@2x.png"
+          probe carto_dark_B      "https://basemaps.cartocdn.com/dark_all/12/2200/1343@2x.png"
+          probe carto_dark_sub    "https://a.basemaps.cartocdn.com/dark_all/10/550/335@2x.png"
+          probe carto_voyager_A   "https://basemaps.cartocdn.com/rastertiles/voyager/10/550/335@2x.png"
+          probe carto_voyager_B   "https://basemaps.cartocdn.com/rastertiles/voyager/12/2200/1343@2x.png"
+          probe carto_voy_sub     "https://a.basemaps.cartocdn.com/rastertiles/voyager/10/550/335@2x.png"
+          probe esri_A            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/10/335/550"
+          probe esri_B            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/12/1343/2200"
+          probe esri_services_A   "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/10/335/550"
+          probe osm_A             "https://tile.openstreetmap.org/10/550/335.png"
+          probe osm_B             "https://tile.openstreetmap.org/12/2200/1343.png"
+          probe osm_de            "https://tile.openstreetmap.de/10/550/335.png"
