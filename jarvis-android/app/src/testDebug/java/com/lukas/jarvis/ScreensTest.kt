@@ -185,6 +185,10 @@ class ScreensTest {
         }.apply { start() }
         probe.join(20_000)
 
+        runCatching { vm.showElement(Element.Globe, com.lukas.jarvis.stage.StageStore.HISTORY) }
+        settle(1200)
+        shot(activity, "16-history")
+
         runCatching { vm.showElement(Element.Map) }
         settle(2400)
         // The tiles come over the network, which needs real seconds.

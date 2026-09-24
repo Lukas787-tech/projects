@@ -89,6 +89,11 @@ class StageStore {
 
     val current: Element get() = _state.value.element
 
+    companion object {
+        /** A note that opens the conversation history over the assistant's screen. */
+        const val HISTORY = "history"
+    }
+
     fun show(element: Element, note: String = "") {
         _state.value = State(
             element = element,

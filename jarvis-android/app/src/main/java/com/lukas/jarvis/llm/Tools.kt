@@ -2004,6 +2004,13 @@ class Tools(
     // ------------------------------------------------------------- the screen
 
     private fun show(args: JSONObject): String {
+        // The history is not an element of its own but an overlay on the
+        // assistant's screen; asked for by name, it opens there.
+        val raw = args.optString("element").trim().lowercase(Locale.ROOT)
+        if (raw.contains("history") || raw.contains("past conversation") || raw.contains("verlauf")) {
+            stage.show(Element.Globe, StageStore.HISTORY)
+            return "Showing the conversation history."
+        }
         val wanted = Element.match(args.optString("element"))
             ?: return "I do not have an element called that. I have: ${Element.names()}."
         stage.show(wanted, args.optString("note").trim())

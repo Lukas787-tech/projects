@@ -354,6 +354,12 @@ private fun JarvisRoot(
     // The chat log is an overlay, so the system back gesture has to close it
     // rather than leave the app — it is not a destination of its own.
     BackHandler(enabled = showHistory) { showHistory = false }
+    // "Show me our old conversations" arrives as a note on the stage, and
+    // any other change of screen — the dock, the assistant — closes it, so the
+    // history never sits on top of a screen that was asked for.
+    LaunchedEffect(stage) {
+        showHistory = stage.note == com.lukas.jarvis.stage.StageStore.HISTORY
+    }
 
     // ------------------------------------------------------------- the camera
     //
