@@ -17,6 +17,22 @@ import android.provider.Settings
 import java.util.Locale
 import kotlin.math.roundToInt
 
+/** The numbers behind the control centre, read fresh each time it is shown. */
+data class PhoneLevels(
+    val media: Int,
+    val ring: Int,
+    val alarm: Int,
+    val brightness: Int,
+    val autoBrightness: Boolean,
+    /** Whether brightness may be changed at all; Android grants it on its own page. */
+    val canWriteSettings: Boolean,
+    /** "normal", "vibrate" or "silent". */
+    val ringer: String,
+    val quiet: Boolean,
+    val quietAccess: Boolean,
+    val torch: Boolean
+)
+
 /**
  * What the phone can say about itself, and the handful of switches an ordinary
  * app is allowed to flip.
@@ -233,6 +249,38 @@ class Device(context: Context) {
         } else {
             "Brightness is at $percent%."
         }
+    }
+
+    fun levels(): PhoneLevels {
+        val audio = audio
+        fun percent(type: Int): Int = audio?.let {
+            it.getStreamVolume(type) * 100 / it.getStreamMaxVolume(type).coerceAtLeast(1)
+        } ?: 0
+        val resolver = app.contentResolver
+        return PhoneLevels(
+            media = percent(AudioManager.STREAM_MUSIC),
+            ring = percent(AudioManager.STREAM_RING),
+            alarm = percent(AudioManager.STREAM_ALARM),
+            brightness = runCatching {
+                sliderPercent(Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS))
+            }.getOrDefault(50),
+            autoBrightness = runCatching {
+                Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE) ==
+                    Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC
+            }.getOrDefault(false),
+            canWriteSettings = Settings.System.canWrite(app),
+            ringer = when (audio?.ringerMode) {
+                AudioManager.RINGER_MODE_SILENT -> "silent"
+                AudioManager.RINGER_MODE_VIBRATE -> "vibrate"
+                else -> "normal"
+            },
+            quiet = notifications?.currentInterruptionFilter.let {
+                it != null && it != NotificationManager.INTERRUPTION_FILTER_ALL &&
+                    it != NotificationManager.INTERRUPTION_FILTER_UNKNOWN
+            },
+            quietAccess = notifications?.isNotificationPolicyAccessGranted == true,
+            torch = torchOn
+        )
     }
 
     /**

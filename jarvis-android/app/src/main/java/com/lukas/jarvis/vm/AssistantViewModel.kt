@@ -1155,7 +1155,7 @@ class AssistantViewModel(
     fun pauseMusic() = report(container.phone.pause())
     fun nextTrack() = report(container.phone.next())
     fun previousTrack() = report(container.phone.previous())
-    fun setMediaVolume(percent: Int) = report(container.phone.setVolume(percent))
+    fun setMediaVolume(percent: Int) = setVolumeLevel("media", percent)
 
     private val _bluetooth = MutableStateFlow("")
     val bluetooth: StateFlow<String> = _bluetooth.asStateFlow()
@@ -1172,7 +1172,44 @@ class AssistantViewModel(
         _deviceStatus.value = container.device.status()
     }
 
-    fun setTorch(on: Boolean) = report(container.device.torch(on))
+    fun setTorch(on: Boolean) {
+        report(container.device.torch(on))
+        refreshLevels()
+    }
+
+    private val _levels = MutableStateFlow<com.lukas.jarvis.control.PhoneLevels?>(null)
+
+    /** Volumes, brightness, ringer and Do Not Disturb, as the control centre shows them. */
+    val levels: StateFlow<com.lukas.jarvis.control.PhoneLevels?> = _levels.asStateFlow()
+
+    fun refreshLevels() {
+        _levels.value = runCatching { container.device.levels() }.getOrNull()
+    }
+
+    fun setVolumeLevel(stream: String, percent: Int) =
+        phoneControl(container.device.volume(stream, "set", percent))
+
+    fun setBrightnessLevel(percent: Int) =
+        phoneControl(container.device.brightness(percent, null, null))
+
+    fun setAutoBrightness(on: Boolean) =
+        phoneControl(container.device.brightness(null, on, null))
+
+    fun setRingerMode(mode: String) = phoneControl(container.device.setRinger(mode))
+
+    fun setQuiet(on: Boolean) =
+        phoneControl(container.device.doNotDisturb(if (on) "priority" else "off", null))
+
+    /**
+     * A slider says what it did by moving; only a refusal — a permission
+     * Android wants granted on its own page, Do Not Disturb holding a volume —
+     * is worth a sentence on screen.
+     */
+    private fun phoneControl(message: String) {
+        refreshLevels()
+        val refused = listOf("needs", "would not", "holding", "cannot", "No ").any { message.contains(it) }
+        if (refused) report(message)
+    }
 
     fun openBluetoothSettings() = report(container.phone.openBluetoothSettings())
 

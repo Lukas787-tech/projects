@@ -1,6 +1,10 @@
 package com.lukas.jarvis.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,7 +13,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.FlashlightOff
@@ -17,6 +25,7 @@ import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -27,13 +36,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.lukas.jarvis.control.PhoneLevels
 import com.lukas.jarvis.ui.components.ChipButton
+import com.lukas.jarvis.ui.components.SegmentedTabs
+import com.lukas.jarvis.ui.components.ToggleRow
 import com.lukas.jarvis.ui.components.Panel
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.TextFaint
+import com.lukas.jarvis.ui.theme.TextPrimary
 import com.lukas.jarvis.ui.theme.TextSecondary
+import kotlin.math.roundToInt
 
 /**
  * The transport controls, for whatever is playing.
@@ -53,9 +69,11 @@ fun MusicScreen(
     onPrevious: () -> Unit,
     onVolume: (Int) -> Unit,
     onOpenDevices: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** The media volume as it really is, so the slider starts where the phone is. */
+    mediaVolume: Int? = null
 ) {
-    var volume by remember { mutableFloatStateOf(-1f) }
+    var volume by remember(mediaVolume) { mutableFloatStateOf(mediaVolume?.div(100f) ?: -1f) }
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         ScreenHeader(title = "Music", subtitle = "Controls whatever app is playing")
@@ -131,12 +149,14 @@ fun MusicScreen(
 }
 
 /**
- * The paired Bluetooth devices, and an honest account of what can be done.
+ * The phone's own control centre: the switches and levels an app may touch,
+ * showing where each one really is, and the paired Bluetooth devices.
  *
- * Connecting one is reserved for the system: every route an ordinary app once
- * had has been closed, and pretending otherwise would mean telling the user
- * their headphones are connected while nothing happened. So this lists what is
- * paired and opens the page where a connection is two taps away.
+ * Connecting a Bluetooth device is reserved for the system: every route an
+ * ordinary app once had has been closed, and pretending otherwise would mean
+ * telling the user their headphones are connected while nothing happened. So
+ * this lists what is paired and opens the page where a connection is two taps
+ * away.
  */
 @Composable
 fun DevicesScreen(
@@ -145,11 +165,22 @@ fun DevicesScreen(
     onRefresh: () -> Unit,
     onOpenSettings: () -> Unit,
     onTorch: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    levels: PhoneLevels? = null,
+    onVolume: (stream: String, percent: Int) -> Unit = { _, _ -> },
+    onBrightness: (Int) -> Unit = {},
+    onAutoBrightness: (Boolean) -> Unit = {},
+    onRinger: (String) -> Unit = {},
+    onQuiet: (Boolean) -> Unit = {}
 ) {
     LaunchedEffect(Unit) { onRefresh() }
 
-    Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp)
+    ) {
         ScreenHeader(
             title = "Devices",
             subtitle = "This phone, and what is paired with it",
@@ -166,9 +197,52 @@ fun DevicesScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 color = TextSecondary
             )
-            Spacer(Modifier.height(14.dp))
+        }
+
+        if (levels != null) {
+            Panel(title = "Switches") {
+                val modes = listOf("normal", "vibrate", "silent")
+                SegmentedTabs(
+                    options = listOf("Ring", "Vibrate", "Silent"),
+                    selectedIndex = modes.indexOf(levels.ringer).coerceAtLeast(0),
+                    onSelect = { onRinger(modes[it]) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                ToggleRow(
+                    title = "Do Not Disturb",
+                    subtitle = if (levels.quietAccess) {
+                        "Only priority interruptions get through"
+                    } else {
+                        "Needs access, granted once on Android's own page"
+                    },
+                    checked = levels.quiet,
+                    onChange = onQuiet
+                )
+                ToggleRow(
+                    title = "Torch",
+                    checked = levels.torch,
+                    onChange = onTorch
+                )
+                ToggleRow(
+                    title = "Automatic brightness",
+                    subtitle = if (levels.canWriteSettings) null else "Needs 'modify system settings', granted once",
+                    checked = levels.autoBrightness,
+                    onChange = onAutoBrightness
+                )
+            }
+
+            Panel(title = "Levels") {
+                LevelSlider("Media", Icons.Default.MusicNote, levels.media) { onVolume("media", it) }
+                LevelSlider("Ring", Icons.Default.NotificationsActive, levels.ring) { onVolume("ring", it) }
+                LevelSlider("Alarm", Icons.Default.Alarm, levels.alarm) { onVolume("alarm", it) }
+                LevelSlider("Brightness", Icons.Default.LightMode, levels.brightness, minimum = 1) {
+                    onBrightness(it)
+                }
+            }
+        } else {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 ChipButton(
@@ -209,5 +283,41 @@ fun DevicesScreen(
             style = MaterialTheme.typography.labelSmall,
             color = TextFaint
         )
+        Spacer(Modifier.height(24.dp))
     }
+}
+
+/**
+ * One level with its name and number. It follows the finger locally and only
+ * tells the phone when the finger lifts, so dragging is one change, not fifty.
+ */
+@Composable
+private fun LevelSlider(
+    label: String,
+    icon: ImageVector,
+    percent: Int,
+    minimum: Int = 0,
+    onSet: (Int) -> Unit
+) {
+    var value by remember(percent) { mutableFloatStateOf(percent / 100f) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = Accent, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, modifier = Modifier.weight(1f))
+        Text(
+            "${(value * 100).roundToInt()}%",
+            style = MaterialTheme.typography.labelLarge,
+            color = TextSecondary
+        )
+    }
+    Slider(
+        value = value,
+        onValueChange = { value = it.coerceAtLeast(minimum / 100f) },
+        onValueChangeFinished = { onSet((value * 100).roundToInt()) },
+        colors = SliderDefaults.colors(
+            thumbColor = Accent,
+            activeTrackColor = Accent,
+            inactiveTrackColor = TextFaint
+        )
+    )
 }

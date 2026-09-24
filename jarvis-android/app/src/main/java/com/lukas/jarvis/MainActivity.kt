@@ -298,6 +298,7 @@ private fun JarvisRoot(
     val savedPlaces by viewModel.savedPlaces.collectAsStateWithLifecycle()
     val hereLabel by viewModel.hereLabel.collectAsStateWithLifecycle()
     val routines by viewModel.routines.collectAsStateWithLifecycle()
+    val levels by viewModel.levels.collectAsStateWithLifecycle()
     val cameraRequest by viewModel.cameraRequests.collectAsStateWithLifecycle()
     val mapStyle = MapStyle.of(settings.mapStyle)
     val scope = rememberCoroutineScope()
@@ -508,6 +509,9 @@ private fun JarvisRoot(
                     // message logged from the floating dot, changed things
                     // while the app was away.
                     viewModel.refreshAll()
+                    // Back from granting a permission on one of Android's own
+                    // pages: the control centre shows the switch that now works.
+                    viewModel.refreshLevels()
                     viewModel.greetIfFirstThisMorning()
                 }
                 Lifecycle.Event.ON_PAUSE -> {
@@ -723,14 +727,18 @@ private fun JarvisRoot(
                     onRouteSaved = viewModel::routeToSaved
                 )
 
-                Element.Music -> MusicScreen(
-                    onPlay = viewModel::playMusic,
-                    onPause = viewModel::pauseMusic,
-                    onNext = viewModel::nextTrack,
-                    onPrevious = viewModel::previousTrack,
-                    onVolume = viewModel::setMediaVolume,
-                    onOpenDevices = { viewModel.showElement(Element.Devices) }
-                )
+                Element.Music -> {
+                    LaunchedEffect(Unit) { viewModel.refreshLevels() }
+                    MusicScreen(
+                        onPlay = viewModel::playMusic,
+                        onPause = viewModel::pauseMusic,
+                        onNext = viewModel::nextTrack,
+                        onPrevious = viewModel::previousTrack,
+                        onVolume = viewModel::setMediaVolume,
+                        onOpenDevices = { viewModel.showElement(Element.Devices) },
+                        mediaVolume = levels?.media
+                    )
+                }
 
                 Element.Devices -> DevicesScreen(
                     status = bluetooth,
@@ -738,9 +746,16 @@ private fun JarvisRoot(
                     onRefresh = {
                         viewModel.refreshBluetooth()
                         viewModel.refreshDeviceStatus()
+                        viewModel.refreshLevels()
                     },
                     onOpenSettings = viewModel::openBluetoothSettings,
-                    onTorch = viewModel::setTorch
+                    onTorch = viewModel::setTorch,
+                    levels = levels,
+                    onVolume = viewModel::setVolumeLevel,
+                    onBrightness = viewModel::setBrightnessLevel,
+                    onAutoBrightness = viewModel::setAutoBrightness,
+                    onRinger = viewModel::setRingerMode,
+                    onQuiet = viewModel::setQuiet
                 )
 
                 Element.Skills -> SkillsScreen(
