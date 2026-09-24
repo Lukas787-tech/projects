@@ -52,6 +52,18 @@ class ScreensTest {
         // starting. Paused, frames come only as the test moves time on.
         ShadowChoreographer.setPaused(true)
         ShadowChoreographer.setFrameDelay(Duration.ofMillis(16))
+
+        // Robolectric's default network has no internet, which the header now
+        // reports honestly; the pictures are of a phone that is online.
+        runCatching {
+            val manager = RuntimeEnvironment.getApplication()
+                .getSystemService(android.net.ConnectivityManager::class.java)
+            val caps = org.robolectric.shadows.ShadowNetworkCapabilities.newInstance()
+            shadowOf(caps).addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            shadowOf(caps).addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            shadowOf(caps).addTransportType(android.net.NetworkCapabilities.TRANSPORT_WIFI)
+            shadowOf(manager).setNetworkCapabilities(manager.activeNetwork, caps)
+        }
     }
 
     @Test
