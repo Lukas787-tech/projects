@@ -28,7 +28,7 @@ workflow (any commit whose message contains `[screens]`); all of them are in
 [`docs/screens`](../docs/screens). The second is a live turn: the free, keyless
 model was asked to add eggs to the shopping list and read it back, and did.
 
-## What's new in 5.2
+## What's new in 5.3
 
 - **Lists** — shopping, packing, anything without a time, by voice or on the
   new Lists tab; "Einkaufsliste" and "groceries" are the same list.
