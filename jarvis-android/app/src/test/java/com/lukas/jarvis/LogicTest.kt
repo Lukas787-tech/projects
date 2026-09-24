@@ -124,6 +124,14 @@ class LogicTest {
         assertEquals(null, TimeUtil.rollForward(start, "none", now))
     }
 
+    @Test fun choosingACharacterSetsItsVoice() {
+        val zen = Personas.choose(Settings(), "zen")
+        assertEquals("zen", zen.personality)
+        assertTrue(zen.speechRate < 1f)
+        val custom = Personas.choose(Settings(speechRate = 1.3f), "custom")
+        assertEquals(1.3f, custom.speechRate, 0f)
+    }
+
     @Test fun numbersWithEitherDecimalMark() {
         assertEquals(50.0, Numbers.first("50%")!!, 0.0)
         assertEquals(2.5, Numbers.first("€2.50")!!, 0.0)

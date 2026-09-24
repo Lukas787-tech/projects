@@ -30,6 +30,28 @@ object Personas {
 
     const val CUSTOM = "custom"
 
+    /**
+     * How each character sounds: pace and pitch for the phone's voice, set
+     * when the character is chosen and free to be changed afterwards. The
+     * butler is unhurried and a shade low; the coach quick and bright; calm
+     * slow and soft.
+     */
+    private val DELIVERY = mapOf(
+        "jarvis" to (0.98f to 0.92f),
+        "friday" to (1.08f to 1.08f),
+        "friend" to (1.05f to 1.02f),
+        "pro" to (1.10f to 0.96f),
+        "coach" to (1.14f to 1.06f),
+        "zen" to (0.88f to 0.94f),
+        "wit" to (1.07f to 1.03f)
+    )
+
+    /** [settings] with [id] as the character, speaking the way it does. */
+    fun choose(settings: Settings, id: String): Settings {
+        val (rate, pitch) = DELIVERY[id] ?: return settings.copy(personality = id)
+        return settings.copy(personality = id, speechRate = rate, speechPitch = pitch)
+    }
+
     val ALL: List<Persona> = listOf(
         Persona(
             id = "jarvis",

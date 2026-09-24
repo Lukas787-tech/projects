@@ -112,7 +112,7 @@ fun AssistantSection(settings: Settings, onUpdate: ((Settings) -> Settings) -> U
             PersonaCard(
                 persona = persona,
                 selected = persona.id == settings.personality,
-                onClick = { onUpdate { it.copy(personality = persona.id) } }
+                onClick = { onUpdate { Personas.choose(it, persona.id) } }
             )
             Spacer(Modifier.height(8.dp))
         }

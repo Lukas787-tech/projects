@@ -244,7 +244,7 @@ private fun Character(
             persona = persona,
             selected = persona.id == settings.personality,
             onClick = {
-                onUpdate { it.copy(personality = persona.id) }
+                onUpdate { Personas.choose(it, persona.id) }
                 onPreviewVoice()
             }
         )
