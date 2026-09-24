@@ -339,7 +339,10 @@ private fun JarvisRoot(
     ) { }
     LaunchedEffect(settings.calendarEnabled, settings.contactsEnabled) {
         val missing = buildList {
-            if (settings.calendarEnabled) add(Manifest.permission.READ_CALENDAR)
+            if (settings.calendarEnabled) {
+                add(Manifest.permission.READ_CALENDAR)
+                add(Manifest.permission.WRITE_CALENDAR)
+            }
             if (settings.contactsEnabled) add(Manifest.permission.READ_CONTACTS)
         }.filter {
             ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED

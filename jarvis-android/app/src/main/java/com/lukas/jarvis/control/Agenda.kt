@@ -2,11 +2,13 @@ package com.lukas.jarvis.control
 
 import android.Manifest
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.CalendarContract
 import androidx.core.content.ContextCompat
 import com.lukas.jarvis.core.TimeUtil
+import java.util.TimeZone
 
 /** One entry out of the phone's calendars. */
 data class Appointment(
@@ -18,7 +20,7 @@ data class Appointment(
 )
 
 /**
- * The calendar, read only.
+ * The calendar: read, and written when the user has allowed it.
  *
  * CalendarContract.Instances is used rather than Events because it expands
  * repeats: a weekly stand-up is one Event row and fifty-two instances, and the
@@ -31,6 +33,71 @@ class Agenda(context: Context) {
     val hasPermission: Boolean
         get() = ContextCompat.checkSelfPermission(app, Manifest.permission.READ_CALENDAR) ==
             PackageManager.PERMISSION_GRANTED
+
+    val canWrite: Boolean
+        get() = ContextCompat.checkSelfPermission(app, Manifest.permission.WRITE_CALENDAR) ==
+            PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Writes an event straight into the user's main calendar, with a reminder
+     * a quarter of an hour before. Null when that cannot be done — no
+     * permission, no calendar that takes new events — so the caller can hand
+     * the event to the calendar app instead.
+     */
+    fun insert(title: String, start: Long, end: Long, location: String?, description: String?): String? {
+        if (!canWrite || !hasPermission) return null
+        val calendar = primaryCalendar() ?: return null
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.CALENDAR_ID, calendar)
+            put(CalendarContract.Events.TITLE, title)
+            put(CalendarContract.Events.DTSTART, start)
+            put(CalendarContract.Events.DTEND, end)
+            put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
+            if (!location.isNullOrBlank()) put(CalendarContract.Events.EVENT_LOCATION, location)
+            if (!description.isNullOrBlank()) put(CalendarContract.Events.DESCRIPTION, description)
+        }
+        val uri = runCatching {
+            app.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
+        }.getOrNull() ?: return null
+        val eventId = ContentUris.parseId(uri)
+        runCatching {
+            app.contentResolver.insert(
+                CalendarContract.Reminders.CONTENT_URI,
+                ContentValues().apply {
+                    put(CalendarContract.Reminders.EVENT_ID, eventId)
+                    put(CalendarContract.Reminders.MINUTES, 15)
+                    put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
+                }
+            )
+        }
+        val place = location?.takeIf { it.isNotBlank() }?.let { " at $it" }.orEmpty()
+        return "Added to your calendar: '$title'$place, ${TimeUtil.format(start)}, with a reminder 15 minutes before."
+    }
+
+    /**
+     * The calendar new events belong in: the account's primary one if the
+     * provider marks it, otherwise the first visible calendar that accepts
+     * events — never a read-only one such as holidays or birthdays.
+     */
+    private fun primaryCalendar(): Long? = runCatching {
+        app.contentResolver.query(
+            CalendarContract.Calendars.CONTENT_URI,
+            arrayOf(
+                CalendarContract.Calendars._ID,
+                CalendarContract.Calendars.IS_PRIMARY,
+                CalendarContract.Calendars.ACCOUNT_TYPE
+            ),
+            "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ? AND ${CalendarContract.Calendars.VISIBLE} = 1",
+            arrayOf(CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR.toString()),
+            null
+        )?.use { cursor ->
+            val found = ArrayList<Triple<Long, Boolean, String>>()
+            while (cursor.moveToNext()) {
+                found += Triple(cursor.getLong(0), cursor.getInt(1) == 1, cursor.getString(2).orEmpty())
+            }
+            (found.firstOrNull { it.second } ?: found.firstOrNull { it.third == "com.google" } ?: found.firstOrNull())?.first
+        }
+    }.getOrNull()
 
     fun between(from: Long, to: Long, limit: Int = 12): List<Appointment> {
         if (!hasPermission) return emptyList()

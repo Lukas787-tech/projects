@@ -218,8 +218,9 @@ CALLING SOMEONE
                 appendLine()
                 appendLine(
                     "HANDED OVER, NOT DONE\n- `dial` puts a number in the dialler without ringing. " +
-                        "`send_email` writes a draft. `add_calendar_event` fills the event in for $user " +
-                        "to save. Say it is ready and waiting — never that you emailed or booked anything."
+                        "`send_email` writes a draft. Say it is ready and waiting — never that you emailed " +
+                        "anything.\n- `add_calendar_event` either adds the event itself or fills it in for " +
+                        "$user to save; its result says which. Repeat that, not the other."
                 )
             }
 

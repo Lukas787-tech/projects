@@ -176,9 +176,10 @@ flipped in Android's own settings the first time; Jarvis opens the page.
 **Reaches people, and finishes the job.** Texts are sent, WhatsApp, Signal and
 Telegram messages are answered straight from their notification, and new chats
 are typed out and sent where accessibility allows. A call is read back — name
-and number — and only rings after you say yes. Emails and calendar events are
-still filled in for you to send or save, and it says so rather than claiming
-the job is done.
+and number — and only rings after you say yes. Calendar events go straight
+into your calendar with a reminder (or, without calendar write access, are
+filled in for you to save — and it says which). Emails are filled in for you to
+send, and it says so rather than claiming the job is done.
 
 **Reads your day.** With calendar and contacts switched on it knows what is on
 today and who is in your address book. Ask "how does my day look" and it

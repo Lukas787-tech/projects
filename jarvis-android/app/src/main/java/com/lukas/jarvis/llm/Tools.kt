@@ -1811,9 +1811,19 @@ class Tools(
 
     private fun addEvent(args: JSONObject): String {
         val title = args.optString("title").trim()
+        if (title.isBlank()) return "An event needs a title."
         val start = TimeUtil.parse(args.optString("start").takeIf { it.isNotBlank() })
             ?: return "I need a start time I can read, like '2026-09-24T14:30' or '+2h'."
         val end = TimeUtil.parse(args.optString("end").takeIf { it.isNotBlank() })
+        // Straight into the calendar when allowed; otherwise filled in for the
+        // user to save, and the reply says which of the two happened.
+        agenda.insert(
+            title = title,
+            start = start,
+            end = end ?: (start + 60 * 60 * 1000L),
+            location = args.optString("location").takeIf { it.isNotBlank() },
+            description = args.optString("description").takeIf { it.isNotBlank() }
+        )?.let { return it }
         return launcher.createEvent(
             title = title,
             startMillis = start,
