@@ -560,7 +560,9 @@ private fun JarvisRoot(
                     viewModel.stopSpeaking()
                     viewModel.updateSettings { it.copy(onboarded = true) }
                     viewModel.showElement(Element.Globe)
-                }
+                },
+                initialStep = stage.note.takeIf { it.startsWith("onboarding:step:") }
+                    ?.substringAfterLast(':')?.toIntOrNull() ?: 0
             )
         }
         return

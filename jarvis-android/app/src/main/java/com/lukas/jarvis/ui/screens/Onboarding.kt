@@ -72,9 +72,11 @@ fun Onboarding(
     settings: Settings,
     onUpdate: ((Settings) -> Settings) -> Unit,
     onPreviewVoice: () -> Unit,
-    onFinish: () -> Unit
+    onFinish: () -> Unit,
+    /** Where to open; 0 is the welcome. Used to jump back to one question. */
+    initialStep: Int = 0
 ) {
-    var step by rememberSaveable { mutableIntStateOf(0) }
+    var step by rememberSaveable(initialStep) { mutableIntStateOf(initialStep.coerceIn(0, 4)) }
     val last = 4
 
     Column(

@@ -110,6 +110,12 @@ class ScreensTest {
         progress("activity started")
         settle()
         shot(activity, "01-onboarding")
+        val early = ViewModelProvider(activity, AssistantViewModel.Factory)[AssistantViewModel::class.java]
+        listOf("names", "character", "colour", "mode").forEachIndexed { index, name ->
+            runCatching { early.showElement(Element.Globe, "onboarding:step:${index + 1}") }
+            settle(900)
+            shot(activity, "01${'a' + index}-onboarding-$name")
+        }
 
         container.settings.update { it.copy(onboarded = true, voiceMode = true, userName = "Lukas") }
         settle()
