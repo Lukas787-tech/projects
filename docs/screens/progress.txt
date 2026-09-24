@@ -1,1 +1,4 @@
-1790281038011 seeded; starting the activity
+1790282659858 seeded; starting the activity
+1790282660833 created
+1790282660841 started
+1790282660879 resumed
