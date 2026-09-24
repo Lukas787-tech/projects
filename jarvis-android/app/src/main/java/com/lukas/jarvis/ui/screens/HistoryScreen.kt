@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.core.TimeUtil
@@ -30,6 +32,7 @@ import com.lukas.jarvis.ui.theme.Film
 import com.lukas.jarvis.ui.theme.Space
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
+import com.lukas.jarvis.ui.theme.TextSecondary
 
 private val BubbleMine = Film.selected
 private val BubbleTheirs = Film.resting
@@ -70,7 +73,7 @@ fun HistoryScreen(
 
 /** Shared with the text-mode thread, which shows the same bubbles. */
 @Composable
-internal fun MessageBubble(message: ChatMessage) {
+internal fun MessageBubble(message: ChatMessage, photo: android.graphics.Bitmap? = null) {
     val fromUser = message.role == ChatMessage.ROLE_USER
     Box(
         modifier = Modifier.fillMaxWidth(),
@@ -92,11 +95,38 @@ internal fun MessageBubble(message: ChatMessage) {
                 .background(if (fromUser) BubbleMine else BubbleTheirs)
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
+            if (photo != null) {
+                androidx.compose.foundation.Image(
+                    bitmap = photo.asImageBitmap(),
+                    contentDescription = "Your photo",
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 220.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                )
+                Spacer(Modifier.height(Space.tight))
+            }
+            // A photo turn keeps what was seen under the question; it is the
+            // receipt for the answer, so it is there, but quieter.
+            val question = message.content.substringBefore("\n\n")
+            val seen = message.content.substringAfter("\n\n", "")
+                .takeIf { fromUser && message.content.startsWith("\uD83D\uDCF7") }
             Text(
-                message.content,
+                if (seen != null) question else message.content,
                 style = MaterialTheme.typography.bodyLarge,
                 color = TextPrimary
             )
+            if (!seen.isNullOrBlank()) {
+                Spacer(Modifier.height(Space.hair))
+                Text(
+                    seen,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    maxLines = 5,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
             // How this reply was reached. Old replies, stored before tools were
             // recorded, simply have none and show nothing.
             if (!fromUser && message.tools.isNotEmpty()) {

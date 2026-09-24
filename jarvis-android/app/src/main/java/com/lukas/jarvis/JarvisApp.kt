@@ -2,6 +2,7 @@ package com.lukas.jarvis
 
 import android.app.Application
 import android.content.Context
+import com.lukas.jarvis.auto.Routines
 import com.lukas.jarvis.brief.Briefer
 import com.lukas.jarvis.control.Agenda
 import com.lukas.jarvis.control.Caller
@@ -25,9 +26,11 @@ import com.lukas.jarvis.maps.Locator
 import com.lukas.jarvis.maps.MapStore
 import com.lukas.jarvis.maps.Navigator
 import com.lukas.jarvis.maps.PlacesClient
+import com.lukas.jarvis.maps.SavedPlaces
 import com.lukas.jarvis.maps.TileCache
 import com.lukas.jarvis.notify.Reminders
 import com.lukas.jarvis.stage.StageStore
+import com.lukas.jarvis.vision.CameraBus
 import com.lukas.jarvis.voice.SpeechInput
 import com.lukas.jarvis.voice.Speaker
 import com.lukas.jarvis.web.Currency
@@ -75,7 +78,12 @@ class AppContainer(context: Context) {
     val tiles = TileCache(context)
     val locator = Locator(context)
     val places = PlacesClient()
-    val navigator = Navigator(locator, places, mapStore)
+    val savedPlaces = SavedPlaces(context)
+    val navigator = Navigator(locator, places, mapStore, savedPlaces)
+
+    /** The camera, asked for by a tool and opened by the activity. */
+    val camera = CameraBus()
+    val routines = Routines(context)
 
     /** One day, gathered once, for the dashboard and the spoken brief alike. */
     val briefer = Briefer(brain, agenda, weather, locator, places, device)
@@ -98,7 +106,9 @@ class AppContainer(context: Context) {
         messenger = messenger,
         caller = caller,
         chats = chats,
-        currency = currency
+        currency = currency,
+        camera = camera,
+        routines = routines
     )
 
     val models = ModelCatalog()
@@ -107,7 +117,13 @@ class AppContainer(context: Context) {
 
     private val pooled = PooledLlm(client, pool)
 
-    val agent = Agent(pooled, tools, brain)
+    val agent = Agent(pooled, tools, brain).also { agent ->
+        tools.routineRunner = { routine, settings ->
+            routines.markRun(routine.name)
+            "Routine '${routine.name}' finished. What each step came back with: " +
+                agent.runRoutine(routine, settings)
+        }
+    }
     val connectionTest = ConnectionTest(client)
 }
 
@@ -121,5 +137,6 @@ class JarvisApp : Application() {
         container = AppContainer(this)
         // Alarms are lost on reinstall; rebuild them from what the brain holds.
         runCatching { container.reminders.rescheduleAll(container.brain.pendingReminders()) }
+        runCatching { container.routines.rescheduleAll() }
     }
 }

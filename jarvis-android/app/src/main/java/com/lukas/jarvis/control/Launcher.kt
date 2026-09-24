@@ -7,6 +7,7 @@ import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.provider.AlarmClock
 import android.provider.CalendarContract
+import android.provider.MediaStore
 import java.util.Locale
 
 /**
@@ -195,6 +196,23 @@ class Launcher(context: Context) {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return if (start(intent)) "Opened $normalized in your browser." else
             "No browser on this phone would open it."
+    }
+
+    // ----------------------------------------------------------------- camera
+
+    /** The phone's own camera app, for pictures the user keeps rather than asks about. */
+    fun openCamera(video: Boolean): String {
+        val action = if (video) {
+            MediaStore.INTENT_ACTION_VIDEO_CAMERA
+        } else {
+            MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA
+        }
+        val intent = Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return if (start(intent)) {
+            if (video) "The camera is open in video mode." else "The camera is open."
+        } else {
+            "No camera app on this phone would open."
+        }
     }
 
     // --------------------------------------------------------------- calendar

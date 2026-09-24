@@ -17,6 +17,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocalParking
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -31,11 +40,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lukas.jarvis.auto.Routine
+import com.lukas.jarvis.auto.Routines
 import com.lukas.jarvis.brief.DayBrief
+import com.lukas.jarvis.maps.SavedPlace
+import com.lukas.jarvis.ui.components.ChipButton
+import com.lukas.jarvis.ui.components.GlassDialog
+import com.lukas.jarvis.ui.components.GlassField
 import com.lukas.jarvis.core.TimeUtil
 import com.lukas.jarvis.data.Task
 import com.lukas.jarvis.data.Tracker
@@ -79,8 +98,37 @@ fun TodayScreen(
     onOpen: (Element) -> Unit,
     onCompleteTask: (Task) -> Unit,
     onPlayMusic: () -> Unit,
+    onCamera: () -> Unit,
+    onScanReceipt: () -> Unit,
+    onPark: () -> Unit,
+    onGo: (String) -> Unit,
+    savedPlaces: List<SavedPlace>,
+    routines: List<Routine>,
+    onRunRoutine: (String) -> Unit,
+    onSaveRoutine: (Routine) -> Unit,
+    onDeleteRoutine: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var editing by remember { mutableStateOf<Routine?>(null) }
+    editing?.let { draft ->
+        RoutineDialog(
+            initial = draft,
+            onDismiss = { editing = null },
+            onSave = { saved ->
+                onSaveRoutine(saved)
+                editing = null
+            },
+            onDelete = if (draft.name.isNotBlank() && routines.any { it.name == draft.name }) {
+                {
+                    onDeleteRoutine(draft.name)
+                    editing = null
+                }
+            } else {
+                null
+            }
+        )
+    }
+
     // Gathered when the screen appears rather than on a timer: a brief is only
     // ever wanted at the moment it is looked at.
     LaunchedEffect(Unit) { if (brief == null) onRefresh() }
@@ -121,7 +169,47 @@ fun TodayScreen(
 
         item { HeroCard(brief = brief, loading = loading) }
 
-        item { Shortcuts(onOpen = onOpen, onPlayMusic = onPlayMusic) }
+        item {
+            Shortcuts(
+                onOpen = onOpen,
+                onPlayMusic = onPlayMusic,
+                onCamera = onCamera,
+                onScanReceipt = onScanReceipt,
+                onPark = onPark,
+                onGo = onGo,
+                hasCar = savedPlaces.any { it.isCar },
+                hasHome = savedPlaces.any { it.name.equals("home", ignoreCase = true) }
+            )
+        }
+
+        item {
+            GroupHeader(
+                "Routines",
+                trailing = if (routines.isEmpty()) null else routines.size.toString()
+            )
+        }
+        if (routines.isEmpty()) {
+            item {
+                RoutineHint(onCreate = { editing = Routine(name = "", steps = emptyList()) })
+            }
+        } else {
+            items(routines, key = { "routine-${it.name}" }) { routine ->
+                RoutineLine(
+                    routine = routine,
+                    onRun = { onRunRoutine(routine.name) },
+                    onEdit = { editing = routine }
+                )
+            }
+            item {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                    ChipButton(
+                        label = "New routine",
+                        icon = Icons.Default.Add,
+                        onClick = { editing = Routine(name = "", steps = emptyList()) }
+                    )
+                }
+            }
+        }
 
         brief?.let { day ->
             item { Vitals(day) }
@@ -284,45 +372,183 @@ private fun Vitals(brief: DayBrief) {
 }
 
 /**
- * The five places a thumb goes most often that the bar does not already hold.
+ * Where a thumb goes most often, in two rows.
  *
- * Notes and the map used to sit here as well as in the bar along the bottom,
- * which spent two of five slots on a second way to the same place. Devices and
- * Skills had no way in at all except by asking.
+ * The top row is things Jarvis does rather than places in the app: look at
+ * something, read a receipt into the budget, remember where the car is, get
+ * home. Each is the same as saying it, minus the saying.
  */
 @Composable
-private fun Shortcuts(onOpen: (Element) -> Unit, onPlayMusic: () -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(Space.tight)) {
-        QuickAction(
-            icon = Icons.Default.CheckCircle,
-            label = "Tasks",
-            onClick = { onOpen(Element.Tasks) },
-            modifier = Modifier.weight(1f)
+private fun Shortcuts(
+    onOpen: (Element) -> Unit,
+    onPlayMusic: () -> Unit,
+    onCamera: () -> Unit,
+    onScanReceipt: () -> Unit,
+    onPark: () -> Unit,
+    onGo: (String) -> Unit,
+    hasCar: Boolean,
+    hasHome: Boolean
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Space.tight)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.tight)) {
+            QuickAction(
+                icon = Icons.Default.PhotoCamera,
+                label = "Look",
+                onClick = onCamera,
+                modifier = Modifier.weight(1f),
+                active = true
+            )
+            QuickAction(
+                icon = Icons.Default.Receipt,
+                label = "Receipt",
+                onClick = onScanReceipt,
+                modifier = Modifier.weight(1f)
+            )
+            QuickAction(
+                icon = if (hasCar) Icons.Default.DirectionsCar else Icons.Default.LocalParking,
+                label = if (hasCar) "My car" else "Park",
+                onClick = { if (hasCar) onGo("car") else onPark() },
+                modifier = Modifier.weight(1f)
+            )
+            QuickAction(
+                icon = Icons.Default.Home,
+                label = if (hasHome) "Home" else "Map",
+                onClick = { if (hasHome) onGo("home") else onOpen(Element.Map) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.tight)) {
+            QuickAction(
+                icon = Icons.Default.CheckCircle,
+                label = "Tasks",
+                onClick = { onOpen(Element.Tasks) },
+                modifier = Modifier.weight(1f)
+            )
+            QuickAction(
+                icon = Icons.Default.AccountBalanceWallet,
+                label = "Money",
+                onClick = { onOpen(Element.Money) },
+                modifier = Modifier.weight(1f)
+            )
+            QuickAction(
+                icon = Icons.Default.MusicNote,
+                label = "Play",
+                onClick = onPlayMusic,
+                modifier = Modifier.weight(1f)
+            )
+            QuickAction(
+                icon = Icons.Default.Bluetooth,
+                label = "Devices",
+                onClick = { onOpen(Element.Devices) },
+                modifier = Modifier.weight(1f)
+            )
+            QuickAction(
+                icon = Icons.Default.AutoAwesome,
+                label = "Skills",
+                onClick = { onOpen(Element.Skills) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun RoutineHint(onCreate: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .glassCard(Corner.medium)
+            .clickable { onCreate() }
+            .padding(horizontal = Space.step, vertical = Space.snug),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Default.Bolt, contentDescription = null, tint = Accent, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(Space.snug))
+        Column(modifier = Modifier.weight(1f)) {
+            Text("Make your first routine", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text(
+                "Several things under one name — or just say \"every morning, tell me my day and play music\".",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary
+            )
+        }
+    }
+}
+
+@Composable
+private fun RoutineLine(routine: Routine, onRun: () -> Unit, onEdit: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .glassCard(Corner.medium)
+            .clickable { onEdit() }
+            .padding(start = Space.step, end = Space.tight, top = Space.snug, bottom = Space.snug),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                routine.name.replaceFirstChar { it.uppercase() },
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary
+            )
+            Text(
+                buildString {
+                    routine.time?.let { append("Daily $it · ") }
+                    append("${routine.steps.size} step")
+                    if (routine.steps.size != 1) append("s")
+                    routine.steps.firstOrNull()?.let { append(" · ").append(it) }
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        IconButton(onClick = onRun) {
+            Icon(Icons.Default.PlayCircle, contentDescription = "Run ${routine.name}", tint = Accent)
+        }
+    }
+}
+
+/** Name, one step per line, and an optional time: the whole of a routine. */
+@Composable
+private fun RoutineDialog(
+    initial: Routine,
+    onDismiss: () -> Unit,
+    onSave: (Routine) -> Unit,
+    onDelete: (() -> Unit)?
+) {
+    var name by remember { mutableStateOf(initial.name) }
+    var steps by remember { mutableStateOf(initial.steps.joinToString("\n")) }
+    var time by remember { mutableStateOf(initial.time.orEmpty()) }
+    val stepList = steps.lines().map { it.trim() }.filter { it.isNotBlank() }
+    GlassDialog(
+        title = if (initial.name.isBlank()) "New routine" else "Edit routine",
+        onDismiss = onDismiss,
+        confirmLabel = "Save",
+        confirmEnabled = name.isNotBlank() && stepList.isNotEmpty(),
+        onConfirm = {
+            onSave(Routine(name = name.trim(), steps = stepList, time = Routines.normalizeTime(time)))
+        }
+    ) {
+        GlassField(value = name, onValueChange = { name = it }, label = "Name", placeholder = "Morning")
+        GlassField(
+            value = steps,
+            onValueChange = { steps = it },
+            label = "Steps, one per line",
+            placeholder = "How does my day look?\nWhat's the weather?\nPlay the radio",
+            singleLine = false
         )
-        QuickAction(
-            icon = Icons.Default.AccountBalanceWallet,
-            label = "Money",
-            onClick = { onOpen(Element.Money) },
-            modifier = Modifier.weight(1f)
+        GlassField(
+            value = time,
+            onValueChange = { time = it },
+            label = "Daily at (optional)",
+            placeholder = "07:00",
+            supportingText = "A notification at this time runs it with one tap."
         )
-        QuickAction(
-            icon = Icons.Default.MusicNote,
-            label = "Play",
-            onClick = onPlayMusic,
-            modifier = Modifier.weight(1f)
-        )
-        QuickAction(
-            icon = Icons.Default.Bluetooth,
-            label = "Devices",
-            onClick = { onOpen(Element.Devices) },
-            modifier = Modifier.weight(1f)
-        )
-        QuickAction(
-            icon = Icons.Default.AutoAwesome,
-            label = "Skills",
-            onClick = { onOpen(Element.Skills) },
-            modifier = Modifier.weight(1f)
-        )
+        if (onDelete != null) {
+            ChipButton(label = "Delete routine", icon = Icons.Default.Delete, onClick = onDelete)
+        }
     }
 }
 

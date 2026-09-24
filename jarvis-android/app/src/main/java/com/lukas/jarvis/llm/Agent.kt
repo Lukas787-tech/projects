@@ -1,5 +1,6 @@
 package com.lukas.jarvis.llm
 
+import com.lukas.jarvis.auto.Routine
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.data.Brain
 import com.lukas.jarvis.data.ChatMessage
@@ -139,6 +140,51 @@ class Agent(
             effects = effects,
             toolsUsed = used.distinct()
         )
+    }
+
+    /**
+     * Looks at a photo and says what is in it, in enough detail that a turn
+     * with a text-only model can act on it: every number on a receipt, every
+     * line of a sign, the date and place on a poster.
+     */
+    suspend fun look(settings: Settings, question: String, imageDataUrl: String): String =
+        client.look(
+            settings,
+            "The user took this photo and asks: \"$question\"\n\n" +
+                "First answer the question directly. Then describe the picture precisely for " +
+                "an assistant who cannot see it: transcribe every piece of legible text " +
+                "exactly (prices, totals, dates, times, names, addresses, phone numbers), " +
+                "name the objects, and say where it seems to be. Plain text, no markdown.",
+            imageDataUrl
+        )
+
+    /**
+     * Carries out a routine one step at a time, each step a turn of its own.
+     *
+     * One turn with every step in it would ask a small model to juggle six
+     * jobs in one breath, and it drops some. Separate turns each get the
+     * model's whole attention and the full round budget. The runner is taken
+     * away while this runs, so a step that says "run my routine" cannot loop.
+     */
+    suspend fun runRoutine(
+        routine: Routine,
+        settings: Settings,
+        onStage: (String) -> Unit = {},
+        onTool: (String) -> Unit = {}
+    ): String {
+        val runner = tools.routineRunner
+        tools.routineRunner = null
+        try {
+            val replies = routine.steps.mapIndexed { index, step ->
+                onStage("${routine.name}: step ${index + 1} of ${routine.steps.size}")
+                runCatching {
+                    respond(step, settings, emptyList(), onStage = {}, onTool = onTool).reply
+                }.getOrElse { "\"$step\" did not work: ${it.message?.lineSequence()?.firstOrNull()}" }
+            }
+            return replies.joinToString(" ")
+        } finally {
+            tools.routineRunner = runner
+        }
     }
 
     /** One requested call, with the real tool it maps to — or null when none does. */

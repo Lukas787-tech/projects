@@ -1,60 +1,107 @@
 package com.lukas.jarvis.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.LocalParking
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.NearMe
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Work
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lukas.jarvis.maps.Compass
 import com.lukas.jarvis.maps.Geo
 import com.lukas.jarvis.maps.MapState
+import com.lukas.jarvis.maps.MapStyle
 import com.lukas.jarvis.maps.Place
+import com.lukas.jarvis.maps.SavedPlace
 import com.lukas.jarvis.maps.TileCache
 import com.lukas.jarvis.ui.components.ChipButton
-import com.lukas.jarvis.ui.components.EmptyState
-import com.lukas.jarvis.ui.components.JarvisCard
-import com.lukas.jarvis.ui.components.SectionLabel
+import com.lukas.jarvis.ui.map.MapCamera
 import com.lukas.jarvis.ui.map.MapCanvas
+import com.lukas.jarvis.ui.map.rememberMapCamera
 import com.lukas.jarvis.ui.theme.Accent
-import com.lukas.jarvis.ui.theme.glass
+import com.lukas.jarvis.ui.theme.Corner
+import com.lukas.jarvis.ui.theme.DialogPane
+import com.lukas.jarvis.ui.theme.Film
 import com.lukas.jarvis.ui.theme.Ink
 import com.lukas.jarvis.ui.theme.Positive
+import com.lukas.jarvis.ui.theme.Space
 import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
 import com.lukas.jarvis.ui.theme.TextSecondary
+import com.lukas.jarvis.ui.theme.glass
 
-/** The unselected result number, as a film of white rather than a grey box. */
-private val IndexChip = androidx.compose.ui.graphics.Color(0x1FFFFFFF)
+/** Glass over a map needs more body than glass over black, or the streets show through the words. */
+private val MapGlass = Color(0xCC0C0C0F)
 
 /**
- * The map tab: whatever the last place question produced, drawn and listed.
+ * The map, edge to edge.
  *
- * Nothing here needs typing — asking "anywhere to eat around here" fills it —
- * but every pin can still be routed to or handed off by hand.
+ * It used to be a 260-point window at the top of a list, which is a thumbnail
+ * of a map rather than a map. Now the map is the screen, and everything else
+ * floats on it: where you are at the top, the camera controls down the side,
+ * and what was found in a sheet that folds away when you want to look.
  */
 @Composable
 fun MapScreen(
     state: MapState,
     tiles: TileCache,
+    style: MapStyle,
+    saved: List<SavedPlace>,
+    hereLabel: String?,
     travelMode: String,
     routing: Boolean,
     onSelect: (Int) -> Unit,
@@ -62,105 +109,356 @@ fun MapScreen(
     onNavigate: (Int) -> Unit,
     onModeChange: (String) -> Unit,
     onClear: () -> Unit,
-    modifier: Modifier = Modifier
+    onStyleChange: (MapStyle) -> Unit,
+    onFollow: (Boolean) -> Unit,
+    onSaveHere: (String) -> Unit,
+    onRouteSaved: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    /** 0..1 while arriving from the globe; the map zooms in from orbit as it rises. */
+    intro: Float = 1f,
+    introFromZoom: Float = 5f
 ) {
-    val route = state.route
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val camera: MapCamera = rememberMapCamera(state)
 
-    Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        ScreenHeader(
-            title = "Map",
-            subtitle = state.title.ifBlank { "Ask for somewhere and it lands here" },
-            actionIcon = if (state.places.isEmpty() && route == null) null else Icons.Default.Clear,
-            actionLabel = "Clear the map",
-            onAction = onClear.takeIf { state.places.isNotEmpty() || route != null }
+    // The dot is live only while this screen is: GPS and compass both stop
+    // the moment the map goes away.
+    DisposableEffect(Unit) {
+        onFollow(true)
+        onDispose { onFollow(false) }
+    }
+    val heading by produceState<Float?>(null) {
+        Compass.headings(context).collect { value = it }
+    }
+
+    var sheetOpen by remember { mutableStateOf(true) }
+    var stylesOpen by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        MapCanvas(
+            state = state,
+            tiles = tiles,
+            style = style,
+            camera = camera,
+            heading = heading,
+            saved = saved,
+            intro = intro,
+            introFromZoom = introFromZoom,
+            onSelectPlace = { index ->
+                onSelect(index)
+                sheetOpen = true
+            }
         )
 
-        Box(
+        // ---------------------------------------------------------- top
+        Column(
             modifier = Modifier
+                .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .height(if (state.places.isEmpty()) 300.dp else 260.dp)
-                .glass(RoundedCornerShape(20.dp))
+                .padding(horizontal = Space.snug, vertical = Space.snug)
         ) {
-            MapCanvas(state = state, tiles = tiles, onSelectPlace = onSelect)
-
-            // OpenStreetMap's licence asks for the credit to be visible on the map.
-            Text(
-                "© OpenStreetMap",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextFaint,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(6.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Ink.copy(alpha = 0.6f))
-                    .padding(horizontal = 6.dp, vertical = 3.dp)
+            WhereCard(
+                title = state.title.ifBlank { "Map" },
+                here = hereLabel,
+                accuracy = state.accuracy,
+                canClear = state.places.isNotEmpty() || state.route != null,
+                onClear = onClear
             )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Geo.ALL_MODES.forEach { mode ->
-                ChipButton(
-                    label = mode.replaceFirstChar { it.uppercase() },
-                    onClick = { onModeChange(mode) },
-                    prominent = mode == travelMode
-                )
+            Spacer(Modifier.height(Space.tight))
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(Space.tight)
+            ) {
+                FloatingChip(Icons.Default.LocalParking, "Park here") { onSaveHere("car") }
+                saved.sortedBy { savedOrder(it) }.forEach { place ->
+                    FloatingChip(
+                        icon = savedIcon(place),
+                        label = if (place.isCar) "My car" else place.name.replaceFirstChar { it.uppercase() },
+                        onClick = { onRouteSaved(place.name) }
+                    )
+                }
+                if (saved.none { it.name.equals("home", true) }) {
+                    FloatingChip(Icons.Default.Home, "Set home") { onSaveHere("home") }
+                }
             }
         }
 
-        if (state.places.isEmpty() && route == null) {
-            EmptyState(
-                title = "Nothing pinned yet",
-                subtitle = "Say \"I'm hungry, what's near me\" or \"how do I get to the station\"."
-            )
-        } else {
-            // The route summary scrolls with the results rather than sitting above
-            // them: turn lists get long, and the list below must not be squeezed
-            // to nothing on a short screen.
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (route != null) {
-                    item {
-                        Column {
-                            Spacer(Modifier.height(12.dp))
-                            RouteCard(
-                                destination = route.destination.ifBlank { "your destination" },
-                                summary = "${Geo.formatDistance(route.distanceMeters)} · " +
-                                    "${Geo.formatDuration(route.durationSeconds)} " +
-                                    Geo.modeVerb(route.mode),
-                                steps = route.steps
-                                    .filter { it.distanceMeters > 15 }
-                                    .take(6)
-                                    .map { step ->
-                                        "${step.instruction} — " +
-                                            Geo.formatDistance(step.distanceMeters)
-                                    }
+        // ---------------------------------------------------------- side
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = Space.snug),
+            verticalArrangement = Arrangement.spacedBy(Space.tight),
+            horizontalAlignment = Alignment.End
+        ) {
+            AnimatedVisibility(visible = stylesOpen, enter = fadeIn(), exit = fadeOut()) {
+                Column(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(Corner.medium))
+                        .background(MapGlass)
+                        .padding(Space.hair),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    MapStyle.entries.forEach { option ->
+                        Text(
+                            text = option.title,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (option == style) Ink else TextPrimary,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(Corner.small))
+                                .background(if (option == style) Accent else Color.Transparent)
+                                .clickable {
+                                    onStyleChange(option)
+                                    stylesOpen = false
+                                }
+                                .padding(horizontal = 14.dp, vertical = 9.dp)
+                        )
+                    }
+                }
+            }
+            MapButton(Icons.Default.Layers, "Map style", active = stylesOpen) { stylesOpen = !stylesOpen }
+            MapButton(Icons.Default.Add, "Zoom in") { camera.zoomBy(scope, 1f) }
+            MapButton(Icons.Default.Remove, "Zoom out") { camera.zoomBy(scope, -1f) }
+            MapButton(
+                icon = if (camera.following) Icons.Default.NearMe else Icons.Default.MyLocation,
+                label = "Show where I am",
+                active = camera.following
+            ) {
+                val here = state.here
+                if (here != null) {
+                    camera.following = true
+                    camera.flyTo(scope, here, maxOf(camera.zoom, 16.5f), 700)
+                }
+            }
+        }
+
+        // ---------------------------------------------------------- bottom
+        BoxWithConstraints(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = Space.snug, vertical = Space.snug)
+        ) {
+            val sheetMax = maxHeight * 0.5f
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(Corner.large))
+                    .background(MapGlass)
+                    .glass(RoundedCornerShape(Corner.large))
+                    .animateContentSize()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = Space.step, end = Space.tight, top = Space.tight, bottom = Space.tight),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Geo.ALL_MODES.forEach { mode ->
+                        ModePill(mode = mode, selected = mode == travelMode) { onModeChange(mode) }
+                        Spacer(Modifier.width(Space.hair))
+                    }
+                    Spacer(Modifier.weight(1f))
+                    val count = state.places.size + if (state.route != null) 1 else 0
+                    if (count > 0) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(Corner.small))
+                                .clickable { sheetOpen = !sheetOpen }
+                                .padding(horizontal = Space.tight, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (state.route != null) "Route" else "${state.places.size} found",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = TextSecondary
+                            )
+                            Icon(
+                                if (sheetOpen) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                contentDescription = if (sheetOpen) "Fold results" else "Show results",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
                 }
-                if (state.places.isNotEmpty()) {
-                    item {
-                        Column {
-                            Spacer(Modifier.height(4.dp))
-                            SectionLabel("Results")
+
+                if (sheetOpen && (state.places.isNotEmpty() || state.route != null)) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = sheetMax)
+                            .padding(horizontal = Space.tight),
+                        verticalArrangement = Arrangement.spacedBy(Space.hair)
+                    ) {
+                        state.route?.let { route ->
+                            item {
+                                RouteSummary(
+                                    destination = route.destination.ifBlank { "your destination" },
+                                    summary = "${Geo.formatDistance(route.distanceMeters)} · " +
+                                        "${Geo.formatDuration(route.durationSeconds)} " +
+                                        Geo.modeVerb(route.mode),
+                                    steps = route.steps
+                                        .filter { it.distanceMeters > 15 }
+                                        .take(6)
+                                        .map { "${it.instruction} — ${Geo.formatDistance(it.distanceMeters)}" }
+                                )
+                            }
                         }
+                        itemsIndexed(state.places) { index, place ->
+                            PlaceRow(
+                                index = index,
+                                place = place,
+                                selected = index == state.selected,
+                                routing = routing && index == state.selected,
+                                onSelect = { onSelect(index) },
+                                onRoute = { onRoute(index) },
+                                onNavigate = { onNavigate(index) }
+                            )
+                        }
+                        item { Spacer(Modifier.height(Space.tight)) }
                     }
-                }
-                itemsIndexed(state.places) { index, place ->
-                    PlaceRow(
-                        index = index,
-                        place = place,
-                        selected = index == state.selected,
-                        routing = routing && index == state.selected,
-                        onSelect = { onSelect(index) },
-                        onRoute = { onRoute(index) },
-                        onNavigate = { onNavigate(index) }
+                } else if (state.places.isEmpty() && state.route == null) {
+                    Text(
+                        text = "Ask \"what's around here\" or \"take me home\" — or tap Park here when you leave the car.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextFaint,
+                        modifier = Modifier.padding(start = Space.step, end = Space.step, bottom = Space.snug)
                     )
                 }
-                item { Spacer(Modifier.height(24.dp)) }
             }
         }
+
+        // Every tile source asks for its credit to be visible on the map.
+        Text(
+            text = style.credit,
+            style = MaterialTheme.typography.labelSmall,
+            color = TextFaint,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = Space.snug, bottom = 2.dp)
+        )
+    }
+}
+
+@Composable
+private fun WhereCard(
+    title: String,
+    here: String?,
+    accuracy: Float?,
+    canClear: Boolean,
+    onClear: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Corner.large))
+            .background(MapGlass)
+            .glass(RoundedCornerShape(Corner.large))
+            .padding(start = Space.step, end = Space.hair, top = Space.tight, bottom = Space.tight),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(if (here != null) Positive else TextFaint)
+        )
+        Spacer(Modifier.width(Space.snug))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = here ?: "Finding you…",
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = buildString {
+                    append(title)
+                    accuracy?.let { append(" · ±${it.toInt()} m") }
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (canClear) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .clickable { onClear() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Clear, contentDescription = "Clear the map", tint = TextSecondary)
+            }
+        } else {
+            Spacer(Modifier.width(Space.snug))
+        }
+    }
+}
+
+@Composable
+private fun MapButton(
+    icon: ImageVector,
+    label: String,
+    active: Boolean = false,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(46.dp)
+            .clip(CircleShape)
+            .background(if (active) Accent else MapGlass)
+            .glass(CircleShape)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = label, tint = if (active) Ink else TextPrimary, modifier = Modifier.size(21.dp))
+    }
+}
+
+@Composable
+private fun FloatingChip(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(Corner.small))
+            .background(MapGlass)
+            .glass(RoundedCornerShape(Corner.small))
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = Accent, modifier = Modifier.size(16.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = TextPrimary)
+    }
+}
+
+@Composable
+private fun ModePill(mode: String, selected: Boolean, onClick: () -> Unit) {
+    val icon = when (mode) {
+        Geo.MODE_CYCLE -> Icons.AutoMirrored.Filled.DirectionsBike
+        Geo.MODE_DRIVE -> Icons.Default.DirectionsCar
+        else -> Icons.AutoMirrored.Filled.DirectionsWalk
+    }
+    Box(
+        modifier = Modifier
+            .size(width = 44.dp, height = 36.dp)
+            .clip(RoundedCornerShape(Corner.small))
+            .background(if (selected) Accent else Film.faint)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = mode.replaceFirstChar { it.uppercase() },
+            tint = if (selected) Ink else TextSecondary,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
@@ -174,81 +472,95 @@ private fun PlaceRow(
     onRoute: () -> Unit,
     onNavigate: () -> Unit
 ) {
-    JarvisCard(onClick = onSelect) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) Positive else IndexChip)
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        "${index + 1}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (selected) Ink else TextSecondary
-                    )
-                }
-                Text(
-                    place.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
-                    modifier = Modifier.padding(start = 10.dp).weight(1f)
-                )
-                place.distanceMeters?.let {
-                    Text(
-                        Geo.formatDistance(it),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Accent
-                    )
-                }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Corner.medium))
+            .background(if (selected) Film.lifted else Color.Transparent)
+            .clickable { onSelect() }
+            .padding(horizontal = Space.snug, vertical = Space.tight + 2.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(if (selected) Positive else Accent),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("${index + 1}", style = MaterialTheme.typography.labelSmall, color = Ink)
             }
-
-            listOfNotNull(place.category, place.detail, place.address)
-                .takeIf { it.isNotEmpty() }
-                ?.let { lines ->
-                    Text(
-                        lines.joinToString(" · "),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-
+            Text(
+                place.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 10.dp).weight(1f)
+            )
+            place.distanceMeters?.let {
+                Text(Geo.formatDistance(it), style = MaterialTheme.typography.bodyMedium, color = Accent)
+            }
+        }
+        listOfNotNull(place.category, place.detail, place.address)
+            .takeIf { it.isNotEmpty() }
+            ?.let { lines ->
+                Text(
+                    lines.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 4.dp, start = 34.dp)
+                )
+            }
+        if (selected) {
             Row(
-                modifier = Modifier.padding(top = 10.dp),
+                modifier = Modifier.padding(top = 10.dp, start = 34.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ChipButton(
-                    label = "Route",
-                    icon = Icons.Default.Directions,
-                    busy = routing,
-                    onClick = onRoute
-                )
-                ChipButton(
-                    label = "Navigate",
-                    icon = Icons.Default.Navigation,
-                    onClick = onNavigate
-                )
+                ChipButton(label = "Route", icon = Icons.Default.Directions, busy = routing, onClick = onRoute)
+                ChipButton(label = "Navigate", icon = Icons.Default.Navigation, prominent = true, onClick = onNavigate)
             }
         }
     }
 }
 
 @Composable
-private fun RouteCard(destination: String, summary: String, steps: List<String>) {
-    JarvisCard {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(destination, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-            Text(summary, style = MaterialTheme.typography.bodyMedium, color = Accent)
-            steps.forEach { step ->
+private fun RouteSummary(destination: String, summary: String, steps: List<String>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Corner.medium))
+            .background(DialogPane.copy(alpha = 0.6f))
+            .padding(Space.snug)
+    ) {
+        Text(destination, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+        Text(summary, style = MaterialTheme.typography.bodyMedium, color = Accent)
+        steps.forEachIndexed { index, step ->
+            Row(modifier = Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Top) {
                 Text(
-                    "· $step",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(top = 4.dp)
+                    "${index + 1}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextFaint,
+                    modifier = Modifier.width(18.dp)
                 )
+                Text(step, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
             }
         }
     }
+}
+
+private fun savedOrder(place: SavedPlace): Int = when {
+    place.isCar -> 0
+    place.name.equals("home", true) -> 1
+    place.name.equals("work", true) -> 2
+    else -> 3
+}
+
+private fun savedIcon(place: SavedPlace): ImageVector = when {
+    place.isCar -> Icons.Default.DirectionsCar
+    place.name.equals("home", true) -> Icons.Default.Home
+    place.name.equals("work", true) -> Icons.Default.Work
+    else -> Icons.Default.Navigation
 }

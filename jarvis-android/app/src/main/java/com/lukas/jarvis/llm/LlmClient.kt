@@ -20,7 +20,13 @@ data class LlmMessage(
     val content: String? = null,
     val toolCalls: List<ToolCall> = emptyList(),
     val toolCallId: String? = null,
-    val name: String? = null
+    val name: String? = null,
+    /**
+     * Pictures attached to a user message, as `data:` URLs. Only the photo
+     * turn carries one; it is never replayed from history, because every
+     * later request would pay for the same megabyte again.
+     */
+    val images: List<String> = emptyList()
 ) {
     companion object {
         const val SYSTEM = "system"
@@ -465,7 +471,24 @@ class LlmClient {
 
     private fun LlmMessage.toJson(): JSONObject = JSONObject().apply {
         put("role", role)
-        put("content", content ?: "")
+        if (images.isEmpty()) {
+            put("content", content ?: "")
+        } else {
+            // The multi-part shape every vision endpoint of the OpenAI dialect
+            // accepts: the words first, then each picture.
+            put("content", JSONArray().also { parts ->
+                parts.put(JSONObject().apply {
+                    put("type", "text")
+                    put("text", content ?: "")
+                })
+                images.forEach { url ->
+                    parts.put(JSONObject().apply {
+                        put("type", "image_url")
+                        put("image_url", JSONObject().apply { put("url", url) })
+                    })
+                }
+            })
+        }
         toolCallId?.let { put("tool_call_id", it) }
         if (role == LlmMessage.TOOL) name?.let { put("name", it) }
         if (toolCalls.isNotEmpty()) {

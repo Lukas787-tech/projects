@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
@@ -68,6 +70,8 @@ fun ToolGroup.icon(): ImageVector = when (this) {
     ToolGroup.Messages -> Icons.Default.Sms
     ToolGroup.Media -> Icons.Default.MusicNote
     ToolGroup.Screen -> Icons.Default.Visibility
+    ToolGroup.Vision -> Icons.Default.PhotoCamera
+    ToolGroup.Automation -> Icons.Default.Bolt
 }
 
 /**

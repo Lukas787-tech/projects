@@ -10,7 +10,28 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.alpha
+import com.lukas.jarvis.maps.MapStyle
+import com.lukas.jarvis.ui.globe.GlobeMapFlight
+import com.lukas.jarvis.ui.theme.Motion
+import com.lukas.jarvis.vision.Photos
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,6 +98,7 @@ import com.lukas.jarvis.vm.AssistantViewModel
 class MainActivity : ComponentActivity() {
 
     private var startListeningOnOpen by mutableStateOf(false)
+    private var routineOnOpen by mutableStateOf<String?>(null)
 
     private val requestPermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -86,6 +108,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         startListeningOnOpen = intent?.getBooleanExtra(EXTRA_START_LISTENING, false) == true
+        routineOnOpen = intent?.getStringExtra(EXTRA_RUN_ROUTINE)
         askForPermissions()
 
         setContent {
@@ -93,7 +116,9 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize(), color = Ink) {
                     JarvisRoot(
                         autoStartListening = startListeningOnOpen,
-                        onAutoStartHandled = { startListeningOnOpen = false }
+                        onAutoStartHandled = { startListeningOnOpen = false },
+                        routineToRun = routineOnOpen,
+                        onRoutineHandled = { routineOnOpen = null }
                     )
                 }
             }
@@ -106,6 +131,8 @@ class MainActivity : ComponentActivity() {
         // Reaching here from the wake word or the assistant gesture should open
         // straight into listening.
         startListeningOnOpen = intent.getBooleanExtra(EXTRA_START_LISTENING, false)
+        // A routine's notification, tapped: run it the moment the app is up.
+        intent.getStringExtra(EXTRA_RUN_ROUTINE)?.let { routineOnOpen = it }
     }
 
     private fun askForPermissions() {
@@ -133,6 +160,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_START_LISTENING = "start_listening"
+        const val EXTRA_RUN_ROUTINE = "run_routine"
     }
 }
 
@@ -160,7 +188,9 @@ private fun iconFor(element: Element): ImageVector = when (element) {
 @Composable
 private fun JarvisRoot(
     autoStartListening: Boolean,
-    onAutoStartHandled: () -> Unit
+    onAutoStartHandled: () -> Unit,
+    routineToRun: String?,
+    onRoutineHandled: () -> Unit
 ) {
     val viewModel: AssistantViewModel = viewModel(factory = AssistantViewModel.Factory)
     val context = LocalContext.current
@@ -184,6 +214,12 @@ private fun JarvisRoot(
     val deviceStatus by viewModel.deviceStatus.collectAsStateWithLifecycle()
     val brief by viewModel.brief.collectAsStateWithLifecycle()
     val briefLoading by viewModel.briefLoading.collectAsStateWithLifecycle()
+    val savedPlaces by viewModel.savedPlaces.collectAsStateWithLifecycle()
+    val hereLabel by viewModel.hereLabel.collectAsStateWithLifecycle()
+    val routines by viewModel.routines.collectAsStateWithLifecycle()
+    val cameraRequest by viewModel.cameraRequests.collectAsStateWithLifecycle()
+    val mapStyle = MapStyle.of(settings.mapStyle)
+    val scope = rememberCoroutineScope()
 
     val stage by viewModel.element.collectAsStateWithLifecycle()
     val element = stage.element
@@ -208,6 +244,91 @@ private fun JarvisRoot(
     // The chat log is an overlay, so the system back gesture has to close it
     // rather than leave the app — it is not a destination of its own.
     BackHandler(enabled = showHistory) { showHistory = false }
+
+    // ------------------------------------------------------------- the camera
+    //
+    // The shot is written to a file of our own rather than returned as a
+    // thumbnail: at thumbnail size, the writing on a receipt is a grey smear.
+    var captureUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var handledCamera by rememberSaveable { mutableLongStateOf(0L) }
+
+    fun deliver(uri: Uri?) {
+        if (uri == null) {
+            viewModel.cancelPhoto()
+            return
+        }
+        scope.launch {
+            val photo = withContext(Dispatchers.IO) { Photos.load(context, uri) }
+            if (photo != null) {
+                viewModel.showElement(Element.Globe)
+                viewModel.sendPhoto(photo)
+            } else {
+                viewModel.cancelPhoto()
+            }
+        }
+    }
+
+    val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        deliver(if (ok) captureUri?.let(Uri::parse) else null)
+    }
+    val pickPicture = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri -> deliver(uri) }
+
+    // Tools and buttons both ask through the same request, so there is one
+    // place that opens the camera.
+    LaunchedEffect(cameraRequest?.id) {
+        val request = cameraRequest ?: return@LaunchedEffect
+        if (request.id == handledCamera) return@LaunchedEffect
+        handledCamera = request.id
+        runCatching {
+            if (request.fromGallery) {
+                pickPicture.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            } else {
+                val uri = Photos.newCaptureUri(context)
+                captureUri = uri.toString()
+                takePicture.launch(uri)
+            }
+        }.onFailure { viewModel.cancelPhoto() }
+    }
+
+    LaunchedEffect(routineToRun) {
+        val name = routineToRun ?: return@LaunchedEffect
+        viewModel.showElement(Element.Globe)
+        showHistory = false
+        viewModel.runRoutine(name)
+        onRoutineHandled()
+    }
+
+    // ------------------------------------------------ globe <-> map flight
+    //
+    // Only this pair gets the flight; everything else crossfades. The flight
+    // is laid over the destination, which settles underneath it unseen, and
+    // lifts off in its last frames.
+    var previousElement by remember { mutableStateOf(element) }
+    var flying by remember { mutableStateOf(false) }
+    val flight = remember { Animatable(0f) }
+    LaunchedEffect(element) {
+        val from = previousElement
+        previousElement = element
+        val inbound = from == Element.Globe && element == Element.Map
+        val outbound = from == Element.Map && element == Element.Globe
+        if (!inbound && !outbound) return@LaunchedEffect
+        flying = true
+        try {
+            if (inbound) {
+                flight.snapTo(0f)
+                flight.animateTo(1f, tween(FLIGHT_IN_MS, easing = LinearEasing))
+            } else {
+                flight.snapTo(1f)
+                flight.animateTo(0f, tween(FLIGHT_OUT_MS, easing = LinearEasing))
+            }
+        } finally {
+            flying = false
+        }
+    }
 
     LaunchedEffect(autoStartListening) {
         if (autoStartListening) {
@@ -275,7 +396,23 @@ private fun JarvisRoot(
         ) {
             if (showHistory) {
                 HistoryScreen(messages = ui.messages, onBack = { showHistory = false })
-            } else when (element) {
+            } else AnimatedContent(
+                targetState = element,
+                // The three list screens are one element with tabs; switching
+                // tabs is not a change of screen and should not fade the page.
+                contentKey = { if (it in HUB) "hub" else it.name },
+                transitionSpec = {
+                    val flightPair = setOf(initialState, targetState) == setOf(Element.Globe, Element.Map)
+                    if (flightPair) {
+                        fadeIn(tween(1)) togetherWith fadeOut(tween(Motion.standard))
+                    } else {
+                        (fadeIn(tween(Motion.standard, delayMillis = 60)) +
+                            scaleIn(tween(Motion.standard), initialScale = 0.97f)) togetherWith
+                            fadeOut(tween(Motion.quick))
+                    }
+                },
+                label = "element"
+            ) { shown -> when (shown) {
                 Element.Today -> TodayScreen(
                     brief = brief,
                     loading = briefLoading,
@@ -283,7 +420,24 @@ private fun JarvisRoot(
                     onRefresh = viewModel::refreshBrief,
                     onOpen = viewModel::showElement,
                     onCompleteTask = viewModel::toggleTask,
-                    onPlayMusic = { viewModel.showElement(Element.Music) }
+                    onPlayMusic = { viewModel.showElement(Element.Music) },
+                    onCamera = { viewModel.askCamera("What is this?") },
+                    onScanReceipt = {
+                        viewModel.askCamera(
+                            "This is a receipt. Log the total as spending on the right tracker " +
+                                "and tell me the new balance."
+                        )
+                    },
+                    onPark = { viewModel.saveHere("car") },
+                    onGo = { name ->
+                        viewModel.showElement(Element.Map)
+                        viewModel.routeToSaved(name)
+                    },
+                    savedPlaces = savedPlaces,
+                    routines = routines,
+                    onRunRoutine = viewModel::runRoutine,
+                    onSaveRoutine = viewModel::saveRoutine,
+                    onDeleteRoutine = viewModel::deleteRoutine
                 )
 
                 Element.Globe -> VoiceScreen(
@@ -304,14 +458,17 @@ private fun JarvisRoot(
                     onOpenHistory = { showHistory = true },
                     onOpenSettings = { viewModel.showElement(Element.Settings) },
                     onOpenSkills = { viewModel.showElement(Element.Skills) },
-                    onOpenMap = { viewModel.showElement(Element.Map) }
+                    onOpenMap = { viewModel.showElement(Element.Map) },
+                    onCamera = { viewModel.askCamera("What is this?") },
+                    onGallery = { viewModel.askCamera("What is in this picture?", fromGallery = true) },
+                    mapStyle = mapStyle
                 )
 
                 // Notes, tasks and money are one element with three segments,
                 // so each stays one tap from the others while the assistant can
                 // still name any of them directly.
                 Element.Notes, Element.Tasks, Element.Money -> HubScreen(
-                    selected = when (element) {
+                    selected = when (shown) {
                         Element.Money -> 1
                         Element.Tasks -> 2
                         else -> 0
@@ -363,13 +520,20 @@ private fun JarvisRoot(
                 Element.Map -> MapScreen(
                     state = map,
                     tiles = viewModel.tiles,
+                    style = mapStyle,
+                    saved = savedPlaces,
+                    hereLabel = hereLabel,
                     travelMode = settings.travelMode,
                     routing = routing,
                     onSelect = viewModel::selectPlace,
                     onRoute = viewModel::routeToPlace,
                     onNavigate = viewModel::navigateToPlace,
                     onModeChange = viewModel::setTravelMode,
-                    onClear = viewModel::clearMap
+                    onClear = viewModel::clearMap,
+                    onStyleChange = { viewModel.setMapStyle(it.id) },
+                    onFollow = viewModel::followLocation,
+                    onSaveHere = viewModel::saveHere,
+                    onRouteSaved = viewModel::routeToSaved
                 )
 
                 Element.Music -> MusicScreen(
@@ -428,6 +592,33 @@ private fun JarvisRoot(
                     onRestoreBackup = viewModel::restoreBackup,
                     onOpenSkills = { viewModel.showElement(Element.Skills) }
                 )
+            } }
+
+            // Decided in the same frame as the switch, so the destination never
+            // shows for a frame before the flight covers it.
+            val starting = element != previousElement &&
+                setOf(previousElement, element) == setOf(Element.Globe, Element.Map)
+            if ((flying || starting) && !showHistory) {
+                val progress = when {
+                    flying -> flight.value
+                    element == Element.Map -> 0f
+                    else -> 1f
+                }
+                // Lifts off over the last stretch, handing the frame to the
+                // screen that has been settling underneath it.
+                val lift = if (element == Element.Map) {
+                    1f - ((progress - 0.9f) / 0.1f).coerceIn(0f, 1f)
+                } else {
+                    (progress / 0.12f).coerceIn(0f, 1f)
+                }
+                GlobeMapFlight(
+                    progress = progress,
+                    map = map,
+                    tiles = viewModel.tiles,
+                    style = mapStyle,
+                    saved = savedPlaces,
+                    modifier = Modifier.alpha(lift)
+                )
             }
         }
 
@@ -471,6 +662,13 @@ private fun JarvisRoot(
  * belongs to rather than going blank whenever the assistant raises something
  * that has no icon of its own.
  */
+/** The three list screens, which share one element with tabs. */
+private val HUB = setOf(Element.Notes, Element.Tasks, Element.Money)
+
+/** Globe to map: long enough to read as a journey, short enough not to be waited on. */
+private const val FLIGHT_IN_MS = 1_750
+private const val FLIGHT_OUT_MS = 1_250
+
 private fun barSelection(element: Element): Element = when (element) {
     Element.Tasks, Element.Money -> Element.Notes
     Element.Music, Element.Devices, Element.Skills -> Element.Today

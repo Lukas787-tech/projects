@@ -7,7 +7,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.lukas.jarvis.AppContainer
 import com.lukas.jarvis.JarvisApp
+import android.graphics.Bitmap
+import com.lukas.jarvis.auto.Routine
 import com.lukas.jarvis.brief.DayBrief
+import com.lukas.jarvis.llm.AgentResult
+import com.lukas.jarvis.maps.SavedPlace
+import com.lukas.jarvis.vision.CameraBus
+import com.lukas.jarvis.vision.Photo
+import kotlinx.coroutines.Job
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.core.Vault
 import com.lukas.jarvis.stage.Element
@@ -71,7 +78,13 @@ data class AssistantUiState(
      * a trail of chips while Jarvis works, so a slow answer shows what it is
      * waiting on instead of a spinner that could mean anything.
      */
-    val activity: List<String> = emptyList()
+    val activity: List<String> = emptyList(),
+    /**
+     * Thumbnails of the photos in this session's thread, keyed by the
+     * message's creation time. Pictures are not stored with the history:
+     * the words of what was seen are, and that is what a later turn needs.
+     */
+    val photos: Map<Long, Bitmap> = emptyMap()
 )
 
 class AssistantViewModel(
@@ -224,7 +237,120 @@ class AssistantViewModel(
 
     private fun send(rawText: String) {
         val text = rawText.trim()
-        if (text.isBlank() || busy) return
+        if (text.isBlank()) return
+        turn(display = text) { onStage, onTool ->
+            container.agent.respond(
+                utterance = text,
+                settings = settingsStore.current,
+                history = historyBefore(),
+                onStage = onStage,
+                onTool = onTool
+            )
+        }
+    }
+
+    /**
+     * A photo and the question that goes with it.
+     *
+     * The picture is looked at first, by whichever model can see, and what it
+     * shows is written out in words. The turn itself then runs as usual on
+     * those words — so the text-only models, which are most of the pool, can
+     * still log the receipt, file the date off the poster, or remember the card.
+     */
+    fun sendPhoto(photo: Photo, question: String? = null) {
+        val asked = question?.trim().orEmpty().ifBlank {
+            container.camera.pending.value?.question ?: "What is this?"
+        }
+        container.camera.done()
+        lastTurnWasVoice = settingsStore.current.voiceMode
+        speaker.stop()
+        viewModelScope.launch {
+            // The turn that opened the camera may still be finishing its sentence;
+            // a quick shutter must not find the assistant busy and be dropped.
+            var waited = 0
+            while (busy && waited < 30_000) {
+                kotlinx.coroutines.delay(200)
+                waited += 200
+            }
+            photoTurn(photo, asked)
+        }
+    }
+
+    private fun photoTurn(photo: Photo, asked: String) {
+        val stamp = System.currentTimeMillis()
+        _ui.update { it.copy(photos = it.photos + (stamp to photo.preview)) }
+
+        turn(display = "\uD83D\uDCF7 $asked", createdAt = stamp, rewriteDisplay = true) { onStage, onTool ->
+            onStage("looking at the photo")
+            onTool("take_photo")
+            val seen = container.agent.look(settingsStore.current, asked, photo.dataUrl)
+            pendingDisplay = "\uD83D\uDCF7 $asked\n\n${seen.take(900)}"
+            val result = container.agent.respond(
+                utterance = "[PHOTO] What the picture I just took shows:\n$seen\n\nMy question: $asked",
+                settings = settingsStore.current,
+                history = historyBefore(),
+                onStage = onStage,
+                onTool = onTool
+            )
+            result.copy(toolsUsed = (listOf("take_photo") + result.toolsUsed).distinct())
+        }
+    }
+
+    /** The user closed the camera without taking anything. */
+    fun cancelPhoto() = container.camera.done()
+
+    val cameraRequests: StateFlow<CameraBus.Request?> = container.camera.pending
+
+    /** Asks for the camera from a button rather than a sentence. */
+    fun askCamera(question: String, fromGallery: Boolean = false) =
+        container.camera.ask(question, fromGallery)
+
+    /** Runs a routine from a tap or its notification: every step, then one spoken summary. */
+    fun runRoutine(name: String) {
+        val routine = container.routines.find(name) ?: run {
+            fail("There is no routine called '$name' any more.")
+            return
+        }
+        lastTurnWasVoice = false
+        container.routines.markRun(routine.name)
+        turn(display = "Run my ${routine.name} routine") { onStage, onTool ->
+            AgentResult(
+                reply = container.agent.runRoutine(routine, settingsStore.current, onStage, onTool),
+                effects = com.lukas.jarvis.llm.ToolEffects(true, true, true),
+                toolsUsed = listOf("run_routine")
+            )
+        }
+    }
+
+    val routines: StateFlow<List<Routine>> = container.routines.all
+
+    fun saveRoutine(routine: Routine) {
+        container.routines.save(routine)
+    }
+
+    fun deleteRoutine(name: String) {
+        container.routines.remove(name)
+    }
+
+    private fun historyBefore(): List<ChatMessage> =
+        _ui.value.messages.dropLast(1).takeLast(HISTORY_TURNS)
+
+    /** Set by a photo turn once it knows what it saw, so the thread keeps the words. */
+    @Volatile
+    private var pendingDisplay: String? = null
+
+    /**
+     * One exchange, whatever started it: the user's line goes up at once, the
+     * work runs off the main thread with its stages and tools shown, and the
+     * answer is stored, shown and spoken.
+     */
+    private fun turn(
+        display: String,
+        createdAt: Long = System.currentTimeMillis(),
+        rewriteDisplay: Boolean = false,
+        work: suspend (onStage: (String) -> Unit, onTool: (String) -> Unit) -> AgentResult
+    ) {
+        if (busy) return
         val current = settingsStore.current
         // A configured pool is enough on its own; the single-provider settings
         // are only the fallback when no pool exists.
@@ -237,7 +363,8 @@ class AssistantViewModel(
         }
 
         busy = true
-        val userMessage = ChatMessage(role = ChatMessage.ROLE_USER, content = text)
+        pendingDisplay = null
+        val userMessage = ChatMessage(role = ChatMessage.ROLE_USER, content = display, createdAt = createdAt)
         _ui.value = _ui.value.copy(
             stage = Stage.Thinking,
             stageLabel = "thinking",
@@ -249,29 +376,20 @@ class AssistantViewModel(
 
         viewModelScope.launch {
             try {
-                val userId = withContext(Dispatchers.IO) { brain.addMessage(userMessage) }
-                _ui.update { state ->
-                    state.copy(
-                        messages = state.messages.map { if (it === userMessage) it.copy(id = userId) else it }
-                    )
-                }
-                val history = _ui.value.messages.dropLast(1).takeLast(HISTORY_TURNS)
+                if (!rewriteDisplay) storeUserMessage(userMessage, userMessage)
 
                 // The agent hits SQLite and the network throughout, so the whole
                 // loop runs off the main thread. Stage updates are safe from here
                 // because StateFlow assignment is thread-safe.
                 val result = withContext(Dispatchers.IO) {
-                    container.agent.respond(
-                        utterance = text,
-                        settings = current,
-                        history = history,
-                        onStage = { label ->
-                            _ui.update { it.copy(stage = Stage.Thinking, stageLabel = label) }
-                        },
-                        onTool = { name ->
-                            _ui.update { it.copy(activity = it.activity + name) }
-                        }
+                    work(
+                        { label -> _ui.update { it.copy(stage = Stage.Thinking, stageLabel = label) } },
+                        { name -> _ui.update { it.copy(activity = it.activity + name) } }
                     )
+                }
+
+                if (rewriteDisplay) {
+                    storeUserMessage(userMessage, userMessage.copy(content = pendingDisplay ?: display))
                 }
 
                 val reply = ChatMessage(
@@ -297,12 +415,22 @@ class AssistantViewModel(
                     if (lastTurnWasVoice && current.handsFree) startListening()
                 }
             } catch (e: LlmException) {
+                if (rewriteDisplay) storeUserMessage(userMessage, userMessage)
                 fail(e.message ?: "The model call failed.")
             } catch (e: Exception) {
+                if (rewriteDisplay) storeUserMessage(userMessage, userMessage)
                 fail(e.message ?: "Something went wrong.")
             } finally {
                 busy = false
             }
+        }
+    }
+
+    /** Saves the user's line and swaps the on-screen copy for the stored one. */
+    private suspend fun storeUserMessage(shown: ChatMessage, stored: ChatMessage) {
+        val id = withContext(Dispatchers.IO) { brain.addMessage(stored) }
+        _ui.update { state ->
+            state.copy(messages = state.messages.map { if (it === shown) stored.copy(id = id) else it })
         }
     }
 
@@ -525,6 +653,92 @@ class AssistantViewModel(
     }
 
     fun setTravelMode(mode: String) = updateSettings { it.copy(travelMode = mode) }
+
+    fun setMapStyle(style: String) = updateSettings { it.copy(mapStyle = style) }
+
+    val savedPlaces: StateFlow<List<SavedPlace>> = container.savedPlaces.places
+
+    private var following: Job? = null
+
+    /**
+     * Keeps the dot live while the map is on screen. Started and stopped by
+     * the map itself, so the GPS is only on while someone is looking at it.
+     */
+    fun followLocation(on: Boolean) {
+        following?.cancel()
+        following = null
+        if (!on) return
+        following = viewModelScope.launch {
+            container.locator.updates().collect { fix ->
+                container.mapStore.setFix(fix)
+                nameTheStreet(fix.point)
+            }
+        }
+    }
+
+    private val _hereLabel = MutableStateFlow<String?>(null)
+
+    /** The street you are on, for the card at the top of the map. */
+    val hereLabel: StateFlow<String?> = _hereLabel.asStateFlow()
+    private var labelledAt: com.lukas.jarvis.maps.GeoPoint? = null
+
+    /**
+     * Asks Nominatim for the street only after moving a real distance: its
+     * policy is one request a second at most, and walking pace would ask ten
+     * times a minute for the same road.
+     */
+    private fun nameTheStreet(point: com.lukas.jarvis.maps.GeoPoint) {
+        val last = labelledAt
+        if (last != null && com.lukas.jarvis.maps.Geo.distance(last, point) < 120) return
+        labelledAt = point
+        viewModelScope.launch {
+            val full = withContext(Dispatchers.IO) {
+                runCatching { container.places.describe(point) }.getOrNull()
+            } ?: return@launch
+            // "12, Bahnhofstraße, Mitte, Berlin, …" -> "Bahnhofstraße 12, Mitte"
+            val parts = full.split(",").map { it.trim() }.filter { it.isNotBlank() }
+            val label = if (parts.size >= 2 && parts[0].any { it.isDigit() } && parts[0].length <= 6) {
+                "${parts[1]} ${parts[0]}" + (parts.getOrNull(2)?.let { ", $it" } ?: "")
+            } else {
+                parts.take(2).joinToString(", ")
+            }
+            _hereLabel.value = label
+        }
+    }
+
+    /** "I parked here", from a button: the spot is saved and said back. */
+    fun saveHere(name: String) {
+        viewModelScope.launch {
+            val message = withContext(Dispatchers.IO) {
+                container.navigator.savePlace(name, note = null, useSelectedPin = false)
+            }
+            report(message)
+        }
+    }
+
+    /** Draws the way to a saved place, from a button on the map or the day. */
+    fun routeToSaved(name: String) {
+        if (_routing.value) return
+        if (container.savedPlaces.find(name) == null) {
+            fail(
+                if (name == "car") "No parked car saved yet. Tap Park when you leave it."
+                else "No place called $name yet. Say \"save this as $name\" when you are there."
+            )
+            return
+        }
+        _routing.value = true
+        viewModelScope.launch {
+            val message = withContext(Dispatchers.IO) {
+                container.navigator.routeTo(name, null, settingsStore.current)
+            }
+            _routing.value = false
+            if (container.mapStore.current.route == null) fail(message)
+        }
+    }
+
+    fun forgetSavedPlace(name: String) {
+        container.savedPlaces.remove(name)
+    }
 
     fun clearMap() = container.mapStore.clear()
 

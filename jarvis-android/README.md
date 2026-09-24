@@ -122,6 +122,33 @@ OSRM for routing, and the standard OSM tiles for the map itself, which is why
 there is no API key and no bill here either. Location stays on the phone; it is
 only ever sent as the coordinates of a lookup.
 
+**Sees.** Tap the camera (or say "what is this", "read this sign", "scan this
+receipt") and Jarvis looks through the phone's camera. The photo goes to
+whichever model in your pool can see — a Gemini key is the free way to have
+one — and what it shows is written out in words, so the rest of the turn runs
+on any model: a receipt is logged to the right tracker, a poster's date becomes
+a reminder, a business card is remembered. The gallery works too.
+
+**Remembers places.** "I parked here", "this is home", "save this as work".
+"Take me home" or "where's my car" then draws the way, and the Today screen
+and the map carry one-tap buttons for each. "Send Anna my location" texts a
+map link.
+
+**Runs routines.** Several things under one name — "every morning at seven,
+tell me my day, the weather, and play the radio". Say its name, tap it on
+Today, or tap the notification that arrives at its time; each step runs as its
+own turn and one summary is spoken at the end.
+
+**Looks things up on Wikipedia** in the phone's language, for "tell me about…".
+
+**A real map.** Full screen, with sharp double-resolution tiles in dark, light
+or satellite, a live blue dot with its accuracy circle and a compass cone for
+the way you are facing, the street you are on at the top, zoom and locate-me
+buttons, double-tap zoom, a scale bar, and results in a sheet that folds away.
+Going from the globe to the map is one camera move: the globe turns the place
+to the front and closes in, and the map opens in a circle at the same scale and
+keeps zooming.
+
 **Speaks.** Replies are read aloud, and hands-free mode hands the microphone
 straight back so you can keep talking.
 

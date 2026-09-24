@@ -18,6 +18,7 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 val brain = Brain(context)
                 Reminders(context).rescheduleAll(brain.pendingReminders())
+                com.lukas.jarvis.auto.Routines(context).rescheduleAll()
             } finally {
                 pending.finish()
             }

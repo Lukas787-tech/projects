@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -34,6 +35,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
@@ -54,12 +57,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.data.ChatMessage
 import com.lukas.jarvis.llm.ToolGroup
 import com.lukas.jarvis.maps.MapState
+import com.lukas.jarvis.maps.MapStyle
 import com.lukas.jarvis.maps.TileCache
 import com.lukas.jarvis.ui.components.ChipButton
 import com.lukas.jarvis.ui.components.ModeSwitch
@@ -70,6 +75,7 @@ import com.lukas.jarvis.ui.components.icon
 import com.lukas.jarvis.ui.globe.Globe
 import com.lukas.jarvis.ui.globe.GlobeMood
 import com.lukas.jarvis.ui.map.MapCanvas
+import com.lukas.jarvis.ui.map.zoomForWorldWidth
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.Corner
 import com.lukas.jarvis.ui.theme.Film
@@ -113,7 +119,10 @@ fun VoiceScreen(
     onOpenSettings: () -> Unit,
     onOpenSkills: () -> Unit,
     onOpenMap: () -> Unit,
-    modifier: Modifier = Modifier
+    onCamera: () -> Unit,
+    onGallery: () -> Unit,
+    modifier: Modifier = Modifier,
+    mapStyle: MapStyle = MapStyle.Dark
 ) {
     Column(
         modifier = modifier
@@ -131,6 +140,14 @@ fun VoiceScreen(
                 modifier = Modifier.weight(1f)
             )
             ModeSwitch(voice = voiceMode, onChange = onModeChange)
+            IconButton(onClick = onCamera, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    Icons.Default.PhotoCamera,
+                    contentDescription = "Show Jarvis something",
+                    tint = TextFaint,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
             IconButton(onClick = onOpenSkills, modifier = Modifier.size(40.dp)) {
                 Icon(
                     Icons.Default.AutoAwesome,
@@ -155,6 +172,7 @@ fun VoiceScreen(
                 configured = configured,
                 map = map,
                 tiles = tiles,
+                mapStyle = mapStyle,
                 starters = starters,
                 onSend = onSend,
                 onOpenMap = onOpenMap,
@@ -176,16 +194,25 @@ fun VoiceScreen(
         ErrorStrip(error = state.error, onDismiss = onDismissError)
 
         if (!voiceMode) {
-            Composer(onSend = onSend, onOpenHistory = onOpenHistory)
+            Composer(
+                onSend = onSend,
+                onOpenHistory = onOpenHistory,
+                onCamera = onCamera,
+                onGallery = onGallery
+            )
         } else {
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(bottom = Space.gutter),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = Space.snug),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Tag(
-                    text = statusText(state, configured),
-                    tint = if (state.stage == Stage.Idle) TextFaint else Accent
-                )
+                RoundAction(Icons.Default.PhotoLibrary, "Pick a photo to show Jarvis", onGallery)
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Tag(
+                        text = statusText(state, configured),
+                        tint = if (state.stage == Stage.Idle) TextFaint else Accent
+                    )
+                }
+                RoundAction(Icons.Default.PhotoCamera, "Show Jarvis something", onCamera)
             }
         }
     }
@@ -207,6 +234,7 @@ private fun VoiceBody(
     configured: Boolean,
     map: MapState,
     tiles: TileCache,
+    mapStyle: MapStyle,
     starters: List<Pair<ToolGroup, String>>,
     onSend: (String) -> Unit,
     onOpenMap: () -> Unit,
@@ -230,12 +258,19 @@ private fun VoiceBody(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
             contentAlignment = Alignment.Center
         ) {
+            val density = LocalDensity.current.density
+            val side = minOf(constraints.maxWidth, constraints.maxHeight).toFloat()
+            // The globe's closest approach, as a flat world: where the map opens.
+            val globeZoom = zoomForWorldWidth(
+                (2 * Math.PI * side / 2f * 0.86f * 6.5f).toFloat(),
+                density
+            )
             // The globe turns and nothing else. Speaking moved to the dot
             // below, which is on every element rather than only this one, so
             // the microphone is no longer tied to whichever screen happens to
@@ -261,7 +296,14 @@ private fun VoiceBody(
                         .clip(CircleShape)
                         .clickable { onOpenMap() }
                 ) {
-                    MapCanvas(state = map, tiles = tiles, onSelectPlace = {})
+                    MapCanvas(
+                        state = map,
+                        tiles = tiles,
+                        style = mapStyle,
+                        intro = reveal,
+                        introFromZoom = globeZoom,
+                        interactive = false
+                    )
                 }
             }
         }
@@ -455,7 +497,7 @@ private fun TextBody(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         items(state.messages, key = { messageKey(it) }) { message ->
-            MessageBubble(message)
+            MessageBubble(message, state.photos[message.createdAt])
         }
         if (working) {
             item(key = "working") {
@@ -573,8 +615,27 @@ private fun ErrorStrip(error: String?, onDismiss: () -> Unit) {
     }
 }
 
+/** A round glass button beside the status line, sized for a thumb. */
 @Composable
-private fun Composer(onSend: (String) -> Unit, onOpenHistory: () -> Unit) {
+private fun RoundAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .glass(CircleShape)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = label, tint = TextSecondary, modifier = Modifier.size(20.dp))
+    }
+}
+
+@Composable
+private fun Composer(
+    onSend: (String) -> Unit,
+    onOpenHistory: () -> Unit,
+    onCamera: () -> Unit,
+    onGallery: () -> Unit
+) {
     var draft by remember { mutableStateOf("") }
     val shape = RoundedCornerShape(24.dp)
 
@@ -598,6 +659,14 @@ private fun Composer(onSend: (String) -> Unit, onOpenHistory: () -> Unit) {
                 modifier = Modifier.size(19.dp)
             )
         }
+        IconButton(onClick = onCamera, modifier = Modifier.size(40.dp)) {
+            Icon(
+                Icons.Default.PhotoCamera,
+                contentDescription = "Take a photo for Jarvis",
+                tint = TextSecondary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
         TextField(
             value = draft,
             onValueChange = { draft = it },
@@ -605,6 +674,18 @@ private fun Composer(onSend: (String) -> Unit, onOpenHistory: () -> Unit) {
                 Text("Message", style = MaterialTheme.typography.bodyMedium, color = TextFaint)
             },
             singleLine = true,
+            trailingIcon = {
+                if (draft.isBlank()) {
+                    IconButton(onClick = onGallery) {
+                        Icon(
+                            Icons.Default.PhotoLibrary,
+                            contentDescription = "Pick a photo",
+                            tint = TextFaint,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+                }
+            },
             modifier = Modifier
                 .weight(1f)
                 .clip(shape)

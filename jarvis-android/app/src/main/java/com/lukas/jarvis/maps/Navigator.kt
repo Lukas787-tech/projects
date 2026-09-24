@@ -14,7 +14,8 @@ import java.util.Locale
 class Navigator(
     private val locator: Locator,
     private val places: PlacesClient,
-    private val store: MapStore
+    private val store: MapStore,
+    private val saved: SavedPlaces
 ) {
 
     suspend fun findPlaces(
@@ -115,6 +116,56 @@ class Navigator(
         }
     }
 
+    /**
+     * Pins where the phone is now — or the selected result — under a name.
+     * "I parked here" and "this is home" are the same call.
+     */
+    suspend fun savePlace(name: String, note: String?, useSelectedPin: Boolean): String {
+        if (name.isBlank()) return "What should I call this place?"
+        val point = if (useSelectedPin) {
+            store.current.selectedPlace?.point
+                ?: return "No place is selected on the map to save."
+        } else {
+            locator.current(maxAgeMillis = 60_000L)
+                ?: return noLocation()
+        }
+        val place = saved.save(name, point, note)
+        store.setHere(if (useSelectedPin) null else point)
+        val street = runCatching { places.describe(point) }.getOrNull()
+            ?.split(",")?.take(2)?.joinToString(",")?.trim()
+        val where = street?.let { " at $it" }.orEmpty()
+        return if (place.isCar) {
+            "Saved where you parked$where. Ask me for the way back to the car any time."
+        } else {
+            "Saved '${place.name}'$where. Say 'take me to ${place.name}' whenever you want the way."
+        }
+    }
+
+    fun savedPlaces(here: GeoPoint?): String {
+        val all = saved.all
+        if (all.isEmpty()) return "No saved places yet. Say 'save this as home' or 'I parked here'."
+        return all.joinToString("\n") { place ->
+            val away = here?.let { " — ${Geo.formatDistance(Geo.distance(it, place.point))} away" }.orEmpty()
+            "- ${place.name}$away" + (place.note?.let { " ($it)" } ?: "")
+        }
+    }
+
+    fun forgetPlace(name: String): String =
+        if (saved.remove(name)) "Forgot the saved place '$name'." else "No saved place called '$name'."
+
+    /** A link anyone can open, for "send Anna my location". */
+    suspend fun locationLink(): Pair<GeoPoint, String>? {
+        val here = locator.current(maxAgeMillis = 60_000L) ?: return null
+        store.setHere(here)
+        val link = String.format(
+            Locale.US,
+            "https://maps.google.com/?q=%.6f,%.6f",
+            here.lat,
+            here.lon
+        )
+        return here to link
+    }
+
     // ----------------------------------------------------------------- helpers
 
     private data class Anchor(val point: GeoPoint, val label: String)
@@ -141,6 +192,16 @@ class Navigator(
         val text = destination?.trim().orEmpty()
 
         if (text.isBlank()) return current.selectedPlace ?: current.places.firstOrNull()
+
+        // "Home", "the car", "work": a name the user gave a place beats any search.
+        saved.find(text)?.let { place ->
+            return Place(
+                name = if (place.isCar) "your parked car" else place.name,
+                point = place.point,
+                category = "saved place",
+                distanceMeters = here?.let { Geo.distance(it, place.point) }
+            )
+        }
 
         ordinal(text)?.let { index -> current.places.getOrNull(index)?.let { return it } }
 

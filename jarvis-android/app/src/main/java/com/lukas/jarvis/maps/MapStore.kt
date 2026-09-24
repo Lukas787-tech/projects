@@ -18,7 +18,11 @@ data class MapState(
     val here: GeoPoint? = null,
     val places: List<Place> = emptyList(),
     val selected: Int = -1,
-    val route: Route? = null
+    val route: Route? = null,
+    /** How far off [here] may be, drawn as the pale disc around the dot. */
+    val accuracy: Float? = null,
+    /** Direction of travel from GPS while moving; the compass covers standing still. */
+    val bearing: Float? = null
 ) {
     val selectedPlace: Place? get() = places.getOrNull(selected)
 
@@ -79,6 +83,14 @@ class MapStore(context: Context) {
         _state.value = _state.value.copy(here = point)
     }
 
+    /** A live reading. It moves the dot but never reframes the map. */
+    fun setFix(fix: Fix) {
+        val state = _state.value
+        val moved = state.here?.let { Geo.distance(it, fix.point) } ?: Double.MAX_VALUE
+        if (moved < 1.5 && state.accuracy == fix.accuracyMeters) return
+        _state.value = state.copy(here = fix.point, accuracy = fix.accuracyMeters, bearing = fix.bearing)
+    }
+
     fun select(index: Int) {
         val state = _state.value
         if (index !in state.places.indices) return
@@ -92,7 +104,11 @@ class MapStore(context: Context) {
     }
 
     fun clear() {
-        _state.value = MapState(revision = _state.value.revision, here = _state.value.here)
+        _state.value = MapState(
+            revision = _state.value.revision,
+            here = _state.value.here,
+            accuracy = _state.value.accuracy
+        )
     }
 
     /**

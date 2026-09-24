@@ -9,9 +9,22 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
+
+/** One reading of where the phone is, with how sure it is and which way it moves. */
+data class Fix(
+    val point: GeoPoint,
+    /** Radius in metres the true position is likely inside. */
+    val accuracyMeters: Float?,
+    /** Direction of travel in degrees from north, while moving. */
+    val bearing: Float?,
+    val speedMps: Float?
+)
 
 /**
  * Where the phone is, using the platform LocationManager only.
@@ -50,6 +63,56 @@ class Locator(context: Context) {
         val live = withTimeoutOrNull(timeoutMillis) { requestSingleFix() }
         return live?.let { remember(it) } ?: bestLastKnown(Long.MAX_VALUE)?.let { remember(it) }
             ?: remembered()
+    }
+
+    /**
+     * A running position for as long as it is collected: the map follows this
+     * while it is on screen and lets go the moment it is not, so the GPS is
+     * never left on for a screen nobody is looking at.
+     */
+    @SuppressLint("MissingPermission") // checked on the first line
+    fun updates(intervalMillis: Long = 2_000L): Flow<Fix> = callbackFlow {
+        val manager = manager
+        if (!hasPermission || manager == null) {
+            close()
+            return@callbackFlow
+        }
+        fun emit(location: Location) {
+            remember(location)
+            trySend(
+                Fix(
+                    point = GeoPoint(location.latitude, location.longitude),
+                    accuracyMeters = if (location.hasAccuracy()) location.accuracy else null,
+                    bearing = if (location.hasBearing() && location.hasSpeed() && location.speed > 0.8f) {
+                        location.bearing
+                    } else {
+                        null
+                    },
+                    speedMps = if (location.hasSpeed()) location.speed else null
+                )
+            )
+        }
+        bestLastKnown(10 * 60_000L)?.let { emit(it) }
+
+        val listener = object : LocationListener {
+            override fun onLocationChanged(location: Location) = emit(location)
+
+            @Deprecated("Required on API < 29")
+            override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) = Unit
+
+            override fun onProviderDisabled(provider: String) = Unit
+            override fun onProviderEnabled(provider: String) = Unit
+        }
+        // Both radios: the network one answers in a second indoors, GPS sharpens
+        // it to a few metres outside. Whichever is fresher wins on screen.
+        listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER).forEach { provider ->
+            if (runCatching { manager.isProviderEnabled(provider) }.getOrDefault(false)) {
+                runCatching {
+                    manager.requestLocationUpdates(provider, intervalMillis, 3f, listener, Looper.getMainLooper())
+                }
+            }
+        }
+        awaitClose { runCatching { manager.removeUpdates(listener) } }
     }
 
     /** The freshest usable fix any provider already has. */

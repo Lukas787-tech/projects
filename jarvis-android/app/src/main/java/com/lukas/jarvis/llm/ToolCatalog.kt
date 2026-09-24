@@ -12,7 +12,7 @@ import java.util.Locale
  */
 enum class ToolGroup {
     Memory, Money, Tasks, Thinking, Web, Weather, Places,
-    Calendar, People, Phone, Messages, Media, Screen
+    Calendar, People, Phone, Messages, Media, Screen, Vision, Automation
 }
 
 /**
@@ -75,6 +75,7 @@ object ToolCatalog {
         ToolInfo("web_search", ToolGroup.Web, "searching the web", "Web", readOnly = true),
         ToolInfo("open_url", ToolGroup.Web, "reading a page", "Page", readOnly = true),
         ToolInfo("convert_currency", ToolGroup.Web, "checking the rate", "Currency", readOnly = true),
+        ToolInfo("wikipedia", ToolGroup.Web, "reading Wikipedia", "Wikipedia", readOnly = true),
         ToolInfo("weather", ToolGroup.Weather, "checking the sky", "Weather", readOnly = true),
 
         // places; these draw on the map, so none of them counts as a pure read
@@ -82,6 +83,10 @@ object ToolCatalog {
         ToolInfo("route_to", ToolGroup.Places, "finding the way", "Route"),
         ToolInfo("start_navigation", ToolGroup.Places, "opening directions", "Navigation"),
         ToolInfo("where_am_i", ToolGroup.Places, "checking where you are", "Location"),
+        ToolInfo("save_place", ToolGroup.Places, "saving the spot", "Saved place"),
+        ToolInfo("saved_places", ToolGroup.Places, "checking your places", "Places", readOnly = true),
+        ToolInfo("forget_place", ToolGroup.Places, "forgetting the place", "Place"),
+        ToolInfo("share_location", ToolGroup.Places, "sharing where you are", "Location"),
 
         // calendar and people
         ToolInfo("calendar", ToolGroup.Calendar, "reading your calendar", "Calendar", readOnly = true),
@@ -116,7 +121,17 @@ object ToolCatalog {
         ToolInfo("play_music", ToolGroup.Media, "starting the music", "Music"),
         ToolInfo("control_playback", ToolGroup.Media, "the music", "Playback"),
         ToolInfo("bluetooth", ToolGroup.Media, "checking Bluetooth", "Bluetooth"),
-        ToolInfo("show", ToolGroup.Screen, "putting it on screen", "Screen")
+        ToolInfo("show", ToolGroup.Screen, "putting it on screen", "Screen"),
+
+        // eyes
+        ToolInfo("take_photo", ToolGroup.Vision, "opening the camera", "Camera"),
+        ToolInfo("open_camera", ToolGroup.Vision, "opening the camera app", "Camera"),
+
+        // doing several things at once
+        ToolInfo("create_routine", ToolGroup.Automation, "setting up the routine", "Routine"),
+        ToolInfo("run_routine", ToolGroup.Automation, "running the routine", "Routine"),
+        ToolInfo("list_routines", ToolGroup.Automation, "checking routines", "Routines", readOnly = true),
+        ToolInfo("delete_routine", ToolGroup.Automation, "removing the routine", "Routine")
     )
 
     private val byName: Map<String, ToolInfo> = ALL.associateBy { it.name }
@@ -182,7 +197,16 @@ object ToolCatalog {
         "flashlight" to "torch",
         "play" to "play_music", "play_song" to "play_music",
         "open" to "open_app", "launch_app" to "open_app", "open_application" to "open_app",
-        "display" to "show", "show_screen" to "show", "show_element" to "show"
+        "display" to "show", "show_screen" to "show", "show_element" to "show",
+        "camera" to "take_photo", "photo" to "take_photo", "look" to "take_photo",
+        "analyze_image" to "take_photo", "scan" to "take_photo", "see" to "take_photo",
+        "wiki" to "wikipedia", "encyclopedia" to "wikipedia",
+        "park" to "save_place", "remember_place" to "save_place", "save_location" to "save_place",
+        "list_places" to "saved_places", "my_places" to "saved_places",
+        "send_location" to "share_location", "my_location" to "share_location",
+        "routine" to "run_routine", "start_routine" to "run_routine",
+        "make_routine" to "create_routine", "add_routine" to "create_routine",
+        "routines" to "list_routines"
     )
 
     /**
@@ -329,7 +353,8 @@ object Abilities {
             "Live search, reading a page, and today's exchange rates.",
             listOf(
                 "What's in the news today?",
-                "What's 50 dollars in euros?"
+                "What's 50 dollars in euros?",
+                "Tell me about the Brandenburg Gate"
             ),
             AbilitySwitch.Web
         ),
@@ -344,7 +369,13 @@ object Abilities {
             ToolGroup.Places,
             "Places and routes",
             "Finds what is nearby, pins it on the map and draws the way there.",
-            listOf("I'm hungry, what's around here?", "How do I get to the second one?"),
+            listOf(
+                "I'm hungry, what's around here?",
+                "How do I get to the second one?",
+                "I parked here",
+                "Take me home",
+                "Send Anna my location"
+            ),
             AbilitySwitch.Maps
         ),
         Ability(
@@ -391,6 +422,27 @@ object Abilities {
             listOf("Play Sonne by Rammstein", "Skip this song", "Volume to 40 percent")
         ),
         Ability(
+            ToolGroup.Vision,
+            "Camera and photos",
+            "Takes a picture and looks at it: reads signs and menus, logs a receipt, " +
+                "copies an event off a poster, tells you what something is.",
+            listOf(
+                "What am I looking at?",
+                "Scan this receipt and log it",
+                "Translate this sign"
+            )
+        ),
+        Ability(
+            ToolGroup.Automation,
+            "Routines",
+            "Several things under one name, run when you say it or nudged at a set time.",
+            listOf(
+                "Make a morning routine: my day, the weather, then play music at 7",
+                "Run my morning routine",
+                "What routines do I have?"
+            )
+        ),
+        Ability(
             ToolGroup.Screen,
             "The screen",
             "Puts the right thing in front of you when an answer is better seen.",
@@ -405,7 +457,10 @@ object Abilities {
             .let { firsts ->
                 // The day and the money lead, because they are what a first
                 // question most often turns out to be about.
-                val preferred = listOf(ToolGroup.Thinking, ToolGroup.Weather, ToolGroup.Money, ToolGroup.Phone)
+                val preferred = listOf(
+                    ToolGroup.Thinking, ToolGroup.Vision, ToolGroup.Weather,
+                    ToolGroup.Money, ToolGroup.Phone
+                )
                 firsts.sortedBy { (group, _) ->
                     preferred.indexOf(group).let { if (it < 0) preferred.size else it }
                 }

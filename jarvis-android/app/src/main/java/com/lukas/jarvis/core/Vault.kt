@@ -27,7 +27,7 @@ import org.json.JSONObject
 object Vault {
 
     private const val VERSION = 1
-    private val STORES = listOf("jarvis_settings", "jarvis_pool")
+    private val STORES = listOf("jarvis_settings", "jarvis_pool", "jarvis_places", "jarvis_routines")
 
     /** The current state of every store, as text to write to a file. */
     fun export(context: Context): String {

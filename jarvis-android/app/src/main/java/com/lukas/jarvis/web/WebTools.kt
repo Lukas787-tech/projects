@@ -67,6 +67,36 @@ class WebTools {
         null
     }
 
+    /**
+     * The opening of a Wikipedia article, in the phone's language first.
+     *
+     * Search then summary: the summary endpoint wants an exact title, and
+     * nobody says one. Keyless, and the one source here that is written to be
+     * read out loud.
+     */
+    suspend fun wikipedia(query: String, language: String): String? = withContext(Dispatchers.IO) {
+        val languages = listOf(language.lowercase(), "en").distinct()
+        for (lang in languages) {
+            val encoded = URLEncoder.encode(query, "UTF-8")
+            val search = runCatching {
+                JSONObject(fetch("https://$lang.wikipedia.org/w/rest.php/v1/search/title?q=$encoded&limit=1"))
+            }.getOrNull() ?: continue
+            val key = search.optJSONArray("pages")?.optJSONObject(0)?.optString("key")
+                ?.takeIf { it.isNotBlank() } ?: continue
+            val summary = runCatching {
+                JSONObject(
+                    fetch("https://$lang.wikipedia.org/api/rest_v1/page/summary/" +
+                        URLEncoder.encode(key, "UTF-8").replace("+", "%20"))
+                )
+            }.getOrNull() ?: continue
+            val extract = summary.optString("extract").trim()
+            if (extract.isBlank()) continue
+            val title = summary.optString("title").ifBlank { key }
+            return@withContext "$title (Wikipedia, $lang): $extract"
+        }
+        null
+    }
+
     /** Fetches a URL and flattens it to readable text. */
     suspend fun readPage(url: String, maxChars: Int = 6000): String = withContext(Dispatchers.IO) {
         val normalized = if (url.startsWith("http")) url else "https://$url"

@@ -1,5 +1,7 @@
 package com.lukas.jarvis.llm
 
+import com.lukas.jarvis.auto.Routine
+import com.lukas.jarvis.auto.Routines
 import com.lukas.jarvis.brief.Briefer
 import com.lukas.jarvis.control.Agenda
 import com.lukas.jarvis.control.Caller
@@ -32,6 +34,7 @@ import com.lukas.jarvis.notify.ReplyListener
 import com.lukas.jarvis.notify.Reminders
 import com.lukas.jarvis.web.Currency
 import com.lukas.jarvis.web.Weather
+import com.lukas.jarvis.vision.CameraBus
 import com.lukas.jarvis.web.WebTools
 import org.json.JSONArray
 import org.json.JSONObject
@@ -76,8 +79,18 @@ class Tools(
     private val messenger: Messenger,
     private val caller: Caller,
     private val chats: Chats,
-    private val currency: Currency
+    private val currency: Currency,
+    private val camera: CameraBus,
+    private val routines: Routines
 ) {
+
+    /**
+     * Runs a routine's steps as turns of their own. Set by the container once
+     * the agent exists, since the agent is built from these tools; null while
+     * a routine is already running, so a routine cannot start itself.
+     */
+    @Volatile
+    var routineRunner: (suspend (Routine, Settings) -> String)? = null
 
     fun schemas(settings: Settings): List<JSONObject> = buildList {
         addAll(memoryTools())
@@ -92,6 +105,8 @@ class Tools(
         if (settings.deviceControlEnabled) addAll(deviceTools())
         addAll(mediaTools())
         add(showTool())
+        addAll(visionTools(settings))
+        addAll(routineTools())
     }
 
     // ------------------------------------------------------------ the schemas
@@ -334,6 +349,16 @@ class Tools(
             listOf("url")
         ),
         tool(
+            "wikipedia",
+            "The opening of the Wikipedia article on a person, place, thing or idea. Use for " +
+                "'who was', 'what is', 'tell me about' — facts that do not change by the day.",
+            props(
+                "topic" to str("What to look up, e.g. 'Brandenburg Gate'."),
+                "language" to str("Two-letter language code to prefer, e.g. 'de'. Omit for the phone's.")
+            ),
+            listOf("topic")
+        ),
+        tool(
             "convert_currency",
             "Convert money at today's real exchange rate. ALWAYS use this for any amount in " +
                 "one currency asked for in another; never use a rate you remember.",
@@ -400,6 +425,41 @@ class Tools(
             "Get the user's current street and area. Use when they ask where they are, or " +
                 "when an answer depends on which part of town they are in.",
             props(),
+            emptyList()
+        ),
+        tool(
+            "save_place",
+            "Remember a place under a name so it can be routed to later: 'I parked here' " +
+                "(name 'car'), 'this is home', 'save this as work', 'save that restaurant'. " +
+                "route_to and start_navigation accept these names afterwards.",
+            props(
+                "name" to str("Short name: 'car', 'home', 'work', or anything the user says."),
+                "note" to str("Anything worth keeping with it, e.g. 'level 2, bay 41'."),
+                "use_selected_pin" to bool("True to save the pin selected on the map instead of where the user is now.")
+            ),
+            listOf("name")
+        ),
+        tool(
+            "saved_places",
+            "List the places the user has saved, with how far each is from here.",
+            props(),
+            emptyList()
+        ),
+        tool(
+            "forget_place",
+            "Delete a saved place.",
+            props("name" to str("Its name.")),
+            listOf("name")
+        ),
+        tool(
+            "share_location",
+            "Give someone the user's current position as a map link. With a number it is " +
+                "texted straight away; without, the link comes back for you to use, for " +
+                "example in send_chat_message.",
+            props(
+                "number" to str("Phone number to text it to. Use find_contact first for a name."),
+                "who" to str("Who it is for, to say it back.")
+            ),
             emptyList()
         )
     )
@@ -663,6 +723,71 @@ class Tools(
         listOf("element")
     )
 
+    private fun visionTools(settings: Settings): List<JSONObject> = buildList {
+        add(
+            tool(
+                "take_photo",
+                "Open the camera so you can SEE something. Use whenever the user wants you to " +
+                    "look at, read, identify, translate, count or scan something in front of " +
+                    "them: 'what is this', 'read this', 'scan this receipt', 'translate that " +
+                    "sign', 'what plant is this'. The picture arrives as their next message, " +
+                    "described for you, with this question attached. After calling it, say " +
+                    "one short line such as 'Go ahead, take the picture' and nothing else.",
+                props(
+                    "question" to str("What to find out from the picture, in the user's words."),
+                    "source" to str("Where the picture comes from.", listOf("camera", "gallery"))
+                ),
+                listOf("question")
+            )
+        )
+        if (settings.deviceControlEnabled) {
+            add(
+                tool(
+                    "open_camera",
+                    "Open the phone's own camera app for the user to take pictures or video " +
+                        "themselves. Use take_photo instead when YOU need to see the picture.",
+                    props("mode" to str("What to shoot.", listOf("photo", "video"))),
+                    emptyList()
+                )
+            )
+        }
+    }
+
+    private fun routineTools(): List<JSONObject> = listOf(
+        tool(
+            "create_routine",
+            "Save a routine: several things done together under one name, optionally nudged " +
+                "every day at a time. Each step is one plain sentence exactly as the user would " +
+                "say it to you, e.g. 'How does my day look?', 'Play the radio'. Saving under an " +
+                "existing name replaces it.",
+            props(
+                "name" to str("Short name, e.g. 'morning', 'leaving home', 'bedtime'."),
+                "steps" to arr("The sentences to carry out, in order."),
+                "time" to str("Daily time as 'HH:MM' for a reminder to run it, or omit.")
+            ),
+            listOf("name", "steps")
+        ),
+        tool(
+            "run_routine",
+            "Carry out a saved routine now, every step. Use when the user names one: " +
+                "'good morning routine', 'run bedtime'.",
+            props("name" to str("Which routine.")),
+            listOf("name")
+        ),
+        tool(
+            "list_routines",
+            "List the saved routines and their steps.",
+            props(),
+            emptyList()
+        ),
+        tool(
+            "delete_routine",
+            "Delete a saved routine.",
+            props("name" to str("Which routine.")),
+            listOf("name")
+        )
+    )
+
     // ---------------------------------------------------------------- dispatch
 
     suspend fun execute(call: ToolCall, settings: Settings, effects: ToolEffects): String {
@@ -707,6 +832,15 @@ class Tools(
                 "route_to" -> routeTo(args, settings)
                 "start_navigation" -> startNavigation(args, settings)
                 "where_am_i" -> navigator.whereAmI()
+                "save_place" -> navigator.savePlace(
+                    name = args.optString("name").trim(),
+                    note = args.optString("note").trim().takeIf { it.isNotBlank() },
+                    useSelectedPin = args.optBoolean("use_selected_pin", false)
+                )
+                "saved_places" -> navigator.savedPlaces(locator.remembered())
+                "forget_place" -> navigator.forgetPlace(args.optString("name").trim())
+                "share_location" -> shareLocation(args)
+                "wikipedia" -> wikipedia(args)
 
                 // calendar and people
                 "calendar" -> agenda.describe(args.optInt("days", 1), args.optInt("limit", 10))
@@ -753,6 +887,19 @@ class Tools(
                 "control_playback" -> playback(args)
                 "bluetooth" -> bluetooth(args)
                 "show" -> show(args)
+
+                // eyes
+                "take_photo" -> takePhoto(args)
+                "open_camera" -> launcher.openCamera(args.optString("mode") == "video")
+
+                // routines
+                "create_routine" -> createRoutine(args)
+                "run_routine" -> runRoutine(args, settings)
+                "list_routines" -> listRoutines()
+                "delete_routine" -> {
+                    val name = args.optString("name").trim()
+                    if (routines.remove(name)) "Deleted the $name routine." else "No routine called '$name'."
+                }
 
                 else -> "Unknown tool '${call.name}'."
             }
@@ -1374,6 +1521,77 @@ class Tools(
             ?: return "I do not have an element called that. I have: ${Element.names()}."
         stage.show(wanted, args.optString("note").trim())
         return "Showing the ${wanted.title.lowercase(Locale.ROOT)}."
+    }
+
+    // ------------------------------------------------------------------- eyes
+
+    private fun takePhoto(args: JSONObject): String {
+        val question = args.optString("question").trim().ifBlank { "What is this?" }
+        camera.ask(question, fromGallery = args.optString("source") == "gallery")
+        return "The camera is opening for the user now. Tell them in one short line to take " +
+            "the picture, then stop. You will get the photo in their next message."
+    }
+
+    private suspend fun wikipedia(args: JSONObject): String {
+        val topic = args.optString("topic").trim()
+        if (topic.isBlank()) return "Need a topic to look up."
+        val language = args.optString("language").trim().ifBlank { Locale.getDefault().language }
+        return web.wikipedia(topic, language)
+            ?: "Wikipedia has no article that matches '$topic'."
+    }
+
+    private suspend fun shareLocation(args: JSONObject): String {
+        val (_, link) = navigator.locationLink()
+            ?: return "I do not have a location fix to share right now."
+        val number = args.optString("number").trim()
+        val who = args.optString("who").trim().ifBlank { number }
+        if (number.isBlank()) return "Current location link: $link"
+        if (!messenger.maySend) {
+            messenger.requestPermission()
+            return "I need permission to send texts — it is asking you now. The link is $link"
+        }
+        val sent = messenger.sendSms(number, "I'm here: $link")
+        return "$sent (location sent to $who)"
+    }
+
+    // --------------------------------------------------------------- routines
+
+    private fun createRoutine(args: JSONObject): String {
+        val name = args.optString("name").trim()
+        if (name.isBlank()) return "A routine needs a name."
+        val steps = args.optJSONArray("steps").toStringList().ifEmpty {
+            // Small models sometimes send the list as one string.
+            args.optString("steps").split('\n', ';').map { it.trim() }.filter { it.isNotBlank() }
+        }
+        if (steps.isEmpty()) return "A routine needs at least one step."
+        val rawTime = args.optString("time").trim()
+        val time = Routines.normalizeTime(rawTime)
+        val saved = routines.save(Routine(name = name, steps = steps, time = time))
+        val whenLine = saved.time?.let { " I will offer it every day at $it." }.orEmpty()
+        return "Saved the '${saved.name}' routine with ${saved.steps.size} step(s): " +
+            saved.steps.joinToString("; ") + "." + whenLine
+    }
+
+    private suspend fun runRoutine(args: JSONObject, settings: Settings): String {
+        val routine = routines.find(args.optString("name"))
+            ?: return if (routines.all.value.isEmpty()) {
+                "There are no routines yet. Tell me the steps and I will save one."
+            } else {
+                "No routine by that name. There is: " +
+                    routines.all.value.joinToString(", ") { it.name } + "."
+            }
+        val runner = routineRunner
+            ?: return "A routine is already running, so this one was not started inside it."
+        return runner(routine, settings)
+    }
+
+    private fun listRoutines(): String {
+        val all = routines.all.value
+        if (all.isEmpty()) return "No routines saved yet."
+        return all.joinToString("\n") { routine ->
+            "- ${routine.name}" + (routine.time?.let { " (daily at $it)" } ?: "") + ": " +
+                routine.steps.joinToString("; ")
+        }
     }
 
     // ---------------------------------------------------------------- messages

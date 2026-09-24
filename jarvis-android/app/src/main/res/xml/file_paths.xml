@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where the camera app writes a photo Jarvis was asked to look at. Only the
+     app's own cache, and only the one folder. -->
+<paths>
+    <cache-path name="photos" path="photos/" />
+</paths>

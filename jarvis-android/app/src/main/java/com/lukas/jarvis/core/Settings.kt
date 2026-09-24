@@ -40,7 +40,9 @@ data class Settings(
     val voiceMode: Boolean = true,
     /** The dot that floats over other apps. Off until asked for: it needs a
      *  permission Android only grants from its own settings page. */
-    val floatingDot: Boolean = false
+    val floatingDot: Boolean = false,
+    /** Which tiles the map is drawn with: dark, light or satellite. */
+    val mapStyle: String = "dark"
 ) {
     val isConfigured: Boolean
         get() = baseUrl.isNotBlank() && model.isNotBlank() &&
@@ -91,7 +93,8 @@ class SettingsStore(context: Context) {
             travelMode = prefs.getString(KEY_TRAVEL_MODE, Geo.MODE_WALK) ?: Geo.MODE_WALK,
             searchRadiusMeters = prefs.getInt(KEY_SEARCH_RADIUS, 1_500),
             voiceMode = prefs.getBoolean(KEY_VOICE_MODE, true),
-            floatingDot = prefs.getBoolean(KEY_FLOATING_DOT, false)
+            floatingDot = prefs.getBoolean(KEY_FLOATING_DOT, false),
+            mapStyle = prefs.getString(KEY_MAP_STYLE, "dark") ?: "dark"
         )
     }
 
@@ -133,6 +136,7 @@ class SettingsStore(context: Context) {
             .putInt(KEY_SEARCH_RADIUS, next.searchRadiusMeters)
             .putBoolean(KEY_VOICE_MODE, next.voiceMode)
             .putBoolean(KEY_FLOATING_DOT, next.floatingDot)
+            .putString(KEY_MAP_STYLE, next.mapStyle)
             .apply()
         _state.value = next
     }
@@ -213,5 +217,6 @@ class SettingsStore(context: Context) {
         const val KEY_VOICE_MODE = "voice_mode"
         const val KEY_FLOATING_DOT = "floating_dot"
         const val KEY_SEARCH_RADIUS = "search_radius"
+        const val KEY_MAP_STYLE = "map_style"
     }
 }

@@ -68,6 +68,13 @@
             <action android:name="android.intent.action.INSERT" />
             <data android:mimeType="vnd.android.cursor.dir/event" />
         </intent>
+        <!-- The camera, for "what is this" and for opening the camera app. -->
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.media.action.STILL_IMAGE_CAMERA" />
+        </intent>
         <!-- Lets the app tell whether any maps app can take a handover. -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -158,6 +165,22 @@
         <receiver
             android:name=".notify.ReminderReceiver"
             android:exported="false" />
+
+        <!-- A routine's daily time: posts the one-tap notification. -->
+        <receiver
+            android:name=".auto.RoutineReceiver"
+            android:exported="false" />
+
+        <!-- Hands the camera app a file of ours to write the full-size photo into. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <receiver
             android:name=".notify.BootReceiver"

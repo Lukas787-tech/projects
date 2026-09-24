@@ -91,6 +91,71 @@ class PooledLlm(
         )
     }
 
+    /**
+     * Shows one picture to whichever endpoint can see.
+     *
+     * Most of the pool is text-only, and a text model handed an image answers
+     * with a 400 that reads exactly like a dead model id. So this walk is kept
+     * away from the pool's bookkeeping entirely: nothing is rested or marked
+     * broken because it could not look at a photo. Endpoints already known to
+     * see go first, then each account is tried once more with the model that
+     * provider serves pictures on, which is usually free on the same key.
+     */
+    suspend fun look(settings: Settings, prompt: String, imageDataUrl: String): String {
+        val message = LlmMessage(LlmMessage.USER, prompt, images = listOf(imageDataUrl))
+        val known = (pool.entries.value.map { it.endpoint }.filter { it.enabled } +
+            pool.plan(settings, limit = 40).endpoints +
+            listOfNotNull(
+                settings.takeIf { it.isConfigured }?.let {
+                    Endpoint(
+                        providerId = it.providerId,
+                        baseUrl = it.baseUrl,
+                        apiKey = it.apiKey,
+                        model = it.model
+                    )
+                }
+            )).distinctBy { it.providerId + it.model }
+
+        val candidates = buildList {
+            addAll(known.filter { seesPictures(it.model) })
+            known.distinctBy { it.providerId + it.apiKey }.forEach { account ->
+                VISION_MODELS[account.providerId]?.forEach { model ->
+                    add(account.copy(model = model))
+                }
+            }
+        }.distinctBy { it.providerId + it.model }.take(MAX_LOOKS)
+
+        if (candidates.isEmpty()) throw LlmException(NO_EYES, FailureKind.ModelMissing)
+
+        var last: LlmException? = null
+        for (endpoint in candidates) {
+            val attempt = settings.copy(
+                providerId = endpoint.providerId,
+                baseUrl = endpoint.baseUrl,
+                apiKey = endpoint.apiKey,
+                model = endpoint.model,
+                // A description is read, not spoken, so it may run longer.
+                maxTokens = maxOf(settings.maxTokens, 900)
+            )
+            try {
+                val reply = client.chat(attempt, listOf(message), emptyList(), Capability(tools = false))
+                reply.content?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
+            } catch (e: LlmException) {
+                last = e
+            }
+        }
+        val lastLine = last?.message?.lineSequence()?.firstOrNull()
+        throw LlmException(
+            NO_EYES + (lastLine?.let { "\n\nLast answer: $it" } ?: ""),
+            last?.kind ?: FailureKind.Unknown
+        )
+    }
+
+    private fun seesPictures(model: String): Boolean {
+        val id = model.lowercase()
+        return VISION_HINTS.any { id.contains(it) }
+    }
+
     private fun noEndpointError(plan: ModelPool.Plan): LlmException {
         if (plan.totalCount == 0) {
             return LlmException(
@@ -144,5 +209,34 @@ class PooledLlm(
          * at a silent orb.
          */
         const val MAX_WAIT_MS = 4_000L
+
+        /** A photo that five endpoints could not see is not going to be seen by a sixth. */
+        const val MAX_LOOKS = 6
+
+        const val NO_EYES = "None of your models can look at pictures. Add a Google Gemini " +
+            "key in Settings (free at aistudio.google.com) — its models can."
+
+        /** Model names that mean "takes images", across the providers in the picker. */
+        val VISION_HINTS = listOf(
+            "gemini", "gemma-3", "llama-4", "scout", "maverick", "vision", "-vl", "vl-",
+            "pixtral", "gpt-4o", "gpt-4.1", "gpt-5", "llava", "qwen2.5-vl", "glm-4v",
+            "mistral-small-3", "mistral-medium", "grok-2-vision", "grok-4", "kimi-vl",
+            "phi-4-multimodal", "claude"
+        )
+
+        /** The model each provider serves pictures on, tried on any key already in the pool. */
+        val VISION_MODELS: Map<String, List<String>> = mapOf(
+            Providers.GEMINI to listOf("gemini-2.5-flash", "gemini-2.0-flash"),
+            Providers.GROQ to listOf("meta-llama/llama-4-scout-17b-16e-instruct"),
+            Providers.OPENROUTER to listOf(
+                "meta-llama/llama-4-scout:free",
+                "google/gemma-3-27b-it:free"
+            ),
+            Providers.MISTRAL to listOf("pixtral-12b-2409", "mistral-small-latest"),
+            Providers.GITHUB to listOf("gpt-4o-mini"),
+            Providers.TOGETHER to listOf("meta-llama/Llama-4-Scout-17B-16E-Instruct"),
+            Providers.OPENAI to listOf("gpt-4o-mini"),
+            Providers.XAI to listOf("grok-2-vision-1212")
+        )
     }
 }
