@@ -48,7 +48,9 @@ class ScreensTest {
         val container = app.container
         runCatching { seed(container) }.onFailure { note("seed", it) }
 
+        progress("seeded; starting the activity")
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        progress("activity started")
         settle()
         shot(activity, "01-onboarding")
 
@@ -167,11 +169,19 @@ class ScreensTest {
             view.draw(Canvas(full))
             val small = Bitmap.createScaledBitmap(full, view.width / 2, view.height / 2, true)
             FileOutputStream(File(dir, "$name.png")).use { small.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            progress("rendered $name")
         }.onFailure { note(name, it) }
     }
 
     private fun note(what: String, error: Throwable) {
         report.appendLine("$what: ${error::class.java.simpleName}: ${error.message}")
         error.stackTrace.take(12).forEach { report.appendLine("    at $it") }
+        progress("failed $what: ${error.message}")
+    }
+
+    /** Written as it goes, so a run that hangs still says how far it got. */
+    private fun progress(line: String) {
+        println("[screens] $line")
+        runCatching { File(dir, "progress.txt").appendText("${System.currentTimeMillis()} $line\n") }
     }
 }

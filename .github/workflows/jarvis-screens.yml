@@ -18,6 +18,7 @@ jobs:
   screens:
     if: contains(github.event.head_commit.message, '[screens]')
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: jarvis-android
@@ -41,7 +42,10 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # A hang must not eat the job: the step stops, and whatever was
+      # rendered before it is still committed below.
       - name: Render the screens
+        timeout-minutes: 25
         run: |
           set -o pipefail
           ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.ScreensTest' --no-daemon 2>&1 | tee screens.log
@@ -59,6 +63,7 @@ jobs:
           mkdir -p ../docs/screens
           cp app/build/screens/*.png ../docs/screens/ 2>/dev/null || true
           cp app/build/screens/report.txt ../docs/screens/ 2>/dev/null || true
+          cp app/build/screens/progress.txt ../docs/screens/ 2>/dev/null || true
           # A failure before any picture still leaves its reason where it can be read.
           if [ ! -f ../docs/screens/report.txt ] || [ -z "$(ls app/build/screens/*.png 2>/dev/null)" ]; then
             { echo "Run ${GITHUB_RUN_ID}: no pictures."; grep -E "Exception|Caused by|What went wrong|^e: " screens.log | head -n 60; } > ../docs/screens/report.txt || true

@@ -69,6 +69,7 @@ android {
                     project.layout.buildDirectory.dir("screens").get().asFile.absolutePath
                 )
                 it.maxHeapSize = "3g"
+                it.testLogging.showStandardStreams = true
             }
         }
     }
