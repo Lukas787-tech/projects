@@ -147,7 +147,19 @@ the next one ahead instead of ringing every missed one. "Move that to Friday",
 "snooze it ten minutes" and "cancel the dentist" move or remove the task and its
 alarm rather than adding a second one.
 
-**Searches the web.** For anything current or outside the model's knowledge.
+**Keeps lists.** "Add oat milk to the shopping list", "put sunscreen on the
+packing list", "what's on my shopping list", "I got the eggs". Any number of
+named lists, one of each thing per list, and "groceries" or "Einkaufsliste"
+find the same one. The Lists tab shows them with a box to tick for each item.
+
+**Runs timers you can ask about.** "Ten minutes for the pasta" starts a named
+countdown that shows under the assistant's name and in the notification shade,
+rings until you stop it, and is spoken if the app is open. "How long is left on
+the pasta", "give it five more minutes" and "stop the timer" all work — which a
+timer handed to the clock app never could.
+
+**Searches the web.** For anything current or outside the model's knowledge —
+DuckDuckGo first, then Mojeek, then Wikipedia's own search if both are busy.
 
 **Does the arithmetic itself.** Percentages, splitting a bill, unit prices and
 conversions go through a parser rather than through the model, which is the
@@ -171,7 +183,10 @@ ringer, every volume, screen brightness (as the percentage the slider shows),
 Do Not Disturb — "no calls for an hour" ends by itself — the clipboard,
 battery and network and storage readouts, any installed app by name, and any
 page of Android settings. Brightness and Do Not Disturb each need one switch
-flipped in Android's own settings the first time; Jarvis opens the page.
+flipped in Android's own settings the first time; Jarvis opens the page. The
+**Devices** screen is the same as a control centre: ring / vibrate / silent,
+Do Not Disturb, the torch and auto-brightness as switches, and media, ring,
+alarm and brightness as sliders that start where the phone really is.
 
 **Reaches people, and finishes the job.** Texts are sent, WhatsApp, Signal and
 Telegram messages are answered straight from their notification, and new chats
