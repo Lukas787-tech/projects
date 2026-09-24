@@ -86,7 +86,9 @@ data class AssistantUiState(
      * message's creation time. Pictures are not stored with the history:
      * the words of what was seen are, and that is what a later turn needs.
      */
-    val photos: Map<Long, Bitmap> = emptyMap()
+    val photos: Map<Long, Bitmap> = emptyMap(),
+    /** The reply as it is being written, shown live before it is final. */
+    val draft: String = ""
 )
 
 class AssistantViewModel(
@@ -220,9 +222,11 @@ class AssistantViewModel(
     fun cancelTurn() {
         val job = turnJob ?: return
         job.cancel()
+        // The first sentences may already be being spoken.
+        speaker.stop()
         turnJob = null
         busy = false
-        _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "", activity = emptyList())
+        _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "", activity = emptyList(), draft = "")
     }
 
     fun startListening() {
@@ -268,13 +272,14 @@ class AssistantViewModel(
     private fun send(rawText: String) {
         val text = rawText.trim()
         if (text.isBlank()) return
-        turn(display = text) { onStage, onTool ->
+        turn(display = text) { onStage, onTool, onDraft ->
             container.agent.respond(
                 utterance = text,
                 settings = settingsStore.current,
                 history = historyBefore(),
                 onStage = onStage,
-                onTool = onTool
+                onTool = onTool,
+                onDraft = onDraft
             )
         }
     }
@@ -310,7 +315,7 @@ class AssistantViewModel(
         val stamp = System.currentTimeMillis()
         _ui.update { it.copy(photos = it.photos + (stamp to photo.preview)) }
 
-        turn(display = "\uD83D\uDCF7 $asked", createdAt = stamp, rewriteDisplay = true) { onStage, onTool ->
+        turn(display = "\uD83D\uDCF7 $asked", createdAt = stamp, rewriteDisplay = true) { onStage, onTool, onDraft ->
             onStage("looking at the photo")
             onTool("take_photo")
             // The phone reads the text, codes and objects itself, offline, while
@@ -346,7 +351,8 @@ class AssistantViewModel(
                 settings = settingsStore.current,
                 history = historyBefore(),
                 onStage = onStage,
-                onTool = onTool
+                onTool = onTool,
+                onDraft = onDraft
             )
             result.copy(toolsUsed = (listOf("take_photo") + result.toolsUsed).distinct())
         }
@@ -369,7 +375,7 @@ class AssistantViewModel(
         }
         lastTurnWasVoice = false
         container.routines.markRun(routine.name)
-        turn(display = "Run my ${routine.name} routine") { onStage, onTool ->
+        turn(display = "Run my ${routine.name} routine") { onStage, onTool, _ ->
             AgentResult(
                 reply = container.agent.runRoutine(routine, settingsStore.current, onStage, onTool),
                 effects = com.lukas.jarvis.llm.ToolEffects(true, true, true),
@@ -404,7 +410,11 @@ class AssistantViewModel(
         display: String,
         createdAt: Long = System.currentTimeMillis(),
         rewriteDisplay: Boolean = false,
-        work: suspend (onStage: (String) -> Unit, onTool: (String) -> Unit) -> AgentResult
+        work: suspend (
+            onStage: (String) -> Unit,
+            onTool: (String) -> Unit,
+            onDraft: (String) -> Unit
+        ) -> AgentResult
     ) {
         if (busy) {
             // Dropping a typed message without a word looked like a broken send button.
@@ -431,6 +441,7 @@ class AssistantViewModel(
             partial = "",
             error = null,
             activity = emptyList(),
+            draft = "",
             messages = _ui.value.messages + userMessage
         )
 
@@ -442,10 +453,17 @@ class AssistantViewModel(
                 // The agent hits SQLite and the network throughout, so the whole
                 // loop runs off the main thread. Stage updates are safe from here
                 // because StateFlow assignment is thread-safe.
+                // Speaking starts with the first finished sentence rather than
+                // after the whole reply, when the reply is going to be spoken.
+                val voice = if (current.speakReplies) SpokenDraft() else null
                 val result = withContext(Dispatchers.IO) {
                     work(
                         { label -> _ui.update { it.copy(stage = Stage.Thinking, stageLabel = label) } },
-                        { name -> _ui.update { it.copy(activity = it.activity + name) } }
+                        { name -> _ui.update { it.copy(activity = it.activity + name) } },
+                        { words ->
+                            _ui.update { it.copy(draft = words) }
+                            voice?.onDraft(words)
+                        }
                     )
                 }
 
@@ -464,14 +482,19 @@ class AssistantViewModel(
                 // it, and two replies both keyed 0 is a crash in a lazy list.
                 _ui.value = _ui.value.copy(
                     messages = _ui.value.messages + reply.copy(id = id),
-                    activity = emptyList()
+                    activity = emptyList(),
+                    draft = ""
                 )
 
                 if (result.effects.any) refreshAll()
 
                 if (current.speakReplies) {
                     _ui.value = _ui.value.copy(stage = Stage.Speaking, stageLabel = "speaking")
-                    speaker.speak(result.reply)
+                    if (speaker.isStreaming && voice != null) {
+                        speaker.endStream(voice.rest(result.reply))
+                    } else {
+                        speaker.speak(result.reply)
+                    }
                 } else {
                     _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "")
                     if (lastTurnWasVoice && current.handsFree) startListening()
@@ -496,6 +519,64 @@ class AssistantViewModel(
         }
     }
 
+    /**
+     * Feeds a reply to the speaker a sentence at a time while it is still
+     * being written, and works out at the end what is left to say.
+     *
+     * A draft that starts over — another endpoint answering, or a round that
+     * turned out to be a tool call — starts the count again; whatever was
+     * already said stays said, which for "let me check the weather" is exactly
+     * what a person would have heard anyway.
+     */
+    private inner class SpokenDraft {
+        private var current = ""
+        private var fed = 0
+
+        fun onDraft(words: String) {
+            if (words.isEmpty()) {
+                current = ""
+                fed = 0
+                return
+            }
+            current = words
+            val cut = boundary(words, fed)
+            if (cut > fed) {
+                speaker.feed(words.substring(fed, cut))
+                fed = cut
+            }
+        }
+
+        /** The part of the final reply not yet spoken. */
+        fun rest(reply: String): String {
+            val said = current.take(fed).trim()
+            if (said.isEmpty()) return reply
+            return when {
+                reply.startsWith(said) -> reply.substring(said.length)
+                squash(reply).startsWith(squash(said)) -> reply.drop(said.length.coerceAtMost(reply.length))
+                // The final wording drifted from the draft; better to finish
+                // with the whole answer than to leave half of it unsaid.
+                else -> reply
+            }
+        }
+
+        /** The end of the last whole sentence after [from], or [from] if there is none yet. */
+        private fun boundary(text: String, from: Int): Int {
+            var end = from
+            var i = from
+            while (i < text.length - 1) {
+                val c = text[i]
+                if ((c == '.' || c == '!' || c == '?' || c == '…' || c == '\n') && text[i + 1].isWhitespace()) {
+                    // Short fragments ("Hi.") wait for company, so speech is not choppy.
+                    if (i + 1 - from >= MIN_SPOKEN_CHUNK || end > from) end = i + 1
+                }
+                i++
+            }
+            return end
+        }
+
+        private fun squash(text: String) = text.replace(Regex("\\s+"), " ").trim()
+    }
+
     /** Saves the user's line and swaps the on-screen copy for the stored one. */
     private suspend fun storeUserMessage(shown: ChatMessage, stored: ChatMessage) {
         val id = withContext(Dispatchers.IO) { brain.addMessage(stored) }
@@ -509,7 +590,8 @@ class AssistantViewModel(
             stage = Stage.Idle,
             stageLabel = "",
             error = message,
-            activity = emptyList()
+            activity = emptyList(),
+            draft = ""
         )
     }
 
@@ -1074,6 +1156,9 @@ class AssistantViewModel(
 
     companion object {
         private const val HISTORY_TURNS = 20
+
+        /** The shortest piece of a reply worth speaking on its own while the rest is written. */
+        private const val MIN_SPOKEN_CHUNK = 24
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

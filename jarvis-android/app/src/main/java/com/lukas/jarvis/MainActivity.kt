@@ -598,7 +598,11 @@ private fun JarvisRoot(
                     routines = routines,
                     onRunRoutine = viewModel::runRoutine,
                     onSaveRoutine = viewModel::saveRoutine,
-                    onDeleteRoutine = viewModel::deleteRoutine
+                    onDeleteRoutine = viewModel::deleteRoutine,
+                    onAsk = { sentence ->
+                        viewModel.showElement(Element.Globe)
+                        viewModel.sendTyped(sentence)
+                    }
                 )
 
                 Element.Globe -> VoiceScreen(

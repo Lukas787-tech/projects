@@ -33,14 +33,24 @@ class Agent(
     private val brain: Brain
 ) {
 
+    /** Lines about the world right now — roughly where the phone is — for the context block. */
+    @Volatile
+    var ambient: () -> List<String> = { emptyList() }
+
     suspend fun respond(
         utterance: String,
         settings: Settings,
         history: List<ChatMessage>,
         onStage: (String) -> Unit = {},
         /** Called with each tool's real name as it is about to run. */
-        onTool: (String) -> Unit = {}
+        onTool: (String) -> Unit = {},
+        /**
+         * The answer so far, while it is still being written, cleaned of any
+         * reasoning or tool markup. Empty means "nothing to show".
+         */
+        onDraft: (String) -> Unit = {}
     ): AgentResult {
+        val draft = DraftStream(onDraft)
         val effects = ToolEffects()
         val used = mutableListOf<String>()
         val everything = tools.schemas(settings)
@@ -64,14 +74,17 @@ class Agent(
                 content = past.content
             )
         }
-        messages += LlmMessage.system(Prompt.context(brain, utterance, settings))
+        messages += LlmMessage.system(
+            Prompt.context(brain, utterance, settings, runCatching { ambient() }.getOrDefault(emptyList()))
+        )
         messages += LlmMessage.user(utterance)
 
         var lastText: String? = null
 
         for (round in 1..MAX_ROUNDS) {
             onStage(if (round == 1) "thinking" else "working")
-            val reply = client.chat(settings, messages, schemas) { next ->
+            draft.restart()
+            val reply = client.chat(settings, messages, schemas, draft) { next ->
                 // Surfaced so a quota switch is visible rather than mysterious.
                 onStage("switching to $next")
             }
@@ -79,6 +92,9 @@ class Agent(
             val nativeCalls = reply.toolCalls
             val textCalls = if (nativeCalls.isEmpty()) parseTextToolCalls(reply.content) else emptyList()
             val calls = nativeCalls.ifEmpty { textCalls }
+            // A round that ends in tool calls was not the answer, whatever
+            // words it began with.
+            if (calls.isNotEmpty()) draft.restart()
 
             if (calls.isEmpty()) {
                 val text = clean(reply.content)
@@ -128,11 +144,13 @@ class Agent(
         // Out of rounds, or going in circles: ask once more with tools withheld
         // so it has to speak.
         onStage("thinking")
+        draft.restart()
         val forced = runCatching {
             client.chat(
                 settings,
                 messages + LlmMessage.user("Answer now in plain speech, without using tools."),
-                emptyList()
+                emptyList(),
+                draft
             )
         }.getOrNull()
 
@@ -186,6 +204,43 @@ class Agent(
             return replies.joinToString(" ")
         } finally {
             tools.routineRunner = runner
+        }
+    }
+
+    /**
+     * Gathers a streamed answer and hands on a readable version of it: the
+     * thinking of a reasoning model and any text-protocol tool block are held
+     * back, since neither is ever the answer.
+     */
+    private inner class DraftStream(private val onDraft: (String) -> Unit) : ReplyStream {
+        private val text = StringBuilder()
+        private var shown = ""
+
+        override fun restart() {
+            synchronized(text) { text.setLength(0) }
+            if (shown.isNotEmpty()) {
+                shown = ""
+                onDraft("")
+            }
+        }
+
+        override fun append(text: String) {
+            val whole = synchronized(this.text) { this.text.append(text).toString() }
+            val readable = readable(whole)
+            if (readable != shown) {
+                shown = readable
+                onDraft(readable)
+            }
+        }
+
+        private fun readable(raw: String): String {
+            var out = raw.replace(THINK_BLOCK, "")
+            if (out.contains(THINK_OPEN)) out = out.substringBefore(THINK_OPEN)
+            out = out.replace(TOOL_BLOCK, "")
+            if (out.contains("<tool>")) out = out.substringBefore("<tool>")
+            // A reply that is a bare JSON tool call in the text protocol.
+            if (out.trimStart().startsWith("{") || out.trimStart().startsWith("```")) return ""
+            return out.trimStart()
         }
     }
 
@@ -340,10 +395,18 @@ class Agent(
             result.take(MAX_TOOL_RESULT_CHARS) + "\n… (truncated)"
         }
 
-    /** Strips the text-protocol blocks so they never reach the screen or the speaker. */
+    /**
+     * Strips the text-protocol blocks so they never reach the screen or the
+     * speaker — and a reasoning model's thinking, which several free models
+     * (DeepSeek R1, Qwen 3, the distills) write into the reply itself between
+     * think tags. An unclosed one means the answer never came; that reads as
+     * no answer rather than as the model muttering to itself out loud.
+     */
     private fun clean(raw: String?): String? {
         if (raw == null) return null
         return raw
+            .replace(THINK_BLOCK, " ")
+            .let { text -> if (text.contains(THINK_OPEN)) text.substringBefore(THINK_OPEN) else text }
             .replace(TOOL_BLOCK, " ")
             .replace(FENCED_TOOL, " ")
             .replace(Regex("\\n{3,}"), "\n\n")
@@ -399,6 +462,8 @@ class Agent(
 
         const val MAX_TOOL_RESULT_CHARS = 4_000
         val TOOL_BLOCK = Regex("<tool>\\s*(\\{.*?\\})\\s*</tool>", RegexOption.DOT_MATCHES_ALL)
+        val THINK_BLOCK = Regex("<(think|thinking|reasoning)>.*?</\\1>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+        const val THINK_OPEN = "<think>"
         val FENCED_TOOL = Regex(
             "```(?:json|tool)?\\s*(\\{[^`]*?\"(?:name|tool)\"[^`]*?\\})\\s*```",
             RegexOption.DOT_MATCHES_ALL

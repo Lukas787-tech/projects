@@ -39,7 +39,9 @@ data class DayBrief(
     val appointments: List<Appointment>,
     val trackers: List<TrackerStatus>,
     val battery: String,
-    val connection: String
+    val connection: String,
+    /** The top stories, when the web is switched on. */
+    val headlines: List<com.lukas.jarvis.web.Headline> = emptyList()
 ) {
 
     /** The version that gets read out. Prose, no lists, no headings. */
@@ -93,6 +95,10 @@ data class DayBrief(
                 }
         }
 
+        headlines.firstOrNull()?.let { top ->
+            append(" In the news: ${top.title}.")
+        }
+
         if (battery.contains("charger")) append(" ").append(battery)
     }
 
@@ -112,8 +118,17 @@ class Briefer(
     private val weather: Weather,
     private val locator: Locator,
     private val places: PlacesClient,
-    private val device: Device
+    private val device: Device,
+    private val knowledge: com.lukas.jarvis.web.Knowledge? = null
 ) {
+
+    /**
+     * The town the phone was last found in, kept from the last brief so every
+     * turn can know roughly where it is without asking for a location fix.
+     */
+    @Volatile
+    var lastPlace: String? = null
+        private set
 
     suspend fun build(settings: Settings): DayBrief = coroutineScope {
         val now = System.currentTimeMillis()
@@ -130,6 +145,11 @@ class Briefer(
             }
         }
 
+        val news = async {
+            if (!settings.webSearchEnabled || knowledge == null) emptyList()
+            else runCatching { knowledge.headlines(3) }.getOrDefault(emptyList())
+        }
+
         val endOfDay = endOfToday()
         val open = runCatching { brain.tasks(includeDone = false, limit = 100) }
             .getOrDefault(emptyList())
@@ -141,6 +161,7 @@ class Briefer(
         }
 
         val resolved = sky.await()
+        resolved?.second?.let { lastPlace = it }
 
         DayBrief(
             greeting = greeting(settings.userName),
@@ -152,7 +173,8 @@ class Briefer(
             appointments = appointments,
             trackers = trackers,
             battery = device.battery(),
-            connection = device.connection()
+            connection = device.connection(),
+            headlines = news.await()
         )
     }
 

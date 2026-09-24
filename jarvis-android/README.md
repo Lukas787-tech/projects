@@ -1,8 +1,16 @@
-# Jarvis — voice assistant and second brain
+# Jarvis — your own AI assistant
 
-An Android app you talk to. It remembers what you tell it, keeps running totals
-of anything you count, reminds you about things, and can search the live web.
-Everything it knows lives in a SQLite file on your phone.
+An Android app you talk to, built as a heads-up display around an arc
+reactor. It remembers what you tell it, keeps running totals of anything you
+count, reminds you about things, reads, sees, searches the live web, draws
+pictures and runs your phone — and it is **yours**: its name, its
+personality, how it addresses you, its voice and its colour are all your
+choice.
+
+**No account, no API key, no cost.** Jarvis answers from the very first
+launch through free, keyless public models. A free key of your own (Groq,
+Google Gemini, …) is optional and only makes it quicker and cleverer. Paid
+providers are not in the app at all.
 
 > "I bought chips for two euros" → logged.
 > Later: "how much have I got left?" → it knows, because it did the arithmetic,
@@ -14,15 +22,14 @@ There is no Android SDK in this repo, so the APK is built by GitHub Actions.
 
 **On your phone — easiest.** Open
 [Releases](https://github.com/Lukas787-tech/projects/releases), tap the
-`jarvis-*.apk` on the newest `jarvis-v*` release, and allow "install unknown
+`jarvis.apk` on the `jarvis-latest` release, and allow "install unknown
 apps" when the browser asks. No login, no unzipping.
 
 To refresh that link after changes: **Actions** -> **Build Jarvis APK** ->
 **Run workflow** -> tick *Also publish the APK as a GitHub Release*.
 
 **From a computer.** Every push also uploads a `jarvis-apk` artifact on the
-workflow run, which is a zip you download and extract. Fine at a desk, painful
-on a phone, which is why Releases is the default route above.
+workflow run, which is a zip you download and extract.
 
 Every build is signed with the throwaway key in `app/keystore/`, so new versions
 install over old ones without an uninstall. That key is not a secret and is not
@@ -30,36 +37,70 @@ for Play Store use — it exists so upgrades work.
 
 ## First run
 
-1. Open **Settings**.
-2. Pick a provider and paste an API key. The picker holds around thirty of
-   them, labelled by what an account costs. The ones worth starting with:
+Open the app. A one-minute introduction asks what to call you and how you
+like to be addressed ("sir", "boss", your name…), lets you pick the
+assistant's personality and colour — both change live as you tap — and
+whether you mostly talk or type. Then tap the core and talk.
 
-   | Provider | Free key | Notes |
-   |---|---|---|
-   | **Groq** | console.groq.com/keys | Fastest. Best default. |
-   | **Google Gemini** | aistudio.google.com/apikey | Generous limits, strong quality. |
-   | **Cerebras** | cloud.cerebras.ai | Very fast. |
-   | **OpenRouter** | openrouter.ai/keys | Models ending `:free` cost nothing. |
-   | **Mistral** | console.mistral.ai/api-keys | Good tool calling for its size. |
-   | **GitHub Models** | github.com/settings/tokens | Any token with `models:read`. |
-   | **SambaNova** | cloud.sambanova.ai/apis | Free developer tier. |
-   | **Z.ai (GLM)** | z.ai | The flash models are free. |
-   | **Cohere**, **Chutes**, **Scaleway**, **Cloudflare** | — | More standing free tiers. |
-   | **NVIDIA**, **Hugging Face**, **Nebius**, **Together**, **Novita**, **Hyperbolic**, **DeepInfra**, **Moonshot**, **Qwen** | — | Free credit on signup. |
-   | **Ollama**, **LM Studio**, **llama.cpp**, **vLLM** | — | Your own PC. See below. |
-   | **DeepSeek**, **xAI**, **Fireworks**, **Perplexity**, **OpenAI** | — | Paid. Only used if you add them. |
+That is all the setup there is. Everything below is optional.
 
-3. In **Model pool**, tap **Add** for that provider — it enrols several of its
-   models at once. Repeat for a second and third provider, or once you have a
-   few keys saved use **Add every provider I have a key for**.
-4. Set your name so it addresses you properly.
-5. Go back to **Voice**, tap the orb, talk.
+### Making it yours (Settings)
 
-No costs anywhere: the models are free tiers, speech-to-text and text-to-speech
-are the ones built into Android, and web search goes through DuckDuckGo's
-keyless endpoints.
+| Tab | What you can change |
+|---|---|
+| **You** | Its name and yours, how it addresses you, seven personalities (J.A.R.V.I.S., F.R.I.D.A.Y., best friend, executive assistant, coach, calm, wisecracker) or your own, reply length, how much wit, a fixed reply language, follow-up offers, emoji, and two free-text boxes — *about you* and *how it should behave* — that go into every conversation |
+| **Voice** | Speak replies, hands-free, listening tones, haptics, speed, pitch, any voice installed on the phone, the language to listen and speak in, and the wake word |
+| **Look** | Eight accent colours, five backdrops, the core (arc reactor, orb or globe), heads-up readouts, calm motion, text size |
+| **Brain** | The free built-in AI (on by default), and optional free keys for faster, smarter models |
+| **Powers** | Which abilities are switched on, maps, automation, the floating dot |
+| **Data** | Backup and restore, clearing the chat, replaying the introduction |
+
+### Optional: a free key of your own
+
+| Provider | Free key | Notes |
+|---|---|---|
+| **Groq** | console.groq.com/keys | Fastest. |
+| **Google Gemini** | aistudio.google.com/apikey | Generous limits; lets Jarvis *see* photos with a model. |
+| **Cerebras** | cloud.cerebras.ai | Very fast. |
+| **OpenRouter** | openrouter.ai/keys | Models ending `:free` cost nothing. |
+| **Mistral**, **GitHub Models**, **SambaNova**, **Z.ai**, **Cohere**, **Chutes**, **Scaleway**, **Cloudflare** | — | More standing free tiers. |
+| **NVIDIA**, **Hugging Face**, **Nebius**, **Together**, **Novita**, **Hyperbolic**, **DeepInfra**, **Moonshot**, **Qwen** | — | Free credit on signup. |
+| **Ollama**, **LM Studio**, **llama.cpp**, **vLLM** | — | Your own PC. See below. |
+
+Paste a key under **Settings → Brain → Add a free key**, then tap **Add** in
+the model pool. Keys you add are used before the keyless ones.
+
+No costs anywhere: the models are free, speech-to-text and text-to-speech
+are the ones built into Android, photo reading runs on the phone, and every
+web source Jarvis uses answers without a key.
+
+## Ways in
+
+- **The core** in the dock: one tap talks from any screen; a long press types.
+- **The wake word**: "Jarvis, what's the weather?" — answered out loud even
+  while the app is closed (optional, uses more battery).
+- **The floating dot** over other apps.
+- **Quick Settings tile**: pull down the shade, tap, talk.
+- **Home-screen widget**: talk, type or scan.
+- **Launcher shortcuts**: long-press the icon for Talk, Type, Scan, Today.
+- **Share to Jarvis** from any app — a link is read and summarised, text is
+  explained, a picture is looked at — or pick *Ask Jarvis* on selected text.
+- **The assistant gesture** (long-press power / home) if you make Jarvis the
+  phone's assistant.
 
 ## What it does
+
+**Answers as it thinks.** Replies stream in word by word, and spoken replies
+start with the first finished sentence instead of after the whole answer.
+
+**Draws.** "Draw a fox in a space suit" puts a picture in the chat, free
+and keyless (Pollinations). Tap it to save it to the gallery or share it.
+
+**Knows what's going on.** Headlines in your language (Google News, with the
+BBC behind it), share and crypto prices with the day's move, public
+holidays, recipes, football scores and fixtures, TV shows and when the next
+episode airs, books, a dictionary, translation, and real coin flips and dice.
+
 
 **Remembers.** Tell it anything — a door code, a preference, a plan, where you
 put something — and it stores it. Ask later and it searches its memory before
@@ -123,10 +164,11 @@ there is no API key and no bill here either. Location stays on the phone; it is
 only ever sent as the coordinates of a lookup.
 
 **Sees.** Tap the camera (or say "what is this", "read this sign", "scan this
-receipt") and Jarvis looks through the phone's camera. The photo goes to
-whichever model in your pool can see — a Gemini key is the free way to have
-one — and what it shows is written out in words, so the rest of the turn runs
-on any model: a receipt is logged to the right tracker, a poster's date becomes
+receipt") and Jarvis looks through the phone's camera. The phone itself reads
+the text, recognises objects and decodes QR codes and barcodes, offline and
+with no key; if your pool has a model that can see (a free Gemini key does),
+it describes the scene as well. What the picture shows is written out in
+words, so the rest of the turn runs on any model: a receipt is logged to the right tracker, a poster's date becomes
 a reminder, a business card is remembered. The gallery works too.
 
 **Remembers places.** "I parked here", "this is home", "save this as work".
@@ -187,10 +229,11 @@ provider at it.
 
 Optional, off by default, and worth being honest about: Android has no free
 always-on hotword engine, so this loops the normal speech recognizer and watches
-for your phrase. It costs noticeably more battery than a real hotword chip, and
-on Android 10+ background apps cannot reliably launch themselves, so it opens the
-UI dependably only while the app is already running. Tapping the orb is better
-almost all of the time.
+for your phrase. It costs noticeably more battery than a real hotword chip.
+Because Android 10+ will not let a background app bring itself forward, the
+request is answered and spoken right where you are, without opening the app:
+say "Jarvis, set a timer for ten minutes" in one breath, or "Jarvis", wait for
+the tone, then ask.
 
 ## Building locally
 
@@ -214,7 +257,11 @@ app/src/main/java/com/lukas/jarvis/
               loop, prompt
   voice/      speech recognition, text to speech, wake word service
   maps/       places, routing, location, map tiles and state
-  web/        DuckDuckGo search, page reader, weather, exchange rates
+  web/        DuckDuckGo search, page reader, weather, exchange rates, news,
+              translation, markets, holidays, recipes, sports, pictures
+  vision/     the camera, and on-device text, object and barcode reading
+  surface/    the Quick Settings tile, the widget and the launcher routes
+  overlay/    the floating dot and the screenless spoken turn
   notify/     alarms and notifications
   ui/         theme and design tokens, shared parts, screens, the map canvas
   vm/         view model
@@ -246,6 +293,11 @@ around not hitting limits rather than recovering from them:
   together does not wake together.
 - **One turn walks at most five endpoints.** The tenth failure costs the same as
   the second and says the same thing.
+- **Each turn is offered only the tools its words point at.** Seventy tool
+  definitions on every request cost thousands of tokens and make small models
+  pick the wrong one; the families a sentence mentions (in English or German),
+  plus memory and exact answers, are enough — and any switched-on tool still
+  runs if a model asks for it by name.
 - **Prompts are kept small.** History is trimmed and tool output clamped, since
   tokens per minute are metered as strictly as requests.
 - **A small model's mistakes are caught, not paid for.** `get_weather` is taken

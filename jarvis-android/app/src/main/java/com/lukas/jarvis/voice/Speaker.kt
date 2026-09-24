@@ -236,7 +236,61 @@ class Speaker(context: Context) {
         if (refused) finish()
     }
 
+    // --------------------------------------------------------- streamed speech
+
+    /**
+     * Speech that starts before the reply is finished: each sentence is queued
+     * the moment it is complete, so the first words are heard while the model
+     * is still writing the rest. [endStream] queues whatever is left and says
+     * when the whole reply has been spoken.
+     */
+    @Volatile
+    private var streaming = false
+    private var streamCounter = 0
+
+    /** Queues one finished sentence of a reply still being written. */
+    fun feed(sentence: String) {
+        val clean = sanitize(sentence)
+        if (clean.isBlank() || !_ready.value) return
+        val first = !streaming
+        streaming = true
+        _speaking.value = true
+        val id = "jarvis_stream_${System.currentTimeMillis()}_${streamCounter++}"
+        runCatching {
+            tts.speak(clean, if (first) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, Bundle(), id)
+        }
+    }
+
+    /** True once [feed] has started speaking this reply. */
+    val isStreaming: Boolean get() = streaming
+
+    /**
+     * The last of a streamed reply. [rest] may be empty when every sentence
+     * was already fed; a moment of silence is queued then, because the end of
+     * the reply needs an utterance of its own to report its end.
+     */
+    fun endStream(rest: String, onDone: (() -> Unit)? = null) {
+        if (!streaming) {
+            speak(rest, onDone)
+            return
+        }
+        streaming = false
+        currentDone = onDone
+        val id = "jarvis_stream_end_${System.currentTimeMillis()}"
+        lastUtteranceId = id
+        val clean = sanitize(rest)
+        val result = runCatching {
+            if (clean.isBlank()) {
+                tts.playSilentUtterance(1, TextToSpeech.QUEUE_ADD, id)
+            } else {
+                tts.speak(clean, TextToSpeech.QUEUE_ADD, Bundle(), id)
+            }
+        }.getOrDefault(TextToSpeech.ERROR)
+        if (result == TextToSpeech.ERROR) finish()
+    }
+
     fun stop() {
+        streaming = false
         pending = null
         currentDone = null
         runCatching { tts.stop() }

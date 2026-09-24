@@ -93,7 +93,7 @@ class AppContainer(context: Context) {
     val routines = Routines(context)
 
     /** One day, gathered once, for the dashboard and the spoken brief alike. */
-    val briefer = Briefer(brain, agenda, weather, locator, places, device)
+    val briefer = Briefer(brain, agenda, weather, locator, places, device, knowledge)
 
     private val tools = Tools(
         brain = brain,
@@ -127,6 +127,9 @@ class AppContainer(context: Context) {
     private val pooled = PooledLlm(client, pool)
 
     val agent = Agent(pooled, tools, brain).also { agent ->
+        agent.ambient = {
+            listOfNotNull(briefer.lastPlace?.let { "Roughly where the phone is: $it" })
+        }
         tools.routineRunner = { routine, settings ->
             routines.markRun(routine.name)
             "Routine '${routine.name}' finished. What each step came back with: " +

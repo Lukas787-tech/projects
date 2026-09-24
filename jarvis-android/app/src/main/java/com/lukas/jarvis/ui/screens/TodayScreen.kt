@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
@@ -108,7 +110,9 @@ fun TodayScreen(
     onRunRoutine: (String) -> Unit,
     onSaveRoutine: (Routine) -> Unit,
     onDeleteRoutine: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Sends a sentence to the assistant, for a headline tapped to hear more. */
+    onAsk: (String) -> Unit = {}
 ) {
     var editing by remember { mutableStateOf<Routine?>(null) }
     editing?.let { draft ->
@@ -143,6 +147,7 @@ fun TodayScreen(
     var dueFolded by rememberStored("today.fold.due", false)
     var calendarFolded by rememberStored("today.fold.calendar", false)
     var balancesFolded by rememberStored("today.fold.balances", false)
+    var newsFolded by rememberStored("today.fold.news", false)
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = Space.gutter),
@@ -273,7 +278,9 @@ fun TodayScreen(
                         onToggle = { calendarFolded = !calendarFolded }
                     )
                 }
-                if (!calendarFolded) items(day.appointments, key = { it.title + it.startsAt }) { event ->
+                // Indexed: the same event in two calendars shares a title and a
+                // start, and two equal keys in a lazy list are a crash.
+                if (!calendarFolded) itemsIndexed(day.appointments, key = { index, it -> "event-$index-${it.startsAt}" }) { _, event ->
                     ListRow(
                         title = event.title,
                         subtitle = event.location,
@@ -285,6 +292,25 @@ fun TodayScreen(
                         }
                     )
                 }
+            }
+        }
+
+        brief?.headlines?.takeIf { it.isNotEmpty() }?.let { news ->
+            item {
+                GroupHeader(
+                    "Headlines",
+                    trailing = news.size.toString(),
+                    folded = newsFolded,
+                    onToggle = { newsFolded = !newsFolded }
+                )
+            }
+            if (!newsFolded) itemsIndexed(news, key = { index, _ -> "news-$index" }) { _, story ->
+                ListRow(
+                    title = story.title,
+                    subtitle = listOfNotNull(story.source, story.age).joinToString(" · ").ifBlank { null },
+                    leading = Icons.Default.Newspaper,
+                    onClick = { onAsk("Tell me more about this story: ${story.title}") }
+                )
             }
         }
 

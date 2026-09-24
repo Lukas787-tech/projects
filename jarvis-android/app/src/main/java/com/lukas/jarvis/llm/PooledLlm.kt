@@ -31,6 +31,7 @@ class PooledLlm(
         settings: Settings,
         messages: List<LlmMessage>,
         tools: List<JSONObject> = emptyList(),
+        stream: ReplyStream? = null,
         onEndpointChange: (String) -> Unit = {}
     ): LlmReply {
         val plan = pool.plan(settings)
@@ -50,7 +51,11 @@ class PooledLlm(
         val tried = StringBuilder()
 
         for ((index, endpoint) in plan.endpoints.withIndex()) {
-            if (index > 0) onEndpointChange(endpoint.label)
+            if (index > 0) {
+                onEndpointChange(endpoint.label)
+                // Whatever the last endpoint began to say is not this answer.
+                stream?.restart()
+            }
 
             // Settings already carries exactly the fields an endpoint overrides,
             // so the client needs no knowledge of pooling.
@@ -66,7 +71,7 @@ class PooledLlm(
 
             pool.recordAttempt(endpoint)
             try {
-                val reply = client.chat(attempt, messages, tools, known)
+                val reply = client.chat(attempt, messages, tools, known, stream)
                 pool.recordSuccess(endpoint, reply)
                 return reply
             } catch (e: LlmException) {

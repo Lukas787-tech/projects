@@ -551,6 +551,22 @@ private fun Readout(
 
                 // The work in progress, named: "searching the web" is not the
                 // same as a spinner that could mean stuck.
+                // The answer arriving word by word.
+                state.stage == Stage.Thinking && state.draft.isNotBlank() -> {
+                    Text(
+                        text = com.lukas.jarvis.ui.components.Markdown.plain(state.draft) + " ▍",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = TextPrimary,
+                        textAlign = TextAlign.Center,
+                        maxLines = 6,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (state.activity.isNotEmpty()) {
+                        Spacer(Modifier.height(Space.snug))
+                        ToolTrail(tools = state.activity, horizontalArrangement = centred)
+                    }
+                }
+
                 state.stage == Stage.Thinking -> {
                     TypingDots()
                     Spacer(Modifier.height(Space.tight))
@@ -687,7 +703,7 @@ private fun TextBody(
 
     // Follows the thread and the trail alike, so a tool chip appearing below
     // the fold is scrolled to rather than missed.
-    LaunchedEffect(state.messages.size, state.activity.size, working) {
+    LaunchedEffect(state.messages.size, state.activity.size, working, state.draft.length / 80) {
         val last = state.messages.size + (if (working) 1 else 0)
         if (last > 0) listState.animateScrollToItem(last)
     }
@@ -745,7 +761,12 @@ private fun TextBody(
         }
         if (working) {
             item(key = "working") {
-                WorkingBubble(label = state.stageLabel, activity = state.activity, onStop = onStop)
+                WorkingBubble(
+                    label = state.stageLabel,
+                    activity = state.activity,
+                    draft = state.draft,
+                    onStop = onStop
+                )
             }
         }
         item(key = "tail") {
@@ -770,7 +791,7 @@ private fun TextBody(
  * is doing in words, the tools it has reached for, and a way to stop it.
  */
 @Composable
-private fun WorkingBubble(label: String, activity: List<String>, onStop: () -> Unit) {
+private fun WorkingBubble(label: String, activity: List<String>, draft: String, onStop: () -> Unit) {
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
         Column(
             modifier = Modifier
@@ -805,9 +826,18 @@ private fun WorkingBubble(label: String, activity: List<String>, onStop: () -> U
                         .padding(2.dp)
                 )
             }
+            if (draft.isNotBlank()) {
+                Spacer(Modifier.height(Space.tight))
+                val accent = Accent
+                val code = Film.selected
+                val rendered = remember(draft, accent) {
+                    com.lukas.jarvis.ui.components.Markdown.render("$draft ▍", accent, code, TextSecondary)
+                }
+                Text(rendered, style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+            }
             if (activity.isNotEmpty()) {
                 Spacer(Modifier.height(Space.tight))
-                ToolTrail(tools = activity, live = true)
+                ToolTrail(tools = activity, live = draft.isBlank())
             }
         }
     }

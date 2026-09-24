@@ -3,6 +3,7 @@ package com.lukas.jarvis.llm
 import com.lukas.jarvis.core.Settings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -69,6 +70,16 @@ data class Capability(
         const val MAX_TOKENS = "max_tokens"
         const val MAX_COMPLETION_TOKENS = "max_completion_tokens"
     }
+}
+
+/**
+ * Where a reply's words go while they are still arriving. [restart] throws away
+ * what was shown so far — a different endpoint is about to answer from the
+ * beginning, or the round turned out to be a tool call rather than an answer.
+ */
+interface ReplyStream {
+    fun restart()
+    fun append(text: String)
 }
 
 data class LlmReply(
@@ -193,16 +204,23 @@ class LlmClient {
         }
     }
 
+    /**
+     * Endpoints that turned a streamed request away. They are asked the plain
+     * way from then on, which costs nothing but the words arriving all at once.
+     */
+    private val noStream: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
     suspend fun chat(
         settings: Settings,
         messages: List<LlmMessage>,
         tools: List<JSONObject> = emptyList(),
-        known: Capability? = null
+        known: Capability? = null,
+        stream: ReplyStream? = null
     ): LlmReply = withContext(Dispatchers.IO) {
         var last: LlmException? = null
         for (attempt in ladder(tools.isNotEmpty(), known)) {
             try {
-                return@withContext request(settings, messages, tools, attempt)
+                return@withContext request(settings, messages, tools, attempt, stream)
             } catch (e: LlmException) {
                 last = e
                 // Only a rejected payload is worth reshaping. A bad key, a dead
@@ -217,31 +235,27 @@ class LlmClient {
         settings: Settings,
         messages: List<LlmMessage>,
         tools: List<JSONObject>,
-        capability: Capability
+        capability: Capability,
+        stream: ReplyStream? = null
     ): LlmReply {
-        val payload = JSONObject().apply {
-            put("model", settings.model)
-            put("messages", JSONArray().also { arr -> messages.forEach { arr.put(it.toJson()) } })
-            if (capability.sampling) put("temperature", settings.temperature.toDouble())
-            capability.tokenParam?.let { put(it, settings.maxTokens) }
-            if (capability.tools && tools.isNotEmpty()) {
-                put("tools", JSONArray().also { arr -> tools.forEach { arr.put(it) } })
-                put("tool_choice", "auto")
+        val streamKey = settings.baseUrl.trim() + "|" + settings.model
+        if (stream != null && streamKey !in noStream) {
+            try {
+                return streamed(settings, messages, tools, capability, stream)
+            } catch (e: LlmException) {
+                // A server that does not stream says so with a rejected payload;
+                // anything else is a real failure and is passed on as one.
+                if (e.kind != FailureKind.PayloadRejected) throw e
+                noStream += streamKey
+                stream.restart()
             }
         }
-
+        val payload = payload(settings, messages, tools, capability, streaming = false)
         val preset = Providers.byId(settings.providerId)
         val url = settings.baseUrl.trim().trimEnd('/') + preset.chatPath
-        val builder = Request.Builder()
-            .url(url)
-            .post(payload.toString().toRequestBody(JSON))
-        if (settings.apiKey.isNotBlank()) {
-            builder.header("Authorization", "Bearer ${settings.apiKey.trim()}")
-        }
-        preset.extraHeaders.forEach { (name, value) -> builder.header(name, value) }
 
         val startedAt = System.currentTimeMillis()
-        val response = send(builder.build(), url, settings.model, capability.label)
+        val response = send(post(url, payload, settings, preset), url, settings.model, capability.label)
         val elapsed = System.currentTimeMillis() - startedAt
 
         lastDiagnostics = Diagnostics(url, settings.model, capability.label, response.code, response.body.take(600))
@@ -250,7 +264,166 @@ class LlmClient {
             throw classify(response.code, response.body, response.rate, preset)
         }
         val parsed = parseReply(response.body)
+        stream?.let { sink -> parsed.content?.let(sink::append) }
         return parsed.copy(capability = capability, rate = response.rate, latencyMs = elapsed)
+    }
+
+    private fun payload(
+        settings: Settings,
+        messages: List<LlmMessage>,
+        tools: List<JSONObject>,
+        capability: Capability,
+        streaming: Boolean
+    ): JSONObject = JSONObject().apply {
+        put("model", settings.model)
+        put("messages", JSONArray().also { arr -> messages.forEach { arr.put(it.toJson()) } })
+        if (capability.sampling) put("temperature", settings.temperature.toDouble())
+        capability.tokenParam?.let { put(it, settings.maxTokens) }
+        if (capability.tools && tools.isNotEmpty()) {
+            put("tools", JSONArray().also { arr -> tools.forEach { arr.put(it) } })
+            put("tool_choice", "auto")
+        }
+        if (streaming) put("stream", true)
+    }
+
+    private fun post(url: String, payload: JSONObject, settings: Settings, preset: ProviderPreset): Request {
+        val builder = Request.Builder()
+            .url(url)
+            .post(payload.toString().toRequestBody(JSON))
+        if (settings.apiKey.isNotBlank()) {
+            builder.header("Authorization", "Bearer ${settings.apiKey.trim()}")
+        }
+        preset.extraHeaders.forEach { (name, value) -> builder.header(name, value) }
+        return builder.build()
+    }
+
+    /** One tool call as it is pieced together from a stream. */
+    private class PartialCall {
+        var id: String = ""
+        var name: String = ""
+        val arguments = StringBuilder()
+    }
+
+    /**
+     * The same request with `stream: true`, read as server-sent events: every
+     * piece of the answer is handed to [sink] the moment it arrives, and tool
+     * calls, which arrive in fragments, are put back together. A server that
+     * ignores the flag and answers in one piece is read the ordinary way.
+     */
+    private suspend fun streamed(
+        settings: Settings,
+        messages: List<LlmMessage>,
+        tools: List<JSONObject>,
+        capability: Capability,
+        sink: ReplyStream
+    ): LlmReply {
+        val preset = Providers.byId(settings.providerId)
+        val url = settings.baseUrl.trim().trimEnd('/') + preset.chatPath
+        val label = capability.label + ", streamed"
+        val request = post(url, payload(settings, messages, tools, capability, streaming = true), settings, preset)
+        val startedAt = System.currentTimeMillis()
+
+        val response = try {
+            http.newCall(request).execute()
+        } catch (e: IOException) {
+            lastDiagnostics = Diagnostics(url, settings.model, label, 0, e.toString())
+            throw LlmException(
+                "Could not reach $url\n\n${e.message ?: "Check your connection."}",
+                FailureKind.Network
+            )
+        }
+
+        response.use {
+            val rate = RateSignal.from { name -> response.header(name) }
+            if (response.code !in 200..299) {
+                val body = response.body?.string().orEmpty()
+                lastDiagnostics = Diagnostics(url, settings.model, label, response.code, body.take(600))
+                throw classify(response.code, body, rate, preset)
+            }
+            val source = response.body?.source()
+                ?: throw LlmException("Provider sent an empty response.", FailureKind.ServerError)
+
+            if (!response.header("Content-Type").orEmpty().contains("event-stream")) {
+                val body = source.readUtf8()
+                lastDiagnostics = Diagnostics(url, settings.model, label, response.code, body.take(600))
+                val parsed = parseReply(body)
+                parsed.content?.let(sink::append)
+                return parsed.copy(
+                    capability = capability,
+                    rate = rate,
+                    latencyMs = System.currentTimeMillis() - startedAt
+                )
+            }
+
+            val content = StringBuilder()
+            val calls = sortedMapOf<Int, PartialCall>()
+            try {
+                while (true) {
+                    kotlin.coroutines.coroutineContext.ensureActive()
+                    val line = source.readUtf8Line() ?: break
+                    if (!line.startsWith("data:")) continue
+                    val data = line.removePrefix("data:").trim()
+                    if (data == "[DONE]") break
+                    if (data.isEmpty()) continue
+                    val json = runCatching { JSONObject(data) }.getOrNull() ?: continue
+                    val error = json.opt("error")
+                    if (error != null && error != JSONObject.NULL) {
+                        throw classify(400, data, rate, preset)
+                    }
+                    val choice = json.optJSONArray("choices")?.optJSONObject(0) ?: continue
+                    val delta = choice.optJSONObject("delta") ?: choice.optJSONObject("message") ?: continue
+                    val piece = delta.opt("content")
+                    if (piece is String && piece.isNotEmpty()) {
+                        content.append(piece)
+                        sink.append(piece)
+                    }
+                    delta.optJSONArray("tool_calls")?.let { array ->
+                        for (i in 0 until array.length()) {
+                            val fragment = array.optJSONObject(i) ?: continue
+                            val call = calls.getOrPut(fragment.optInt("index", i)) { PartialCall() }
+                            fragment.optString("id").takeIf { it.isNotBlank() && it != "null" }?.let { call.id = it }
+                            fragment.optJSONObject("function")?.let { function ->
+                                function.optString("name").takeIf { it.isNotBlank() && it != "null" }
+                                    ?.let { call.name = it }
+                                when (val args = function.opt("arguments")) {
+                                    is String -> call.arguments.append(args)
+                                    is JSONObject -> call.arguments.append(args.toString())
+                                    else -> Unit
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: IOException) {
+                // The connection dropped part way through. Whatever arrived is
+                // not a whole answer; the pool will ask someone else.
+                lastDiagnostics = Diagnostics(url, settings.model, label, response.code, e.toString())
+                throw LlmException("The answer was cut off: ${e.message}", FailureKind.Network)
+            }
+
+            val toolCalls = calls.values.mapIndexedNotNull { index, call ->
+                if (call.name.isBlank()) {
+                    null
+                } else {
+                    ToolCall(
+                        id = call.id.ifBlank { "call_$index" },
+                        name = call.name,
+                        argumentsJson = call.arguments.toString().ifBlank { "{}" }
+                    )
+                }
+            }
+            lastDiagnostics = Diagnostics(url, settings.model, label, response.code, content.take(600).toString())
+            if (content.isBlank() && toolCalls.isEmpty()) {
+                throw LlmException("Provider streamed an empty answer.", FailureKind.ServerError)
+            }
+            return LlmReply(
+                content = content.toString().takeIf { it.isNotBlank() },
+                toolCalls = toolCalls,
+                capability = capability,
+                rate = rate,
+                latencyMs = System.currentTimeMillis() - startedAt
+            )
+        }
     }
 
     private data class RawResponse(val code: Int, val body: String, val rate: RateSignal)

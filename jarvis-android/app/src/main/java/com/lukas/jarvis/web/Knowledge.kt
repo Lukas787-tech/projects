@@ -24,6 +24,9 @@ import kotlin.random.Random
  * Every answer is plain prose, short enough to read aloud, because that is what
  * a small model repeats most faithfully.
  */
+/** One news story, as the dashboard lists it. */
+data class Headline(val title: String, val source: String?, val age: String?)
+
 class Knowledge {
 
     private val http = OkHttpClient.Builder()
@@ -72,6 +75,21 @@ class Knowledge {
                     appendLine()
                 }
             }.trim()
+        }
+
+    /**
+     * Today's top stories as items rather than prose, for the dashboard and
+     * the morning brief. Empty when the feeds do not answer.
+     */
+    suspend fun headlines(limit: Int = 3, locale: Locale = Locale.getDefault()): List<Headline> =
+        withContext(Dispatchers.IO) {
+            val lang = locale.language.ifBlank { "en" }
+            val country = locale.country.ifBlank { if (lang == "en") "US" else lang.uppercase(Locale.ROOT) }
+            val hl = if (lang == "en") "en-$country" else lang
+            val items = runCatching { rss(get("https://news.google.com/rss?hl=$hl&gl=$country&ceid=$country:$lang")) }
+                .getOrDefault(emptyList())
+                .ifEmpty { runCatching { rss(get("https://feeds.bbci.co.uk/news/world/rss.xml")) }.getOrDefault(emptyList()) }
+            items.take(limit).map { Headline(it.title, it.source, it.age) }
         }
 
     private data class RssItem(val title: String, val source: String?, val age: String?)
