@@ -404,12 +404,38 @@ class Knowledge {
                 "Rolled ${rolls.joinToString(", ")} on a d$sides" + if (n > 1) ", total ${rolls.sum()}." else "."
             }
             "pick" -> if (options.isEmpty()) "Nothing to pick from." else "Picked: ${options.random()}."
+            "password" -> password((max ?: 20).coerceIn(8, 64))
             else -> {
                 val lo = min ?: 1
                 val hi = (max ?: 100).coerceAtLeast(lo)
                 "Random number between $lo and $hi: ${(1..n).joinToString(", ") { Random.nextInt(lo, hi + 1).toString() }}."
             }
         }
+    }
+
+    /**
+     * A password from a cryptographic generator, never the everyday one: at
+     * least one capital, small letter, digit and symbol, and none of the
+     * letters that are misread for each other (O and 0, l and 1).
+     */
+    private fun password(length: Int): String {
+        val secure = java.security.SecureRandom()
+        val sets = listOf(
+            "ABCDEFGHJKLMNPQRSTUVWXYZ",
+            "abcdefghijkmnopqrstuvwxyz",
+            "23456789",
+            "!@#$%&*-_+=?"
+        )
+        val all = sets.joinToString("")
+        val chars = sets.map { it[secure.nextInt(it.length)] }.toMutableList()
+        while (chars.size < length) chars += all[secure.nextInt(all.length)]
+        // Shuffled with the same generator, so the guaranteed four are not
+        // always at the front.
+        for (i in chars.indices.reversed()) {
+            val j = secure.nextInt(i + 1)
+            val t = chars[i]; chars[i] = chars[j]; chars[j] = t
+        }
+        return "Password ($length characters): ${chars.joinToString("")}"
     }
 
     // ---------------------------------------------------------------- helpers

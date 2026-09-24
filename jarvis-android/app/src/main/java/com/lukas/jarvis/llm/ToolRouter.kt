@@ -148,7 +148,8 @@ object ToolRouter {
         ToolGroup.Fun to listOf(
             "joke", "fun fact", "random fact", "quote", "inspire", "motivat", "bored",
             "flip a coin", "coin", "dice", "roll", "random", "pick one", "choose", "witz",
-            "zitat", "langweilig", "würfel", "münze", "zufall", "entscheide"
+            "zitat", "langweilig", "würfel", "münze", "zufall", "entscheide", "password",
+            "passwort"
         )
     )
 

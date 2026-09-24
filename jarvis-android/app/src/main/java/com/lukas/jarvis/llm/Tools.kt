@@ -524,12 +524,15 @@ class Tools(
 
     private fun randomTool(): JSONObject = tool(
         "random",
-        "Truly random choices: flip a coin, roll dice, a random number, or pick one of several " +
-            "options. Always use this instead of choosing yourself.",
+        "Truly random choices: flip a coin, roll dice, a random number, pick one of several " +
+            "options, or make a strong password. Always use this instead of choosing yourself.",
         props(
-            "kind" to str("What to do.", listOf("coin", "dice", "number", "pick")),
+            "kind" to str("What to do.", listOf("coin", "dice", "number", "pick", "password")),
             "min" to int("For 'number': the lowest value. Default 1."),
-            "max" to int("For 'number': the highest value. For 'dice': the sides. Default 6 or 100."),
+            "max" to int(
+                "For 'number': the highest value. For 'dice': the sides. For 'password': its length. " +
+                    "Default 6, 100 or 20."
+            ),
             "count" to int("How many coins, dice or numbers. Default 1."),
             "options" to arr("For 'pick': the things to choose between.")
         ),
