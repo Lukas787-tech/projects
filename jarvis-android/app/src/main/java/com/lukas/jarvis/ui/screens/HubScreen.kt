@@ -38,19 +38,22 @@ fun HubScreen(
     memory: @Composable () -> Unit,
     trackers: @Composable () -> Unit,
     tasks: @Composable () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    openListCount: Int = 0,
+    lists: @Composable () -> Unit = {}
 ) {
-    val badges = remember(memoryCount, trackerCount, openTaskCount) {
+    val badges = remember(memoryCount, trackerCount, openTaskCount, openListCount) {
         listOf(
             memoryCount.takeIf { it > 0 }?.toString(),
             trackerCount.takeIf { it > 0 }?.toString(),
-            openTaskCount.takeIf { it > 0 }?.toString()
+            openTaskCount.takeIf { it > 0 }?.toString(),
+            openListCount.takeIf { it > 0 }?.toString()
         )
     }
 
     Column(modifier = modifier.fillMaxSize()) {
         SegmentedTabs(
-            options = listOf("Memory", "Trackers", "Tasks"),
+            options = listOf("Memory", "Trackers", "Tasks", "Lists"),
             selectedIndex = selected,
             onSelect = onSelect,
             badges = badges,
@@ -61,6 +64,7 @@ fun HubScreen(
             when (selected) {
                 1 -> trackers()
                 2 -> tasks()
+                3 -> lists()
                 else -> memory()
             }
         }

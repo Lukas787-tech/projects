@@ -714,6 +714,29 @@ class AssistantViewModel(
         }
     }
 
+    /** The user's lists, straight from their store, which the tools write too. */
+    val lists: StateFlow<com.lukas.jarvis.data.ListBook> = container.lists.book
+
+    fun addToList(list: String, item: String) {
+        container.lists.change { it.add(list, listOf(item)) }
+    }
+
+    fun checkListItem(list: String, item: String, done: Boolean) {
+        container.lists.change { it.check(list, listOf(item), done).first }
+    }
+
+    fun removeListItem(list: String, item: String) {
+        container.lists.change { it.remove(list, listOf(item)).first }
+    }
+
+    fun clearDoneItems(list: String) {
+        container.lists.change { it.clear(list, onlyDone = true) }
+    }
+
+    fun deleteList(list: String) {
+        container.lists.change { it.delete(list) }
+    }
+
     fun togglePin(memory: Memory) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { brain.updateMemory(memory.copy(pinned = !memory.pinned)) }
@@ -1251,6 +1274,7 @@ class AssistantViewModel(
                 container.pool.reload()
                 container.routines.reload()
                 container.savedPlaces.reload()
+                container.lists.reload()
                 configureVoice()
                 // The old provider's model list and test result describe
                 // settings that no longer exist.

@@ -66,6 +66,7 @@ class ScreensTest {
             Element.Notes to "05-memory",
             Element.Tasks to "06-tasks",
             Element.Money to "07-trackers",
+            Element.Lists to "07b-lists",
             Element.Skills to "08-skills",
             Element.Settings to "09-settings",
             Element.Devices to "10-devices",
@@ -142,6 +143,12 @@ class ScreensTest {
             brain.addEntry(Entry(trackerId = food.id, amount = amount, note = note, occurredAt = now - i * 26 * 60 * minute))
         }
         repeat(3) { i -> brain.addEntry(Entry(trackerId = gym.id, amount = 1.0, occurredAt = now - i * 48 * 60 * minute)) }
+
+        container.lists.change { book ->
+            book.add("shopping", listOf("Oat milk", "Free-range eggs", "Sourdough", "Basil", "Parmesan"))
+                .check("shopping", listOf("basil", "sourdough"), true).first
+                .add("packing", listOf("Passport", "Charger", "Swimming shorts"))
+        }
     }
 
     /** Lets the frames, the database threads and the main thread catch up with each other. */

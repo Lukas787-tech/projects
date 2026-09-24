@@ -167,6 +167,18 @@ THE HOUSE
                 )
             }
 
+            if (has("list")) {
+                appendLine()
+                appendLine(
+                    """
+LISTS
+- "add oat milk to the shopping list", "put sunscreen on the packing list" -> `list` add.
+  "what's on my shopping list" -> `list` show. "I got the eggs" while shopping -> `list` check.
+- A list is for things without a time. Anything with a time is `add_task`.
+                    """.trim()
+                )
+            }
+
             if (has("set_alarm", "torch", "open_app")) {
                 appendLine()
                 appendLine("THE PHONE")

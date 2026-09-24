@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Psychology
@@ -81,6 +82,7 @@ import com.lukas.jarvis.ui.screens.MusicScreen
 import com.lukas.jarvis.ui.screens.MapScreen
 import com.lukas.jarvis.ui.screens.SettingsScreen
 import com.lukas.jarvis.ui.screens.SkillsScreen
+import com.lukas.jarvis.ui.screens.ListsScreen
 import com.lukas.jarvis.ui.screens.TasksScreen
 import com.lukas.jarvis.ui.screens.TodayScreen
 import com.lukas.jarvis.ui.screens.TrackersScreen
@@ -208,6 +210,7 @@ private fun iconFor(element: Element): ImageVector = when (element) {
     Element.Notes -> Icons.Default.Psychology
     Element.Tasks -> Icons.Default.CheckCircle
     Element.Money -> Icons.Default.AccountBalanceWallet
+    Element.Lists -> Icons.Default.Checklist
     Element.Music -> Icons.Default.MusicNote
     Element.Devices -> Icons.Default.Bluetooth
     Element.Skills -> Icons.Default.AutoAwesome
@@ -299,6 +302,7 @@ private fun JarvisRoot(
     val hereLabel by viewModel.hereLabel.collectAsStateWithLifecycle()
     val routines by viewModel.routines.collectAsStateWithLifecycle()
     val levels by viewModel.levels.collectAsStateWithLifecycle()
+    val lists by viewModel.lists.collectAsStateWithLifecycle()
     val cameraRequest by viewModel.cameraRequests.collectAsStateWithLifecycle()
     val mapStyle = MapStyle.of(settings.mapStyle)
     val scope = rememberCoroutineScope()
@@ -657,10 +661,11 @@ private fun JarvisRoot(
                 // Notes, tasks and money are one element with three segments,
                 // so each stays one tap from the others while the assistant can
                 // still name any of them directly.
-                Element.Notes, Element.Tasks, Element.Money -> HubScreen(
+                Element.Notes, Element.Tasks, Element.Money, Element.Lists -> HubScreen(
                     selected = when (shown) {
                         Element.Money -> 1
                         Element.Tasks -> 2
+                        Element.Lists -> 3
                         else -> 0
                     },
                     onSelect = { index ->
@@ -668,6 +673,7 @@ private fun JarvisRoot(
                             when (index) {
                                 1 -> Element.Money
                                 2 -> Element.Tasks
+                                3 -> Element.Lists
                                 else -> Element.Notes
                             }
                         )
@@ -675,6 +681,17 @@ private fun JarvisRoot(
                     memoryCount = memories.size,
                     trackerCount = trackers.size,
                     openTaskCount = tasks.count { !it.done },
+                    openListCount = lists.lists.sumOf { it.open.size },
+                    lists = {
+                        ListsScreen(
+                            book = lists,
+                            onAdd = viewModel::addToList,
+                            onCheck = viewModel::checkListItem,
+                            onRemove = viewModel::removeListItem,
+                            onClearDone = viewModel::clearDoneItems,
+                            onDeleteList = viewModel::deleteList
+                        )
+                    },
                     memory = {
                         BrainScreen(
                             memories = memories,
@@ -885,14 +902,14 @@ private fun JarvisRoot(
 private const val SETTINGS_POWERS = "settings:powers"
 
 /** The three list screens, which share one element with tabs. */
-private val HUB = setOf(Element.Notes, Element.Tasks, Element.Money)
+private val HUB = setOf(Element.Notes, Element.Tasks, Element.Money, Element.Lists)
 
 /** Globe to map: long enough to read as a journey, short enough not to be waited on. */
 private const val FLIGHT_IN_MS = 1_750
 private const val FLIGHT_OUT_MS = 1_250
 
 private fun barSelection(element: Element): Element = when (element) {
-    Element.Tasks, Element.Money -> Element.Notes
+    Element.Tasks, Element.Money, Element.Lists -> Element.Notes
     Element.Music, Element.Devices, Element.Skills -> Element.Today
     else -> element
 }

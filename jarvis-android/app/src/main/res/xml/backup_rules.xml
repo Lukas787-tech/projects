@@ -16,5 +16,6 @@
     <include domain="sharedpref" path="jarvis_pool.xml" />
     <include domain="sharedpref" path="jarvis_places.xml" />
     <include domain="sharedpref" path="jarvis_routines.xml" />
+    <include domain="sharedpref" path="jarvis_lists.xml" />
     <include domain="database" path="jarvis.db" />
 </full-backup-content>

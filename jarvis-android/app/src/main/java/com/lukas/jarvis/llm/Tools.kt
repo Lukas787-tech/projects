@@ -91,7 +91,8 @@ class Tools(
     private val routines: Routines,
     private val knowledge: Knowledge,
     private val imagine: Imagine,
-    private val home: Home
+    private val home: Home,
+    private val lists: com.lukas.jarvis.data.Lists
 ) {
 
     /**
@@ -106,6 +107,7 @@ class Tools(
         addAll(memoryTools())
         addAll(trackerTools(settings))
         addAll(taskTools())
+        add(listTool())
         addAll(thinkingTools())
         if (settings.webSearchEnabled) addAll(webTools())
         if (settings.webSearchEnabled) addAll(worldTools())
@@ -501,6 +503,22 @@ class Tools(
             ),
             listOf("target", "action")
         )
+    )
+
+    private fun listTool(): JSONObject = tool(
+        "list",
+        "The user's named lists — shopping, packing, films to watch, anything without a time. " +
+            "Add, remove, tick off or read items. 'Add milk to the shopping list', 'what is on my " +
+            "packing list', 'I got the eggs' (check). Something with a time is add_task instead.",
+        props(
+            "action" to str(
+                "What to do.",
+                listOf("add", "remove", "check", "uncheck", "show", "clear_done", "clear", "delete", "all")
+            ),
+            "list" to str("Which list, as the user named it: 'shopping', 'packing'. Not needed for 'all'."),
+            "items" to arr("For add, remove, check and uncheck: the items, one per entry.")
+        ),
+        listOf("action")
     )
 
     private fun randomTool(): JSONObject = tool(
@@ -1001,6 +1019,7 @@ class Tools(
 
                 // tasks
                 "add_task" -> addTask(args, effects)
+                "list" -> listAction(args)
                 "list_tasks" -> listTasks(args)
                 "complete_task" -> completeTask(args, effects)
                 "update_task" -> updateTask(args, effects)
@@ -1724,6 +1743,70 @@ class Tools(
         }.trim()
     }
 
+    // ------------------------------------------------------------------- lists
+
+    private fun listAction(args: JSONObject): String {
+        val action = args.optString("action").trim().lowercase(Locale.ROOT)
+        val name = args.optString("list").trim()
+        val given = args.optJSONArray("items")?.let { array -> (0 until array.length()).map { array.optString(it) } }
+            ?: listOfNotNull(args.optString("item").takeIf { it.isNotBlank() })
+        // "eggs, milk and bread" handed over as one entry is three things.
+        val items = given.flatMap { it.split(ITEM_SEPARATOR) }.map { it.trim() }.filter { it.isNotBlank() }
+        if (action != "all" && name.isBlank()) return "Which list? Say its name, like 'shopping'."
+        val label = com.lukas.jarvis.data.ListBook.canonical(name)
+
+        fun describe(): String {
+            val list = lists.current.find(name) ?: return "There is no $label list yet."
+            if (list.items.isEmpty()) return "The $label list is empty."
+            val open = list.open.map { it.text }
+            val done = list.items.filter { it.done }.map { it.text }
+            return buildString {
+                append("${label.replaceFirstChar { it.titlecase(Locale.ROOT) }} list: ")
+                append(if (open.isEmpty()) "everything is ticked off" else open.joinToString(", "))
+                append(" (${open.size} open")
+                if (done.isNotEmpty()) append("; done: ${done.joinToString(", ")}")
+                append(").")
+            }
+        }
+
+        return when (action) {
+            "all" -> lists.current.lists.takeIf { it.isNotEmpty() }?.joinToString("\n") {
+                "${it.name}: ${it.open.size} open, ${it.items.size - it.open.size} done"
+            } ?: "There are no lists yet."
+            "add" -> {
+                if (items.isEmpty()) return "What should go on the $label list?"
+                lists.change { it.add(name, items) }
+                "Added ${items.joinToString(", ")}. " + describe()
+            }
+            "remove" -> {
+                var gone = emptyList<String>()
+                lists.change { book -> book.remove(name, items).also { gone = it.second }.first }
+                if (gone.isEmpty()) "None of that is on the $label list. " + describe()
+                else "Removed ${gone.joinToString(", ")}. " + describe()
+            }
+            "check", "uncheck" -> {
+                var hit = emptyList<String>()
+                lists.change { book -> book.check(name, items, action == "check").also { hit = it.second }.first }
+                if (hit.isEmpty()) "None of that is on the $label list. " + describe()
+                else "${if (action == "check") "Ticked off" else "Put back"} ${hit.joinToString(", ")}. " + describe()
+            }
+            "clear_done" -> {
+                lists.change { it.clear(name, onlyDone = true) }
+                "Cleared what was ticked off. " + describe()
+            }
+            "clear" -> {
+                lists.change { it.clear(name, onlyDone = false) }
+                "Emptied the $label list."
+            }
+            "delete" -> {
+                if (lists.current.find(name) == null) return "There is no $label list."
+                lists.change { it.delete(name) }
+                "Deleted the $label list."
+            }
+            else -> describe()
+        }
+    }
+
     // ---------------------------------------------------------------- calendar
 
     private fun addEvent(args: JSONObject): String {
@@ -2045,6 +2128,7 @@ class Tools(
     }
 
     private companion object {
+        val ITEM_SEPARATOR = Regex("\\s*(?:,|;|\\band\\b|\\bund\\b)\\s*")
         val CURRENCIES = setOf(
             "EUR", "USD", "GBP", "CHF", "PLN", "CZK", "SEK", "NOK", "DKK",
             "CAD", "AUD", "JPY", "TRY", "HUF", "RON", "BGN", "INR", "BRL"

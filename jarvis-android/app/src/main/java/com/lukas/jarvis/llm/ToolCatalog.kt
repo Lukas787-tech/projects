@@ -60,6 +60,7 @@ object ToolCatalog {
 
         // tasks
         ToolInfo("add_task", ToolGroup.Tasks, "adding a reminder", "Reminder"),
+        ToolInfo("list", ToolGroup.Tasks, "the list", "List"),
         ToolInfo("list_tasks", ToolGroup.Tasks, "checking tasks", "Tasks", readOnly = true),
         ToolInfo("complete_task", ToolGroup.Tasks, "ticking it off", "Done"),
         ToolInfo("update_task", ToolGroup.Tasks, "moving the task", "Moved"),
@@ -188,6 +189,7 @@ object ToolCatalog {
         "search_memory" to "recall", "get_memory" to "recall", "memory_search" to "recall",
         "recall_memory" to "recall",
         "set_reminder" to "add_task", "create_reminder" to "add_task",
+        "shopping_list" to "list", "add_to_list" to "list", "manage_list" to "list", "lists" to "list",
         "add_reminder" to "add_task", "create_task" to "add_task", "reminder" to "add_task",
         "get_tasks" to "list_tasks", "tasks" to "list_tasks",
         "reschedule_task" to "update_task", "snooze" to "update_task",
@@ -369,12 +371,13 @@ object Abilities {
         ),
         Ability(
             ToolGroup.Tasks,
-            "Tasks and reminders",
-            "Reminders with real alarms, moved or cancelled by saying so.",
+            "Tasks, reminders and lists",
+            "Reminders with real alarms, moved or cancelled by saying so, and lists for the shop or the trip.",
             listOf(
                 "Remind me to call mum tomorrow at six",
                 "Move that reminder to Friday",
-                "What's still open?"
+                "What's still open?",
+                "Add oat milk to the shopping list"
             )
         ),
         Ability(

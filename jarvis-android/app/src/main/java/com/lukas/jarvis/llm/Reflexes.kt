@@ -24,6 +24,7 @@ object Reflexes {
         remind(text)?.let { return it }
         alarm(text)?.let { return it }
         torch(text)?.let { return it }
+        list(text)?.let { return it }
         quiet(text)?.let { return it }
         volume(text)?.let { return it }
         playback(text)?.let { return it }
@@ -108,6 +109,26 @@ object Reflexes {
         return call("volume", args)
     }
 
+    private fun list(text: String): ToolCall? {
+        LIST_ADD.matchEntire(text)?.let { m ->
+            val items = m.groupValues[1].trim()
+            val name = m.groupValues[2].trim()
+            if (items.isBlank() || name.isBlank()) return null
+            return call("list", JSONObject().put("action", "add").put("list", name).put("items", org.json.JSONArray().put(items)))
+        }
+        LIST_ADD_DE.matchEntire(text)?.let { m ->
+            val items = m.groupValues[1].trim()
+            val name = m.groupValues[2].trim().ifBlank { "shopping" }
+            if (items.isBlank()) return null
+            return call("list", JSONObject().put("action", "add").put("list", name).put("items", org.json.JSONArray().put(items)))
+        }
+        LIST_SHOW.matchEntire(text)?.let { m ->
+            val name = m.groupValues.drop(1).firstOrNull { it.isNotBlank() }?.trim() ?: return null
+            return call("list", JSONObject().put("action", "show").put("list", name))
+        }
+        return null
+    }
+
     private fun playback(text: String): ToolCall? {
         val action = when {
             PAUSE.matches(text) -> "pause"
@@ -165,6 +186,9 @@ object Reflexes {
     private val UP = listOf("volume up", "turn it up", "turn the volume up", "louder", "lauter")
     private val DOWN = listOf("volume down", "turn it down", "turn the volume down", "quieter", "leiser")
     private val MUTE = Regex("^(mute|stumm|mute (the )?(sound|music|media|volume|phone)|(schalte? )?(den ton|die musik) (stumm|aus))$")
+    private val LIST_ADD = Regex("^(?:please )?(?:add|put)\\s+(.+?)\\s+(?:to|on|onto)\\s+(?:my |the |our )?(.+?)\\s*list$")
+    private val LIST_ADD_DE = Regex("^(?:setz(?:e)?|schreib(?:e)?|pack(?:e)?)?\\s*(.+?)\\s+auf\\s+(?:die |meine |unsere )?(.*?)liste$")
+    private val LIST_SHOW = Regex("^what'?s on (?:my |the )?(.+?) list$|^(?:show|read)(?: me)? (?:my |the )?(.+?) list$|^was steht auf (?:der |meiner )?(.+?)liste$")
     private val PAUSE = Regex("^(pause|stop)( (the )?(music|song|playback|it))?( please)?$|^(musik )?(pausieren|pause|stopp)( die musik)?$")
     private val RESUME = Regex("^(resume|play|continue|unpause)( (the )?(music|song|playback|it))?( please)?$|^(musik )?(weiter|fortsetzen|weiterspielen)$")
     private val NEXT = Regex("^(next|skip)( (the )?(song|track|one|this))?( please)?$|^(nächstes lied|nächster song|überspringen)$")

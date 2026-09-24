@@ -95,6 +95,7 @@ class AppContainer(context: Context) {
     /** Text, objects and codes read on the phone itself, with no key. */
     val eyes = com.lukas.jarvis.vision.OnDeviceVision()
     val routines = Routines(context)
+    val lists = com.lukas.jarvis.data.Lists(context)
 
     /** One day, gathered once, for the dashboard and the spoken brief alike. */
     val briefer = Briefer(brain, agenda, weather, locator, places, device, knowledge)
@@ -122,7 +123,8 @@ class AppContainer(context: Context) {
         routines = routines,
         knowledge = knowledge,
         imagine = imagine,
-        home = home
+        home = home,
+        lists = lists
     )
 
     val models = ModelCatalog()
@@ -133,7 +135,12 @@ class AppContainer(context: Context) {
 
     val agent = Agent(pooled, tools, brain).also { agent ->
         agent.ambient = {
-            listOfNotNull(briefer.lastPlace?.let { "Roughly where the phone is: $it" })
+            listOfNotNull(
+                briefer.lastPlace?.let { "Roughly where the phone is: $it" },
+                lists.current.lists.takeIf { it.isNotEmpty() }?.let { all ->
+                    "The user's lists: " + all.joinToString { "${it.name} (${it.open.size} open)" }
+                }
+            )
         }
         tools.routineRunner = { routine, settings ->
             routines.markRun(routine.name)

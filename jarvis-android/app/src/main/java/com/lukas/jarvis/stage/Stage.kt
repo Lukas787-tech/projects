@@ -31,6 +31,7 @@ enum class Element(
     Notes("Notes", listOf("notes", "note", "memory", "memories", "brain", "remember")),
     Tasks("Tasks", listOf("tasks", "task", "todo", "to-do", "reminders", "reminder")),
     Money("Trackers", listOf("trackers", "tracker", "money", "budget", "spending", "expenses")),
+    Lists("Lists", listOf("lists", "list", "shopping list", "shopping", "packing list", "einkaufsliste")),
     Music("Music", listOf("music", "songs", "song", "player", "playing", "audio")),
     Devices("Devices", listOf("devices", "device", "bluetooth", "headphones", "speaker")),
 

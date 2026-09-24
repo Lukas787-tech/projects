@@ -42,7 +42,8 @@ object ToolRouter {
             "next week", "on monday", "on tuesday", "on wednesday", "on thursday", "on friday",
             "on saturday", "on sunday", " at ", "i did it", "done with", "finished", "open",
             "erinner", "aufgabe", "morgen", "später", "heute abend", "nicht vergessen",
-            "erledigt", "verschieb", "nächste woche", " um "
+            "erledigt", "verschieb", "nächste woche", " um ", "list", "shopping", "groceries",
+            "packing", "i got the", "einkauf", "liste", "pack"
         ),
         ToolGroup.Web to listOf(
             "search", "google", "look up", "lookup", "latest", "who is", "who was", "what is",
