@@ -45,7 +45,7 @@ jobs:
       # A hang must not eat the job: the step stops, and whatever was
       # rendered before it is still committed below.
       - name: Render the screens
-        timeout-minutes: 25
+        timeout-minutes: 15
         run: |
           set -o pipefail
           ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.ScreensTest' --no-daemon 2>&1 | tee screens.log
@@ -64,6 +64,7 @@ jobs:
           cp app/build/screens/*.png ../docs/screens/ 2>/dev/null || true
           cp app/build/screens/report.txt ../docs/screens/ 2>/dev/null || true
           cp app/build/screens/progress.txt ../docs/screens/ 2>/dev/null || true
+          cp app/build/screens/stall-*.txt ../docs/screens/ 2>/dev/null || true
           # A failure before any picture still leaves its reason where it can be read.
           if [ ! -f ../docs/screens/report.txt ] || [ -z "$(ls app/build/screens/*.png 2>/dev/null)" ]; then
             { echo "Run ${GITHUB_RUN_ID}: no pictures."; grep -E "Exception|Caused by|What went wrong|^e: " screens.log | head -n 60; } > ../docs/screens/report.txt || true

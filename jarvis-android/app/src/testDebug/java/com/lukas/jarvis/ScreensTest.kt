@@ -59,7 +59,20 @@ class ScreensTest {
         runCatching { seed(container) }.onFailure { note("seed", it) }
 
         progress("seeded; starting the activity")
-        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val watchdog = watchdog()
+        val controller = Robolectric.buildActivity(MainActivity::class.java)
+        controller.create()
+        progress("created")
+        controller.start()
+        progress("started")
+        controller.postCreate(null)
+        controller.resume()
+        progress("resumed")
+        controller.visible()
+        progress("visible")
+        controller.topActivityResumed(true)
+        val activity = controller.get()
+        watchdog.interrupt()
         progress("activity started")
         settle()
         shot(activity, "01-onboarding")
@@ -192,6 +205,29 @@ class ScreensTest {
         report.appendLine("$what: ${error::class.java.simpleName}: ${error.message}")
         error.stackTrace.take(12).forEach { report.appendLine("    at $it") }
         progress("failed $what: ${error.message}")
+    }
+
+    /**
+     * If starting the activity stalls, every thread's stack is written out
+     * each minute, which says exactly what the main thread is stuck on.
+     */
+    private fun watchdog(): Thread = Thread {
+        try {
+            repeat(8) { round ->
+                Thread.sleep(45_000)
+                val dump = Thread.getAllStackTraces().entries
+                    .sortedByDescending { it.key.name == "main" || it.key.name.startsWith("Test worker") }
+                    .joinToString("\n\n") { (thread, stack) ->
+                        "${thread.name} (${thread.state})\n" + stack.take(45).joinToString("\n") { "    at $it" }
+                    }
+                File(dir, "stall-$round.txt").writeText(dump)
+                println("[screens] stall dump $round written")
+            }
+        } catch (_: InterruptedException) {
+        }
+    }.apply {
+        isDaemon = true
+        start()
     }
 
     /** Written as it goes, so a run that hangs still says how far it got. */
