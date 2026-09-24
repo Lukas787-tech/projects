@@ -7,6 +7,7 @@ package com.lukas.jarvis
  * where a reply still being written may be cut for speaking.
  */
 import com.lukas.jarvis.core.Settings
+import com.lukas.jarvis.core.Numbers
 import com.lukas.jarvis.core.TimeUtil
 import com.lukas.jarvis.data.ChatMessage
 import com.lukas.jarvis.llm.Personas
@@ -121,6 +122,18 @@ class LogicTest {
         // Still ahead: one step exactly.
         assertEquals(start + 7 * day, TimeUtil.rollForward(start, "weekly", start - 1))
         assertEquals(null, TimeUtil.rollForward(start, "none", now))
+    }
+
+    @Test fun numbersWithEitherDecimalMark() {
+        assertEquals(50.0, Numbers.first("50%")!!, 0.0)
+        assertEquals(2.5, Numbers.first("€2.50")!!, 0.0)
+        assertEquals(2.5, Numbers.first("2,50 euro")!!, 0.0)
+        assertEquals(1200.0, Numbers.first("1,200")!!, 0.0)
+        assertEquals(1200.5, Numbers.first("1.200,50")!!, 0.0)
+        assertEquals(1234567.89, Numbers.first("1,234,567.89")!!, 0.001)
+        assertEquals(0.125, Numbers.first("0.125")!!, 0.0)
+        assertEquals(30.0, Numbers.first("30 minutes")!!, 0.0)
+        assertEquals(null, Numbers.first("none"))
     }
 
     @Test fun sentencesCutOnlyAtRealEnds() {

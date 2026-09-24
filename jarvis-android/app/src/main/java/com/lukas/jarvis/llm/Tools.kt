@@ -1129,16 +1129,16 @@ class Tools(
                 "volume" -> device.volume(
                     args.optString("stream"),
                     args.optString("action"),
-                    if (args.has("level")) args.optInt("level") else null
+                    number(args, "level")?.toInt()
                 )
                 "brightness" -> device.brightness(
-                    if (args.has("level")) args.optInt("level") else null,
-                    if (args.has("auto")) args.optBoolean("auto") else null,
+                    number(args, "level")?.toInt(),
+                    if (args.has("auto") && !args.isNull("auto")) args.optBoolean("auto") else null,
                     args.optString("change").ifBlank { null }
                 )
                 "do_not_disturb" -> device.doNotDisturb(
                     args.optString("mode"),
-                    if (args.has("minutes")) args.optInt("minutes") else null
+                    number(args, "minutes")?.toInt()
                 )
                 "clipboard" -> clipboard(args)
                 "open_app" -> launcher.openApp(args.optString("name"))
@@ -1291,7 +1291,7 @@ class Tools(
     private fun logEntry(args: JSONObject, settings: Settings, effects: ToolEffects): String {
         val name = args.optString("tracker").trim()
         if (name.isBlank()) return "Need a tracker name."
-        val amount = args.optDouble("amount", Double.NaN)
+        val amount = number(args, "amount") ?: Double.NaN
         if (amount.isNaN()) return "Need a numeric amount."
 
         val requestedUnit = args.optString("unit").trim()
@@ -1635,7 +1635,7 @@ class Tools(
     }
 
     private fun convert(args: JSONObject): String {
-        val amount = args.optDouble("amount", Double.NaN)
+        val amount = number(args, "amount") ?: Double.NaN
         if (amount.isNaN()) return "Need an amount to convert."
         return when (
             val result = Units.convert(amount, args.optString("from"), args.optString("to"))
@@ -1664,7 +1664,7 @@ class Tools(
     }
 
     private suspend fun convertCurrency(args: JSONObject): String {
-        val amount = args.optDouble("amount", Double.NaN)
+        val amount = number(args, "amount") ?: Double.NaN
         if (amount.isNaN()) return "Need an amount to convert."
         val from = args.optString("from").trim()
         val to = args.optString("to").trim()
@@ -1874,7 +1874,7 @@ class Tools(
     }
 
     private fun setTimer(args: JSONObject): String {
-        val minutes = args.optDouble("minutes", Double.NaN)
+        val minutes = number(args, "minutes") ?: Double.NaN
         if (minutes.isNaN() || minutes <= 0) return "A timer needs a length in minutes."
         val seconds = (minutes * 60).toInt().coerceAtLeast(1)
         val label = args.optString("label").takeIf { it.isNotBlank() }
@@ -1893,7 +1893,7 @@ class Tools(
                 else "Cancelled: ${gone.joinToString { it.label }}."
             }
             "add" -> {
-                val minutes = args.optDouble("minutes", Double.NaN)
+                val minutes = number(args, "minutes") ?: Double.NaN
                 if (minutes.isNaN() || minutes == 0.0) return "How many minutes to add?"
                 val moved = timers.extend(which, (minutes * 60).toInt())
                     ?: return "No timer like that is running."
@@ -1928,8 +1928,8 @@ class Tools(
             "resume", "play" -> phone.play(null)
             "next", "skip" -> phone.next()
             "previous", "back" -> phone.previous()
-            "volume" -> if (args.has("percent")) {
-                phone.setVolume(args.optInt("percent"))
+            "volume" -> if (number(args, "percent") != null) {
+                phone.setVolume(number(args, "percent")!!.toInt())
             } else {
                 phone.volume()
             }
@@ -2167,11 +2167,21 @@ class Tools(
         return (0 until length()).mapNotNull { optString(it).takeIf { s -> s.isNotBlank() } }
     }
 
-    private fun optDoubleOrNull(args: JSONObject, key: String): Double? {
+    /**
+     * A number however a small model chose to write it: 50, 50.0, "50",
+     * "50%" or "30 minutes". A plain optInt reads "50%" as 0, which for a
+     * volume means silence.
+     */
+    private fun number(args: JSONObject, key: String): Double? {
         if (!args.has(key) || args.isNull(key)) return null
-        val value = args.optDouble(key, Double.NaN)
-        return if (value.isNaN()) null else value
+        return when (val raw = args.opt(key)) {
+            is Number -> raw.toDouble()
+            is String -> com.lukas.jarvis.core.Numbers.first(raw)
+            else -> null
+        }?.takeIf { !it.isNaN() }
     }
+
+    private fun optDoubleOrNull(args: JSONObject, key: String): Double? = number(args, key)
 
     private companion object {
         val ITEM_SEPARATOR = Regex("\\s*(?:,|;|\\band\\b|\\bund\\b)\\s*")
