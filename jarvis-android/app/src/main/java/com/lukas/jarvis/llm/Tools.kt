@@ -899,6 +899,12 @@ class Tools(
             emptyList()
         ),
         tool(
+            "now_playing",
+            "What song or podcast is playing right now, by whom, and in which app.",
+            props(),
+            emptyList()
+        ),
+        tool(
             "control_playback",
             "Pause, resume or skip what is playing, or set the media volume.",
             props(
@@ -1168,6 +1174,7 @@ class Tools(
                 // media and the screen
                 "play_music" -> phone.play(args.optString("query").takeIf { it.isNotBlank() })
                 "control_playback" -> playback(args)
+                "now_playing" -> phone.describeNowPlaying()
                 "bluetooth" -> bluetooth(args)
                 "show" -> show(args)
 

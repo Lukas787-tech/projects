@@ -101,7 +101,8 @@ object ToolRouter {
         ToolGroup.Media to listOf(
             "play", "music", "song", "pause", "skip", "next track", "previous", "volume",
             "spotify", "podcast", "radio", "bluetooth", "headphone", "speaker", "louder",
-            "quieter", "spiel", "musik", "lied", "weiter", "lauter", "leiser", "kopfhörer"
+            "quieter", "spiel", "musik", "lied", "weiter", "lauter", "leiser", "kopfhörer",
+            "playing", "what song", "which song", "track", "läuft"
         ),
         ToolGroup.Vision to listOf(
             "photo", "picture", "camera", "look at", "see this", "scan", "read this",

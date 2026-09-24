@@ -22,10 +22,79 @@ import androidx.core.content.ContextCompat
  * this opens the right settings page and says so, instead of pretending to have
  * done something and leaving the user to discover it did not happen.
  */
+/** What a music app says it is playing. */
+data class NowPlaying(
+    val title: String,
+    val artist: String?,
+    val app: String,
+    val playing: Boolean,
+    val positionMs: Long,
+    val durationMs: Long
+)
+
 class Phone(context: Context) {
 
     private val app = context.applicationContext
     private val audio = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+
+    // ------------------------------------------------------------ now playing
+
+    /**
+     * The music app that is playing, or was last: Android shares its media
+     * sessions with an app that holds notification access, which Jarvis
+     * already asks for to answer messages. Null without that access or with
+     * nothing loaded.
+     */
+    private fun session(): android.media.session.MediaController? {
+        if (!com.lukas.jarvis.notify.ReplyListener.isEnabled(app)) return null
+        val manager = app.getSystemService(android.media.session.MediaSessionManager::class.java) ?: return null
+        val sessions = runCatching {
+            manager.getActiveSessions(
+                android.content.ComponentName(app, com.lukas.jarvis.notify.ReplyListener::class.java)
+            )
+        }.getOrNull().orEmpty()
+        return sessions.firstOrNull { it.playbackState?.state == android.media.session.PlaybackState.STATE_PLAYING }
+            ?: sessions.firstOrNull()
+    }
+
+    val canSeeMedia: Boolean get() = com.lukas.jarvis.notify.ReplyListener.isEnabled(app)
+
+    fun nowPlaying(): NowPlaying? {
+        val controller = session() ?: return null
+        val meta = controller.metadata ?: return null
+        val title = meta.getString(android.media.MediaMetadata.METADATA_KEY_TITLE)
+            ?: meta.getString(android.media.MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
+            ?: return null
+        val artist = meta.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST)
+            ?: meta.getString(android.media.MediaMetadata.METADATA_KEY_ALBUM_ARTIST)
+        val label = runCatching {
+            val pm = app.packageManager
+            pm.getApplicationLabel(pm.getApplicationInfo(controller.packageName, 0)).toString()
+        }.getOrDefault(controller.packageName)
+        val state = controller.playbackState
+        return NowPlaying(
+            title = title,
+            artist = artist?.takeIf { it.isNotBlank() },
+            app = label,
+            playing = state?.state == android.media.session.PlaybackState.STATE_PLAYING,
+            positionMs = state?.position ?: 0L,
+            durationMs = meta.getLong(android.media.MediaMetadata.METADATA_KEY_DURATION)
+        )
+    }
+
+    /** "Sonne by Rammstein, playing in Spotify." */
+    fun describeNowPlaying(): String {
+        if (!canSeeMedia) {
+            return "I can only see what is playing with notification access, which is switched " +
+                "on in Android's settings under Notification access."
+        }
+        val now = nowPlaying() ?: return "Nothing is playing."
+        return buildString {
+            append(now.title)
+            now.artist?.let { append(" by ").append(it) }
+            append(if (now.playing) ", playing in " else ", paused in ").append(now.app).append(".")
+        }
+    }
 
     // ------------------------------------------------------------------ media
 
@@ -56,14 +125,22 @@ class Phone(context: Context) {
         }
     }
 
+    // The session's own controls where it can be seen, which reach the app
+    // that is actually playing; the media button otherwise.
     fun pause(): String =
-        if (mediaKey(KeyEvent.KEYCODE_MEDIA_PAUSE)) "Paused." else "Nothing is playing."
+        if (session()?.transportControls?.let { it.pause(); true } == true ||
+            mediaKey(KeyEvent.KEYCODE_MEDIA_PAUSE)
+        ) "Paused." else "Nothing is playing."
 
     fun next(): String =
-        if (mediaKey(KeyEvent.KEYCODE_MEDIA_NEXT)) "Skipped." else "Nothing is playing."
+        if (session()?.transportControls?.let { it.skipToNext(); true } == true ||
+            mediaKey(KeyEvent.KEYCODE_MEDIA_NEXT)
+        ) "Skipped." else "Nothing is playing."
 
     fun previous(): String =
-        if (mediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS)) "Back a track." else "Nothing is playing."
+        if (session()?.transportControls?.let { it.skipToPrevious(); true } == true ||
+            mediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
+        ) "Back a track." else "Nothing is playing."
 
     /**
      * A media button, sent as the press and release a real button sends. Apps

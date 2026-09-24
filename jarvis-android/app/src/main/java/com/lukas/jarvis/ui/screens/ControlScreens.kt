@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.lukas.jarvis.control.NowPlaying
 import com.lukas.jarvis.control.PhoneLevels
 import com.lukas.jarvis.ui.components.ChipButton
 import com.lukas.jarvis.ui.components.SegmentedTabs
@@ -50,6 +52,7 @@ import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
 import com.lukas.jarvis.ui.theme.TextSecondary
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 /**
  * The transport controls, for whatever is playing.
@@ -71,12 +74,74 @@ fun MusicScreen(
     onOpenDevices: () -> Unit,
     modifier: Modifier = Modifier,
     /** The media volume as it really is, so the slider starts where the phone is. */
-    mediaVolume: Int? = null
+    mediaVolume: Int? = null,
+    nowPlaying: NowPlaying? = null,
+    canSeeMedia: Boolean = false,
+    onRefresh: () -> Unit = {},
+    onGrantAccess: () -> Unit = {}
 ) {
     var volume by remember(mediaVolume) { mutableFloatStateOf(mediaVolume?.div(100f) ?: -1f) }
 
+    // What is playing changes by itself — the next song comes on — so it is
+    // looked at every couple of seconds while this screen is up.
+    LaunchedEffect(Unit) {
+        while (true) {
+            onRefresh()
+            delay(2_000)
+        }
+    }
+
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         ScreenHeader(title = "Music", subtitle = "Controls whatever app is playing")
+
+        Panel(title = "Now playing") {
+            when {
+                !canSeeMedia -> {
+                    Text(
+                        "Allow notification access and the song, the artist and the app show here — " +
+                            "and \"what's playing?\" gets an answer.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    ChipButton(
+                        label = "Allow notification access",
+                        icon = Icons.Default.NotificationsActive,
+                        onClick = onGrantAccess,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                nowPlaying == null -> Text(
+                    "Nothing is playing.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TextFaint
+                )
+                else -> {
+                    Text(
+                        nowPlaying.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = TextPrimary,
+                        maxLines = 2
+                    )
+                    Text(
+                        listOfNotNull(nowPlaying.artist, nowPlaying.app).joinToString("  ·  ") +
+                            if (nowPlaying.playing) "" else "  ·  paused",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                        maxLines = 1
+                    )
+                    if (nowPlaying.durationMs > 0) {
+                        Spacer(Modifier.height(10.dp))
+                        LinearProgressIndicator(
+                            progress = { (nowPlaying.positionMs.toFloat() / nowPlaying.durationMs).coerceIn(0f, 1f) },
+                            color = Accent,
+                            trackColor = TextFaint.copy(alpha = 0.25f),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        }
 
         Panel(title = "Playing") {
             Row(

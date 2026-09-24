@@ -144,6 +144,7 @@ object ToolCatalog {
         // media and the screen
         ToolInfo("play_music", ToolGroup.Media, "starting the music", "Music"),
         ToolInfo("control_playback", ToolGroup.Media, "the music", "Playback"),
+        ToolInfo("now_playing", ToolGroup.Media, "checking what's playing", "Playing", readOnly = true),
         ToolInfo("bluetooth", ToolGroup.Media, "checking Bluetooth", "Bluetooth"),
         ToolInfo("show", ToolGroup.Screen, "putting it on screen", "Screen"),
 

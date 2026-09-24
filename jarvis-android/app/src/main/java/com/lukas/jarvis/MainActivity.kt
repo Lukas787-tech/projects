@@ -304,6 +304,8 @@ private fun JarvisRoot(
     val levels by viewModel.levels.collectAsStateWithLifecycle()
     val lists by viewModel.lists.collectAsStateWithLifecycle()
     val timers by viewModel.timers.collectAsStateWithLifecycle()
+    val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
+    val canSeeMedia by viewModel.canSeeMedia.collectAsStateWithLifecycle()
     val cameraRequest by viewModel.cameraRequests.collectAsStateWithLifecycle()
     val mapStyle = MapStyle.of(settings.mapStyle)
     val scope = rememberCoroutineScope()
@@ -759,7 +761,11 @@ private fun JarvisRoot(
                         onPrevious = viewModel::previousTrack,
                         onVolume = viewModel::setMediaVolume,
                         onOpenDevices = { viewModel.showElement(Element.Devices) },
-                        mediaVolume = levels?.media
+                        mediaVolume = levels?.media,
+                        nowPlaying = nowPlaying,
+                        canSeeMedia = canSeeMedia,
+                        onRefresh = viewModel::refreshNowPlaying,
+                        onGrantAccess = viewModel::openNotificationAccess
                     )
                 }
 

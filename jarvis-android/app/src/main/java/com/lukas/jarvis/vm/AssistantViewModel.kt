@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -1179,10 +1180,34 @@ class AssistantViewModel(
 
     // ----------------------------------------------------------- the phone
 
-    fun playMusic() = report(container.phone.play(null))
-    fun pauseMusic() = report(container.phone.pause())
-    fun nextTrack() = report(container.phone.next())
-    fun previousTrack() = report(container.phone.previous())
+    fun playMusic() = music { container.phone.play(null) }
+    fun pauseMusic() = music { container.phone.pause() }
+    fun nextTrack() = music { container.phone.next() }
+    fun previousTrack() = music { container.phone.previous() }
+
+    /** A transport press, then a fresh look at what is playing once the app has reacted. */
+    private fun music(press: () -> String) {
+        report(press())
+        viewModelScope.launch {
+            delay(700)
+            refreshNowPlaying()
+        }
+    }
+
+    private val _nowPlaying = MutableStateFlow<com.lukas.jarvis.control.NowPlaying?>(null)
+    val nowPlaying: StateFlow<com.lukas.jarvis.control.NowPlaying?> = _nowPlaying.asStateFlow()
+
+    private val _canSeeMedia = MutableStateFlow(false)
+    val canSeeMedia: StateFlow<Boolean> = _canSeeMedia.asStateFlow()
+
+    fun refreshNowPlaying() {
+        _canSeeMedia.value = container.phone.canSeeMedia
+        _nowPlaying.value = runCatching { container.phone.nowPlaying() }.getOrNull()
+    }
+
+    fun openNotificationAccess() {
+        runCatching { container.app.startActivity(com.lukas.jarvis.notify.ReplyListener.permissionIntent()) }
+    }
     fun setMediaVolume(percent: Int) = setVolumeLevel("media", percent)
 
     private val _bluetooth = MutableStateFlow("")
