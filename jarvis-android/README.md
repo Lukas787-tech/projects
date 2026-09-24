@@ -50,7 +50,7 @@ That is all the setup there is. Everything below is optional.
 |---|---|
 | **You** | Its name and yours, how it addresses you, seven personalities (J.A.R.V.I.S., F.R.I.D.A.Y., best friend, executive assistant, coach, calm, wisecracker) or your own, reply length, how much wit, a fixed reply language, follow-up offers, emoji, and two free-text boxes — *about you* and *how it should behave* — that go into every conversation |
 | **Voice** | Speak replies, hands-free, listening tones, haptics, speed, pitch, any voice installed on the phone, the language to listen and speak in, and the wake word |
-| **Look** | Eight accent colours, five backdrops, the core (arc reactor, orb or globe), heads-up readouts, calm motion, text size |
+| **Look** | Eight accent colours or any colour from a rainbow slider, five backdrops, the core (arc reactor, orb or globe), heads-up readouts, calm motion, text size |
 | **Brain** | The free built-in AI (on by default), and optional free keys for faster, smarter models |
 | **Powers** | Which abilities are switched on, maps, automation, the floating dot |
 | **Data** | Backup and restore — one file with every memory, task, tracker, the conversation, routines, places, settings and keys — clearing the chat, replaying the introduction |
