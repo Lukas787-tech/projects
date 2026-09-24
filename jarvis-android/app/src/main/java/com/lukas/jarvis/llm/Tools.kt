@@ -1140,7 +1140,7 @@ class Tools(
 
                 // calendar and people
                 "calendar" -> agenda.describe(args.optInt("days", 1), args.optInt("limit", 10))
-                "add_calendar_event" -> addEvent(args)
+                "add_calendar_event" -> addEvent(args, settings)
                 "change_calendar_event" -> {
                     val cancel = args.optString("action").trim().lowercase(Locale.ROOT) in setOf("cancel", "delete", "remove")
                     val start = TimeUtil.parse(args.optString("start").takeIf { it.isNotBlank() })
@@ -1882,7 +1882,7 @@ class Tools(
 
     // ---------------------------------------------------------------- calendar
 
-    private fun addEvent(args: JSONObject): String {
+    private suspend fun addEvent(args: JSONObject, settings: Settings): String {
         val title = args.optString("title").trim()
         if (title.isBlank()) return "An event needs a title."
         val start = TimeUtil.parse(args.optString("start").takeIf { it.isNotBlank() })
@@ -1890,13 +1890,14 @@ class Tools(
         val end = TimeUtil.parse(args.optString("end").takeIf { it.isNotBlank() })
         // Straight into the calendar when allowed; otherwise filled in for the
         // user to save, and the reply says which of the two happened.
+        val location = args.optString("location").takeIf { it.isNotBlank() }
         agenda.insert(
             title = title,
             start = start,
             end = end ?: (start + 60 * 60 * 1000L),
-            location = args.optString("location").takeIf { it.isNotBlank() },
+            location = location,
             description = args.optString("description").takeIf { it.isNotBlank() }
-        )?.let { return it }
+        )?.let { added -> return added + leaveReminder(title, start, location, settings) }
         return launcher.createEvent(
             title = title,
             startMillis = start,
@@ -1961,6 +1962,25 @@ class Tools(
             }
             else -> timers.describe()
         }
+    }
+
+    /**
+     * For an appointment somewhere, a reminder to set off: the travel time
+     * from where the phone is now, in the usual mode, plus ten minutes to
+     * spare. Nothing when the place, the location or the route is unknown,
+     * or when it would already be time to go.
+     */
+    private suspend fun leaveReminder(title: String, start: Long, location: String?, settings: Settings): String {
+        if (location == null || !settings.mapsEnabled) return ""
+        val seconds = runCatching { navigator.travelSeconds(location, settings) }.getOrNull() ?: return ""
+        val leaveAt = start - (seconds * 1000).toLong() - 10 * 60 * 1000L
+        if (leaveAt < System.currentTimeMillis() + 2 * 60 * 1000L) return ""
+        val way = "${com.lukas.jarvis.maps.Geo.formatDuration(seconds)} " +
+            com.lukas.jarvis.maps.Geo.modeVerb(com.lukas.jarvis.maps.Geo.normalizeMode(settings.travelMode))
+        val task = Task(title = "Leave for $title", notes = "About $way to $location", dueAt = leaveAt)
+        val saved = task.copy(id = brain.addTask(task))
+        reminders.schedule(saved)
+        return " I'll remind you to leave at ${TimeUtil.formatTime(leaveAt)} — it's about $way from here."
     }
 
     private fun deviceStatus(args: JSONObject): String =

@@ -89,6 +89,18 @@ class Navigator(
         return "$head$body The route is drawn on the map."
     }
 
+    /**
+     * How long the way from here to [destination] takes in the usual travel
+     * mode, without drawing anything; null when either end is unknown.
+     */
+    suspend fun travelSeconds(destination: String, settings: Settings): Double? {
+        if (destination.isBlank()) return null
+        val here = locator.current() ?: return null
+        val target = resolveDestination(destination, here) ?: return null
+        val mode = Geo.normalizeMode(settings.travelMode)
+        return runCatching { places.route(here, target.point, mode) }.getOrNull()?.durationSeconds
+    }
+
     suspend fun whereAmI(): String {
         val here = locator.current() ?: return noLocation()
         store.setHere(here)
