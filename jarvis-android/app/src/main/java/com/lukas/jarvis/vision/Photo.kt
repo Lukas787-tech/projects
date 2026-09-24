@@ -21,7 +21,9 @@ class Photo(
     /** `data:image/jpeg;base64,…`, the form every vision endpoint takes. */
     val dataUrl: String,
     /** The same picture, for the thread to show as a thumbnail. */
-    val preview: Bitmap
+    val preview: Bitmap,
+    /** The upright picture at sending size, for the phone's own text and object reading. */
+    val full: Bitmap = preview
 )
 
 object Photos {
@@ -95,7 +97,7 @@ object Photos {
         } else {
             upright
         }
-        return Photo("data:image/jpeg;base64,$encoded", preview)
+        return Photo("data:image/jpeg;base64,$encoded", preview, upright)
     }
 
     /** About 1.5 megapixels: text stays legible and the request stays well under 1 MB. */

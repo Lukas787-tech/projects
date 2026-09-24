@@ -87,6 +87,9 @@ class AppContainer(context: Context) {
 
     /** The camera, asked for by a tool and opened by the activity. */
     val camera = CameraBus()
+
+    /** Text, objects and codes read on the phone itself, with no key. */
+    val eyes = com.lukas.jarvis.vision.OnDeviceVision()
     val routines = Routines(context)
 
     /** One day, gathered once, for the dashboard and the spoken brief alike. */

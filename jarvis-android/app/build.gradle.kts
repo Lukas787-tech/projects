@@ -78,5 +78,11 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
 
+    // On-device eyes that need no key: reading text, naming things, QR codes.
+    // The models are bundled, so they work offline from the first launch.
+    implementation(libs.mlkit.text)
+    implementation(libs.mlkit.labels)
+    implementation(libs.mlkit.barcode)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

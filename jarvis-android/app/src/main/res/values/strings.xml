@@ -6,4 +6,17 @@
     <!-- Shown by Android on the accessibility page, where the user decides
          whether to allow this. It should say exactly what it does. -->
     <string name="tapper_description">Lets Jarvis press send in WhatsApp, Telegram and Signal after it has written a message you asked for. It does nothing at any other time and reads nothing back.</string>
+    <string name="shortcut_talk">Talk</string>
+    <string name="shortcut_talk_long">Talk to Jarvis</string>
+    <string name="shortcut_type">Type</string>
+    <string name="shortcut_type_long">Type to Jarvis</string>
+    <string name="shortcut_scan">Scan</string>
+    <string name="shortcut_scan_long">Show Jarvis something</string>
+    <string name="shortcut_today">Today</string>
+    <string name="shortcut_today_long">My day</string>
+    <string name="tile_label">Jarvis</string>
+    <string name="widget_title">Ask Jarvis anything</string>
+    <string name="widget_subtitle">Tap to talk · no key needed</string>
+    <string name="widget_description">Talk, type or show Jarvis something, straight from the home screen.</string>
+    <string name="share_label">Ask Jarvis</string>
 </resources>

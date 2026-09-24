@@ -70,7 +70,7 @@ class Speaker(context: Context) {
             applyVoice()
             pending?.let {
                 pending = null
-                speak(it)
+                speak(it, currentDone)
             }
         } else {
             // No engine at all: nothing will ever be spoken, so do not leave a
@@ -112,11 +112,21 @@ class Speaker(context: Context) {
         })
     }
 
+    /**
+     * Who asked for the reply now playing to be told when it ends. The app's
+     * hands-free hook is the default; the floating dot passes its own, so a
+     * reply spoken from the home screen never opens the app's microphone.
+     */
+    @Volatile
+    private var currentDone: (() -> Unit)? = null
+
     private fun finish() {
         _speaking.value = false
         _level.value = 0f
         lastUtteranceId = null
-        onFinished?.invoke()
+        val done = currentDone
+        currentDone = null
+        (done ?: onFinished)?.invoke()
     }
 
     private var decayThread: Thread? = null
@@ -197,10 +207,11 @@ class Speaker(context: Context) {
         return "Voice ${index + 1} · $region · $tier$online"
     }
 
-    fun speak(text: String) {
+    fun speak(text: String, onDone: (() -> Unit)? = null) {
         val clean = sanitize(text)
+        currentDone = onDone
         if (clean.isBlank()) {
-            onFinished?.invoke()
+            finish()
             return
         }
         if (!_ready.value) {
@@ -227,6 +238,7 @@ class Speaker(context: Context) {
 
     fun stop() {
         pending = null
+        currentDone = null
         runCatching { tts.stop() }
         _speaking.value = false
         _level.value = 0f

@@ -72,7 +72,7 @@ class BubbleService : Service() {
     }
 
     override fun onDestroy() {
-        conversation.cancel()
+        conversation.release()
         dot?.let { view -> runCatching { windows.removeView(view) } }
         dot = null
         scope.cancel()

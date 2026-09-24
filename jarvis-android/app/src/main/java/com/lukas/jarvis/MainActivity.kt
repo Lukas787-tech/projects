@@ -101,11 +101,15 @@ import com.lukas.jarvis.ui.theme.ThemeState
 import androidx.compose.runtime.SideEffect
 import com.lukas.jarvis.voice.WakeWordService
 import com.lukas.jarvis.vm.AssistantViewModel
+import com.lukas.jarvis.surface.Entry
 
 class MainActivity : ComponentActivity() {
 
     private var startListeningOnOpen by mutableStateOf(false)
     private var routineOnOpen by mutableStateOf<String?>(null)
+
+    /** A shortcut, widget, tile or share that opened the app, waiting to be acted on. */
+    private var launchOnOpen by mutableStateOf<Launch?>(null)
 
     private val requestPermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -116,6 +120,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         startListeningOnOpen = intent?.getBooleanExtra(EXTRA_START_LISTENING, false) == true
         routineOnOpen = intent?.getStringExtra(EXTRA_RUN_ROUTINE)
+        // A recreation after rotation carries the same intent; it was handled.
+        if (savedInstanceState == null) launchOnOpen = Launch.from(intent)
         askForPermissions()
 
         // The saved look, before the first frame, so the app does not flash
@@ -131,7 +137,9 @@ class MainActivity : ComponentActivity() {
                         autoStartListening = startListeningOnOpen,
                         onAutoStartHandled = { startListeningOnOpen = false },
                         routineToRun = routineOnOpen,
-                        onRoutineHandled = { routineOnOpen = null }
+                        onRoutineHandled = { routineOnOpen = null },
+                        launch = launchOnOpen,
+                        onLaunchHandled = { launchOnOpen = null }
                     )
                 }
             }
@@ -146,6 +154,7 @@ class MainActivity : ComponentActivity() {
         startListeningOnOpen = intent.getBooleanExtra(EXTRA_START_LISTENING, false)
         // A routine's notification, tapped: run it the moment the app is up.
         intent.getStringExtra(EXTRA_RUN_ROUTINE)?.let { routineOnOpen = it }
+        Launch.from(intent)?.let { launchOnOpen = it }
     }
 
     private fun askForPermissions() {
@@ -198,12 +207,62 @@ private fun iconFor(element: Element): ImageVector = when (element) {
     Element.Settings -> Icons.Default.Settings
 }
 
+/** Why the app was opened, when it was for something in particular. */
+sealed interface Launch {
+    data object Talk : Launch
+    data object Type : Launch
+    data object Scan : Launch
+    data object Today : Launch
+    data class Shared(val text: String?, val image: Uri?) : Launch
+
+    companion object {
+        fun from(intent: Intent?): Launch? = when (intent?.action) {
+            Entry.TALK -> Talk
+            Entry.TYPE -> Type
+            Entry.SCAN -> Scan
+            Entry.TODAY -> Today
+            Intent.ACTION_SEND -> {
+                val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+                    ?: intent.getStringExtra(Intent.EXTRA_SUBJECT)
+                @Suppress("DEPRECATION")
+                val image = if (intent.type?.startsWith("image/") == true) {
+                    intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                } else {
+                    null
+                }
+                if (text.isNullOrBlank() && image == null) null else Shared(text, image)
+            }
+            Intent.ACTION_PROCESS_TEXT -> intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)
+                ?.toString()?.takeIf { it.isNotBlank() }?.let { Shared(it, null) }
+            else -> null
+        }
+    }
+}
+
+/**
+ * What to ask about something shared in. A link is read; a stretch of text is
+ * explained and summed up; either way the question is Jarvis's to answer, in
+ * the chat, where the whole reply can be read.
+ */
+private fun sharedPrompt(text: String): String {
+    val trimmed = text.trim()
+    val link = Regex("https?://\\S+").find(trimmed)?.value
+    return if (link != null && trimmed.length < link.length + 80) {
+        "Open this link, read it, and give me the gist in a few sentences: $link"
+    } else {
+        "I'm sharing this with you. Summarise it, explain anything unclear, and tell me " +
+            "if there's something I should do about it:\n\n${trimmed.take(6000)}"
+    }
+}
+
 @Composable
 private fun JarvisRoot(
     autoStartListening: Boolean,
     onAutoStartHandled: () -> Unit,
     routineToRun: String?,
-    onRoutineHandled: () -> Unit
+    onRoutineHandled: () -> Unit,
+    launch: Launch?,
+    onLaunchHandled: () -> Unit
 ) {
     val viewModel: AssistantViewModel = viewModel(factory = AssistantViewModel.Factory)
     val context = LocalContext.current
@@ -327,6 +386,43 @@ private fun JarvisRoot(
         }.onFailure { viewModel.cancelPhoto() }
     }
 
+    // Shortcuts, the widget, the tile and shares from other apps.
+    LaunchedEffect(launch, settings.onboarded) {
+        val request = launch ?: return@LaunchedEffect
+        // The introduction comes first; a request made before it waits.
+        if (!settings.onboarded) return@LaunchedEffect
+        showHistory = false
+        when (request) {
+            Launch.Talk -> {
+                viewModel.showElement(Element.Globe)
+                viewModel.startListening()
+            }
+            Launch.Type -> {
+                viewModel.showElement(Element.Globe)
+                viewModel.updateSettings { it.copy(voiceMode = false) }
+            }
+            Launch.Scan -> {
+                viewModel.showElement(Element.Globe)
+                viewModel.askCamera("What is this? Read any text in it.")
+            }
+            Launch.Today -> viewModel.showElement(Element.Today)
+            is Launch.Shared -> {
+                viewModel.showElement(Element.Globe)
+                viewModel.updateSettings { it.copy(voiceMode = false) }
+                val image = request.image
+                if (image != null) {
+                    val photo = withContext(Dispatchers.IO) { Photos.load(context, image) }
+                    if (photo != null) {
+                        viewModel.sendPhoto(photo, request.text?.takeIf { it.isNotBlank() } ?: "What is in this picture?")
+                    }
+                } else {
+                    request.text?.let { viewModel.sendTyped(sharedPrompt(it)) }
+                }
+            }
+        }
+        onLaunchHandled()
+    }
+
     LaunchedEffect(routineToRun) {
         val name = routineToRun ?: return@LaunchedEffect
         viewModel.showElement(Element.Globe)
@@ -397,7 +493,13 @@ private fun JarvisRoot(
     DisposableEffect(lifecycleOwner, settings.wakeWordEnabled) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> WakeWordService.stop(context)
+                Lifecycle.Event.ON_RESUME -> {
+                    WakeWordService.stop(context)
+                    // A reminder ticked off from its notification, or a
+                    // message logged from the floating dot, changed things
+                    // while the app was away.
+                    viewModel.refreshAll()
+                }
                 Lifecycle.Event.ON_PAUSE -> {
                     if (settings.wakeWordEnabled) WakeWordService.start(context)
                 }

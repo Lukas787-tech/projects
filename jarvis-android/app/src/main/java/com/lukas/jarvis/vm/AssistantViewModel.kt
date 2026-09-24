@@ -35,6 +35,8 @@ import com.lukas.jarvis.maps.TileCache
 import com.lukas.jarvis.voice.SpeechInput
 import com.lukas.jarvis.voice.Speaker
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -311,7 +313,33 @@ class AssistantViewModel(
         turn(display = "\uD83D\uDCF7 $asked", createdAt = stamp, rewriteDisplay = true) { onStage, onTool ->
             onStage("looking at the photo")
             onTool("take_photo")
-            val seen = container.agent.look(settingsStore.current, asked, photo.dataUrl)
+            // The phone reads the text, codes and objects itself, offline, while
+            // a vision model (if the pool has one) describes the scene. Either
+            // alone is enough to answer; together the digits are exact.
+            val seen = coroutineScope {
+                val local = async { runCatching { container.eyes.read(photo.full) }.getOrNull() }
+                val remote = async {
+                    runCatching { container.agent.look(settingsStore.current, asked, photo.dataUrl) }
+                }
+                val reading = local.await()
+                val described = remote.await()
+                val words = buildString {
+                    described.getOrNull()?.let { append(it.trim()) }
+                    reading?.takeUnless { it.isEmpty }?.let {
+                        if (isNotEmpty()) append("\n\n")
+                        append(it.describe())
+                    }
+                }
+                if (words.isBlank()) {
+                    throw described.exceptionOrNull()
+                        ?: LlmException("Nothing in that picture could be made out. Try again closer or in better light.")
+                }
+                if (described.isFailure) {
+                    "(No vision model answered, so this is what the phone itself read and recognised.)\n$words"
+                } else {
+                    words
+                }
+            }
             pendingDisplay = "\uD83D\uDCF7 $asked\n\n${seen.take(900)}"
             val result = container.agent.respond(
                 utterance = "[PHOTO] What the picture I just took shows:\n$seen\n\nMy question: $asked",
@@ -916,9 +944,13 @@ class AssistantViewModel(
 
     /** Says a message out loud again. */
     fun speakMessage(message: ChatMessage) {
-        lastTurnWasVoice = false
+        if (busy) return
         _ui.value = _ui.value.copy(stage = Stage.Speaking, stageLabel = "speaking")
-        speaker.speak(message.content)
+        speaker.speak(message.content) {
+            viewModelScope.launch {
+                if (_ui.value.stage == Stage.Speaking) _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "")
+            }
+        }
     }
 
     /** Sends the user's last line again, for an answer that went wrong. */
@@ -1023,8 +1055,12 @@ class AssistantViewModel(
     fun previewVoice() {
         configureVoice()
         val persona = com.lukas.jarvis.llm.Personas.byId(settingsStore.current.personality)
-        speaker.speak(persona.sample.takeIf { persona.id != com.lukas.jarvis.llm.Personas.CUSTOM }
-            ?: "This is how I sound. Ready when you are.")
+        // A preview must not look like the end of a spoken turn, which would
+        // hand the microphone back in hands-free mode.
+        speaker.speak(
+            persona.sample.takeIf { persona.id != com.lukas.jarvis.llm.Personas.CUSTOM }
+                ?: "This is how I sound. Ready when you are."
+        ) { }
     }
 
     override fun onCleared() {

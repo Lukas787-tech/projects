@@ -41,8 +41,19 @@ class Reminders(private val context: Context) {
     fun schedule(task: Task) {
         val dueAt = task.dueAt ?: return
         if (!task.notify || task.done) return
+        setAlarm(dueAt, pendingIntent(task))
+    }
+
+    /**
+     * One extra ring for a task, without moving it: a snoozed repeating
+     * reminder keeps its series and gets this beside it.
+     */
+    fun scheduleOnce(task: Task, at: Long) {
+        setAlarm(at, pendingIntent(task, suffix = "/once"))
+    }
+
+    private fun setAlarm(dueAt: Long, pending: PendingIntent) {
         val manager = alarms ?: return
-        val pending = pendingIntent(task)
 
         // Exact alarms need an opt-in on newer Android. USE_EXACT_ALARM in the
         // manifest normally covers it, but a denied permission must not crash
@@ -82,11 +93,11 @@ class Reminders(private val context: Context) {
         tasks.forEach { schedule(it) }
     }
 
-    private fun pendingIntent(task: Task): PendingIntent {
+    private fun pendingIntent(task: Task, suffix: String = ""): PendingIntent {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             action = ACTION_FIRE
             // A distinct data URI per task keeps PendingIntents from colliding.
-            data = android.net.Uri.parse("jarvis://task/${task.id}")
+            data = android.net.Uri.parse("jarvis://task/${task.id}$suffix")
             putExtra(EXTRA_TASK_ID, task.id)
             putExtra(EXTRA_TITLE, task.title)
             putExtra(EXTRA_NOTES, task.notes)

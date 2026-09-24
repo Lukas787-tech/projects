@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the launcher icon: the four things most often opened for. Each
+     is an action the activity reads, so the same routes serve the widget and
+     the Quick Settings tile. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="talk"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_talk"
+        android:shortcutShortLabel="@string/shortcut_talk"
+        android:shortcutLongLabel="@string/shortcut_talk_long">
+        <intent
+            android:action="com.lukas.jarvis.TALK"
+            android:targetPackage="com.lukas.jarvis"
+            android:targetClass="com.lukas.jarvis.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="type"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_type"
+        android:shortcutShortLabel="@string/shortcut_type"
+        android:shortcutLongLabel="@string/shortcut_type_long">
+        <intent
+            android:action="com.lukas.jarvis.TYPE"
+            android:targetPackage="com.lukas.jarvis"
+            android:targetClass="com.lukas.jarvis.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="scan"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_scan"
+        android:shortcutShortLabel="@string/shortcut_scan"
+        android:shortcutLongLabel="@string/shortcut_scan_long">
+        <intent
+            android:action="com.lukas.jarvis.SCAN"
+            android:targetPackage="com.lukas.jarvis"
+            android:targetClass="com.lukas.jarvis.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="today"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_today"
+        android:shortcutShortLabel="@string/shortcut_today"
+        android:shortcutLongLabel="@string/shortcut_today_long">
+        <intent
+            android:action="com.lukas.jarvis.TODAY"
+            android:targetPackage="com.lukas.jarvis"
+            android:targetClass="com.lukas.jarvis.MainActivity" />
+    </shortcut>
+</shortcuts>
