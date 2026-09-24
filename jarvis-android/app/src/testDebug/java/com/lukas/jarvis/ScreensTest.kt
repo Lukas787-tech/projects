@@ -46,9 +46,11 @@ class ScreensTest {
 
     @Before
     fun realFrames() {
-        // Robolectric's paused looper hands out a frame every millisecond by
-        // default, so the core's endless animation would be drawn a thousand
-        // times per simulated second. A real phone's sixty is plenty.
+        // By default Robolectric's choreographer moves the clock on by itself
+        // with every frame, so an animation that never ends — the core's —
+        // keeps the looper busy forever and the activity never finishes
+        // starting. Paused, frames come only as the test moves time on.
+        ShadowChoreographer.setPaused(true)
         ShadowChoreographer.setFrameDelay(Duration.ofMillis(16))
     }
 
