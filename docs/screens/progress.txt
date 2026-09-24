@@ -1,36 +1,36 @@
-1790283624570 seeded; starting the activity
-1790283625516 created
-1790283625524 started
-1790283625581 resumed
-1790283625815 visible
-1790283625816 activity started
-1790283627659 settled in 1842 ms
-1790283627957 rendered 01-onboarding
-1790283629009 settled in 1045 ms
-1790283629171 rendered 02-voice
-1790283630169 settled in 995 ms
-1790283630369 rendered 03-chat
-1790283631213 settled in 844 ms
-1790283631260 failed 04-today: For input string: "2147483648"
-1790283632110 settled in 849 ms
-1790283632168 rendered 05-memory
-1790283632971 settled in 803 ms
-1790283633028 rendered 06-tasks
-1790283633831 settled in 803 ms
-1790283633888 rendered 07-trackers
-1790283634691 settled in 803 ms
-1790283634748 rendered 07b-lists
-1790283635551 settled in 803 ms
-1790283635608 rendered 08-skills
-1790283636411 settled in 803 ms
-1790283636468 rendered 09-settings
-1790283637271 settled in 803 ms
-1790283637328 rendered 10-devices
-1790283638131 settled in 803 ms
-1790283638188 rendered 11-music
-1790283638994 settled in 803 ms
-1790283639050 rendered 12-voice-crimson-orb
-1790283639856 settled in 802 ms
-1790283639914 rendered 13-voice-stark-globe
-1790283640720 settled in 803 ms
-1790283640779 rendered 14-chat-emerald
+1790283944229 seeded; starting the activity
+1790283945160 created
+1790283945188 started
+1790283945225 resumed
+1790283945466 visible
+1790283945468 activity started
+1790283947359 settled in 1891 ms
+1790283947620 rendered 01-onboarding
+1790283948660 settled in 1031 ms
+1790283948849 rendered 02-voice
+1790283949803 settled in 948 ms
+1790283950016 rendered 03-chat
+1790283950861 settled in 844 ms
+1790283951082 rendered 04-today
+1790283951955 settled in 873 ms
+1790283952105 rendered 05-memory
+1790283952939 settled in 834 ms
+1790283953071 rendered 06-tasks
+1790283953901 settled in 829 ms
+1790283954024 rendered 07-trackers
+1790283954865 settled in 841 ms
+1790283954982 rendered 07b-lists
+1790283955806 settled in 824 ms
+1790283955961 rendered 08-skills
+1790283956851 settled in 890 ms
+1790283957035 rendered 09-settings
+1790283957919 settled in 884 ms
+1790283958048 rendered 10-devices
+1790283958894 settled in 846 ms
+1790283959001 rendered 11-music
+1790283959847 settled in 842 ms
+1790283959949 rendered 12-voice-crimson-orb
+1790283960792 settled in 840 ms
+1790283960923 rendered 13-voice-stark-globe
+1790283961768 settled in 843 ms
+1790283961885 rendered 14-chat-emerald
