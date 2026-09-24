@@ -3,7 +3,9 @@ name: Jarvis tile probe
 # ("API Key Required") instead of a real tile. Two different tiles from the
 # same source that come back byte-identical are a placeholder, not a map.
 on:
-  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/jarvis-tile-probe.yml
 jobs:
   probe:
     runs-on: ubuntu-latest
