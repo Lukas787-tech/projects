@@ -113,6 +113,15 @@ class ScreensTest {
         settle(2400)
         shot(activity, "15-map")
 
+        // Straight back from the map with the reactor: does the core power up
+        // after that journey the way it does on first start?
+        container.settings.update { it.copy(voiceMode = true) }
+        runCatching { vm.showElement(Element.Globe) }
+        settle(3200)
+        shot(activity, "12a-reactor-after-map")
+
+        runCatching { vm.showElement(Element.Today) }
+        settle()
         runCatching { vm.showElement(Element.Globe) }
         container.settings.update {
             it.copy(voiceMode = true, accent = "crimson", backdrop = "oled", coreStyle = "orb")
