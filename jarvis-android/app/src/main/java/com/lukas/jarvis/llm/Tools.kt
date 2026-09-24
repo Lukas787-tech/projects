@@ -46,6 +46,7 @@ import org.json.JSONObject
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /** What changed as a result of a turn, so the UI knows which tabs to refresh. */
 data class ToolEffects(
@@ -546,6 +547,7 @@ class Tools(
             "anything about the sky, the air or whether to take a coat. Never guess the weather.",
         props(
             "place" to str("A town or area to look up. Omit for where the user is now."),
+            "day" to int("Which day: 0 for now and today, 1 for tomorrow, up to 6. Use this for one day."),
             "days" to int("How many days of forecast. 1 for right now, up to 7.")
         ),
         emptyList()
@@ -1726,8 +1728,30 @@ class Tools(
             here to (described ?: "where you are")
         }
 
-        val forecast = weather.at(point, label, days)
+        // One named day is answered as that day alone: handed the whole
+        // forecast, a small model reads today's numbers out for tomorrow.
+        val day = number(args, "day")?.toInt()?.coerceIn(0, 6) ?: 0
+        val forecast = weather.at(point, label, maxOf(days, day + 1))
             ?: return "The weather service did not answer just now."
+        if (day >= 1) {
+            val one = forecast.days.getOrNull(day)
+                ?: return "The forecast does not reach that far for $label."
+            return buildString {
+                // "2026-09-27" reads as the weekday it is.
+                val name = runCatching {
+                    java.time.LocalDate.parse(one.label).dayOfWeek
+                        .getDisplayName(java.time.format.TextStyle.FULL, Locale.getDefault())
+                }.getOrDefault(one.label)
+                append("$name in $label: ${one.description.lowercase(Locale.ROOT)}, ")
+                append("${one.low.roundToInt()}° to ${one.high.roundToInt()}°")
+                if (one.precipitationChance >= 20) append(", ${one.precipitationChance}% chance of rain")
+                append(".")
+                if (one.sunrise.isNotBlank()) append(" Sunrise ${one.sunrise}, sunset ${one.sunset}.")
+                if (!one.uvMax.isNaN() && one.uvMax >= 3) {
+                    append(" UV up to ${one.uvMax.roundToInt()} (${com.lukas.jarvis.web.Weather.uvWord(one.uvMax)}).")
+                }
+            }
+        }
         return weather.speak(forecast)
     }
 
