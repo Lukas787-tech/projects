@@ -275,6 +275,15 @@ class AssistantViewModel(
     private fun send(rawText: String) {
         val text = rawText.trim()
         if (text.isBlank()) return
+        // With a timer sounding, "stop" means the timer — at once, without a
+        // model, and not the music the reflexes would otherwise pause.
+        val ringing = container.timers.ringing.value
+        if (ringing.isNotEmpty() && SILENCE.matches(text.lowercase().trimEnd('.', '!'))) {
+            ringing.forEach { container.timers.silence(it.id) }
+            _ui.update { it.copy(stage = Stage.Idle, stageLabel = "", error = null) }
+            if (lastTurnWasVoice && settingsStore.current.handsFree) startListening()
+            return
+        }
         turn(display = text) { onStage, onTool, onDraft ->
             // With no network at all, a plain request — a timer, the torch, a
             // sum — is answered on the phone at once, not after every free
@@ -1386,6 +1395,10 @@ class AssistantViewModel(
     }
 
     companion object {
+        private val SILENCE = Regex(
+            "^(stop|stop it|stop the (timer|alarm)|ok|okay|thanks|thank you|silence|quiet|enough|" +
+                "aus|stopp|halt|danke|ruhe)$"
+        )
         private const val HISTORY_TURNS = 20
 
         /** The shortest piece of a reply worth speaking on its own while the rest is written. */
