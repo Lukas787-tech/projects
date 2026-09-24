@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import com.lukas.jarvis.ui.components.GlassField
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -1063,10 +1064,16 @@ private fun PoolRow(
     ) {
         StatusDot(tone)
         Column(modifier = Modifier.weight(1f)) {
+            // The provider is the name a person knows; the model id is detail.
+            // A keyless endpoint's model id ("default", "openai") says nothing
+            // on its own.
             Text(
-                entry.endpoint.model,
+                Providers.byId(entry.endpoint.providerId).label.substringBefore(" (") +
+                    "  ·  " + entry.endpoint.model.substringAfterLast('/'),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (entry.endpoint.enabled) TextPrimary else TextFaint
+                color = if (entry.endpoint.enabled) TextPrimary else TextFaint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 detail(entry, status),
@@ -1105,10 +1112,8 @@ private fun tierLabel(tier: Tier): String = when (tier) {
  * your trackers, and how fast it answers decides whether it gets picked first.
  */
 private fun detail(entry: PoolEntry, status: String): String {
-    val parts = mutableListOf(
-        Providers.byId(entry.endpoint.providerId).label,
-        status
-    )
+    val parts = mutableListOf(status)
+    if (Providers.byId(entry.endpoint.providerId).tier == com.lukas.jarvis.llm.Tier.Keyless) parts += "no key"
     entry.capabilityNote()?.let { parts += it }
     if (entry.health.latencyMs > 0) parts += "${entry.health.latencyMs / 100 / 10.0}s"
     if (entry.health.successes > 0) parts += "${entry.health.successes} ok"
