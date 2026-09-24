@@ -117,7 +117,8 @@ class ScreensTest {
         container.settings.update {
             it.copy(voiceMode = true, accent = "crimson", backdrop = "oled", coreStyle = "orb")
         }
-        settle()
+        // Long enough for the core's power-up, which starts again after the map.
+        settle(3200)
         shot(activity, "12-voice-crimson-orb")
 
         container.settings.update {

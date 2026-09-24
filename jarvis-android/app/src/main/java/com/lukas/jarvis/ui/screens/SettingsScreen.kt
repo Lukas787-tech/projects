@@ -33,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -441,7 +442,12 @@ fun SettingsScreen(
                 label = "Creativity",
                 value = settings.temperature,
                 range = 0f..1.2f,
-                onChange = { value -> onUpdate { it.copy(temperature = value) } }
+                onChange = { value -> onUpdate { it.copy(temperature = value) } },
+                valueText = when {
+                    settings.temperature < 0.35f -> "Precise"
+                    settings.temperature < 0.8f -> "Balanced"
+                    else -> "Inventive"
+                }
             )
             Spacer(Modifier.height(8.dp))
             GlassField(
@@ -477,12 +483,13 @@ fun SettingsScreen(
                     display = { it.replaceFirstChar { first -> first.uppercase() } }
                 )
                 SliderRow(
-                    label = "Search radius: ${Geo.formatDistance(settings.searchRadiusMeters.toDouble())}",
+                    label = "Search radius",
                     value = settings.searchRadiusMeters.toFloat(),
                     range = 300f..10_000f,
                     onChange = { value ->
                         onUpdate { it.copy(searchRadiusMeters = value.toInt()) }
-                    }
+                    },
+                    valueText = Geo.formatDistance(settings.searchRadiusMeters.toDouble())
                 )
             }
         }
@@ -1136,7 +1143,9 @@ private fun SliderRow(
     label: String,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
-    onChange: (Float) -> Unit
+    onChange: (Float) -> Unit,
+    /** What the value reads as; the raw number when null. */
+    valueText: String? = null
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -1147,11 +1156,20 @@ private fun SliderRow(
                 modifier = Modifier.weight(1f)
             )
             Text(
-                String.format(java.util.Locale.US, "%.2f", value),
-                style = MaterialTheme.typography.labelSmall,
-                color = TextFaint
+                valueText ?: String.format(java.util.Locale.US, "%.2f", value),
+                style = MaterialTheme.typography.labelLarge,
+                color = Accent
             )
         }
-        Slider(value = value, onValueChange = onChange, valueRange = range)
+        Slider(
+            value = value,
+            onValueChange = onChange,
+            valueRange = range,
+            colors = SliderDefaults.colors(
+                thumbColor = Accent,
+                activeTrackColor = Accent,
+                inactiveTrackColor = TextFaint.copy(alpha = 0.25f)
+            )
+        )
     }
 }
