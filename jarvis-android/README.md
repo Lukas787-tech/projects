@@ -18,14 +18,15 @@ providers are not in the app at all.
 
 <p align="center">
   <img src="../docs/screens/02-voice.png" width="200" alt="The assistant, with two timers running">
-  <img src="../docs/screens/03-chat.png" width="200" alt="A conversation">
+  <img src="../docs/screens/03b-live-answer.png" width="200" alt="A live answer from the free built-in model, using the list tool">
   <img src="../docs/screens/04-today.png" width="200" alt="Today">
   <img src="../docs/screens/13-voice-stark-globe.png" width="200" alt="The globe core in Stark gold">
 </p>
 
 The pictures are rendered from the real app by the *Jarvis screenshots*
 workflow (any commit whose message contains `[screens]`); all of them are in
-[`docs/screens`](../docs/screens).
+[`docs/screens`](../docs/screens). The second is a live turn: the free, keyless
+model was asked to add eggs to the shopping list and read it back, and did.
 
 ## Getting the APK
 
