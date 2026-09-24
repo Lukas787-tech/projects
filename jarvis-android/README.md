@@ -28,7 +28,7 @@ workflow (any commit whose message contains `[screens]`); all of them are in
 [`docs/screens`](../docs/screens). The second is a live turn: the free, keyless
 model was asked to add eggs to the shopping list and read it back, and did.
 
-## What's new in 5.3
+## What's new in 5.4
 
 - **Lists** — shopping, packing, anything without a time, by voice or on the
   new Lists tab; "Einkaufsliste" and "groceries" are the same list.
@@ -50,7 +50,12 @@ model was asked to add eggs to the shopping list and read it back, and did.
   the header says when you are offline.
 - **Backup that keeps everything** — memories, tasks, trackers, lists and the
   conversation, not only settings and keys.
-- **Your own colour** — any accent from a rainbow slider.
+- **Your own colour** — any accent from a rainbow slider, and each
+  personality speaks at its own pace and pitch.
+- **Routines to start from** — Morning, Bedtime and Heading out, one tap on
+  Today.
+- **The day on the home screen** — the widget shows the weather, what is
+  due and the next appointment.
 - **Fixes** — a Today screen that crashed on phones that do not report their
   battery, a clock squeezed into one column, a core that stayed open whenever
   the location was known, repeating tasks that ended when ticked off, numbers

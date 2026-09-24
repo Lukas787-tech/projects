@@ -12,8 +12,8 @@ android {
         applicationId = "com.lukas.jarvis"
         minSdk = 26
         targetSdk = 35
-        versionCode = 21
-        versionName = "5.3"
+        versionCode = 22
+        versionName = "5.4"
         vectorDrawables { useSupportLibrary = true }
 
         // Phones only. The on-device vision models ship native code for every
