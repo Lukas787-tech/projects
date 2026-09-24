@@ -46,9 +46,6 @@ enum class Element(
     Settings("Settings", listOf("settings", "setup", "config", "preferences", "keys"));
 
     companion object {
-        /** The ones worth a permanent place in the bar along the bottom. */
-        val BAR = listOf(Today, Globe, Notes, Map, Settings)
-
         /** Loose matching, because this is fed by whatever the model said. */
         fun match(raw: String?): Element? {
             val text = raw?.trim()?.lowercase(Locale.ROOT).orEmpty()

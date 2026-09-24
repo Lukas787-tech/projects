@@ -78,4 +78,4 @@ private fun Side(
     )
 }
 
-private val SelectedPane = Film.selected
+private val SelectedPane get() = Film.selected

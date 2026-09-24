@@ -34,7 +34,7 @@ import com.lukas.jarvis.ui.theme.TextSecondary
 import com.lukas.jarvis.ui.theme.glass
 
 /** The lit pane behind the active segment. */
-private val SelectedFill = Film.selected
+private val SelectedFill get() = Film.selected
 
 /**
  * A row of pills, one of which is on.

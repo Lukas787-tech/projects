@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.ui.theme.Accent
+import com.lukas.jarvis.ui.theme.Film
 import com.lukas.jarvis.ui.theme.Corner
 import com.lukas.jarvis.ui.theme.Hairline
 import com.lukas.jarvis.ui.theme.Space
@@ -254,7 +255,7 @@ fun MeterBar(
             .fillMaxWidth()
             .height(height)
             .clip(CircleShape)
-            .background(Color(0x14FFFFFF))
+            .background(Film.lifted)
     ) {
         Box(
             modifier = Modifier
@@ -276,7 +277,7 @@ fun Tag(
 ) {
     val base = modifier
         .clip(CircleShape)
-        .background(Color(0x12FFFFFF))
+        .background(Film.resting)
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,

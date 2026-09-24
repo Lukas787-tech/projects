@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.core.TimeUtil
 import com.lukas.jarvis.data.ChatMessage
 import com.lukas.jarvis.ui.components.EmptyState
+import com.lukas.jarvis.ui.components.MessageActions
+import com.lukas.jarvis.ui.components.MessageBubble
 import com.lukas.jarvis.ui.components.ToolTrail
 import com.lukas.jarvis.ui.theme.Film
 import com.lukas.jarvis.ui.theme.Space
@@ -34,14 +36,12 @@ import com.lukas.jarvis.ui.theme.TextFaint
 import com.lukas.jarvis.ui.theme.TextPrimary
 import com.lukas.jarvis.ui.theme.TextSecondary
 
-private val BubbleMine = Film.selected
-private val BubbleTheirs = Film.resting
-
 @Composable
 fun HistoryScreen(
     messages: List<ChatMessage>,
     modifier: Modifier = Modifier,
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    actions: MessageActions = MessageActions()
 ) {
     val listState = rememberLazyListState()
 
@@ -63,82 +63,10 @@ fun HistoryScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(messages, key = { messageKey(it) }) { message ->
-                    MessageBubble(message)
+                    MessageBubble(message, actions = actions)
                 }
                 item { Spacer(Modifier.height(24.dp)) }
             }
-        }
-    }
-}
-
-/** Shared with the text-mode thread, which shows the same bubbles. */
-@Composable
-internal fun MessageBubble(message: ChatMessage, photo: android.graphics.Bitmap? = null) {
-    val fromUser = message.role == ChatMessage.ROLE_USER
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = if (fromUser) Alignment.CenterEnd else Alignment.CenterStart
-    ) {
-        Column(
-            modifier = Modifier
-                .widthIn(max = 300.dp)
-                .clip(
-                    RoundedCornerShape(
-                        topStart = 18.dp,
-                        topEnd = 18.dp,
-                        bottomStart = if (fromUser) 18.dp else 4.dp,
-                        bottomEnd = if (fromUser) 4.dp else 18.dp
-                    )
-                )
-                // Yours is the brighter pane, Jarvis's the dimmer one — the
-                // same film at two densities rather than two different colours.
-                .background(if (fromUser) BubbleMine else BubbleTheirs)
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-        ) {
-            if (photo != null) {
-                androidx.compose.foundation.Image(
-                    bitmap = photo.asImageBitmap(),
-                    contentDescription = "Your photo",
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 220.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                )
-                Spacer(Modifier.height(Space.tight))
-            }
-            // A photo turn keeps what was seen under the question; it is the
-            // receipt for the answer, so it is there, but quieter.
-            val question = message.content.substringBefore("\n\n")
-            val seen = message.content.substringAfter("\n\n", "")
-                .takeIf { fromUser && message.content.startsWith("\uD83D\uDCF7") }
-            Text(
-                if (seen != null) question else message.content,
-                style = MaterialTheme.typography.bodyLarge,
-                color = TextPrimary
-            )
-            if (!seen.isNullOrBlank()) {
-                Spacer(Modifier.height(Space.hair))
-                Text(
-                    seen,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                    maxLines = 5,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-            }
-            // How this reply was reached. Old replies, stored before tools were
-            // recorded, simply have none and show nothing.
-            if (!fromUser && message.tools.isNotEmpty()) {
-                Spacer(Modifier.height(Space.tight))
-                ToolTrail(tools = message.tools)
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                TimeUtil.relative(message.createdAt),
-                style = MaterialTheme.typography.labelSmall,
-                color = TextFaint
-            )
         }
     }
 }

@@ -3,4 +3,6 @@
      app's own cache, and only the one folder. -->
 <paths>
     <cache-path name="photos" path="photos/" />
+    <!-- Pictures Jarvis drew, so one can be shared to another app. -->
+    <files-path name="generated" path="generated/" />
 </paths>

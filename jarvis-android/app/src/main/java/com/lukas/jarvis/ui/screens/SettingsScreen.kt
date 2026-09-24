@@ -77,6 +77,10 @@ import com.lukas.jarvis.ui.components.Panel
 import com.lukas.jarvis.ui.components.Picker
 import com.lukas.jarvis.ui.components.StatusDot
 import com.lukas.jarvis.ui.components.ToggleRow
+import com.lukas.jarvis.ui.components.SegmentedTabs
+import com.lukas.jarvis.voice.VoiceOption
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.lukas.jarvis.ui.theme.Positive
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.TextFaint
@@ -111,9 +115,14 @@ fun SettingsScreen(
     onExportBackup: () -> String,
     onRestoreBackup: (String) -> String,
     onOpenSkills: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    voices: () -> List<VoiceOption> = { emptyList() },
+    hasFreeBrain: Boolean = true,
+    onRestoreFreeBrain: () -> Unit = {},
+    onReplayIntro: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    var tab by rememberSaveable { mutableIntStateOf(0) }
     val clipboard = LocalClipboardManager.current
     val preset = Providers.byId(settings.providerId)
     var showKey by remember { mutableStateOf(false) }
@@ -134,9 +143,28 @@ fun SettingsScreen(
             .padding(horizontal = 20.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        ScreenHeader(title = "Settings", subtitle = "Every provider here has a free tier")
+        ScreenHeader(title = "Settings", subtitle = "Everything here is free — no paid keys, ever")
 
-        Panel(title = "Connection", subtitle = preset.note) {
+        SegmentedTabs(
+            options = listOf("You", "Voice", "Look", "Brain", "Powers", "Data"),
+            selectedIndex = tab,
+            onSelect = { tab = it },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        )
+
+        when (tab) {
+        0 -> AssistantSection(settings, onUpdate)
+        1 -> VoiceSection(settings, onUpdate, voices, onPreviewVoice)
+        2 -> LookSection(settings, onUpdate)
+        3 -> {
+        FreeBrainPanel(hasFreeBrain = hasFreeBrain, lastUsedEndpoint = lastUsedEndpoint, onRestore = onRestoreFreeBrain)
+
+        Panel(
+            title = "Add a free key",
+            subtitle = preset.note + " A key of your own is optional — it makes answers quicker and smarter.",
+            collapsible = true,
+            initiallyExpanded = false
+        ) {
             Picker(
                 label = "Provider",
                 value = settings.providerId,
@@ -377,23 +405,9 @@ fun SettingsScreen(
             }
         }
 
-        Panel(title = "You", collapsible = true, initiallyExpanded = false) {
-            GlassField(
-                value = settings.userName,
-                onValueChange = { value -> onUpdate { it.copy(userName = value) } },
-                label = "Your name",
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(10.dp))
-            GlassField(
-                value = settings.assistantName,
-                onValueChange = { value -> onUpdate { it.copy(assistantName = value) } },
-                label = "Assistant name",
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(10.dp))
+        }
+        4 -> {
+        Panel(title = "Money") {
             GlassField(
                 value = settings.defaultCurrency,
                 onValueChange = { value ->
@@ -401,56 +415,6 @@ fun SettingsScreen(
                 },
                 label = "Default currency",
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        Panel(title = "Voice", collapsible = true, initiallyExpanded = false) {
-            ToggleRow(
-                title = "Speak replies",
-                subtitle = "Read answers out loud",
-                checked = settings.speakReplies,
-                onChange = { value -> onUpdate { it.copy(speakReplies = value) } }
-            )
-            ToggleRow(
-                title = "Hands free",
-                subtitle = "Start listening again after each reply",
-                checked = settings.handsFree,
-                onChange = { value -> onUpdate { it.copy(handsFree = value) } }
-            )
-            ToggleRow(
-                title = "Wake word",
-                subtitle = "Listens in the background. Uses noticeably more battery, " +
-                    "and can only open the app reliably while it is already running.",
-                checked = settings.wakeWordEnabled,
-                onChange = { value -> onUpdate { it.copy(wakeWordEnabled = value) } }
-            )
-            if (settings.wakeWordEnabled) {
-                Spacer(Modifier.height(8.dp))
-                GlassField(
-                    value = settings.wakePhrase,
-                    onValueChange = { value -> onUpdate { it.copy(wakePhrase = value.lowercase()) } },
-                    label = "Wake phrase",
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            SliderRow(
-                label = "Speech rate",
-                value = settings.speechRate,
-                range = 0.5f..2.0f,
-                onChange = { value -> onUpdate { it.copy(speechRate = value) } }
-            )
-            SliderRow(
-                label = "Pitch",
-                value = settings.speechPitch,
-                range = 0.5f..2.0f,
-                onChange = { value -> onUpdate { it.copy(speechPitch = value) } }
-            )
-            Spacer(Modifier.height(8.dp))
-            ChipButton(
-                label = "Preview voice",
-                onClick = onPreviewVoice,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -567,6 +531,8 @@ fun SettingsScreen(
             onChange = { wanted -> onUpdate { it.copy(floatingDot = wanted) } }
         )
 
+        }
+        else -> {
         BackupPanel(onExport = onExportBackup, onRestore = onRestoreBackup)
 
         Panel(title = "Data", collapsible = true, initiallyExpanded = false) {
@@ -582,6 +548,15 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.labelSmall,
                 color = TextFaint
             )
+            Spacer(Modifier.height(12.dp))
+            ChipButton(
+                label = "Run the introduction again",
+                icon = Icons.Default.AutoAwesome,
+                onClick = onReplayIntro,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        }
         }
 
         Spacer(Modifier.height(20.dp))
@@ -595,6 +570,51 @@ fun SettingsScreen(
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(40.dp))
+    }
+}
+
+/**
+ * The keyless brain Jarvis ships with, and whether it is still in the pool.
+ * It is the reason no key is ever required; this says so, and puts it back if
+ * it was removed.
+ */
+@Composable
+private fun FreeBrainPanel(hasFreeBrain: Boolean, lastUsedEndpoint: String?, onRestore: () -> Unit) {
+    Panel(
+        title = "Free built-in AI",
+        subtitle = "Jarvis answers with no account and no key, through free public models. " +
+            "Nothing here costs money."
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StatusDot(tone = if (hasFreeBrain) BannerTone.Good else BannerTone.Bad)
+            Spacer(Modifier.size(10.dp))
+            Text(
+                if (hasFreeBrain) "Active — LLM7 and Pollinations, rotating" else "Removed from the pool",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextPrimary
+            )
+        }
+        lastUsedEndpoint?.let {
+            Spacer(Modifier.height(6.dp))
+            Text("Last answer came from $it", style = MaterialTheme.typography.labelSmall, color = TextFaint)
+        }
+        if (!hasFreeBrain) {
+            Spacer(Modifier.height(12.dp))
+            ChipButton(
+                label = "Restore the free AI",
+                icon = Icons.Default.Restore,
+                prominent = true,
+                onClick = onRestore,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "Want it faster and smarter? Add a free key below — Groq and Google Gemini both " +
+                "take a minute to sign up for, and cost nothing. Gemini also lets Jarvis see photos.",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextFaint
+        )
     }
 }
 
