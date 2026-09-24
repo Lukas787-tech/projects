@@ -194,6 +194,14 @@ class JarvisApp : Application() {
                 .distinctUntilChanged()
                 .collect { time -> runCatching { com.lukas.jarvis.brief.BriefAlarm.schedule(this@JarvisApp, time) } }
         }
+        appScope.launch {
+            container.settings.state
+                .map { it.eveningTime }
+                .distinctUntilChanged()
+                .collect { time ->
+                    runCatching { com.lukas.jarvis.brief.BriefAlarm.schedule(this@JarvisApp, time, evening = true) }
+                }
+        }
     }
 
     private val appScope = kotlinx.coroutines.CoroutineScope(

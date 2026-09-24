@@ -334,6 +334,28 @@ fun VoiceSection(
             onSelect = { time -> onUpdate { it.copy(briefTime = time) } }
         )
         Spacer(Modifier.height(Space.snug))
+        Text(
+            "Evening wrap-up",
+            style = MaterialTheme.typography.titleSmall,
+            color = TextPrimary
+        )
+        Text(
+            "What got done and spent today, and what tomorrow holds",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary
+        )
+        Spacer(Modifier.height(Space.tight))
+        val eveningTimes = remember(settings.eveningTime) {
+            (listOf("", "18:00", "19:00", "20:00", "21:00", "22:00") +
+                listOfNotNull(settings.eveningTime.takeIf { it.isNotBlank() })).distinct().sortedBy { it }
+        }
+        ChoiceChips(
+            options = eveningTimes,
+            selected = settings.eveningTime,
+            display = { if (it.isBlank()) "Off" else it },
+            onSelect = { time -> onUpdate { it.copy(eveningTime = time) } }
+        )
+        Spacer(Modifier.height(Space.snug))
         ToggleRow(
             title = "Listening tones",
             subtitle = "A short tone when the microphone opens and when it heard you",

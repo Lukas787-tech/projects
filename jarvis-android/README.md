@@ -122,7 +122,9 @@ nothing at any other time and keeps nothing.
 looks — the weather, what is due, the next appointment, the budgets and the
 top story — gathered on the phone, so it costs no model quota. Pick a time
 under *Written brief* (Settings → Voice) and the same brief arrives as a
-notification every morning, without opening the app.
+notification every morning, without opening the app. An *Evening wrap-up* at
+a time you pick says what got done and spent today, what is still open, and
+what tomorrow holds — the first appointment, what is due, and the weather.
 
 **Works with no connection.** When no model can be reached — no signal, or
 every free quota spent — timers, alarms, "remind me in 20 minutes to…", the

@@ -81,6 +81,8 @@ data class Settings(
     val morningBrief: Boolean = true,
     /** "07:30" for a written brief as a notification every morning, or blank for none. */
     val briefTime: String = "",
+    /** "21:00" for an evening wrap-up notification, or blank for none. */
+    val eveningTime: String = "",
 
     // ------------------------------------------------------------ its looks
 
@@ -176,6 +178,7 @@ class SettingsStore(context: Context) {
             haptics = prefs.getBoolean(KEY_HAPTICS, true),
             morningBrief = prefs.getBoolean(KEY_MORNING_BRIEF, true),
             briefTime = prefs.getString(KEY_BRIEF_TIME, "") ?: "",
+            eveningTime = prefs.getString(KEY_EVENING_TIME, "") ?: "",
             accent = prefs.getString(KEY_ACCENT, "arc") ?: "arc",
             backdrop = prefs.getString(KEY_BACKDROP, "space") ?: "space",
             textScale = prefs.getFloat(KEY_TEXT_SCALE, 1f),
@@ -244,6 +247,7 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_HAPTICS, next.haptics)
             .putBoolean(KEY_MORNING_BRIEF, next.morningBrief)
             .putString(KEY_BRIEF_TIME, next.briefTime)
+            .putString(KEY_EVENING_TIME, next.eveningTime)
             .putString(KEY_ACCENT, next.accent)
             .putString(KEY_BACKDROP, next.backdrop)
             .putFloat(KEY_TEXT_SCALE, next.textScale)
@@ -372,6 +376,7 @@ class SettingsStore(context: Context) {
         const val KEY_HAPTICS = "haptics"
         const val KEY_MORNING_BRIEF = "morning_brief"
         const val KEY_BRIEF_TIME = "brief_time"
+        const val KEY_EVENING_TIME = "evening_time"
         const val KEY_GREETED_DAY = "greeted_day"
         const val KEY_CONVERSATION_START = "conversation_start"
         const val KEY_ACCENT = "accent"

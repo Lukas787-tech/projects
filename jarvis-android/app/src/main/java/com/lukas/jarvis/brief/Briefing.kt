@@ -178,6 +178,79 @@ class Briefer(
         )
     }
 
+    /**
+     * The evening's look back and ahead, as a title and a paragraph: what got
+     * done and spent today, what is still open, and what tomorrow holds — its
+     * first appointment, what is due, and its weather.
+     */
+    suspend fun evening(settings: Settings): Pair<String, String> = coroutineScope {
+        val now = System.currentTimeMillis()
+        val dayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val tomorrowStart = endOfToday() + 1000
+        val tomorrowEnd = tomorrowStart + 24 * 60 * 60 * 1000L - 1
+
+        val sky = async {
+            if (!settings.weatherEnabled) null else {
+                val here = locator.current() ?: return@async null
+                weather.at(here, "Here", days = 2)?.days?.getOrNull(1)
+            }
+        }
+
+        val all = runCatching { brain.tasks(includeDone = true, limit = 300) }.getOrDefault(emptyList())
+        val doneToday = all.filter { it.done && (it.completedAt ?: 0L) >= dayStart }
+        val stillOpen = all.filter { !it.done && it.dueAt != null && it.dueAt <= endOfToday() }
+        val dueTomorrow = all.filter { !it.done && it.dueAt != null && it.dueAt in tomorrowStart..tomorrowEnd }
+        val firstTomorrow = if (settings.calendarEnabled) {
+            runCatching { agenda.between(tomorrowStart, tomorrowEnd, 1) }.getOrDefault(emptyList()).firstOrNull()
+        } else null
+
+        val trackers = runCatching { brain.allTrackers() }.getOrDefault(emptyList()).associateBy { it.id }
+        val spent = runCatching { brain.entriesBetween(dayStart, now) }.getOrDefault(emptyList())
+            .filter { it.direction == com.lukas.jarvis.data.Entry.DIR_OUT && trackers[it.trackerId]?.kind == Tracker.KIND_MONEY }
+            .groupBy { trackers[it.trackerId]?.unit.orEmpty() }
+            .mapValues { (_, entries) -> entries.sumOf { it.amount } }
+
+        val tomorrowSky = sky.await()
+        val address = com.lukas.jarvis.llm.Personas.address(settings)
+        val title = if (address.isBlank()) "Good evening" else "Good evening, $address"
+        val text = buildString {
+            if (doneToday.isNotEmpty()) {
+                append("Done today: ${doneToday.take(4).joinToString { it.title }}")
+                if (doneToday.size > 4) append(" and ${doneToday.size - 4} more")
+                append(". ")
+            }
+            if (spent.isNotEmpty()) {
+                append("Spent ")
+                append(spent.entries.joinToString(" and ") { (unit, sum) -> "${round(sum)} $unit".trim() })
+                append(" today. ")
+            }
+            if (stillOpen.isNotEmpty()) {
+                append("Still open: ${stillOpen.take(3).joinToString { it.title }}. ")
+            }
+            append("Tomorrow: ")
+            val parts = buildList {
+                firstTomorrow?.let { add("${it.title} at ${TimeUtil.formatTime(it.startsAt)}") }
+                if (dueTomorrow.isNotEmpty()) {
+                    add("${dueTomorrow.size} thing${if (dueTomorrow.size == 1) "" else "s"} due — " +
+                        dueTomorrow.take(3).joinToString { it.title })
+                }
+                tomorrowSky?.let {
+                    add("${it.description.lowercase(Locale.ROOT)}, ${it.low.roundToInt()}° to ${it.high.roundToInt()}°" +
+                        if (it.precipitationChance >= 40) ", ${it.precipitationChance}% rain" else "")
+                }
+            }
+            append(if (parts.isEmpty()) "nothing planned yet." else parts.joinToString("; ") + ".")
+        }.trim()
+        title to text
+    }
+
+    private fun round(value: Double): String =
+        if (value == value.toLong().toDouble()) value.toLong().toString()
+        else String.format(Locale.US, "%.2f", value)
+
     private fun greeting(userName: String): String {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         val part = when (hour) {

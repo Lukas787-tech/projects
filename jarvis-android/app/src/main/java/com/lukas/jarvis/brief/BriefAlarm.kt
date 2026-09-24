@@ -33,11 +33,14 @@ object BriefAlarm {
     const val CHANNEL = "brief"
     private const val REQUEST = 7411
     private const val NOTIFICATION_ID = 7411
+    private const val EVENING_REQUEST = 7412
+    private const val EVENING_ID = 7412
+    const val EXTRA_EVENING = "evening"
 
     /** Sets tomorrow's (or today's, if still ahead) brief, or clears it for a blank time. */
-    fun schedule(context: Context, time: String) {
+    fun schedule(context: Context, time: String, evening: Boolean = false) {
         val alarms = context.getSystemService(AlarmManager::class.java) ?: return
-        val pending = pending(context)
+        val pending = pending(context, evening)
         alarms.cancel(pending)
         val (hour, minute) = parse(time) ?: return
         val next = Calendar.getInstance().apply {
@@ -59,6 +62,14 @@ object BriefAlarm {
     }
 
     internal fun post(context: Context, brief: DayBrief) {
+        val text = brief.speak().removePrefix(brief.greeting).trimStart('.', ' ')
+        post(context, brief.greeting, text, NOTIFICATION_ID)
+    }
+
+    internal fun postEvening(context: Context, title: String, text: String) =
+        post(context, title, text, EVENING_ID)
+
+    private fun post(context: Context, title: String, text: String, id: Int) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL, "Morning brief", NotificationManager.IMPORTANCE_DEFAULT)
@@ -72,22 +83,21 @@ object BriefAlarm {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val text = brief.speak().removePrefix(brief.greeting).trimStart('.', ' ')
         val notification = Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(brief.greeting)
+            .setContentTitle(title)
             .setContentText(text)
             .setStyle(Notification.BigTextStyle().bigText(text))
             .setAutoCancel(true)
             .setContentIntent(open)
             .build()
-        runCatching { manager.notify(NOTIFICATION_ID, notification) }
+        runCatching { manager.notify(id, notification) }
     }
 
-    private fun pending(context: Context): PendingIntent = PendingIntent.getBroadcast(
+    private fun pending(context: Context, evening: Boolean): PendingIntent = PendingIntent.getBroadcast(
         context,
-        REQUEST,
-        Intent(context, BriefReceiver::class.java),
+        if (evening) EVENING_REQUEST else REQUEST,
+        Intent(context, BriefReceiver::class.java).putExtra(EXTRA_EVENING, evening),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 }
@@ -98,19 +108,28 @@ class BriefReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val container = (context.applicationContext as? JarvisApp)?.container ?: return
         val settings = container.settings.current
-        if (settings.briefTime.isBlank()) return
+        val evening = intent.getBooleanExtra(BriefAlarm.EXTRA_EVENING, false)
+        val time = if (evening) settings.eveningTime else settings.briefTime
+        if (time.isBlank()) return
         // Tomorrow's first, so a brief that fails today does not end the habit.
-        BriefAlarm.schedule(context, settings.briefTime)
+        BriefAlarm.schedule(context, time, evening)
 
         val pending = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 // A receiver has well under a minute; a brief without the
                 // weather is better than none.
-                val brief = withTimeoutOrNull(25_000L) {
-                    runCatching { container.briefer.build(settings) }.getOrNull()
+                if (evening) {
+                    val wrap = withTimeoutOrNull(25_000L) {
+                        runCatching { container.briefer.evening(settings) }.getOrNull()
+                    }
+                    if (wrap != null) BriefAlarm.postEvening(context, wrap.first, wrap.second)
+                } else {
+                    val brief = withTimeoutOrNull(25_000L) {
+                        runCatching { container.briefer.build(settings) }.getOrNull()
+                    }
+                    if (brief != null) BriefAlarm.post(context, brief)
                 }
-                if (brief != null) BriefAlarm.post(context, brief)
             } finally {
                 pending.finish()
             }
