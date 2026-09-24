@@ -1,5 +1,6 @@
 package com.lukas.jarvis.ui.screens
 
+import com.lukas.jarvis.ui.components.rememberStored
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -133,6 +134,16 @@ fun TodayScreen(
     // ever wanted at the moment it is looked at.
     LaunchedEffect(Unit) { if (brief == null) onRefresh() }
 
+    // Every section can be folded to its heading, and stays the way it was
+    // left. What matters on this screen differs from person to person, and a
+    // section nobody reads should not keep pushing the rest down.
+    var shortcutsFolded by rememberStored("today.fold.shortcuts", false)
+    var routinesFolded by rememberStored("today.fold.routines", false)
+    var overdueFolded by rememberStored("today.fold.overdue", false)
+    var dueFolded by rememberStored("today.fold.due", false)
+    var calendarFolded by rememberStored("today.fold.calendar", false)
+    var balancesFolded by rememberStored("today.fold.balances", false)
+
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = Space.gutter),
         verticalArrangement = Arrangement.spacedBy(Space.snug)
@@ -170,6 +181,13 @@ fun TodayScreen(
         item { HeroCard(brief = brief, loading = loading) }
 
         item {
+            GroupHeader(
+                "Shortcuts",
+                folded = shortcutsFolded,
+                onToggle = { shortcutsFolded = !shortcutsFolded }
+            )
+        }
+        if (!shortcutsFolded) item {
             Shortcuts(
                 onOpen = onOpen,
                 onPlayMusic = onPlayMusic,
@@ -185,10 +203,14 @@ fun TodayScreen(
         item {
             GroupHeader(
                 "Routines",
-                trailing = if (routines.isEmpty()) null else routines.size.toString()
+                trailing = if (routines.isEmpty()) null else routines.size.toString(),
+                folded = routinesFolded,
+                onToggle = { routinesFolded = !routinesFolded }
             )
         }
-        if (routines.isEmpty()) {
+        if (routinesFolded) {
+            // Folded: the heading alone says what is there.
+        } else if (routines.isEmpty()) {
             item {
                 RoutineHint(onCreate = { editing = Routine(name = "", steps = emptyList()) })
             }
@@ -215,22 +237,43 @@ fun TodayScreen(
             item { Vitals(day) }
 
             if (day.overdue.isNotEmpty()) {
-                item { GroupHeader("Overdue", trailing = day.overdue.size.toString()) }
-                items(day.overdue, key = { "overdue-${it.id}" }) { task ->
+                item {
+                    GroupHeader(
+                        "Overdue",
+                        trailing = day.overdue.size.toString(),
+                        folded = overdueFolded,
+                        onToggle = { overdueFolded = !overdueFolded }
+                    )
+                }
+                if (!overdueFolded) items(day.overdue, key = { "overdue-${it.id}" }) { task ->
                     TaskLine(task, tint = Negative, onComplete = { onCompleteTask(task) })
                 }
             }
 
             if (day.dueToday.isNotEmpty()) {
-                item { GroupHeader("Due today", trailing = day.dueToday.size.toString()) }
-                items(day.dueToday, key = { "due-${it.id}" }) { task ->
+                item {
+                    GroupHeader(
+                        "Due today",
+                        trailing = day.dueToday.size.toString(),
+                        folded = dueFolded,
+                        onToggle = { dueFolded = !dueFolded }
+                    )
+                }
+                if (!dueFolded) items(day.dueToday, key = { "due-${it.id}" }) { task ->
                     TaskLine(task, tint = Accent, onComplete = { onCompleteTask(task) })
                 }
             }
 
             if (day.appointments.isNotEmpty()) {
-                item { GroupHeader("Calendar") }
-                items(day.appointments, key = { it.title + it.startsAt }) { event ->
+                item {
+                    GroupHeader(
+                        "Calendar",
+                        trailing = day.appointments.size.toString(),
+                        folded = calendarFolded,
+                        onToggle = { calendarFolded = !calendarFolded }
+                    )
+                }
+                if (!calendarFolded) items(day.appointments, key = { it.title + it.startsAt }) { event ->
                     ListRow(
                         title = event.title,
                         subtitle = event.location,
@@ -246,8 +289,15 @@ fun TodayScreen(
         }
 
         if (trackers.isNotEmpty()) {
-            item { GroupHeader("Balances") }
-            items(trackers, key = { it.tracker.id }) { status ->
+            item {
+                GroupHeader(
+                    "Balances",
+                    trailing = trackers.size.toString(),
+                    folded = balancesFolded,
+                    onToggle = { balancesFolded = !balancesFolded }
+                )
+            }
+            if (!balancesFolded) items(trackers, key = { it.tracker.id }) { status ->
                 TrackerLine(status) { onOpen(Element.Money) }
             }
         }

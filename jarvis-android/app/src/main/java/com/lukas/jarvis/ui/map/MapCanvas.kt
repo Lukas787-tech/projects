@@ -24,6 +24,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -50,6 +53,7 @@ import com.lukas.jarvis.maps.MapState
 import com.lukas.jarvis.maps.MapStyle
 import com.lukas.jarvis.maps.SavedPlace
 import com.lukas.jarvis.maps.TileCache
+import com.lukas.jarvis.maps.TileSource
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.Ink
 import com.lukas.jarvis.ui.theme.InkRaised
@@ -168,7 +172,9 @@ fun MapCanvas(
     intro: Float = 1f,
     introFromZoom: Float = 5f,
     interactive: Boolean = true,
-    onSelectPlace: (Int) -> Unit = {}
+    onSelectPlace: (Int) -> Unit = {},
+    /** A tap that landed on no pin — the map screen uses it to hide its controls. */
+    onTapEmpty: () -> Unit = {}
 ) {
     val density = LocalDensity.current.density
     val scope = rememberCoroutineScope()
@@ -210,16 +216,21 @@ fun MapCanvas(
         if (camera.following) camera.flyTo(scope, here, max(camera.zoom, 16.5f), 600)
     }
 
+    // A source that was just given up on leaves stale tiles on screen; the
+    // generation ticking is what makes the map fetch from the next one.
+    val generation by tiles.generation.collectAsState()
+    val source = remember(style, generation) { tiles.source(style) }
+
     val eased = intro * intro * (3f - 2f * intro)
     val zoom = if (intro >= 1f) camera.zoom else introFromZoom + (camera.zoom - introFromZoom) * eased
     val center = camera.center
-    val visible = remember(center, zoom, size, style, density) {
-        visibleTiles(center, zoom, size, style, density)
+    val visible = remember(center, zoom, size, source, density) {
+        visibleTiles(center, zoom, size, source.maxZoom, density)
     }
 
     LaunchedEffect(visible) {
         visible.forEach { tile ->
-            val key = tile.key(style)
+            val key = tile.key(source)
             if (tiles.cached(style, tile.z, tile.x, tile.y) != null || key in inFlight) return@forEach
             if (inFlight.size >= MAX_IN_FLIGHT) return@forEach
             inFlight += key
@@ -242,6 +253,7 @@ fun MapCanvas(
 
     val latestState by rememberUpdatedState(state)
     val latestSelect by rememberUpdatedState(onSelectPlace)
+    val latestEmpty by rememberUpdatedState(onTapEmpty)
     val gesturesOn = interactive && intro >= 1f
 
     Canvas(
@@ -270,6 +282,8 @@ fun MapCanvas(
                             (screenOf(hit.value.point, world, origin) - tap).getDistance() < TAP_SLOP * density
                         ) {
                             latestSelect(hit.index)
+                        } else {
+                            latestEmpty()
                         }
                     }
                 )
@@ -297,16 +311,18 @@ fun MapCanvas(
     ) {
         // Read so a landed tile invalidates this frame.
         if (arrivals < 0) return@Canvas
-        drawRect(color = if (style == MapStyle.Light) LIGHT_PAPER else InkRaised)
+        val light = (style == MapStyle.Light || style == MapStyle.Streets) && !source.darken
+        drawRect(color = if (light) LIGHT_PAPER else InkRaised)
 
         val world = worldSize(zoom, density)
         val origin = topLeft(center, world, size)
 
-        visible.forEach { tile -> drawTile(tiles, style, tile, origin) }
+        val filter = if (source.darken) DARKEN_TILES else null
+        visible.forEach { tile -> drawTile(tiles, style, tile, origin, filter) }
 
         fun project(point: GeoPoint) = screenOf(point, world, origin)
 
-        val dark = style != MapStyle.Light
+        val dark = !light
         state.route?.points?.takeIf { it.size > 1 }?.let { points ->
             val path = Path()
             points.forEachIndexed { index, point ->
@@ -346,7 +362,13 @@ fun MapCanvas(
 
 // ---------------------------------------------------------------- drawing
 
-private fun DrawScope.drawTile(tiles: TileCache, style: MapStyle, tile: VisibleTile, origin: Pair<Double, Double>) {
+private fun DrawScope.drawTile(
+    tiles: TileCache,
+    style: MapStyle,
+    tile: VisibleTile,
+    origin: Pair<Double, Double>,
+    filter: ColorFilter?
+) {
     val px = tile.screenSize
     val left = (tile.column * px - origin.first).roundToInt()
     val top = (tile.row * px - origin.second).roundToInt()
@@ -360,7 +382,8 @@ private fun DrawScope.drawTile(tiles: TileCache, style: MapStyle, tile: VisibleT
             srcSize = IntSize(image.width, image.height),
             dstOffset = IntOffset(left, top),
             dstSize = dst,
-            filterQuality = FilterQuality.Low
+            filterQuality = FilterQuality.Low,
+            colorFilter = filter
         )
         return
     }
@@ -380,7 +403,8 @@ private fun DrawScope.drawTile(tiles: TileCache, style: MapStyle, tile: VisibleT
             srcSize = IntSize(span, span),
             dstOffset = IntOffset(left, top),
             dstSize = dst,
-            filterQuality = FilterQuality.Low
+            filterQuality = FilterQuality.Low,
+            colorFilter = filter
         )
         return
     }
@@ -566,7 +590,7 @@ internal data class VisibleTile(
     /** Edge length on screen in pixels. */
     val screenSize: Double
 ) {
-    fun key(style: MapStyle): String = "${style.id}_${z}_${x}_$y"
+    fun key(source: TileSource): String = "${source.id}_${z}_${x}_$y"
 }
 
 /** Map points per tile edge; multiplied by the screen density to get pixels. */
@@ -631,12 +655,12 @@ private fun visibleTiles(
     center: GeoPoint,
     zoom: Float,
     size: IntSize,
-    style: MapStyle,
+    maxZoom: Int,
     density: Float
 ): List<VisibleTile> {
     if (size.width == 0 || size.height == 0) return emptyList()
     // Past the source's deepest level the deepest tiles are stretched instead.
-    val z = floor(zoom).toInt().coerceIn(0, style.maxZoom)
+    val z = floor(zoom).toInt().coerceIn(0, maxZoom)
     val world = worldSize(zoom, density)
     val tilePx = world / (1 shl z)
     val (left, top) = topLeft(center, world, size)
@@ -684,6 +708,23 @@ internal fun fit(points: List<GeoPoint>, size: IntSize, density: Float): Pair<Ge
  */
 fun zoomForWorldWidth(worldWidthPx: Float, density: Float): Float =
     log2(worldWidthPx / (TILE * density)).toFloat().coerceIn(MIN_ZOOM, MAX_ZOOM)
+
+/**
+ * Turns a light map dark, for when the dark style has had to fall back to a
+ * light source. Neutral rather than per channel: the tile's brightness is
+ * measured, inverted, scaled back and lifted off pure black, so paper becomes
+ * graphite and ink becomes silver with no colour cast.
+ */
+private val DARKEN_TILES = ColorFilter.colorMatrix(
+    ColorMatrix(
+        floatArrayOf(
+            -0.188f, -0.629f, -0.063f, 0f, 234.4f,
+            -0.188f, -0.629f, -0.063f, 0f, 234.4f,
+            -0.188f, -0.629f, -0.063f, 0f, 234.4f,
+            0f, 0f, 0f, 1f, 0f
+        )
+    )
+)
 
 /** Leaves room for the pins, which are drawn outside the bounding box. */
 private const val FIT_FRACTION = 0.72

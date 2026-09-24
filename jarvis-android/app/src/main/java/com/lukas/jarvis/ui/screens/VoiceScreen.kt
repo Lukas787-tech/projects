@@ -1,5 +1,6 @@
 package com.lukas.jarvis.ui.screens
 
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -122,7 +123,9 @@ fun VoiceScreen(
     onCamera: () -> Unit,
     onGallery: () -> Unit,
     modifier: Modifier = Modifier,
-    mapStyle: MapStyle = MapStyle.Dark
+    mapStyle: MapStyle = MapStyle.Dark,
+    /** Puts the found places away and turns the globe back out to the planet. */
+    onClearMap: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -177,6 +180,7 @@ fun VoiceScreen(
                 onSend = onSend,
                 onOpenMap = onOpenMap,
                 onOpenSettings = onOpenSettings,
+                onClearMap = onClearMap,
                 modifier = Modifier.weight(1f)
             )
         } else {
@@ -239,6 +243,7 @@ private fun VoiceBody(
     onSend: (String) -> Unit,
     onOpenMap: () -> Unit,
     onOpenSettings: () -> Unit,
+    onClearMap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val target = map.focusPoints.firstOrNull()
@@ -314,7 +319,8 @@ private fun VoiceBody(
             map = map,
             starters = starters,
             onSend = onSend,
-            onOpenSettings = onOpenSettings
+            onOpenSettings = onOpenSettings,
+            onClearMap = onClearMap
         )
     }
 }
@@ -328,11 +334,22 @@ private fun Readout(
     map: MapState,
     starters: List<Pair<ToolGroup, String>>,
     onSend: (String) -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onClearMap: () -> Unit
 ) {
     val lastAssistant = state.messages.lastOrNull { it.role == ChatMessage.ROLE_ASSISTANT }
     val centred = Arrangement.spacedBy(Space.hair + 2.dp, Alignment.CenterHorizontally)
 
+    // An answer that has been read does not need to sit under the planet until
+    // the next one. Putting it away is remembered for that answer only: the
+    // next reply comes back up on its own.
+    var putAwayId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val showingPlaces = state.stage != Stage.Thinking && state.partial.isBlank() && map.places.isNotEmpty()
+    val showingAnswer = state.stage != Stage.Thinking && state.partial.isBlank() &&
+        map.places.isEmpty() && lastAssistant != null
+    if (showingAnswer && putAwayId == lastAssistant?.createdAt) return
+
+    Box(modifier = Modifier.fillMaxWidth()) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -436,6 +453,30 @@ private fun Readout(
                 }
             }
         }
+    }
+
+    if (showingPlaces || showingAnswer) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = Space.snug + 2.dp, end = 2.dp)
+                .size(36.dp)
+                .clip(CircleShape)
+                .clickable {
+                    // Places go back where they came from, and the globe turns
+                    // out to the planet again; a plain answer simply folds away.
+                    if (showingPlaces) onClearMap() else putAwayId = lastAssistant?.createdAt
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = if (showingPlaces) "Back to the globe" else "Put the answer away",
+                tint = TextFaint,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
     }
 }
 

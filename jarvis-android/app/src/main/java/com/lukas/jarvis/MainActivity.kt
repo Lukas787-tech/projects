@@ -461,7 +461,8 @@ private fun JarvisRoot(
                     onOpenMap = { viewModel.showElement(Element.Map) },
                     onCamera = { viewModel.askCamera("What is this?") },
                     onGallery = { viewModel.askCamera("What is in this picture?", fromGallery = true) },
-                    mapStyle = mapStyle
+                    mapStyle = mapStyle,
+                    onClearMap = viewModel::clearMap
                 )
 
                 // Notes, tasks and money are one element with three segments,

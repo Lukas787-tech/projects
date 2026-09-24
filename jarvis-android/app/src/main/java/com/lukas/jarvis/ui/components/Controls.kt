@@ -1,5 +1,8 @@
 package com.lukas.jarvis.ui.components
 
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.Icons
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -289,11 +292,24 @@ fun Tag(
 fun GroupHeader(
     title: String,
     modifier: Modifier = Modifier,
-    trailing: String? = null
+    trailing: String? = null,
+    /**
+     * Given, the header folds its section: tapping it hides what is under it
+     * and shows a chevron saying so. Null keeps it a plain label.
+     */
+    folded: Boolean? = null,
+    onToggle: () -> Unit = {}
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .then(
+                if (folded != null) {
+                    Modifier.clip(RoundedCornerShape(Corner.small)).clickable { onToggle() }
+                } else {
+                    Modifier
+                }
+            )
             .padding(start = Space.hair, top = Space.step, bottom = Space.tight),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -305,6 +321,14 @@ fun GroupHeader(
         )
         if (trailing != null) {
             Text(trailing, style = MaterialTheme.typography.labelSmall, color = TextFaint)
+        }
+        if (folded != null) {
+            Icon(
+                imageVector = if (folded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                contentDescription = if (folded) "Show $title" else "Fold $title",
+                tint = TextFaint,
+                modifier = Modifier.padding(start = Space.hair).size(16.dp)
+            )
         }
     }
 }

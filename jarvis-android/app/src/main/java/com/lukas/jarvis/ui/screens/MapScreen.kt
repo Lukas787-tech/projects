@@ -1,6 +1,14 @@
 package com.lukas.jarvis.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import com.lukas.jarvis.ui.components.rememberStored
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -135,6 +143,21 @@ fun MapScreen(
     var sheetOpen by remember { mutableStateOf(true) }
     var stylesOpen by remember { mutableStateOf(false) }
 
+    // Everything drawn over the map can be put away with one tap on the map
+    // itself, and brought back the same way. A map covered by a card, a row of
+    // chips, four buttons and a sheet is a map you mostly cannot see.
+    var controls by rememberSaveable { mutableStateOf(true) }
+    var hintRead by rememberStored("map.hint.read", false)
+
+    // A new answer is something to look at, so it brings the controls back
+    // rather than arriving behind them.
+    LaunchedEffect(state.revision) {
+        if (state.places.isNotEmpty() || state.route != null) {
+            controls = true
+            sheetOpen = true
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         MapCanvas(
             state = state,
@@ -147,14 +170,24 @@ fun MapScreen(
             introFromZoom = introFromZoom,
             onSelectPlace = { index ->
                 onSelect(index)
+                controls = true
                 sheetOpen = true
+            },
+            onTapEmpty = {
+                stylesOpen = false
+                controls = !controls
             }
         )
 
         // ---------------------------------------------------------- top
+        AnimatedVisibility(
+            visible = controls,
+            enter = fadeIn() + slideInVertically { -it / 2 },
+            exit = fadeOut() + slideOutVertically { -it / 2 },
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
         Column(
             modifier = Modifier
-                .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .padding(horizontal = Space.snug, vertical = Space.snug)
         ) {
@@ -183,11 +216,17 @@ fun MapScreen(
                 }
             }
         }
+        }
 
         // ---------------------------------------------------------- side
+        AnimatedVisibility(
+            visible = controls,
+            enter = fadeIn() + slideInHorizontally { it / 2 },
+            exit = fadeOut() + slideOutHorizontally { it / 2 },
+            modifier = Modifier.align(Alignment.CenterEnd)
+        ) {
         Column(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
                 .padding(end = Space.snug),
             verticalArrangement = Arrangement.spacedBy(Space.tight),
             horizontalAlignment = Alignment.End
@@ -232,11 +271,17 @@ fun MapScreen(
                 }
             }
         }
+        }
 
         // ---------------------------------------------------------- bottom
+        AnimatedVisibility(
+            visible = controls,
+            enter = fadeIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + slideOutVertically { it / 2 },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
         BoxWithConstraints(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(horizontal = Space.snug, vertical = Space.snug)
         ) {
@@ -319,20 +364,42 @@ fun MapScreen(
                         }
                         item { Spacer(Modifier.height(Space.tight)) }
                     }
-                } else if (state.places.isEmpty() && state.route == null) {
-                    Text(
-                        text = "Ask \"what's around here\" or \"take me home\" — or tap Park here when you leave the car.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextFaint,
-                        modifier = Modifier.padding(start = Space.step, end = Space.step, bottom = Space.snug)
-                    )
+                } else if (state.places.isEmpty() && state.route == null && !hintRead) {
+                    // Read once, gone for good: a tip that is still there on the
+                    // fiftieth visit has stopped being a tip.
+                    Row(
+                        modifier = Modifier.padding(start = Space.step, end = Space.hair, bottom = Space.tight),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Ask \"what's around here\" or \"take me home\". Tap the map to hide everything on it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextFaint,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .clickable { hintRead = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Dismiss tip",
+                                tint = TextFaint,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
             }
+        }
         }
 
         // Every tile source asks for its credit to be visible on the map.
         Text(
-            text = style.credit,
+            text = tiles.source(style).credit,
             style = MaterialTheme.typography.labelSmall,
             color = TextFaint,
             modifier = Modifier
