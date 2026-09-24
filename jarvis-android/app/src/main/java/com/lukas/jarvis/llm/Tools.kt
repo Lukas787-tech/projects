@@ -1364,7 +1364,8 @@ class Tools(
             title = title,
             notes = args.optString("notes").takeIf { it.isNotBlank() },
             dueAt = dueAt,
-            repeatRule = args.optString("repeat").ifBlank { Task.REPEAT_NONE }
+            // A model's "every day" is not a rule; only the known ones are kept.
+            repeatRule = repeatRule(args.optString("repeat"))
         )
         val id = brain.addTask(task)
         val saved = task.copy(id = id)
@@ -1374,6 +1375,17 @@ class Tools(
             "Task added (id $id): $title — due ${TimeUtil.format(dueAt)}."
         } else {
             "Task added (id $id): $title — no due date."
+        }
+    }
+
+    private fun repeatRule(raw: String): String {
+        val key = raw.trim().lowercase(Locale.ROOT)
+        return when {
+            key in Task.ALL_REPEATS -> key
+            key.contains("day") || key.contains("täglich") -> Task.REPEAT_DAILY
+            key.contains("week") || key.contains("wöchentlich") -> Task.REPEAT_WEEKLY
+            key.contains("month") || key.contains("monatlich") -> Task.REPEAT_MONTHLY
+            else -> Task.REPEAT_NONE
         }
     }
 
@@ -1422,7 +1434,7 @@ class Tools(
             notes = if (args.has("notes")) args.optString("notes").takeIf { it.isNotBlank() } else existing.notes,
             dueAt = dueAt,
             repeatRule = args.optString("repeat").trim()
-                .takeIf { it in Task.ALL_REPEATS } ?: existing.repeatRule,
+                .takeIf { it.isNotBlank() }?.let(::repeatRule) ?: existing.repeatRule,
             // Moving a finished task into the future means it is wanted again.
             done = if (dueAt != null && dueAt != existing.dueAt) false else existing.done,
             completedAt = if (dueAt != null && dueAt != existing.dueAt) null else existing.completedAt

@@ -85,4 +85,10 @@ dependencies {
     implementation(libs.mlkit.barcode)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    // Plain JVM tests for the logic that needs no phone. The real org.json
+    // replaces android.jar's stubs, which only throw.
+    testImplementation(libs.junit)
+    testImplementation(libs.org.json)
+    testImplementation(libs.okhttp.mockwebserver)
 }

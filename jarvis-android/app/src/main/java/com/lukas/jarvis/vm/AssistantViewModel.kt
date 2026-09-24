@@ -559,20 +559,8 @@ class AssistantViewModel(
             }
         }
 
-        /** The end of the last whole sentence after [from], or [from] if there is none yet. */
-        private fun boundary(text: String, from: Int): Int {
-            var end = from
-            var i = from
-            while (i < text.length - 1) {
-                val c = text[i]
-                if ((c == '.' || c == '!' || c == '?' || c == '…' || c == '\n') && text[i + 1].isWhitespace()) {
-                    // Short fragments ("Hi.") wait for company, so speech is not choppy.
-                    if (i + 1 - from >= MIN_SPOKEN_CHUNK || end > from) end = i + 1
-                }
-                i++
-            }
-            return end
-        }
+        private fun boundary(text: String, from: Int): Int =
+            com.lukas.jarvis.voice.Sentences.boundary(text, from, MIN_SPOKEN_CHUNK)
 
         private fun squash(text: String) = text.replace(Regex("\\s+"), " ").trim()
     }

@@ -51,13 +51,13 @@ jobs:
       - name: Build release APK
         run: |
           set -o pipefail
-          ./gradlew assembleRelease --no-daemon 2>&1 | tee build.log
+          ./gradlew assembleRelease testReleaseUnitTest --no-daemon 2>&1 | tee build.log
 
       - name: What failed
         if: failure()
         run: |
           echo "--- Kotlin and resource errors ---"
-          grep -E "^(e: |error: |ERROR:)|FAILURE: |What went wrong" build.log | head -n 60 \
+          grep -E "^(e: |error: |ERROR:)|FAILURE: |What went wrong|FAILED$|AssertionError|expected:<" build.log | head -n 80 \
             || echo "No compiler error lines in the log; see the step above."
 
       - name: Stage APK
