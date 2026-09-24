@@ -92,6 +92,8 @@ import com.lukas.jarvis.ui.components.NavEntry
 import com.lukas.jarvis.ui.theme.Ink
 import com.lukas.jarvis.ui.theme.JarvisTheme
 import com.lukas.jarvis.ui.theme.PageBackground
+import com.lukas.jarvis.ui.theme.ThemeState
+import androidx.compose.runtime.SideEffect
 import com.lukas.jarvis.voice.WakeWordService
 import com.lukas.jarvis.vm.AssistantViewModel
 
@@ -110,6 +112,12 @@ class MainActivity : ComponentActivity() {
         startListeningOnOpen = intent?.getBooleanExtra(EXTRA_START_LISTENING, false) == true
         routineOnOpen = intent?.getStringExtra(EXTRA_RUN_ROUTINE)
         askForPermissions()
+
+        // The saved look, before the first frame, so the app does not flash
+        // the default colours on its way to the user's own.
+        (application as JarvisApp).container.settings.current.let {
+            ThemeState.apply(it.accent, it.backdrop, it.textScale, it.reduceMotion)
+        }
 
         setContent {
             JarvisTheme {
@@ -220,6 +228,12 @@ private fun JarvisRoot(
     val cameraRequest by viewModel.cameraRequests.collectAsStateWithLifecycle()
     val mapStyle = MapStyle.of(settings.mapStyle)
     val scope = rememberCoroutineScope()
+
+    // The look follows the settings live: pick a colour and the whole app
+    // changes under your finger.
+    SideEffect {
+        ThemeState.apply(settings.accent, settings.backdrop, settings.textScale, settings.reduceMotion)
+    }
 
     val stage by viewModel.element.collectAsStateWithLifecycle()
     val element = stage.element

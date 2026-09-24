@@ -12,7 +12,8 @@ import java.util.Locale
  */
 enum class ToolGroup {
     Memory, Money, Tasks, Thinking, Web, Weather, Places,
-    Calendar, People, Phone, Messages, Media, Screen, Vision, Automation
+    Calendar, People, Phone, Messages, Media, Screen, Vision, Automation,
+    News, Language, Create, Markets, Knowledge, Fun
 }
 
 /**
@@ -77,6 +78,20 @@ object ToolCatalog {
         ToolInfo("convert_currency", ToolGroup.Web, "checking the rate", "Currency", readOnly = true),
         ToolInfo("wikipedia", ToolGroup.Web, "reading Wikipedia", "Wikipedia", readOnly = true),
         ToolInfo("weather", ToolGroup.Weather, "checking the sky", "Weather", readOnly = true),
+
+        // the world, beyond a search box
+        ToolInfo("news", ToolGroup.News, "reading the headlines", "News", readOnly = true),
+        ToolInfo("translate", ToolGroup.Language, "translating", "Translate", readOnly = true),
+        ToolInfo("define_word", ToolGroup.Language, "opening the dictionary", "Dictionary", readOnly = true),
+        ToolInfo("market_price", ToolGroup.Markets, "checking the markets", "Markets", readOnly = true),
+        ToolInfo("holidays", ToolGroup.Knowledge, "checking the holidays", "Holidays", readOnly = true),
+        ToolInfo("recipe", ToolGroup.Knowledge, "finding a recipe", "Recipe", readOnly = true),
+        ToolInfo("sports", ToolGroup.Knowledge, "checking the scores", "Sports", readOnly = true),
+        ToolInfo("tv_show", ToolGroup.Knowledge, "looking up the show", "TV", readOnly = true),
+        ToolInfo("book", ToolGroup.Knowledge, "looking up the book", "Books", readOnly = true),
+        ToolInfo("fun", ToolGroup.Fun, "finding something good", "Fun", readOnly = true),
+        ToolInfo("random", ToolGroup.Fun, "rolling the dice", "Random"),
+        ToolInfo("generate_image", ToolGroup.Create, "drawing", "Picture"),
 
         // places; these draw on the map, so none of them counts as a pure read
         ToolInfo("find_places", ToolGroup.Places, "looking around you", "Places"),
@@ -206,7 +221,18 @@ object ToolCatalog {
         "send_location" to "share_location", "my_location" to "share_location",
         "routine" to "run_routine", "start_routine" to "run_routine",
         "make_routine" to "create_routine", "add_routine" to "create_routine",
-        "routines" to "list_routines"
+        "routines" to "list_routines",
+        "headlines" to "news", "get_news" to "news", "news_search" to "news",
+        "translate_text" to "translate", "translation" to "translate",
+        "define" to "define_word", "dictionary" to "define_word", "definition" to "define_word",
+        "stock_price" to "market_price", "crypto_price" to "market_price", "stock" to "market_price",
+        "get_stock" to "market_price", "price" to "market_price",
+        "public_holidays" to "holidays", "get_recipe" to "recipe", "find_recipe" to "recipe",
+        "sports_score" to "sports", "team" to "sports", "tv" to "tv_show", "show_info" to "tv_show",
+        "find_book" to "book", "joke" to "fun", "tell_joke" to "fun", "fact" to "fun", "quote" to "fun",
+        "coin_flip" to "random", "flip_coin" to "random", "roll_dice" to "random", "dice" to "random",
+        "random_number" to "random", "image" to "generate_image", "draw" to "generate_image",
+        "create_image" to "generate_image", "imagine" to "generate_image", "text_to_image" to "generate_image"
     )
 
     /**
@@ -441,6 +467,52 @@ object Abilities {
                 "Run my morning routine",
                 "What routines do I have?"
             )
+        ),
+        Ability(
+            ToolGroup.News,
+            "News",
+            "Today's headlines, or the latest on anything, in your language.",
+            listOf("What's in the news?", "Latest news about SpaceX"),
+            AbilitySwitch.Web
+        ),
+        Ability(
+            ToolGroup.Language,
+            "Languages",
+            "Translates between languages and looks words up in the dictionary.",
+            listOf("How do you say 'where is the station' in Spanish?", "What does 'serendipity' mean?"),
+            AbilitySwitch.Web
+        ),
+        Ability(
+            ToolGroup.Create,
+            "Pictures",
+            "Draws whatever you describe, straight into the conversation. Free, no key.",
+            listOf("Draw a fox in a space suit", "Make me a wallpaper of a neon city at night"),
+            AbilitySwitch.Web
+        ),
+        Ability(
+            ToolGroup.Markets,
+            "Markets",
+            "Live share and crypto prices with today's move.",
+            listOf("How's Apple stock doing?", "Bitcoin price"),
+            AbilitySwitch.Web
+        ),
+        Ability(
+            ToolGroup.Knowledge,
+            "Knowledge",
+            "Public holidays, recipes, football scores, TV shows and books.",
+            listOf(
+                "When is the next public holiday?",
+                "Give me a recipe for lasagne",
+                "How did Bayern play?",
+                "When is the next episode of Severance?"
+            ),
+            AbilitySwitch.Web
+        ),
+        Ability(
+            ToolGroup.Fun,
+            "Fun",
+            "Jokes, odd facts, quotes, coin flips and dice — really random, not a model's favourite number.",
+            listOf("Tell me a joke", "Flip a coin", "Roll two dice", "Give me a quote")
         ),
         Ability(
             ToolGroup.Screen,

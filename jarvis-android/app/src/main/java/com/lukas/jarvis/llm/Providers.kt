@@ -14,6 +14,13 @@ package com.lukas.jarvis.llm
 
 /** Roughly what an account costs, which is what decides ordering in the pool. */
 enum class Tier {
+    /**
+     * Free with no account and no key at all. Built into the pool from the
+     * first launch, so Jarvis answers before anything has been set up; a free
+     * key of your own is quicker and cleverer, so these rank after one.
+     */
+    Keyless,
+
     /** A standing free allowance that refills. First choice. */
     Free,
 
@@ -22,9 +29,6 @@ enum class Tier {
 
     /** Your own hardware. No quota at all, but only reachable sometimes. */
     Local,
-
-    /** Real money per token. Only used if you deliberately enable it. */
-    Paid,
 
     /** Unknown — a hand-entered endpoint. */
     Custom
@@ -58,7 +62,14 @@ enum class CatalogStyle {
     Gemini,
 
     /** GitHub Models publishes a bare JSON array at a separate catalog host. */
-    GitHub
+    GitHub,
+
+    /**
+     * Not asked at all: the preset's own list is the answer. The keyless
+     * endpoints route a stable alias to whatever is healthy behind it, and
+     * their full catalogues are mostly models an anonymous caller cannot use.
+     */
+    Fixed
 }
 
 data class ProviderPreset(
@@ -89,7 +100,13 @@ data class ProviderPreset(
      * model. Rotating models under an account-wide daily cap buys nothing, so
      * the pool rests the whole account instead of walking its models one by one.
      */
-    val accountWideDailyCap: Boolean = true
+    val accountWideDailyCap: Boolean = true,
+    /**
+     * Appended to the base URL for a chat completion. Almost everyone serves
+     * `/chat/completions`; a provider whose base URL already is the endpoint
+     * sets this to empty.
+     */
+    val chatPath: String = "/chat/completions"
 ) {
     val defaultModel: String get() = fallbackModels.first()
 
@@ -97,6 +114,10 @@ data class ProviderPreset(
 }
 
 object Providers {
+
+    // No key, no account.
+    const val LLM7 = "llm7"
+    const val POLLINATIONS = "pollinations"
 
     // Hosted, standing free allowance.
     const val GROQ = "groq"
@@ -124,13 +145,6 @@ object Providers {
     const val QWEN = "qwen"
     const val DEEPINFRA = "deepinfra"
 
-    // Hosted, metered.
-    const val DEEPSEEK = "deepseek"
-    const val XAI = "xai"
-    const val FIREWORKS = "fireworks"
-    const val PERPLEXITY = "perplexity"
-    const val OPENAI = "openai"
-
     // Your own machines.
     const val OLLAMA = "ollama"
     const val LMSTUDIO = "lmstudio"
@@ -143,6 +157,45 @@ object Providers {
     private const val LAN = "192.168.1.10"
 
     val ALL: List<ProviderPreset> = listOf(
+
+        // ------------------------------------------------------------- no key
+
+        ProviderPreset(
+            id = LLM7,
+            label = "LLM7 (no key)",
+            baseUrl = "https://api.llm7.io/v1",
+            // "default" and "fast" are LLM7's own routes: it points them at
+            // whichever open model is healthy, so the id never goes stale.
+            fallbackModels = listOf("default", "fast"),
+            needsKey = false,
+            keyUrl = null,
+            note = "Works with no key and no account. Built into Jarvis, so it " +
+                "answers from the very first launch.",
+            tier = Tier.Keyless,
+            rate = RateHint(requestsPerMinute = 20),
+            accountWideDailyCap = false,
+            catalogStyle = CatalogStyle.Fixed,
+            poolLimit = 1
+        ),
+        ProviderPreset(
+            id = POLLINATIONS,
+            label = "Pollinations (no key)",
+            // The anonymous endpoint: the base URL is the chat endpoint itself.
+            baseUrl = "https://text.pollinations.ai/openai",
+            fallbackModels = listOf("openai"),
+            needsKey = false,
+            keyUrl = null,
+            note = "Free and anonymous, with tool calling. Slower than a keyed " +
+                "provider and limited to a request every few seconds, which is " +
+                "why it is the backstop rather than the first choice.",
+            tier = Tier.Keyless,
+            // Anonymous callers get roughly one request every fifteen seconds.
+            rate = RateHint(requestsPerMinute = 4),
+            accountWideDailyCap = false,
+            catalogStyle = CatalogStyle.Fixed,
+            poolLimit = 1,
+            chatPath = ""
+        ),
 
         // ------------------------------------------------------------ free tier
 
@@ -447,73 +500,6 @@ object Providers {
             poolLimit = 4
         ),
 
-        // ------------------------------------------------------------- metered
-
-        ProviderPreset(
-            id = DEEPSEEK,
-            label = "DeepSeek",
-            baseUrl = "https://api.deepseek.com/v1",
-            fallbackModels = listOf("deepseek-chat", "deepseek-reasoner"),
-            needsKey = true,
-            keyUrl = "https://platform.deepseek.com/api_keys",
-            note = "Paid, but among the cheapest anywhere. A good last resort " +
-                "when every free endpoint is resting.",
-            tier = Tier.Paid,
-            rate = RateHint(requestsPerMinute = 50),
-            poolLimit = 2
-        ),
-        ProviderPreset(
-            id = XAI,
-            label = "xAI (Grok)",
-            baseUrl = "https://api.x.ai/v1",
-            fallbackModels = listOf("grok-4-fast", "grok-3-mini"),
-            needsKey = true,
-            keyUrl = "https://console.x.ai",
-            note = "Paid, with promotional credit from time to time.",
-            tier = Tier.Paid,
-            rate = RateHint(requestsPerMinute = 50),
-            poolLimit = 2
-        ),
-        ProviderPreset(
-            id = FIREWORKS,
-            label = "Fireworks",
-            baseUrl = "https://api.fireworks.ai/inference/v1",
-            fallbackModels = listOf("accounts/fireworks/models/llama-v3p3-70b-instruct"),
-            needsKey = true,
-            keyUrl = "https://fireworks.ai/account/api-keys",
-            note = "Paid and fast, with signup credit.",
-            tier = Tier.Paid,
-            rate = RateHint(requestsPerMinute = 50),
-            poolLimit = 2
-        ),
-        ProviderPreset(
-            id = PERPLEXITY,
-            label = "Perplexity",
-            baseUrl = "https://api.perplexity.ai",
-            fallbackModels = listOf("sonar", "sonar-pro"),
-            needsKey = true,
-            keyUrl = "https://www.perplexity.ai/settings/api",
-            note = "Paid, and answers with live web results built in. No tool " +
-                "calling, so Jarvis falls back to plain replies here.",
-            tier = Tier.Paid,
-            rate = RateHint(requestsPerMinute = 40),
-            toolCalling = false,
-            poolLimit = 2
-        ),
-        ProviderPreset(
-            id = OPENAI,
-            label = "OpenAI",
-            baseUrl = "https://api.openai.com/v1",
-            fallbackModels = listOf("gpt-4o-mini", "gpt-4.1-mini"),
-            needsKey = true,
-            keyUrl = "https://platform.openai.com/api-keys",
-            note = "Paid. Included because it is the dialect everything else " +
-                "imitates, so it always works.",
-            tier = Tier.Paid,
-            rate = RateHint(requestsPerMinute = 50),
-            poolLimit = 2
-        ),
-
         // -------------------------------------------------------------- local
 
         ProviderPreset(
@@ -591,14 +577,25 @@ object Providers {
 
     private val index: Map<String, ProviderPreset> = ALL.associateBy { it.id }
 
-    fun byId(id: String): ProviderPreset = index[id] ?: ALL.first()
+    /**
+     * The preset for an id. An id this build no longer ships (a paid provider
+     * from an older version, say) reads as a custom endpoint rather than being
+     * mistaken for whichever preset happens to be first.
+     */
+    fun byId(id: String): ProviderPreset = index[id] ?: index.getValue(CUSTOM)
+
+    /** The endpoints Jarvis carries from the first launch: no key, no account. */
+    val BUILT_IN: List<Pair<String, String>> = listOf(
+        LLM7 to "default",
+        POLLINATIONS to "openai"
+    )
 
     /** Providers grouped for the picker, cheapest-and-most-generous first. */
     fun grouped(): List<Pair<String, List<ProviderPreset>>> = listOf(
-        "Free tier" to ALL.filter { it.tier == Tier.Free },
+        "No key needed" to ALL.filter { it.tier == Tier.Keyless },
+        "Free key" to ALL.filter { it.tier == Tier.Free },
         "Free signup credit" to ALL.filter { it.tier == Tier.Trial },
         "Your own machine" to ALL.filter { it.tier == Tier.Local },
-        "Paid" to ALL.filter { it.tier == Tier.Paid },
         "Other" to ALL.filter { it.tier == Tier.Custom }
     ).filter { it.second.isNotEmpty() }
 }

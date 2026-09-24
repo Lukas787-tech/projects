@@ -400,8 +400,13 @@ class Brain(context: Context) {
             put("content", message.content)
             put("created_at", message.createdAt)
             put("tools", message.tools.joinToString(","))
+            put("image", message.image)
         }
         return db.insert("messages", null, values)
+    }
+
+    fun deleteMessage(id: Long) {
+        db.delete("messages", "id = ?", arrayOf(id.toString()))
     }
 
     /** Oldest-first so it can be fed straight back to the model. */
@@ -513,6 +518,7 @@ class Brain(context: Context) {
         role = getString(getColumnIndexOrThrow("role")),
         content = getString(getColumnIndexOrThrow("content")),
         createdAt = getLong(getColumnIndexOrThrow("created_at")),
-        tools = stringOrNull("tools").orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        tools = stringOrNull("tools").orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() },
+        image = stringOrNull("image")
     )
 }

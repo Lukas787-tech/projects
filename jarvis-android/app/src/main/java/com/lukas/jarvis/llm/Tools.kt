@@ -33,6 +33,8 @@ import com.lukas.jarvis.stage.StageStore
 import com.lukas.jarvis.notify.ReplyListener
 import com.lukas.jarvis.notify.Reminders
 import com.lukas.jarvis.web.Currency
+import com.lukas.jarvis.web.Imagine
+import com.lukas.jarvis.web.Knowledge
 import com.lukas.jarvis.web.Weather
 import com.lukas.jarvis.vision.CameraBus
 import com.lukas.jarvis.web.WebTools
@@ -46,7 +48,9 @@ import kotlin.math.abs
 data class ToolEffects(
     var memoriesChanged: Boolean = false,
     var trackersChanged: Boolean = false,
-    var tasksChanged: Boolean = false
+    var tasksChanged: Boolean = false,
+    /** Pictures drawn this turn, as file paths, to be shown with the reply. */
+    val images: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf())
 ) {
     val any: Boolean get() = memoriesChanged || trackersChanged || tasksChanged
 }
@@ -81,7 +85,9 @@ class Tools(
     private val chats: Chats,
     private val currency: Currency,
     private val camera: CameraBus,
-    private val routines: Routines
+    private val routines: Routines,
+    private val knowledge: Knowledge,
+    private val imagine: Imagine
 ) {
 
     /**
@@ -98,6 +104,8 @@ class Tools(
         addAll(taskTools())
         addAll(thinkingTools())
         if (settings.webSearchEnabled) addAll(webTools())
+        if (settings.webSearchEnabled) addAll(worldTools())
+        add(randomTool())
         if (settings.weatherEnabled) add(weatherTool())
         if (settings.mapsEnabled) addAll(placeTools(settings))
         if (settings.calendarEnabled) addAll(calendarTools())
@@ -369,6 +377,110 @@ class Tools(
             ),
             listOf("amount", "from", "to")
         )
+    )
+
+    private fun worldTools(): List<JSONObject> = listOf(
+        tool(
+            "news",
+            "Current headlines, or the latest news about a topic. Use for 'what's in the " +
+                "news', 'what happened with', 'any news about'.",
+            props(
+                "topic" to str("What the news should be about. Omit for top headlines."),
+                "limit" to int("How many headlines. Default 5.")
+            ),
+            emptyList()
+        ),
+        tool(
+            "translate",
+            "Translate text into another language exactly. Use for 'how do you say', " +
+                "'translate', 'what is this in German'.",
+            props(
+                "text" to str("The words to translate."),
+                "to" to str("Target language, e.g. 'Spanish' or 'es'."),
+                "from" to str("Source language, e.g. 'English' or 'en'.")
+            ),
+            listOf("text", "to", "from")
+        ),
+        tool(
+            "define_word",
+            "Dictionary definition of a word, in any language.",
+            props("word" to str("The word.")),
+            listOf("word")
+        ),
+        tool(
+            "market_price",
+            "Live price of a share, fund, index or cryptocurrency, with today's change. " +
+                "Never quote a price from memory.",
+            props(
+                "query" to str("Company name, ticker or coin, e.g. 'Apple', 'TSLA', 'bitcoin'."),
+                "kind" to str("What it is.", listOf("auto", "stock", "crypto")),
+                "currency" to str("For crypto: the currency to price it in, e.g. 'EUR'.")
+            ),
+            listOf("query")
+        ),
+        tool(
+            "holidays",
+            "Public holidays in a country: the next ones, or a whole year.",
+            props(
+                "country" to str("Two-letter country code, e.g. 'DE'. Omit for the phone's country."),
+                "year" to int("A year, to list all of it. Omit for the ones still to come.")
+            ),
+            emptyList()
+        ),
+        tool(
+            "recipe",
+            "A real recipe for a dish: ingredients and method.",
+            props("dish" to str("The dish, in English, e.g. 'lasagne', 'pad thai'.")),
+            listOf("dish")
+        ),
+        tool(
+            "sports",
+            "A sports team's last result and next fixture.",
+            props("team" to str("The team, e.g. 'Arsenal', 'Bayern Munich', 'Lakers'.")),
+            listOf("team")
+        ),
+        tool(
+            "tv_show",
+            "About a TV series: whether it is still running, where, and when the next episode airs.",
+            props("name" to str("The show.")),
+            listOf("name")
+        ),
+        tool(
+            "book",
+            "Look a book up: author, year, length, rating.",
+            props("query" to str("Title and/or author.")),
+            listOf("query")
+        ),
+        tool(
+            "fun",
+            "A real joke, an odd fact or a good quote, when the user asks for one.",
+            props("kind" to str("Which.", listOf("joke", "fact", "quote"))),
+            listOf("kind")
+        ),
+        tool(
+            "generate_image",
+            "Draw a picture from a description and show it in the chat. Use for 'draw', " +
+                "'imagine', 'make me a picture/wallpaper/logo of'.",
+            props(
+                "prompt" to str("A vivid, specific description in English: subject, style, lighting, mood."),
+                "shape" to str("The picture's shape.", listOf("square", "portrait", "landscape"))
+            ),
+            listOf("prompt")
+        )
+    )
+
+    private fun randomTool(): JSONObject = tool(
+        "random",
+        "Truly random choices: flip a coin, roll dice, a random number, or pick one of several " +
+            "options. Always use this instead of choosing yourself.",
+        props(
+            "kind" to str("What to do.", listOf("coin", "dice", "number", "pick")),
+            "min" to int("For 'number': the lowest value. Default 1."),
+            "max" to int("For 'number': the highest value. For 'dice': the sides. Default 6 or 100."),
+            "count" to int("How many coins, dice or numbers. Default 1."),
+            "options" to arr("For 'pick': the things to choose between.")
+        ),
+        listOf("kind")
     )
 
     private fun weatherTool(): JSONObject = tool(
@@ -841,6 +953,38 @@ class Tools(
                 "forget_place" -> navigator.forgetPlace(args.optString("name").trim())
                 "share_location" -> shareLocation(args)
                 "wikipedia" -> wikipedia(args)
+                "news" -> knowledge.news(
+                    args.optString("topic").takeIf { it.isNotBlank() },
+                    args.optInt("limit", 5)
+                )
+                "translate" -> knowledge.translate(
+                    args.optString("text"),
+                    args.optString("from"),
+                    args.optString("to")
+                )
+                "define_word" -> knowledge.define(args.optString("word"))
+                "market_price" -> knowledge.price(
+                    args.optString("query"),
+                    args.optString("kind").ifBlank { "auto" },
+                    args.optString("currency").ifBlank { settings.defaultCurrency }
+                )
+                "holidays" -> knowledge.holidays(
+                    args.optString("country"),
+                    args.optInt("year", 0).takeIf { it > 1900 }
+                )
+                "recipe" -> knowledge.recipe(args.optString("dish"))
+                "sports" -> knowledge.sports(args.optString("team"))
+                "tv_show" -> knowledge.tvShow(args.optString("name"))
+                "book" -> knowledge.book(args.optString("query"))
+                "fun" -> knowledge.amuse(args.optString("kind"))
+                "random" -> knowledge.random(
+                    args.optString("kind"),
+                    if (args.has("min")) args.optInt("min") else null,
+                    if (args.has("max")) args.optInt("max") else null,
+                    if (args.has("count")) args.optInt("count") else null,
+                    args.optJSONArray("options").toStringList()
+                )
+                "generate_image" -> generateImage(args, effects)
 
                 // calendar and people
                 "calendar" -> agenda.describe(args.optInt("days", 1), args.optInt("limit", 10))
@@ -906,6 +1050,18 @@ class Tools(
         } catch (e: Exception) {
             "Tool '${call.name}' failed: ${e.message ?: e::class.java.simpleName}"
         }
+    }
+
+    private suspend fun generateImage(args: JSONObject, effects: ToolEffects): String {
+        val prompt = args.optString("prompt").trim()
+        if (prompt.isBlank()) return "Need a description of the picture."
+        return runCatching { imagine.generate(prompt, args.optString("shape")) }
+            .map { file ->
+                effects.images += file.absolutePath
+                "The picture is drawn and showing in the chat now. Describe it in one short line; " +
+                    "do not include a link."
+            }
+            .getOrElse { "Could not draw that: ${it.message}." }
     }
 
     // ------------------------------------------------------------------ memory

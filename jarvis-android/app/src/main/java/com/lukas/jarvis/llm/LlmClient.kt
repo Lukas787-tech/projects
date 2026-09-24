@@ -231,7 +231,7 @@ class LlmClient {
         }
 
         val preset = Providers.byId(settings.providerId)
-        val url = settings.baseUrl.trim().trimEnd('/') + "/chat/completions"
+        val url = settings.baseUrl.trim().trimEnd('/') + preset.chatPath
         val builder = Request.Builder()
             .url(url)
             .post(payload.toString().toRequestBody(JSON))

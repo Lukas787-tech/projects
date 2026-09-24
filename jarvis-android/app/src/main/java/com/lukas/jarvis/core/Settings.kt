@@ -42,7 +42,55 @@ data class Settings(
      *  permission Android only grants from its own settings page. */
     val floatingDot: Boolean = false,
     /** Which tiles the map is drawn with: dark, light or satellite. */
-    val mapStyle: String = "dark"
+    val mapStyle: String = "dark",
+
+    // ------------------------------------------------------------- who it is
+
+    /** A [com.lukas.jarvis.llm.Persona] id: how Jarvis carries itself. */
+    val personality: String = "jarvis",
+    /** How to address the user — "sir", "boss", a nickname. Blank uses their name. */
+    val honorific: String = "",
+    /** short, balanced or detailed. */
+    val replyLength: String = "short",
+    /** 0 dry and plain … 3 as playful as it gets. */
+    val wit: Int = 1,
+    /** Free text: anything the user wants Jarvis to always keep in mind about them. */
+    val aboutMe: String = "",
+    /** Free text: how the user wants to be answered. */
+    val customInstructions: String = "",
+    /** A language to always answer in. Blank answers in whatever the user used. */
+    val replyLanguage: String = "",
+    /** Offer a useful next step after an answer, when there obviously is one. */
+    val proactive: Boolean = true,
+    /** Emoji in typed replies. Never spoken either way. */
+    val emoji: Boolean = false,
+
+    // ------------------------------------------------------------- its voice
+
+    /** A TextToSpeech voice name. Blank lets the engine choose. */
+    val voiceName: String = "",
+    /** A BCP-47 tag for recognition and speech. Blank follows the phone. */
+    val speechLanguage: String = "",
+    /** A short tone when the microphone opens and closes. */
+    val earcons: Boolean = true,
+    /** A tick under the finger on the main controls. */
+    val haptics: Boolean = true,
+
+    // ------------------------------------------------------------ its looks
+
+    /** A [com.lukas.jarvis.ui.theme.AccentTone] id. */
+    val accent: String = "arc",
+    /** A [com.lukas.jarvis.ui.theme.Backdrop] id. */
+    val backdrop: String = "space",
+    val textScale: Float = 1f,
+    val reduceMotion: Boolean = false,
+    /** What sits at the centre of the assistant: reactor, globe or orb. */
+    val coreStyle: String = "reactor",
+    /** The clock, weather and status readouts around the assistant. */
+    val showHud: Boolean = true,
+
+    /** False until the first-run introduction has been completed or skipped. */
+    val onboarded: Boolean = false
 ) {
     val isConfigured: Boolean
         get() = baseUrl.isNotBlank() && model.isNotBlank() &&
@@ -94,7 +142,27 @@ class SettingsStore(context: Context) {
             searchRadiusMeters = prefs.getInt(KEY_SEARCH_RADIUS, 1_500),
             voiceMode = prefs.getBoolean(KEY_VOICE_MODE, true),
             floatingDot = prefs.getBoolean(KEY_FLOATING_DOT, false),
-            mapStyle = prefs.getString(KEY_MAP_STYLE, "dark") ?: "dark"
+            mapStyle = prefs.getString(KEY_MAP_STYLE, "dark") ?: "dark",
+            personality = prefs.getString(KEY_PERSONALITY, "jarvis") ?: "jarvis",
+            honorific = prefs.getString(KEY_HONORIFIC, "").orEmpty(),
+            replyLength = prefs.getString(KEY_REPLY_LENGTH, "short") ?: "short",
+            wit = prefs.getInt(KEY_WIT, 1),
+            aboutMe = prefs.getString(KEY_ABOUT_ME, "").orEmpty(),
+            customInstructions = prefs.getString(KEY_INSTRUCTIONS, "").orEmpty(),
+            replyLanguage = prefs.getString(KEY_REPLY_LANGUAGE, "").orEmpty(),
+            proactive = prefs.getBoolean(KEY_PROACTIVE, true),
+            emoji = prefs.getBoolean(KEY_EMOJI, false),
+            voiceName = prefs.getString(KEY_VOICE_NAME, "").orEmpty(),
+            speechLanguage = prefs.getString(KEY_SPEECH_LANGUAGE, "").orEmpty(),
+            earcons = prefs.getBoolean(KEY_EARCONS, true),
+            haptics = prefs.getBoolean(KEY_HAPTICS, true),
+            accent = prefs.getString(KEY_ACCENT, "arc") ?: "arc",
+            backdrop = prefs.getString(KEY_BACKDROP, "space") ?: "space",
+            textScale = prefs.getFloat(KEY_TEXT_SCALE, 1f),
+            reduceMotion = prefs.getBoolean(KEY_REDUCE_MOTION, false),
+            coreStyle = prefs.getString(KEY_CORE_STYLE, "reactor") ?: "reactor",
+            showHud = prefs.getBoolean(KEY_SHOW_HUD, true),
+            onboarded = prefs.getBoolean(KEY_ONBOARDED, false)
         )
     }
 
@@ -137,6 +205,26 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_VOICE_MODE, next.voiceMode)
             .putBoolean(KEY_FLOATING_DOT, next.floatingDot)
             .putString(KEY_MAP_STYLE, next.mapStyle)
+            .putString(KEY_PERSONALITY, next.personality)
+            .putString(KEY_HONORIFIC, next.honorific)
+            .putString(KEY_REPLY_LENGTH, next.replyLength)
+            .putInt(KEY_WIT, next.wit)
+            .putString(KEY_ABOUT_ME, next.aboutMe)
+            .putString(KEY_INSTRUCTIONS, next.customInstructions)
+            .putString(KEY_REPLY_LANGUAGE, next.replyLanguage)
+            .putBoolean(KEY_PROACTIVE, next.proactive)
+            .putBoolean(KEY_EMOJI, next.emoji)
+            .putString(KEY_VOICE_NAME, next.voiceName)
+            .putString(KEY_SPEECH_LANGUAGE, next.speechLanguage)
+            .putBoolean(KEY_EARCONS, next.earcons)
+            .putBoolean(KEY_HAPTICS, next.haptics)
+            .putString(KEY_ACCENT, next.accent)
+            .putString(KEY_BACKDROP, next.backdrop)
+            .putFloat(KEY_TEXT_SCALE, next.textScale)
+            .putBoolean(KEY_REDUCE_MOTION, next.reduceMotion)
+            .putString(KEY_CORE_STYLE, next.coreStyle)
+            .putBoolean(KEY_SHOW_HUD, next.showHud)
+            .putBoolean(KEY_ONBOARDED, next.onboarded)
             .apply()
         _state.value = next
     }
@@ -218,5 +306,25 @@ class SettingsStore(context: Context) {
         const val KEY_FLOATING_DOT = "floating_dot"
         const val KEY_SEARCH_RADIUS = "search_radius"
         const val KEY_MAP_STYLE = "map_style"
+        const val KEY_PERSONALITY = "personality"
+        const val KEY_HONORIFIC = "honorific"
+        const val KEY_REPLY_LENGTH = "reply_length"
+        const val KEY_WIT = "wit"
+        const val KEY_ABOUT_ME = "about_me"
+        const val KEY_INSTRUCTIONS = "custom_instructions"
+        const val KEY_REPLY_LANGUAGE = "reply_language"
+        const val KEY_PROACTIVE = "proactive"
+        const val KEY_EMOJI = "emoji"
+        const val KEY_VOICE_NAME = "voice_name"
+        const val KEY_SPEECH_LANGUAGE = "speech_language"
+        const val KEY_EARCONS = "earcons"
+        const val KEY_HAPTICS = "haptics"
+        const val KEY_ACCENT = "accent"
+        const val KEY_BACKDROP = "backdrop"
+        const val KEY_TEXT_SCALE = "text_scale"
+        const val KEY_REDUCE_MOTION = "reduce_motion"
+        const val KEY_CORE_STYLE = "core_style"
+        const val KEY_SHOW_HUD = "show_hud"
+        const val KEY_ONBOARDED = "onboarded"
     }
 }

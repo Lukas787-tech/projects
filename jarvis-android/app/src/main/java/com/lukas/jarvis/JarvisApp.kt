@@ -34,6 +34,8 @@ import com.lukas.jarvis.vision.CameraBus
 import com.lukas.jarvis.voice.SpeechInput
 import com.lukas.jarvis.voice.Speaker
 import com.lukas.jarvis.web.Currency
+import com.lukas.jarvis.web.Imagine
+import com.lukas.jarvis.web.Knowledge
 import com.lukas.jarvis.web.Weather
 import com.lukas.jarvis.web.WebTools
 
@@ -58,6 +60,8 @@ class AppContainer(context: Context) {
     private val web = WebTools()
     private val weather = Weather()
     private val currency = Currency()
+    private val knowledge = Knowledge()
+    val imagine = Imagine(context)
     private val client = LlmClient()
 
     val stage = StageStore()
@@ -108,7 +112,9 @@ class AppContainer(context: Context) {
         chats = chats,
         currency = currency,
         camera = camera,
-        routines = routines
+        routines = routines,
+        knowledge = knowledge,
+        imagine = imagine
     )
 
     val models = ModelCatalog()

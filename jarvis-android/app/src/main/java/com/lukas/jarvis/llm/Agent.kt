@@ -43,11 +43,13 @@ class Agent(
     ): AgentResult {
         val effects = ToolEffects()
         val used = mutableListOf<String>()
-        val schemas = tools.schemas(settings)
-        val available = schemas
-            .mapNotNull { it.optJSONObject("function")?.optString("name") }
-            .filter { it.isNotBlank() }
-            .toSet()
+        val everything = tools.schemas(settings)
+        // Everything switched on may run if asked for by name; only the tools
+        // this sentence points at are described to the model, which keeps the
+        // request small and a small model's choices short.
+        val available = names(everything)
+        val schemas = ToolRouter.select(everything, utterance, history)
+        val offered = names(schemas)
 
         // What this turn has already asked for, and what came back. Keyed on the
         // tool and its arguments, so the same question asked twice is answered
@@ -55,7 +57,7 @@ class Agent(
         val answered = ConcurrentHashMap<String, String>()
 
         val messages = mutableListOf<LlmMessage>()
-        messages += LlmMessage.system(Prompt.system(settings))
+        messages += LlmMessage.system(Prompt.system(settings, offered))
         trimToBudget(history).forEach { past ->
             messages += LlmMessage(
                 role = if (past.role == ChatMessage.ROLE_USER) LlmMessage.USER else LlmMessage.ASSISTANT,
@@ -186,6 +188,11 @@ class Agent(
             tools.routineRunner = runner
         }
     }
+
+    private fun names(schemas: List<JSONObject>): Set<String> = schemas
+        .mapNotNull { it.optJSONObject("function")?.optString("name") }
+        .filter { it.isNotBlank() }
+        .toSet()
 
     /** One requested call, with the real tool it maps to — or null when none does. */
     private data class Pending(val call: ToolCall, val tool: String?)

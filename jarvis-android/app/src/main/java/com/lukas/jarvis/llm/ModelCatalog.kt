@@ -38,6 +38,7 @@ class ModelCatalog {
             throw LlmException("Add an API key first, then refresh.", FailureKind.Unknown)
         }
         when {
+            preset.catalogStyle == CatalogStyle.Fixed -> preset.fallbackModels
             preset.catalogStyle == CatalogStyle.Gemini || isGeminiHost(settings.baseUrl) ->
                 fetchGemini(settings)
             preset.catalogStyle == CatalogStyle.GitHub -> fetchGitHub(settings, preset)

@@ -234,9 +234,7 @@ class PooledLlm(
             ),
             Providers.MISTRAL to listOf("pixtral-12b-2409", "mistral-small-latest"),
             Providers.GITHUB to listOf("gpt-4o-mini"),
-            Providers.TOGETHER to listOf("meta-llama/Llama-4-Scout-17B-16E-Instruct"),
-            Providers.OPENAI to listOf("gpt-4o-mini"),
-            Providers.XAI to listOf("grok-2-vision-1212")
+            Providers.TOGETHER to listOf("meta-llama/Llama-4-Scout-17B-16E-Instruct")
         )
     }
 }

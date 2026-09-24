@@ -913,10 +913,10 @@ private fun PoolRow(
 
 /** What a provider costs, in one word, for the picker. */
 private fun tierLabel(tier: Tier): String = when (tier) {
+    Tier.Keyless -> "no key"
     Tier.Free -> "free tier"
     Tier.Trial -> "free credit"
     Tier.Local -> "your PC"
-    Tier.Paid -> "paid"
     Tier.Custom -> "custom"
 }
 

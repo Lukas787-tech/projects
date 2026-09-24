@@ -110,7 +110,8 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
                 created_at INTEGER NOT NULL,
-                tools TEXT NOT NULL DEFAULT ''
+                tools TEXT NOT NULL DEFAULT '',
+                image TEXT
             )
             """.trimIndent()
         )
@@ -124,10 +125,14 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
             // Which tools answered each reply. Old replies simply have none.
             db.execSQL("ALTER TABLE messages ADD COLUMN tools TEXT NOT NULL DEFAULT ''")
         }
+        if (oldVersion < 3) {
+            // A picture Jarvis drew for a reply, as a path in the app's own files.
+            db.execSQL("ALTER TABLE messages ADD COLUMN image TEXT")
+        }
     }
 
     companion object {
         const val NAME = "jarvis.db"
-        const val VERSION = 2
+        const val VERSION = 3
     }
 }

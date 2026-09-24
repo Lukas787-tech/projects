@@ -40,14 +40,27 @@ class SpeechInput(private val context: Context) {
 
     val available: Boolean get() = SpeechRecognizer.isRecognitionAvailable(context)
 
+    /** A BCP-47 tag to recognise in. Blank follows the phone. */
+    var language: String = ""
+
     fun start(onResult: (String) -> Unit, onFailure: (String) -> Unit) {
+        retriedAfterBusy = false
+        begin(onResult, onFailure)
+    }
+
+    /**
+     * The shared body of a first start and the one retry after "busy". Kept
+     * apart from [start] so the retry does not reset the flag that allows it
+     * — which it used to, turning a microphone held by another app into a
+     * retry every half second, forever.
+     */
+    private fun begin(onResult: (String) -> Unit, onFailure: (String) -> Unit) {
         if (!available) {
             onFailure("No speech recognition on this device. Install or enable Google app voice services.")
             return
         }
         this.onResult = onResult
         this.onFailure = onFailure
-        retriedAfterBusy = false
 
         // Starting while a session is still open is itself a cause of
         // ERROR_RECOGNIZER_BUSY, so never stack two.
@@ -92,7 +105,10 @@ class SpeechInput(private val context: Context) {
             RecognizerIntent.EXTRA_LANGUAGE_MODEL,
             RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
         )
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
+        putExtra(
+            RecognizerIntent.EXTRA_LANGUAGE,
+            language.ifBlank { Locale.getDefault().toLanguageTag() }
+        )
         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
         putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
@@ -141,7 +157,7 @@ class SpeechInput(private val context: Context) {
                 runCatching { recognizer?.destroy() }
                 recognizer = null
                 if (resume != null && fail != null) {
-                    handler.postDelayed({ start(resume, fail) }, BUSY_RETRY_MS)
+                    handler.postDelayed({ begin(resume, fail) }, BUSY_RETRY_MS)
                     return
                 }
             }

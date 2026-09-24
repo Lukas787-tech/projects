@@ -135,7 +135,9 @@ data class ChatMessage(
     val content: String,
     val createdAt: Long = System.currentTimeMillis(),
     /** The tools a reply used, by name, so the thread can show how it was answered. */
-    val tools: List<String> = emptyList()
+    val tools: List<String> = emptyList(),
+    /** A picture that belongs to the message — one Jarvis drew — as a file path. */
+    val image: String? = null
 ) {
     companion object {
         const val ROLE_USER = "user"

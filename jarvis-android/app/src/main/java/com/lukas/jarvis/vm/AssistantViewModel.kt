@@ -149,8 +149,18 @@ class AssistantViewModel(
     private var lastTurnWasVoice = false
     private var busy = false
 
+    private val earcon = com.lukas.jarvis.voice.Earcon()
+
+    /** The turn in flight, so tapping the dot while it works can stop it. */
+    private var turnJob: Job? = null
+
+    private fun configureVoice(settings: Settings = settingsStore.current) {
+        speaker.configure(settings.speechRate, settings.speechPitch, settings.voiceName, settings.speechLanguage)
+        speech.language = settings.speechLanguage
+    }
+
     init {
-        speaker.configure(settingsStore.current.speechRate, settingsStore.current.speechPitch)
+        configureVoice()
         speaker.onFinished = {
             // This fires on a binder thread. SpeechRecognizer may only be touched
             // from the main thread, so hop back before restarting the mic.
@@ -171,7 +181,13 @@ class AssistantViewModel(
         }
         viewModelScope.launch {
             speech.level.collect { level ->
-                _ui.value = _ui.value.copy(level = level)
+                if (_ui.value.stage != Stage.Speaking) _ui.value = _ui.value.copy(level = level)
+            }
+        }
+        // While speaking, the reactor pulses with the words instead of the mic.
+        viewModelScope.launch {
+            speaker.level.collect { level ->
+                if (_ui.value.stage == Stage.Speaking) _ui.value = _ui.value.copy(level = level)
             }
         }
 
@@ -192,18 +208,30 @@ class AssistantViewModel(
                 speaker.stop()
                 _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "")
             }
-            Stage.Thinking -> Unit
+            // A turn that is taking too long, or was the wrong question: stop it.
+            Stage.Thinking -> cancelTurn()
             Stage.Idle -> startListening()
         }
+    }
+
+    /** Abandons the turn in flight. Whatever it already did stays done. */
+    fun cancelTurn() {
+        val job = turnJob ?: return
+        job.cancel()
+        turnJob = null
+        busy = false
+        _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "", activity = emptyList())
     }
 
     fun startListening() {
         if (busy) return
         speaker.stop()
         _ui.value = _ui.value.copy(stage = Stage.Listening, stageLabel = "listening", error = null)
+        if (settingsStore.current.earcons) earcon.listening()
         speech.start(
             onResult = { text ->
                 lastTurnWasVoice = true
+                if (settingsStore.current.earcons) earcon.heard()
                 send(text)
             },
             onFailure = { message ->
@@ -350,7 +378,11 @@ class AssistantViewModel(
         rewriteDisplay: Boolean = false,
         work: suspend (onStage: (String) -> Unit, onTool: (String) -> Unit) -> AgentResult
     ) {
-        if (busy) return
+        if (busy) {
+            // Dropping a typed message without a word looked like a broken send button.
+            _ui.value = _ui.value.copy(error = "Still on the last one — tap the dot to stop it.")
+            return
+        }
         val current = settingsStore.current
         // A configured pool is enough on its own; the single-provider settings
         // are only the fallback when no pool exists.
@@ -374,7 +406,8 @@ class AssistantViewModel(
             messages = _ui.value.messages + userMessage
         )
 
-        viewModelScope.launch {
+        turnJob = viewModelScope.launch {
+            val self = coroutineContext[Job]
             try {
                 if (!rewriteDisplay) storeUserMessage(userMessage, userMessage)
 
@@ -395,7 +428,8 @@ class AssistantViewModel(
                 val reply = ChatMessage(
                     role = ChatMessage.ROLE_ASSISTANT,
                     content = result.reply,
-                    tools = result.toolsUsed
+                    tools = result.toolsUsed,
+                    image = result.effects.images.lastOrNull()
                 )
                 val id = withContext(Dispatchers.IO) { brain.addMessage(reply) }
                 // The stored id, not the default 0: the thread keys its rows on
@@ -414,6 +448,9 @@ class AssistantViewModel(
                     _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "")
                     if (lastTurnWasVoice && current.handsFree) startListening()
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Stopped on purpose; cancelTurn already put the screen back.
+                throw e
             } catch (e: LlmException) {
                 if (rewriteDisplay) storeUserMessage(userMessage, userMessage)
                 fail(e.message ?: "The model call failed.")
@@ -421,7 +458,12 @@ class AssistantViewModel(
                 if (rewriteDisplay) storeUserMessage(userMessage, userMessage)
                 fail(e.message ?: "Something went wrong.")
             } finally {
-                busy = false
+                // A turn that was stopped may only finish unwinding after the
+                // next one has started; it must not release the next one's hold.
+                if (turnJob === self || turnJob == null) {
+                    busy = false
+                    turnJob = null
+                }
             }
         }
     }
@@ -851,8 +893,39 @@ class AssistantViewModel(
 
     fun updateSettings(transform: (Settings) -> Settings) {
         settingsStore.update(transform)
-        val next = settingsStore.current
-        speaker.configure(next.speechRate, next.speechPitch)
+        configureVoice()
+    }
+
+    /** The voices the phone's speech engine offers in the current language. */
+    fun voices(): List<com.lukas.jarvis.voice.VoiceOption> = speaker.voices()
+
+    /** Puts the free keyless endpoints back in the pool. */
+    fun restoreFreeBrain() {
+        val added = container.pool.restoreBuiltIns()
+        _poolMessage.value = if (added == 0) "The free built-in AI is already in the pool."
+        else "Free built-in AI restored — Jarvis works without any key again."
+    }
+
+    /** Removes one message from the thread and from history. */
+    fun deleteMessage(message: ChatMessage) {
+        _ui.update { state -> state.copy(messages = state.messages.filterNot { it.id == message.id && it.createdAt == message.createdAt }) }
+        if (message.id > 0) {
+            viewModelScope.launch { withContext(Dispatchers.IO) { brain.deleteMessage(message.id) } }
+        }
+    }
+
+    /** Says a message out loud again. */
+    fun speakMessage(message: ChatMessage) {
+        lastTurnWasVoice = false
+        _ui.value = _ui.value.copy(stage = Stage.Speaking, stageLabel = "speaking")
+        speaker.speak(message.content)
+    }
+
+    /** Sends the user's last line again, for an answer that went wrong. */
+    fun retryLast() {
+        val last = _ui.value.messages.lastOrNull { it.role == ChatMessage.ROLE_USER } ?: return
+        if (last.content.startsWith("\uD83D\uDCF7")) return
+        sendTyped(last.content)
     }
 
     fun switchProvider(providerId: String) {
@@ -937,8 +1010,7 @@ class AssistantViewModel(
             is Vault.Result.Restored -> {
                 settingsStore.reload()
                 container.pool.reload()
-                val next = settingsStore.current
-                speaker.configure(next.speechRate, next.speechPitch)
+                configureVoice()
                 // The old provider's model list and test result describe
                 // settings that no longer exist.
                 _availableModels.value = emptyList()
@@ -949,8 +1021,10 @@ class AssistantViewModel(
         }
 
     fun previewVoice() {
-        speaker.configure(settingsStore.current.speechRate, settingsStore.current.speechPitch)
-        speaker.speak("This is how I sound. Ready when you are.")
+        configureVoice()
+        val persona = com.lukas.jarvis.llm.Personas.byId(settingsStore.current.personality)
+        speaker.speak(persona.sample.takeIf { persona.id != com.lukas.jarvis.llm.Personas.CUSTOM }
+            ?: "This is how I sound. Ready when you are.")
     }
 
     override fun onCleared() {
@@ -958,6 +1032,7 @@ class AssistantViewModel(
         // destroying resources the next activity will need.
         speech.cancel()
         speaker.stop()
+        earcon.release()
         super.onCleared()
     }
 

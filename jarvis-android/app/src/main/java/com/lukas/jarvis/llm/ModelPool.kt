@@ -132,6 +132,45 @@ class ModelPool(context: Context) {
 
     val isEmpty: Boolean get() = _entries.value.isEmpty()
 
+    init {
+        ensureBuiltIns()
+    }
+
+    /**
+     * Puts the keyless endpoints in the pool, once.
+     *
+     * This is what lets Jarvis answer on the very first launch with nothing set
+     * up. It happens once rather than on every start, so someone who removes
+     * them has them stay removed; [restoreBuiltIns] puts them back on request.
+     */
+    private fun ensureBuiltIns() {
+        if (prefs.getBoolean(KEY_BUILT_INS, false)) return
+        restoreBuiltIns()
+        prefs.edit().putBoolean(KEY_BUILT_INS, true).apply()
+    }
+
+    /** Adds whichever built-in keyless endpoints are missing. Returns how many. */
+    fun restoreBuiltIns(): Int = add(
+        Providers.BUILT_IN.map { (providerId, model) ->
+            Endpoint(
+                providerId = providerId,
+                baseUrl = Providers.byId(providerId).baseUrl,
+                apiKey = "",
+                model = model
+            )
+        }
+    )
+
+    /** True when every built-in keyless endpoint is in the pool. */
+    fun hasBuiltIns(): Boolean {
+        val present = _entries.value.map { it.endpoint.providerId to it.endpoint.model }.toSet()
+        return Providers.BUILT_IN.all { it in present }
+    }
+
+    /** True when the pool holds something besides the keyless endpoints. */
+    val hasOwnEndpoints: Boolean
+        get() = _entries.value.any { it.endpoint.preset.tier != Tier.Keyless }
+
     /** Re-reads everything from storage, for when a restored backup replaced it. */
     fun reload() {
         _entries.value = load()
@@ -277,8 +316,9 @@ class ModelPool(context: Context) {
         val preset = entry.endpoint.preset
         val tier = when (preset.tier) {
             Tier.Free, Tier.Local -> 0
-            Tier.Trial, Tier.Custom -> 1
-            Tier.Paid -> 2
+            // Keyless answers anyone, which is exactly why a key of your own,
+            // with its own quota and a bigger model behind it, goes first.
+            Tier.Keyless, Tier.Trial, Tier.Custom -> 1
         }
         val headroom = entry.health.usage.headroom(preset.rate, now)
         val latency = min(entry.health.latencyMs.toDouble() / 4000.0, 1.0)
@@ -335,8 +375,18 @@ class ModelPool(context: Context) {
         }
     }
 
-    fun recordFailure(endpoint: Endpoint, error: LlmException) {
+    fun recordFailure(endpoint: Endpoint, rawError: LlmException) {
         val now = System.currentTimeMillis()
+        // There is no key to fix on a keyless endpoint, so a refusal there is
+        // the service being unwell or busy: rest it for a while rather than
+        // writing it off until someone taps Wake all.
+        val error = if (endpoint.preset.tier == Tier.Keyless &&
+            (rawError.kind == FailureKind.AuthFailed || rawError.kind == FailureKind.OutOfCredit)
+        ) {
+            LlmException(rawError.message ?: "Refused.", FailureKind.ServerError)
+        } else {
+            rawError
+        }
         val failures = (entryFor(endpoint.id)?.health?.consecutiveFailures ?: 0) + 1
         val cooldown = cooldownFor(error, failures, now)
 
@@ -569,6 +619,7 @@ class ModelPool(context: Context) {
     private companion object {
         const val KEY_POOL = "pool"
         const val KEY_ACCOUNT_RESTS = "account_rests"
+        const val KEY_BUILT_INS = "built_ins_v1"
         const val SETTINGS_ID = "settings"
 
         /**

@@ -18,6 +18,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CandlestickChart
+import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -72,6 +78,12 @@ fun ToolGroup.icon(): ImageVector = when (this) {
     ToolGroup.Screen -> Icons.Default.Visibility
     ToolGroup.Vision -> Icons.Default.PhotoCamera
     ToolGroup.Automation -> Icons.Default.Bolt
+    ToolGroup.News -> Icons.Default.Newspaper
+    ToolGroup.Language -> Icons.Default.Translate
+    ToolGroup.Create -> Icons.Default.Palette
+    ToolGroup.Markets -> Icons.Default.CandlestickChart
+    ToolGroup.Knowledge -> Icons.Default.Lightbulb
+    ToolGroup.Fun -> Icons.Default.Casino
 }
 
 /**
