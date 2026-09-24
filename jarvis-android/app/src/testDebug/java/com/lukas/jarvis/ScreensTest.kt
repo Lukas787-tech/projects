@@ -88,6 +88,13 @@ class ScreensTest {
         shot(activity, "03-chat")
 
         val vm = ViewModelProvider(activity, AssistantViewModel.Factory)[AssistantViewModel::class.java]
+
+        // A real turn against the free keyless models, tool call and all: the
+        // one picture that shows the assistant actually thinking.
+        runCatching { vm.sendTyped("Add eggs to my shopping list, then tell me what's on it.") }
+            .onFailure { note("live turn", it) }
+        live(seconds = 40)
+        shot(activity, "03b-live-answer")
         listOf(
             Element.Today to "04-today",
             Element.Notes to "05-memory",
@@ -193,6 +200,19 @@ class ScreensTest {
                 .check("shopping", listOf("basil", "sourdough"), true).first
                 .add("packing", listOf("Passport", "Charger", "Swimming shorts"))
         }
+    }
+
+    /**
+     * Real time for a network turn: the model is on the internet, and its
+     * reply comes back on other threads, so the clock here is a wall clock.
+     */
+    private fun live(seconds: Int) {
+        val until = System.currentTimeMillis() + seconds * 1000L
+        while (System.currentTimeMillis() < until) {
+            Thread.sleep(400)
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
+        }
+        progress("waited $seconds s for a live turn")
     }
 
     /** Lets the frames, the database threads and the main thread catch up with each other. */
