@@ -40,6 +40,7 @@ import com.lukas.jarvis.web.Knowledge
 import com.lukas.jarvis.web.Weather
 import com.lukas.jarvis.vision.CameraBus
 import com.lukas.jarvis.web.WebTools
+import kotlinx.coroutines.async
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar
@@ -1703,8 +1704,13 @@ class Tools(
         if (query.isBlank()) return "Need something to search for."
         val limit = args.optInt("limit", 5).coerceIn(1, 8)
 
-        val direct = web.instantAnswer(query)
-        val results = web.search(query, limit)
+        // Both at once: they are separate services, and a search is the slowest
+        // thing most turns wait on.
+        val (direct, results) = kotlinx.coroutines.coroutineScope {
+            val answer = async { runCatching { web.instantAnswer(query) }.getOrNull() }
+            val found = async { runCatching { web.search(query, limit) }.getOrDefault(emptyList()) }
+            answer.await() to found.await()
+        }
         if (direct == null && results.isEmpty()) {
             return "No results for '$query'. The search endpoint may be rate limiting."
         }

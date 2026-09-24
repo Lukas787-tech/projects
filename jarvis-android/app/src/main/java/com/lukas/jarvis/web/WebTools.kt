@@ -39,8 +39,50 @@ class WebTools {
                 val results = parseResults(body).take(limit)
                 if (results.isNotEmpty()) return@withContext results
             }
-            emptyList()
+            // DuckDuckGo answers a busy client with a puzzle page instead of an
+            // error. Mojeek is a second, independent index; Wikipedia's own
+            // search is the last resort, and always answers something.
+            runCatching { parseMojeek(fetch("https://www.mojeek.com/search?q=$encoded")) }
+                .getOrDefault(emptyList()).take(limit).let { if (it.isNotEmpty()) return@withContext it }
+            runCatching { wikipediaResults(query, limit) }.getOrDefault(emptyList())
         }
+
+    private fun wikipediaResults(query: String, limit: Int): List<SearchResult> {
+        val encoded = URLEncoder.encode(query, "UTF-8")
+        val json = JSONObject(fetch("https://en.wikipedia.org/w/rest.php/v1/search/page?q=$encoded&limit=$limit"))
+        val pages = json.optJSONArray("pages") ?: return emptyList()
+        return (0 until pages.length()).mapNotNull { i ->
+            val page = pages.optJSONObject(i) ?: return@mapNotNull null
+            val key = page.optString("key").ifBlank { return@mapNotNull null }
+            val snippet = listOf(page.optString("description"), htmlToText(page.optString("excerpt")))
+                .filter { it.isNotBlank() && it != "null" }
+                .joinToString(" — ")
+            SearchResult(
+                page.optString("title").ifBlank { key },
+                "https://en.wikipedia.org/wiki/" + URLEncoder.encode(key, "UTF-8").replace("+", "%20"),
+                snippet.take(320)
+            )
+        }
+    }
+
+    /** Mojeek's results: an `a.title` link, then a `p.s` snippet. */
+    private fun parseMojeek(html: String): List<SearchResult> {
+        val snippets = MOJEEK_SNIPPET.findAll(html).map { it.range.first to decode(it.groupValues[1]).trim() }.toList()
+        val out = ArrayList<SearchResult>()
+        val seen = HashSet<String>()
+        for (match in ANCHOR.findAll(html)) {
+            val attrs = match.groupValues[1]
+            if (!Regex("class=[\"']title[\"']").containsMatchIn(attrs)) continue
+            val url = ATTR_HREF.find(attrs)?.groupValues?.get(1) ?: continue
+            if (!url.startsWith("http") || !seen.add(url)) continue
+            val title = decode(match.groupValues[2]).trim()
+            if (title.isBlank()) continue
+            val snippet = snippets.firstOrNull { it.first > match.range.first }?.second.orEmpty()
+            out.add(SearchResult(title, url, snippet.take(320)))
+            if (out.size >= 12) break
+        }
+        return out
+    }
 
     /** DuckDuckGo's own one-line answer, when the question has one. */
     suspend fun instantAnswer(query: String): String? = withContext(Dispatchers.IO) {
@@ -186,6 +228,10 @@ class WebTools {
         val ATTR_HREF = Regex("href\\s*=\\s*[\"']([^\"']+)[\"']", RegexOption.IGNORE_CASE)
         val SNIPPET = Regex(
             "class\\s*=\\s*[\"'][^\"']*(result-snippet|result__snippet)[^\"']*[\"'][^>]*>(.*?)</",
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+        )
+        val MOJEEK_SNIPPET = Regex(
+            "<p\\s+class\\s*=\\s*[\"']s[\"'][^>]*>(.*?)</p>",
             setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
         )
     }
