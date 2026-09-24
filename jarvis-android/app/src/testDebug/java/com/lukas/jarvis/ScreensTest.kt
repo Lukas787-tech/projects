@@ -121,6 +121,15 @@ class ScreensTest {
         settle()
         shot(activity, "02-voice")
 
+        // A timer that has just run out, as the strip shows it until stopped.
+        runCatching {
+            val eggs = container.timers.start(1, "Eggs")
+            container.timers.finished(eggs.id)?.let { container.timers.ring(it) }
+        }.onFailure { note("ringing timer", it) }
+        settle()
+        shot(activity, "02b-timer-ringing")
+        container.timers.ringing.value.forEach { container.timers.silence(it.id) }
+
         container.settings.update { it.copy(voiceMode = false) }
         settle()
         shot(activity, "03-chat")
