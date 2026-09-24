@@ -108,7 +108,7 @@ data class ProviderPreset(
      */
     val chatPath: String = "/chat/completions"
 ) {
-    val defaultModel: String get() = fallbackModels.first()
+    val defaultModel: String get() = fallbackModels.firstOrNull().orEmpty()
 
     val isLocal: Boolean get() = tier == Tier.Local
 }
