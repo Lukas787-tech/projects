@@ -1,5 +1,7 @@
 package com.lukas.jarvis.ui.screens
 
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -479,6 +481,18 @@ fun LookSection(settings: Settings, onUpdate: ((Settings) -> Settings) -> Unit) 
             selectedId = settings.accent,
             onSelect = { id -> onUpdate { it.copy(accent = id) } }
         )
+        Spacer(Modifier.height(Space.step))
+        Text("Or any colour", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+        Text(
+            "Slide to pick your own; the whole app follows as you move.",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary
+        )
+        Spacer(Modifier.height(Space.tight))
+        HueSlider(
+            hue = Palettes.customHue(settings.accent),
+            onPick = { hue -> onUpdate { it.copy(accent = "custom:${hue.toInt()}") } }
+        )
     }
 
     Panel(title = "Backdrop") {
@@ -546,6 +560,42 @@ fun LookSection(settings: Settings, onUpdate: ((Settings) -> Settings) -> Unit) 
             value = settings.textScale,
             range = 0.85f..1.3f,
             onChange = { value -> onUpdate { it.copy(textScale = (value * 20).toInt() / 20f) } }
+        )
+    }
+}
+
+/**
+ * A rainbow to slide along. Untouched, its knob sits dim at the last custom
+ * hue (or blue); moving it switches the accent to that hue at once.
+ */
+@Composable
+private fun HueSlider(hue: Float?, onPick: (Float) -> Unit) {
+    var value by remember(hue) { mutableFloatStateOf(hue ?: 200f) }
+    val rainbow = remember {
+        Brush.horizontalGradient((0..6).map { Color.hsv(it * 60f % 360f, 0.68f, 1f) })
+    }
+    Box(modifier = Modifier.fillMaxWidth().height(40.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp)
+                .height(10.dp)
+                .clip(CircleShape)
+                .background(rainbow)
+        )
+        Slider(
+            value = value,
+            onValueChange = {
+                value = it
+                onPick(it)
+            },
+            valueRange = 0f..359f,
+            colors = SliderDefaults.colors(
+                thumbColor = if (hue != null) Color.hsv(value, 0.68f, 1f) else TextFaint,
+                activeTrackColor = Color.Transparent,
+                inactiveTrackColor = Color.Transparent
+            ),
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }

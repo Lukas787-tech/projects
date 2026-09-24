@@ -96,7 +96,26 @@ object Palettes {
         )
     )
 
-    fun accent(id: String): AccentTone = accents.firstOrNull { it.id == id } ?: accents.first()
+    /**
+     * Any hue the user picks, stored as "custom:210", in the same three shades
+     * the presets have: the light itself, a pale highlight, a deep shadow.
+     */
+    fun custom(hue: Float): AccentTone {
+        val h = ((hue % 360f) + 360f) % 360f
+        return AccentTone(
+            "custom:${h.toInt()}",
+            "Your own",
+            Color.hsv(h, 0.68f, 1f),
+            Color.hsv(h, 0.28f, 1f),
+            Color.hsv(h, 0.88f, 0.68f)
+        )
+    }
+
+    fun customHue(id: String): Float? =
+        if (id.startsWith("custom:")) id.removePrefix("custom:").toFloatOrNull() else null
+
+    fun accent(id: String): AccentTone =
+        customHue(id)?.let { custom(it) } ?: accents.firstOrNull { it.id == id } ?: accents.first()
     fun backdrop(id: String): Backdrop = backdrops.firstOrNull { it.id == id } ?: backdrops.first()
 }
 
