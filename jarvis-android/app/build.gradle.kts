@@ -58,6 +58,21 @@ android {
         compose = true
     }
 
+    testOptions {
+        unitTests {
+            // Robolectric needs the merged manifest and resources to start the
+            // real activity for the screenshots.
+            isIncludeAndroidResources = true
+            all {
+                it.systemProperty(
+                    "screens.dir",
+                    project.layout.buildDirectory.dir("screens").get().asFile.absolutePath
+                )
+                it.maxHeapSize = "3g"
+            }
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -96,4 +111,9 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
     testImplementation(libs.okhttp.mockwebserver)
+
+    // Screenshots of the real app, rendered on the JVM. Debug-only on purpose:
+    // the release build and its tests never compile or download any of it, so
+    // the screenshot job cannot break the APK.
+    testDebugImplementation(libs.robolectric)
 }
