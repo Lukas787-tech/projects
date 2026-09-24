@@ -431,6 +431,21 @@ private fun DrawScope.orb(
     val inner = 1f - open
     if (inner <= 0.01f) return
     val coreR = r * 0.42f * (1f + 0.05f * sin(breath) + 0.22f * voice)
+    // Bloom: the light the pearl throws on the dark around it, breathing
+    // with it and brighter while it listens or speaks.
+    drawCircle(
+        brush = Brush.radialGradient(
+            listOf(
+                accent.copy(alpha = (0.28f + 0.3f * energy) * inner),
+                accent.copy(alpha = 0.08f * inner),
+                Color.Transparent
+            ),
+            center = c,
+            radius = coreR * 1.9f
+        ),
+        radius = coreR * 1.9f,
+        center = c
+    )
     drawCircle(
         brush = Brush.radialGradient(
             listOf(
@@ -444,5 +459,23 @@ private fun DrawScope.orb(
         ),
         radius = coreR,
         center = c
+    )
+    // A lit rim on the far side, where the light wraps round the edge.
+    drawArc(
+        brush = Brush.sweepGradient(
+            listOf(
+                Color.Transparent,
+                bright.copy(alpha = 0.55f * inner),
+                Color.Transparent,
+                Color.Transparent
+            ),
+            center = c
+        ),
+        startAngle = 0f,
+        sweepAngle = 360f,
+        useCenter = false,
+        topLeft = Offset(c.x - coreR, c.y - coreR),
+        size = Size(coreR * 2, coreR * 2),
+        style = Stroke(width = coreR * 0.035f)
     )
 }
