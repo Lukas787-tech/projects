@@ -168,6 +168,23 @@ class ScreensTest {
             shot(activity, "09-settings-$index-${tab.lowercase()}")
         }
 
+        // One Berlin tile fetched straight through the cache, so a blank map
+        // in the picture can be told apart from a cache that cannot load.
+        val probe = Thread {
+            val result = runCatching {
+                kotlinx.coroutines.runBlocking {
+                    container.tiles.tile(com.lukas.jarvis.maps.MapStyle.Dark, 15, 17605, 10746)
+                }
+            }
+            progress(
+                "tile probe: " + result.fold(
+                    { bitmap -> if (bitmap == null) "no tile" else "tile ${bitmap.width}x${bitmap.height}" },
+                    { error -> "failed ${error::class.java.simpleName}: ${error.message}" }
+                )
+            )
+        }.apply { start() }
+        probe.join(20_000)
+
         runCatching { vm.showElement(Element.Map) }
         settle(2400)
         // The tiles come over the network, which needs real seconds.
