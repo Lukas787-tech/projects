@@ -37,7 +37,8 @@ model was asked to add eggs to the shopping list and read it back, and did.
 - **The phone's controls** — volume, brightness, Do Not Disturb with an end
   time, and the Devices screen as a control centre.
 - **Calendar that finishes the job** — events are added, moved and cancelled
-  in your calendar, not just filled in.
+  in your calendar, not just filled in, and one with a place gets a "time to
+  leave" reminder from the real travel time.
 - **What's playing** — the song, artist and app, and controls that reach the
   app that is playing.
 - **Weather with more in it** — when the rain starts, sunrise and sunset, UV,
