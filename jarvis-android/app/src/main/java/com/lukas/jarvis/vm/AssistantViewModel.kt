@@ -276,6 +276,12 @@ class AssistantViewModel(
         val text = rawText.trim()
         if (text.isBlank()) return
         turn(display = text) { onStage, onTool, onDraft ->
+            // With no network at all, a plain request — a timer, the torch, a
+            // sum — is answered on the phone at once, not after every free
+            // endpoint has timed out in turn.
+            if (!_online.value) {
+                container.agent.offline(text, settingsStore.current)?.let { return@turn it }
+            }
             container.agent.respond(
                 utterance = text,
                 settings = settingsStore.current,
@@ -713,6 +719,33 @@ class AssistantViewModel(
             withContext(Dispatchers.IO) { brain.updateMemory(memory) }
             refreshAll()
         }
+    }
+
+    private val _online = MutableStateFlow(true)
+
+    /** Whether the phone has a network that reaches the internet right now. */
+    val online: StateFlow<Boolean> = _online.asStateFlow()
+
+    private val connectivity =
+        container.app.getSystemService(android.net.ConnectivityManager::class.java)
+
+    private val networkWatch = object : android.net.ConnectivityManager.NetworkCallback() {
+        override fun onCapabilitiesChanged(network: android.net.Network, caps: android.net.NetworkCapabilities) {
+            _online.value = caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        }
+
+        override fun onLost(network: android.net.Network) {
+            _online.value = false
+        }
+    }
+
+    init {
+        _online.value = runCatching {
+            val caps = connectivity?.let { cm -> cm.getNetworkCapabilities(cm.activeNetwork) }
+            caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+        }.getOrDefault(true)
+        runCatching { connectivity?.registerDefaultNetworkCallback(networkWatch) }
     }
 
     /** The timers Jarvis is running, for the strip under the header. */
@@ -1338,6 +1371,7 @@ class AssistantViewModel(
     }
 
     override fun onCleared() {
+        runCatching { connectivity?.unregisterNetworkCallback(networkWatch) }
         // These are application-scoped, so quiet them down rather than
         // destroying resources the next activity will need.
         speech.cancel()

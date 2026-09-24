@@ -304,6 +304,7 @@ private fun JarvisRoot(
     val levels by viewModel.levels.collectAsStateWithLifecycle()
     val lists by viewModel.lists.collectAsStateWithLifecycle()
     val timers by viewModel.timers.collectAsStateWithLifecycle()
+    val online by viewModel.online.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val canSeeMedia by viewModel.canSeeMedia.collectAsStateWithLifecycle()
     val cameraRequest by viewModel.cameraRequests.collectAsStateWithLifecycle()
@@ -663,7 +664,8 @@ private fun JarvisRoot(
                     brainLabel = lastUsedEndpoint,
                     onNewChat = viewModel::newConversation,
                     timers = timers,
-                    onCancelTimer = viewModel::cancelTimer
+                    onCancelTimer = viewModel::cancelTimer,
+                    online = online
                 )
 
                 // Notes, tasks and money are one element with three segments,

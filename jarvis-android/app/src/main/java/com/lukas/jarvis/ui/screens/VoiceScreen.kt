@@ -105,6 +105,7 @@ import com.lukas.jarvis.ui.map.MapCanvas
 import com.lukas.jarvis.ui.map.zoomForWorldWidth
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.AccentBright
+import com.lukas.jarvis.ui.theme.Caution
 import com.lukas.jarvis.ui.theme.Corner
 import com.lukas.jarvis.ui.theme.Film
 import com.lukas.jarvis.ui.theme.GlassEdgeBright
@@ -171,7 +172,9 @@ fun VoiceScreen(
     onNewChat: () -> Unit = {},
     /** The countdowns Jarvis is running, shown under the header. */
     timers: List<RunningTimer> = emptyList(),
-    onCancelTimer: (Int) -> Unit = {}
+    onCancelTimer: (Int) -> Unit = {},
+    /** Whether the phone can reach the internet; offline, only the reflexes answer. */
+    online: Boolean = true
 ) {
     Column(
         modifier = modifier
@@ -187,7 +190,8 @@ fun VoiceScreen(
             onCamera = onCamera,
             onOpenSkills = onOpenSkills,
             onOpenSettings = onOpenSettings,
-            onNewChat = if (state.messages.isNotEmpty()) onNewChat else null
+            onNewChat = if (state.messages.isNotEmpty()) onNewChat else null,
+            online = online
         )
 
         if (timers.isNotEmpty()) TimerStrip(timers = timers, onCancel = onCancelTimer)
@@ -349,7 +353,8 @@ private fun Header(
     onCamera: () -> Unit,
     onOpenSkills: () -> Unit,
     onOpenSettings: () -> Unit,
-    onNewChat: (() -> Unit)? = null
+    onNewChat: (() -> Unit)? = null,
+    online: Boolean = true
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = Space.snug, bottom = Space.hair),
@@ -373,9 +378,13 @@ private fun Header(
                 )
             }
             Text(
-                text = (brainLabel?.let { "ONLINE · ${it.substringBefore(" · ").uppercase()}" } ?: "ONLINE"),
+                text = when {
+                    !online -> "OFFLINE · REFLEXES ONLY"
+                    brainLabel != null -> "ONLINE · ${brainLabel.substringBefore(" · ").uppercase()}"
+                    else -> "ONLINE"
+                },
                 style = MaterialTheme.typography.labelMedium.copy(fontSize = 9.sp),
-                color = TextFaint,
+                color = if (online) TextFaint else Caution,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 15.dp, top = 2.dp)
