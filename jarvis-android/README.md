@@ -53,7 +53,7 @@ That is all the setup there is. Everything below is optional.
 | **Look** | Eight accent colours, five backdrops, the core (arc reactor, orb or globe), heads-up readouts, calm motion, text size |
 | **Brain** | The free built-in AI (on by default), and optional free keys for faster, smarter models |
 | **Powers** | Which abilities are switched on, maps, automation, the floating dot |
-| **Data** | Backup and restore, clearing the chat, replaying the introduction |
+| **Data** | Backup and restore — one file with every memory, task, tracker, the conversation, routines, places, settings and keys — clearing the chat, replaying the introduction |
 
 ### Optional: a free key of your own
 
@@ -109,7 +109,15 @@ nothing at any other time and keeps nothing.
 
 **Greets the morning.** On the first open of a morning it says how the day
 looks — the weather, what is due, the next appointment, the budgets and the
-top story — gathered on the phone, so it costs no model quota.
+top story — gathered on the phone, so it costs no model quota. Pick a time
+under *Written brief* (Settings → Voice) and the same brief arrives as a
+notification every morning, without opening the app.
+
+**Works with no connection.** When no model can be reached — no signal, or
+every free quota spent — timers, alarms, "remind me in 20 minutes to…", the
+torch, the volume, Do Not Disturb, pausing or skipping music, opening an app,
+the battery, the time, sums, a coin or a die are still understood (English and
+German) and done by the same code the model would have used.
 
 **Starts fresh when you want.** *New conversation* clears the thread and the
 model's context without deleting anything; the full history is one tap away.
@@ -123,7 +131,8 @@ episode airs, books, a dictionary, translation, and real coin flips and dice.
 **Remembers.** Tell it anything — a door code, a preference, a plan, where you
 put something — and it stores it. Ask later and it searches its memory before
 answering. Retrieval is BM25 over a locally built index, nudged by importance
-and recency.
+and recency. Everything it knows is on the Memory screen: search it, filter it
+by kind, pin what should always be in mind, and tap any memory to correct it.
 
 **Counts things.** Any purchase or countable activity becomes an entry on a
 tracker. A tracker is a named number with a unit, optionally a starting balance
@@ -132,7 +141,9 @@ calories, kilometres and gym sessions work identically. The totals are computed
 in SQL, so they are exact.
 
 **Reminds.** Anything with a time becomes a task with a real Android alarm and
-notification. Repeating tasks roll themselves forward. "Move that to Friday",
+notification. Repeating tasks roll themselves forward — ticking one off
+finishes that time, not the series, and a phone that was off for days skips to
+the next one ahead instead of ringing every missed one. "Move that to Friday",
 "snooze it ten minutes" and "cancel the dentist" move or remove the task and its
 alarm rather than adding a second one.
 
@@ -151,11 +162,16 @@ reads out the corrected balance, so a misheard amount is one sentence away from
 fixed.
 
 **Tells you the weather.** Real forecasts for where you are or anywhere you
-name, from Open-Meteo — no key, no account.
+name, from Open-Meteo — no key, no account: when the rain starts, sunrise and
+sunset, the UV index, European air quality and high pollen, on the Today card
+and out loud.
 
 **Runs the phone.** Alarms and timers in your own clock app, the torch, the
-ringer, the clipboard, battery and network and storage readouts, any installed
-app by name, and any page of Android settings.
+ringer, every volume, screen brightness (as the percentage the slider shows),
+Do Not Disturb — "no calls for an hour" ends by itself — the clipboard,
+battery and network and storage readouts, any installed app by name, and any
+page of Android settings. Brightness and Do Not Disturb each need one switch
+flipped in Android's own settings the first time; Jarvis opens the page.
 
 **Reaches people, and finishes the job.** Texts are sent, WhatsApp, Signal and
 Telegram messages are answered straight from their notification, and new chats
