@@ -118,6 +118,15 @@ class ScreensTest {
             .onFailure { note("second live turn", it) }
         live(seconds = 50)
         shot(activity, "03c-live-two-tools")
+
+        // The web services: a forecast for a named city (geocoding, then
+        // Open-Meteo) and a translation, both keyless.
+        runCatching { vm.newConversation() }
+        settle(400)
+        runCatching { vm.sendTyped("What's the weather in Berlin tomorrow? And how do you say thank you in Japanese?") }
+            .onFailure { note("third live turn", it) }
+        live(seconds = 60)
+        shot(activity, "03d-live-web")
         listOf(
             Element.Today to "04-today",
             Element.Notes to "05-memory",
