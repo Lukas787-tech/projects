@@ -16,6 +16,17 @@ providers are not in the app at all.
 > Later: "how much have I got left?" → it knows, because it did the arithmetic,
 > not because a language model guessed.
 
+<p align="center">
+  <img src="../docs/screens/02-voice.png" width="200" alt="The assistant, with two timers running">
+  <img src="../docs/screens/03-chat.png" width="200" alt="A conversation">
+  <img src="../docs/screens/04-today.png" width="200" alt="Today">
+  <img src="../docs/screens/13-voice-stark-globe.png" width="200" alt="The globe core in Stark gold">
+</p>
+
+The pictures are rendered from the real app by the *Jarvis screenshots*
+workflow (any commit whose message contains `[screens]`); all of them are in
+[`docs/screens`](../docs/screens).
+
 ## Getting the APK
 
 There is no Android SDK in this repo, so the APK is built by GitHub Actions.
