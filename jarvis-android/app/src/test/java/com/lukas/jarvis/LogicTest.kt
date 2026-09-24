@@ -7,6 +7,7 @@ package com.lukas.jarvis
  * where a reply still being written may be cut for speaking.
  */
 import com.lukas.jarvis.core.Settings
+import com.lukas.jarvis.core.TimeUtil
 import com.lukas.jarvis.data.ChatMessage
 import com.lukas.jarvis.llm.Personas
 import com.lukas.jarvis.llm.Providers
@@ -107,6 +108,19 @@ class LogicTest {
         assertEquals("Lukas", Personas.address(base.copy(userName = "Lukas")))
         assertEquals("boss", Personas.address(base.copy(userName = "Lukas", honorific = "boss")))
         assertEquals("", Personas.address(base.copy(personality = "friend")))
+    }
+
+    @Test fun repeatingTimesSkipToTheNextOneAhead() {
+        val day = 86_400_000L
+        val start = 1_700_000_000_000L
+        // A week off: the next daily slot is the one after now, not tomorrow-a-week-ago.
+        val now = start + 7 * day + 1000
+        val next = TimeUtil.rollForward(start, "daily", now)!!
+        assertTrue(next > now)
+        assertTrue(next - now <= day)
+        // Still ahead: one step exactly.
+        assertEquals(start + 7 * day, TimeUtil.rollForward(start, "weekly", start - 1))
+        assertEquals(null, TimeUtil.rollForward(start, "none", now))
     }
 
     @Test fun sentencesCutOnlyAtRealEnds() {

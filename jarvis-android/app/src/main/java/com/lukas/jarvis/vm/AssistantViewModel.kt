@@ -706,6 +706,14 @@ class AssistantViewModel(
         }
     }
 
+    fun updateMemory(memory: Memory) {
+        if (memory.content.isBlank()) return
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { brain.updateMemory(memory) }
+            refreshAll()
+        }
+    }
+
     fun togglePin(memory: Memory) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { brain.updateMemory(memory.copy(pinned = !memory.pinned)) }
@@ -770,15 +778,17 @@ class AssistantViewModel(
     fun toggleTask(task: Task) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                val flipped = task.copy(
-                    done = !task.done,
-                    completedAt = if (!task.done) System.currentTimeMillis() else null
-                )
-                brain.updateTask(flipped)
-                if (flipped.done) {
-                    container.reminders.cancel(flipped.id)
-                } else if (flipped.dueAt != null) {
-                    container.reminders.schedule(flipped)
+                // Ticking goes through the same path as saying "done", so a
+                // repeating task moves to its next time instead of ending.
+                val result = if (!task.done) {
+                    brain.completeTask(task.id)
+                } else {
+                    task.copy(done = false, completedAt = null).also { brain.updateTask(it) }
+                } ?: return@withContext
+                if (result.done) {
+                    container.reminders.cancel(result.id)
+                } else if (result.dueAt != null) {
+                    container.reminders.schedule(result)
                 }
             }
             refreshAll()

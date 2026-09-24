@@ -1,5 +1,6 @@
 package com.lukas.jarvis.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,21 +51,44 @@ fun BrainScreen(
     onDelete: (Long) -> Unit,
     onTogglePin: (Memory) -> Unit,
     modifier: Modifier = Modifier,
+    onEdit: (Memory) -> Unit = {},
     embedded: Boolean = false
 ) {
     var showAdd by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<Memory?>(null) }
     var query by remember { mutableStateOf("") }
+    var shelf by remember { mutableStateOf(ALL) }
 
-    val filtered = remember(memories, query) {
-        if (query.isBlank()) {
-            memories
-        } else {
-            val needle = query.trim().lowercase()
-            memories.filter {
-                it.content.lowercase().contains(needle) ||
+    // Only the kinds that hold something are offered as filters.
+    val shelves = remember(memories) {
+        buildList {
+            add(ALL)
+            if (memories.any { it.pinned }) add(PINNED)
+            addAll(Memory.ALL_KINDS.filter { kind -> memories.any { it.kind == kind } })
+        }
+    }
+    // A shelf emptied by a delete falls back to everything, without writing
+    // state in the middle of composing.
+    val active = if (shelf in shelves) shelf else ALL
+
+    val filtered = remember(memories, query, active) {
+        val needle = query.trim().lowercase()
+        memories
+            .filter {
+                when (active) {
+                    ALL -> true
+                    PINNED -> it.pinned
+                    else -> it.kind == active
+                }
+            }
+            .filter {
+                needle.isBlank() ||
+                    it.content.lowercase().contains(needle) ||
+                    it.detail.orEmpty().lowercase().contains(needle) ||
                     it.tags.any { tag -> tag.contains(needle) }
             }
-        }
+            // Pinned first: they are what is always in the prompt.
+            .sortedByDescending { it.pinned }
     }
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
@@ -85,6 +109,16 @@ fun BrainScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
+        if (shelves.size > 2) {
+            Spacer(Modifier.height(10.dp))
+            ChoiceChips(
+                options = shelves,
+                selected = active,
+                display = { it.replaceFirstChar { c -> c.uppercase() } },
+                onSelect = { shelf = it }
+            )
+        }
+
         Spacer(Modifier.height(12.dp))
 
         if (filtered.isEmpty()) {
@@ -101,6 +135,7 @@ fun BrainScreen(
                 items(filtered, key = { it.id }) { memory ->
                     MemoryRow(
                         memory = memory,
+                        onOpen = { editing = memory },
                         onDelete = { onDelete(memory.id) },
                         onTogglePin = { onTogglePin(memory) }
                     )
@@ -119,12 +154,33 @@ fun BrainScreen(
             }
         )
     }
+
+    editing?.let { memory ->
+        AddMemoryDialog(
+            original = memory,
+            onDismiss = { editing = null },
+            onConfirm = { content, kind, tags, _ ->
+                onEdit(
+                    memory.copy(
+                        content = content.trim(),
+                        kind = kind,
+                        tags = tags,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                )
+                editing = null
+            }
+        )
+    }
 }
 
+private const val ALL = "all"
+private const val PINNED = "pinned"
+
 @Composable
-private fun MemoryRow(memory: Memory, onDelete: () -> Unit, onTogglePin: () -> Unit) {
+private fun MemoryRow(memory: Memory, onOpen: () -> Unit, onDelete: () -> Unit, onTogglePin: () -> Unit) {
     JarvisCard {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.clickable(onClick = onOpen).padding(16.dp)) {
             Text(
                 memory.content,
                 style = MaterialTheme.typography.bodyLarge,
@@ -163,14 +219,15 @@ private fun MemoryRow(memory: Memory, onDelete: () -> Unit, onTogglePin: () -> U
 @Composable
 private fun AddMemoryDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, List<String>, Int) -> Unit
+    onConfirm: (String, String, List<String>, Int) -> Unit,
+    original: Memory? = null
 ) {
-    var content by remember { mutableStateOf("") }
-    var kind by remember { mutableStateOf(Memory.KIND_FACT) }
-    var tags by remember { mutableStateOf("") }
+    var content by remember { mutableStateOf(original?.content.orEmpty()) }
+    var kind by remember { mutableStateOf(original?.kind ?: Memory.KIND_FACT) }
+    var tags by remember { mutableStateOf(original?.tags?.joinToString(", ").orEmpty()) }
 
     GlassDialog(
-        title = "New memory",
+        title = if (original == null) "New memory" else "Edit memory",
         onDismiss = onDismiss,
         confirmLabel = "Save",
         confirmEnabled = content.isNotBlank(),

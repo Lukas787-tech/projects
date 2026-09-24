@@ -122,6 +122,20 @@ object TimeUtil {
         }
     }
 
+    /**
+     * The next slot of a repeating time that is still ahead of [now]. A phone
+     * that was off for a week must not ring seven missed days one after
+     * another; it skips to the next one to come.
+     */
+    fun rollForward(from: Long, repeatRule: String, now: Long = System.currentTimeMillis()): Long? {
+        var next = nextOccurrence(from, repeatRule) ?: return null
+        var guard = 0
+        while (next <= now && guard++ < 5000) {
+            next = nextOccurrence(next, repeatRule) ?: return null
+        }
+        return next
+    }
+
     fun nextOccurrence(from: Long, repeatRule: String): Long? {
         val base = Instant.ofEpochMilli(from).atZone(zone)
         return when (repeatRule) {

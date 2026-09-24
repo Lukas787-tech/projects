@@ -90,7 +90,7 @@ class ReminderReceiver : BroadcastReceiver() {
             inBackground {
                 val brain = brain(context)
                 val task = brain.getTask(taskId) ?: return@inBackground
-                val next = task.dueAt?.let { TimeUtil.nextOccurrence(it, task.repeatRule) }
+                val next = task.dueAt?.let { TimeUtil.rollForward(it, task.repeatRule) }
                     ?: return@inBackground
                 val rolled = task.copy(dueAt = next)
                 brain.updateTask(rolled)

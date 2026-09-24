@@ -368,11 +368,22 @@ class Brain(context: Context) {
         return db.update("tasks", values, "id = ?", arrayOf(task.id.toString())) > 0
     }
 
-    fun completeTask(id: Long): Task? {
+    /**
+     * Ticks a task off. For a repeating task that finishes the occurrence, not
+     * the series: it moves on to its next slot and stays open, so "water the
+     * plants every Sunday" does not end the first Sunday it is done. The
+     * result says which happened — `done` is false when it rolled.
+     */
+    fun completeTask(id: Long, now: Long = System.currentTimeMillis()): Task? {
         val task = getTask(id) ?: return null
-        val done = task.copy(done = true, completedAt = System.currentTimeMillis())
-        updateTask(done)
-        return done
+        val next = task.dueAt?.let { com.lukas.jarvis.core.TimeUtil.rollForward(it, task.repeatRule, now) }
+        val result = if (next != null) {
+            task.copy(dueAt = next, done = false)
+        } else {
+            task.copy(done = true, completedAt = now)
+        }
+        updateTask(result)
+        return result
     }
 
     fun deleteTask(id: Long): Boolean =

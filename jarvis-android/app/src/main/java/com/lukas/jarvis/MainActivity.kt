@@ -677,6 +677,7 @@ private fun JarvisRoot(
                             onAdd = viewModel::addMemory,
                             onDelete = viewModel::deleteMemory,
                             onTogglePin = viewModel::togglePin,
+                            onEdit = viewModel::updateMemory,
                             embedded = true
                         )
                     },

@@ -1522,8 +1522,13 @@ class Tools(
         val id = args.optLong("id", -1L)
         if (id <= 0) return "Need a valid task id."
         val done = brain.completeTask(id) ?: return "No task with id $id."
-        reminders.cancel(id)
         effects.tasksChanged = true
+        if (!done.done && done.dueAt != null) {
+            reminders.schedule(done)
+            return "Done for this time: ${done.title}. It repeats ${done.repeatRule}; next " +
+                "${TimeUtil.format(done.dueAt)}."
+        }
+        reminders.cancel(id)
         return "Completed: ${done.title}"
     }
 
