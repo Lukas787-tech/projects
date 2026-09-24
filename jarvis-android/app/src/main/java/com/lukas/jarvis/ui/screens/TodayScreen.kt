@@ -33,6 +33,8 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WbSunny
@@ -517,6 +519,12 @@ private fun Shortcuts(
                 onClick = { if (hasHome) onGo("home") else onOpen(Element.Map) },
                 modifier = Modifier.weight(1f)
             )
+            QuickAction(
+                icon = Icons.Default.Checklist,
+                label = "Lists",
+                onClick = { onOpen(Element.Lists) },
+                modifier = Modifier.weight(1f)
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Space.tight)) {
             QuickAction(
@@ -538,8 +546,8 @@ private fun Shortcuts(
                 modifier = Modifier.weight(1f)
             )
             QuickAction(
-                icon = Icons.Default.Bluetooth,
-                label = "Devices",
+                icon = Icons.Default.Tune,
+                label = "Controls",
                 onClick = { onOpen(Element.Devices) },
                 modifier = Modifier.weight(1f)
             )
