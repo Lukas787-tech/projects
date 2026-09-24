@@ -342,8 +342,10 @@ class Tools(
             "briefing",
             "The whole day in one call: weather, what is due, the next appointment, budgets and " +
                 "the phone's own state. Use for 'how does my day look', 'good morning', " +
-                "'catch me up', or any question that spans more than one of those.",
-            props(),
+                "'catch me up', or any question that spans more than one of those. With " +
+                "evening true it looks back instead — done and spent today, still open, and " +
+                "tomorrow — for 'how did my day go', 'wrap up my day', 'what's tomorrow'.",
+            props("evening" to bool("True for the look back over today and ahead to tomorrow.")),
             emptyList()
         )
     )
@@ -1065,7 +1067,11 @@ class Tools(
                 "calculate" -> calculate(args)
                 "convert_units" -> convert(args)
                 "date_calc" -> dateCalc(args)
-                "briefing" -> briefer.build(settings).speak()
+                "briefing" -> if (args.optBoolean("evening", false)) {
+                    briefer.evening(settings).let { (title, text) -> "$title. $text" }
+                } else {
+                    briefer.build(settings).speak()
+                }
 
                 // the world
                 "web_search" -> webSearch(args)
