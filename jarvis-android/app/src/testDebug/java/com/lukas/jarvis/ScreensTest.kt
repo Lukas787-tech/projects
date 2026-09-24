@@ -111,6 +111,13 @@ class ScreensTest {
             .onFailure { note("live turn", it) }
         live(seconds = 50)
         shot(activity, "03b-live-answer")
+
+        // Two tools in one sentence: a timer that should appear in the strip,
+        // and a sum the phone works out rather than the model.
+        runCatching { vm.sendTyped("Set a 3 minute timer for tea, and what is 17% of 240?") }
+            .onFailure { note("second live turn", it) }
+        live(seconds = 50)
+        shot(activity, "03c-live-two-tools")
         listOf(
             Element.Today to "04-today",
             Element.Notes to "05-memory",
