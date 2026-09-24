@@ -1,57 +1,58 @@
-1790289188917 seeded; starting the activity
-1790289189846 created
-1790289189855 started
-1790289189890 resumed
-1790289190157 visible
-1790289190159 activity started
-1790289192119 settled in 1960 ms
-1790289192478 rendered 01-onboarding
-1790289193608 settled in 1125 ms
-1790289193832 rendered 02-voice
-1790289194812 settled in 975 ms
-1790289195033 rendered 03-chat
-1790289195872 settled in 836 ms
-1790289246214 waited 50 s for a live turn
-1790289246317 rendered 03b-live-answer
-1790289296539 waited 50 s for a live turn
-1790289296657 rendered 03c-live-two-tools
-1790289297473 settled in 814 ms
-1790289357739 waited 60 s for a live turn
-1790289357833 rendered 03d-live-web
-1790289358668 settled in 834 ms
-1790289358890 rendered 04-today
-1790289359737 settled in 846 ms
-1790289359894 rendered 05-memory
-1790289360714 settled in 820 ms
-1790289360839 rendered 06-tasks
-1790289361661 settled in 821 ms
-1790289361790 rendered 07-trackers
-1790289362617 settled in 827 ms
-1790289362762 rendered 07b-lists
-1790289363581 settled in 819 ms
-1790289363754 rendered 08-skills
-1790289364642 settled in 888 ms
-1790289364777 rendered 10-devices
-1790289365602 settled in 825 ms
-1790289365715 rendered 11-music
-1790289366597 settled in 882 ms
-1790289366802 rendered 09-settings-0-you
-1790289367632 settled in 830 ms
-1790289367788 rendered 09-settings-1-voice
-1790289368630 settled in 842 ms
-1790289368772 rendered 09-settings-2-look
-1790289369592 settled in 820 ms
-1790289369707 rendered 09-settings-3-brain
-1790289370542 settled in 835 ms
-1790289370666 rendered 09-settings-4-powers
-1790289371482 settled in 816 ms
-1790289371566 rendered 09-settings-5-data
-1790289372484 settled in 918 ms
-1790289384504 waited 12 s for a live turn
-1790289384610 rendered 15-map
-1790289385462 settled in 848 ms
-1790289385586 rendered 12-voice-crimson-orb
-1790289386406 settled in 817 ms
-1790289386545 rendered 13-voice-stark-globe
-1790289387372 settled in 824 ms
-1790289387471 rendered 14-chat-emerald
+1790289616776 seeded; starting the activity
+1790289617704 created
+1790289617711 started
+1790289617738 resumed
+1790289617946 visible
+1790289617947 activity started
+1790289619720 settled in 1772 ms
+1790289620065 rendered 01-onboarding
+1790289621126 settled in 1057 ms
+1790289621336 rendered 02-voice
+1790289622298 settled in 958 ms
+1790289622521 rendered 03-chat
+1790289623353 settled in 830 ms
+1790289673748 waited 50 s for a live turn
+1790289673857 rendered 03b-live-answer
+1790289724077 waited 50 s for a live turn
+1790289724218 rendered 03c-live-two-tools
+1790289725036 settled in 815 ms
+1790289785291 waited 60 s for a live turn
+1790289785400 rendered 03d-live-web
+1790289786235 settled in 834 ms
+1790289786469 rendered 04-today
+1790289787316 settled in 847 ms
+1790289787489 rendered 05-memory
+1790289788311 settled in 822 ms
+1790289788451 rendered 06-tasks
+1790289789273 settled in 822 ms
+1790289789420 rendered 07-trackers
+1790289790244 settled in 824 ms
+1790289790367 rendered 07b-lists
+1790289791184 settled in 817 ms
+1790289791332 rendered 08-skills
+1790289792205 settled in 872 ms
+1790289792399 rendered 10-devices
+1790289793227 settled in 828 ms
+1790289793334 rendered 11-music
+1790289794211 settled in 877 ms
+1790289794437 rendered 09-settings-0-you
+1790289795266 settled in 829 ms
+1790289795417 rendered 09-settings-1-voice
+1790289796259 settled in 841 ms
+1790289796414 rendered 09-settings-2-look
+1790289797234 settled in 820 ms
+1790289797347 rendered 09-settings-3-brain
+1790289798178 settled in 831 ms
+1790289798311 rendered 09-settings-4-powers
+1790289799126 settled in 815 ms
+1790289799208 rendered 09-settings-5-data
+1790289799274 tile probe: tile 512x512
+1790289800187 settled in 913 ms
+1790289812204 waited 12 s for a live turn
+1790289812301 rendered 15-map
+1790289813141 settled in 836 ms
+1790289813267 rendered 12-voice-crimson-orb
+1790289814085 settled in 816 ms
+1790289814215 rendered 13-voice-stark-globe
+1790289815047 settled in 828 ms
+1790289815161 rendered 14-chat-emerald
