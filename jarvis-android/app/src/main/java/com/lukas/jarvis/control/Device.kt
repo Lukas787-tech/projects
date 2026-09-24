@@ -63,7 +63,17 @@ class Device(context: Context) {
     fun battery(): String {
         val manager = app.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
             ?: return "I cannot read the battery on this phone."
+        // Some phones do not implement the property and answer Int.MIN_VALUE;
+        // the sticky battery broadcast has the level on every one of them.
         val level = manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            .takeIf { it in 0..100 }
+            ?: runCatching {
+                val sticky = app.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                val raw = sticky?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+                val scale = sticky?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+                if (raw >= 0 && scale > 0) raw * 100 / scale else null
+            }.getOrNull()
+            ?: return "I cannot read the battery level on this phone."
         val charging = manager.isCharging
         val saver = power?.isPowerSaveMode == true
 

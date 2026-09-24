@@ -43,6 +43,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AddComment
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.BatteryStd
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
@@ -425,11 +426,15 @@ private fun Hud(brief: DayBrief?) {
             Text(
                 time,
                 style = MaterialTheme.typography.displayLarge.copy(fontSize = 40.sp, lineHeight = 42.sp),
-                color = TextPrimary
+                color = TextPrimary,
+                maxLines = 1,
+                softWrap = false
             )
-            Text(date, style = MaterialTheme.typography.labelMedium, color = Accent)
+            Text(date, style = MaterialTheme.typography.labelMedium, color = Accent, maxLines = 1)
         }
-        Column(horizontalAlignment = Alignment.End) {
+        // Measured before the clock, so it is held to a width: left free, a
+        // long line here squeezed the time into a column one digit wide.
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(max = 170.dp)) {
             brief?.forecast?.let { f ->
                 Text(
                     "${f.now.temperature.roundToInt()}°",
@@ -445,18 +450,21 @@ private fun Hud(brief: DayBrief?) {
                     modifier = Modifier.widthIn(max = 180.dp)
                 )
             }
-            brief?.battery?.takeIf { it.isNotBlank() }?.let { battery ->
+            val battery = brief?.battery.orEmpty()
+            val percent = Regex("(\\d{1,3})%").find(battery)?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 0..100 }
+            if (percent != null) {
+                val charging = battery.contains("charging")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.BatteryStd,
+                        if (charging) Icons.Default.BatteryChargingFull else Icons.Default.BatteryStd,
                         contentDescription = null,
-                        tint = TextFaint,
+                        tint = if (percent <= 15 && !charging) Negative else TextFaint,
                         modifier = Modifier.size(11.dp)
                     )
                     Text(
-                        battery.uppercase(),
+                        "$percent%",
                         style = MaterialTheme.typography.labelMedium.copy(fontSize = 9.sp),
-                        color = TextFaint,
+                        color = if (percent <= 15 && !charging) Negative else TextFaint,
                         maxLines = 1
                     )
                 }

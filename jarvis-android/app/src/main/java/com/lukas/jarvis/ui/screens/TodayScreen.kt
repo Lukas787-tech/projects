@@ -444,15 +444,18 @@ private fun HeroCard(brief: DayBrief?, loading: Boolean) {
 @Composable
 private fun Vitals(brief: DayBrief) {
     Row(horizontalArrangement = Arrangement.spacedBy(Space.snug)) {
-        val batteryPercent = Regex("(\\d+)%").find(brief.battery)?.groupValues?.get(1)
+        // Read defensively: a phone that cannot report its level must show a
+        // dash, not take the whole screen down with a number that overflows.
+        val batteryPercent = Regex("(\\d{1,3})%").find(brief.battery)?.groupValues?.get(1)
+            ?.toIntOrNull()?.takeIf { it in 0..100 }
         StatTile(
             value = batteryPercent?.let { "$it%" } ?: "—",
             label = "Battery",
             caption = if (brief.battery.contains("charging")) "charging" else null,
             tint = when {
                 batteryPercent == null -> TextSecondary
-                batteryPercent.toInt() <= 15 -> Negative
-                batteryPercent.toInt() <= 35 -> Caution
+                batteryPercent <= 15 -> Negative
+                batteryPercent <= 35 -> Caution
                 else -> TextPrimary
             },
             modifier = Modifier.weight(1f)
