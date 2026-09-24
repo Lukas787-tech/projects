@@ -29,6 +29,8 @@
             android:id="@+id/widget_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:text="@string/widget_title"
             android:textColor="#FFF2F5F9"
             android:textSize="15sp" />
@@ -37,6 +39,8 @@
             android:id="@+id/widget_subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:letterSpacing="0.12"
             android:text="@string/widget_subtitle"
             android:textAllCaps="true"
