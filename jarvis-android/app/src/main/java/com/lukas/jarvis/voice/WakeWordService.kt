@@ -54,12 +54,20 @@ class WakeWordService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        startForegroundCompat()
+        // Android refuses a microphone service started from the background
+        // (a restart after the system reclaimed it, or no microphone
+        // permission) by throwing; that must end the service, not the app.
+        if (!startForegroundCompat()) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         if (!running) {
             running = true
             listenAgain(0)
         }
-        return START_STICKY
+        // Not sticky: a restart by the system would come from the background,
+        // which is exactly when Android will not hand over the microphone.
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
@@ -71,7 +79,9 @@ class WakeWordService : Service() {
         super.onDestroy()
     }
 
-    private fun startForegroundCompat() {
+    private fun startForegroundCompat(): Boolean = runCatching { enterForeground() }.isSuccess
+
+    private fun enterForeground() {
         val stop = PendingIntent.getService(
             this,
             1,
@@ -233,12 +243,11 @@ class WakeWordService : Service() {
         const val ACTION_STOP = "com.lukas.jarvis.STOP_WAKE"
 
         fun start(context: Context) {
+            val mayListen = context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (!mayListen) return
             val intent = Intent(context, WakeWordService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            runCatching { context.startForegroundService(intent) }
         }
 
         /**

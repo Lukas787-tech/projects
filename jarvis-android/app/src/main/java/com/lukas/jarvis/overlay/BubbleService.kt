@@ -59,7 +59,10 @@ class BubbleService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        startForegroundCompat()
+        if (!startForegroundCompat()) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         if (dot == null) {
             if (!canDraw(this)) {
                 // The permission can be revoked while the service is running.
@@ -205,7 +208,10 @@ class BubbleService : Service() {
 
     // ------------------------------------------------------------ foreground
 
-    private fun startForegroundCompat() {
+    /** False when Android refused, which ends the service rather than the app. */
+    private fun startForegroundCompat(): Boolean = runCatching { enterForeground() }.isSuccess
+
+    private fun enterForeground() {
         val stop = PendingIntent.getService(
             this,
             2,
