@@ -12,6 +12,7 @@ import com.lukas.jarvis.data.Task
 import com.lukas.jarvis.data.Tracker
 import com.lukas.jarvis.stage.Element
 import com.lukas.jarvis.vm.AssistantViewModel
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -21,6 +22,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.LooperMode
+import org.robolectric.shadows.ShadowChoreographer
 import java.io.File
 import java.io.FileOutputStream
 import java.time.Duration
@@ -36,11 +38,19 @@ import java.time.Duration
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
-@Config(sdk = [34], qualifiers = "w411dp-h891dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "w411dp-h891dp-xhdpi")
 class ScreensTest {
 
     private val dir = File(System.getProperty("screens.dir") ?: "build/screens").apply { mkdirs() }
     private val report = StringBuilder()
+
+    @Before
+    fun realFrames() {
+        // Robolectric's paused looper hands out a frame every millisecond by
+        // default, so the core's endless animation would be drawn a thousand
+        // times per simulated second. A real phone's sixty is plenty.
+        ShadowChoreographer.setFrameDelay(Duration.ofMillis(16))
+    }
 
     @Test
     fun renderEveryScreen() {
@@ -155,10 +165,12 @@ class ScreensTest {
 
     /** Lets the frames, the database threads and the main thread catch up with each other. */
     private fun settle(millis: Long = 1600) {
+        val began = System.currentTimeMillis()
         repeat(10) {
             Thread.sleep(80)
             shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(millis / 10))
         }
+        progress("settled in ${System.currentTimeMillis() - began} ms")
     }
 
     private fun shot(activity: Activity, name: String) {
@@ -167,7 +179,7 @@ class ScreensTest {
             check(view.width > 0 && view.height > 0) { "the window was never laid out" }
             val full = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
             view.draw(Canvas(full))
-            val small = Bitmap.createScaledBitmap(full, view.width / 2, view.height / 2, true)
+            val small = Bitmap.createScaledBitmap(full, view.width * 3 / 5, view.height * 3 / 5, true)
             FileOutputStream(File(dir, "$name.png")).use { small.compress(Bitmap.CompressFormat.PNG, 100, it) }
             progress("rendered $name")
         }.onFailure { note(name, it) }
