@@ -80,6 +80,9 @@ class Agent(
         messages += LlmMessage.user(utterance)
 
         var lastText: String? = null
+        // What the last thing done (not looked up) said, in case the model's
+        // answer forgets to: "Stopwatch started."
+        var lastAction: String? = null
 
         for (round in 1..MAX_ROUNDS) {
             onStage(if (round == 1) "thinking" else "working")
@@ -98,7 +101,7 @@ class Agent(
 
             if (calls.isEmpty()) {
                 val text = clean(reply.content)
-                if (!text.isNullOrBlank()) return AgentResult(text, effects, used.distinct())
+                if (!text.isNullOrBlank()) return AgentResult(confirmed(text, lastAction), effects, used.distinct())
                 lastText = text
                 break
             }
@@ -125,6 +128,10 @@ class Agent(
             }
 
             val outcomes = runRound(calls, settings, effects, available, answered, used, onStage, onTool)
+            calls.indices.lastOrNull { index ->
+                val info = ToolCatalog.info(ToolCatalog.resolve(calls[index].name, available) ?: calls[index].name)
+                info != null && !info.readOnly
+            }?.let { lastAction = outcomes[it] }
 
             if (nativeCalls.isNotEmpty()) {
                 calls.forEachIndexed { index, call ->
@@ -160,6 +167,18 @@ class Agent(
             effects = effects,
             toolsUsed = used.distinct()
         )
+    }
+
+    /**
+     * A reply to something done that only asks "what next?" — seen from small
+     * models — gets the tool's own words in front, so the user hears that it
+     * happened. Anything longer, or a result too long to say, is left alone.
+     */
+    private fun confirmed(text: String, action: String?): String {
+        if (action == null) return text
+        val bare = text.trim().endsWith("?") && text.length <= 70 && text.count { it == '.' } == 0
+        val short = action.length <= 160 && '\n' !in action && !action.startsWith("Error", ignoreCase = true)
+        return if (bare && short) "${action.trim()} ${text.trim()}" else text
     }
 
     /**
