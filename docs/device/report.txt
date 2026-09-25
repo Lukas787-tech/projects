@@ -4,7 +4,7 @@ shot 03-today
 shot 04-type
 shot 05-shared-timer
 shot 05b-stopwatch
-STOPWATCH: no notification
+STOPWATCH: running in the notification shade
 shot 06-live-question
 shot 09-map
 shot 09-notes
