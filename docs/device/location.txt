@@ -1445,3 +1445,124 @@
     09-25 15:30:54.785: passive provider delivered location[1] to 10132/com.google.android.gms[fused_location_provider]/D33200A0
     09-25 15:30:54.785: passive provider delivered location[1] to 10132/com.google.android.gms[network_location_provider]/8549556A
     09-25 15:30:56.785: gps provider received location[1]
+--- dumpsys location (geofences and providers)
+      last location=Location[gps 52.520000,13.404998 hAcc=5.0 et=+5m30s163ms alt=0.0 vAcc=0.5 vel=0.0 sAcc=0.5 bear=0.0 bAcc=30.0 {Bundle[{satellites=0, maxCn0=0, meanCn0=0}]}]
+      enabled=true
+      allowed=true
+      identity=1000/android[LocationService]
+--
+      service: ProviderRequest[@+2s0ms, WorkSource{10192 com.lukas.jarvis.debug}]
+      listeners:
+        10124/com.google.android.as/1670DB01 (COARSE) Request[@+6h0m0s0ms LOW_POWER, minUpdateDistance=100000.0, WorkSource{10124 com.google.android.as}]
+        1000/android[GnssService]/3CDD3CD9 Request[PASSIVE, minUpdateInterval=0, hiddenFromAppOps, WorkSource{1000 android}]
+        10192/com.lukas.jarvis.debug/D303555E Request[@+2s0ms BALANCED, minUpdateDistance=3.0, WorkSource{10192 com.lukas.jarvis.debug}]
+      last location=null
+      enabled=true
+      allowed=true
+      identity=10131/com.google.android.gms[network_location_provider]
+      extra attribution tags={awareness_provider, activity_recognition_provider, network_location_provider, network_location_calibration, current_semantic_location, fused_location_provider, wearable_flp_shim, geofencer_provider}
+      properties=ProviderProperties[powerUsage=Medium, accuracy=Fine, requires=network, supports=[altitude]]
+      stationary throttled=false (not idle) (not stationary)
+      target service=10131/com.google.android.gms/com.google.android.location.network.NetworkLocationService@2
+--
+    fused provider:
+      service: ProviderRequest[OFF]
+      last location=Location[fused 52.520000,13.404998 hAcc=5.0 et=+5m30s163ms alt=0.0 vAcc=0.5 vel=0.0 sAcc=0.5]
+      enabled=true
+      allowed=true
+      identity=10131/com.google.android.gms[fused_location_provider]
+      extra attribution tags={awareness_provider, activity_recognition_provider, network_location_provider, network_location_calibration, current_semantic_location, fused_location_provider, wearable_flp_shim, geofencer_provider}
+      properties=ProviderProperties[powerUsage=Low, accuracy=Fine, supports=[bearing,speed,altitude]]
+      stationary throttled=false (not idle) (not stationary)
+      target service=10131/com.google.android.gms/com.google.android.location.fused.FusedLocationService@1
+--
+    gps provider:
+      service: ProviderRequest[@+2s0ms, HIGH_ACCURACY, WorkSource{10192 com.lukas.jarvis.debug}]
+      listeners:
+        10192/com.lukas.jarvis.debug/D303555E Request[@+2s0ms HIGH_ACCURACY, minUpdateDistance=3.0, WorkSource{10192 com.lukas.jarvis.debug}]
+      last location=Location[gps 52.520000,13.404998 hAcc=5.0 et=+5m30s163ms alt=0.0 vAcc=0.5 vel=0.0 sAcc=0.5 bear=0.0 bAcc=30.0 {Bundle[{satellites=0, maxCn0=0, meanCn0=0}]}]
+      enabled=true
+      allowed=true
+      identity=1000/android[GnssService]
+--
+      10192/com.lukas.jarvis.debug: min/max interval = 2s/2s, total/active/foreground duration = +51s130ms/+51s127ms/+51s130ms, locations = 3
+    fused:
+      1000/android[GeofencingService]: min/max interval = 1800s/1800s, total/active/foreground duration = +15s15ms/+15s15ms/+15s15ms, locations = 8
+    network:
+      10192/com.lukas.jarvis.debug: min/max interval = 0s/2s, total/active/foreground duration = +1m36s63ms/+1m36s44ms/+1m36s46ms, locations = 0
+      10124/com.google.android.as: min/max interval = 21600s/21600s, total/active/foreground duration = +4m50s810ms/+4m47s577ms/+4m50s810ms, locations = 0
+      1000/android[GnssService]: min/max interval = passive/passive, total/active/foreground duration = +4m58s511ms/+4m47s575ms/+4m58s509ms, locations = 0
+  GNSS Manager:
+--
+  Geofence Manager:
+    service: unregistered
+  Event Log:
+    09-25 15:45:05.715: passive provider [u0] enabled
+    09-25 15:45:07.455: gps provider [u0] enabled
+    09-25 15:45:07.496: network provider +registration 1000/android[GnssService]/3CDD3CD9 -> Request[PASSIVE, minUpdateInterval=0, hiddenFromAppOps, WorkSource{1000 android}]
+    09-25 15:45:07.874: passive provider [u0] enabled
+    09-25 15:45:07.874: gps provider [u0] enabled
+    09-25 15:45:08.797: fused provider [u0] enabled
+    09-25 15:45:08.842: [u0] visible
+    09-25 15:45:10.924: passive provider +registration 1000/android[SensorNotificationService]/E0DE1459 -> Request[PASSIVE, minUpdateInterval=+30m0s0ms, minUpdateDistance=100000.0, WorkSource{1000 android}]
+    09-25 15:45:10.924: passive provider request = ProviderRequest[@0]
+    09-25 15:45:12.879: fused provider [u0] disabled
+    09-25 15:45:13.643: fused provider [u0] enabled
+    09-25 15:45:14.843: passive provider +registration 10131/com.google.android.gms[fused_location_provider]/29D508BE -> Request[PASSIVE, minUpdateInterval=0, hiddenFromAppOps, WorkSource{10131 com.google.android.gms}]
+    09-25 15:45:15.197: network provider +registration 10124/com.google.android.as/1670DB01 -> Request[@+6h0m0s0ms BALANCED, minUpdateDistance=100000.0, WorkSource{10124 com.google.android.as}]
+    09-25 15:45:18.170: network provider [u0] enabled
+--
+    09-25 15:45:33.892: network provider +registration 10192/com.lukas.jarvis.debug/C9BD1D7E -> Request[@0 BALANCED, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:45:33.901: network provider request = ProviderRequest[@0, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:45:42.859: network provider -registration 10192/com.lukas.jarvis.debug/C9BD1D7E
+    09-25 15:45:42.859: network provider request = ProviderRequest[@+6h0m0s0ms, LOW_POWER, WorkSource{10124 com.google.android.as}]
+    09-25 15:45:51.431: network provider +registration 10192/com.lukas.jarvis.debug/07609351 -> Request[@0 BALANCED, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:45:51.431: network provider request = ProviderRequest[@0, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:46:00.430: network provider -registration 10192/com.lukas.jarvis.debug/07609351
+    09-25 15:46:00.430: network provider request = ProviderRequest[@+6h0m0s0ms, LOW_POWER, WorkSource{10124 com.google.android.as}]
+    09-25 15:46:01.672: network provider +registration 10192/com.lukas.jarvis.debug/292D1B90 -> Request[@0 BALANCED, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:46:01.673: network provider request = ProviderRequest[@0, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:46:10.664: network provider -registration 10192/com.lukas.jarvis.debug/292D1B90
+    09-25 15:46:10.664: network provider request = ProviderRequest[@+6h0m0s0ms, LOW_POWER, WorkSource{10124 com.google.android.as}]
+    09-25 15:46:18.352: network provider +registration 10192/com.lukas.jarvis.debug/CEED55BE -> Request[@0 BALANCED, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:46:18.359: network provider request = ProviderRequest[@0, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:46:27.351: network provider -registration 10192/com.lukas.jarvis.debug/CEED55BE
+    09-25 15:46:27.351: network provider request = ProviderRequest[@+6h0m0s0ms, LOW_POWER, WorkSource{10124 com.google.android.as}]
+    09-25 15:46:30.400: passive provider -registration 10131/com.google.android.gms[fused_location_provider]/29D508BE
+    09-25 15:46:30.414: passive provider -registration 10131/com.google.android.gms[network_location_provider]/2FB28E06
+--
+    09-25 15:46:43.816: network provider +registration 10192/com.lukas.jarvis.debug/DA2242B8 -> Request[@0 BALANCED, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:46:43.819: network provider request = ProviderRequest[@0, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:46:52.798: network provider -registration 10192/com.lukas.jarvis.debug/DA2242B8
+    09-25 15:46:52.798: network provider request = ProviderRequest[@+6h0m0s0ms, LOW_POWER, WorkSource{10124 com.google.android.as}]
+    09-25 15:47:26.385: gps provider +registration 10192/com.lukas.jarvis.debug/69200783 -> Request[@+2s0ms HIGH_ACCURACY, minUpdateDistance=3.0, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:47:26.385: gps provider request = ProviderRequest[@+2s0ms, HIGH_ACCURACY, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:47:26.387: network provider +registration 10192/com.lukas.jarvis.debug/69200783 -> Request[@+2s0ms BALANCED, minUpdateDistance=3.0, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:47:26.388: network provider request = ProviderRequest[@+2s0ms, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:47:34.182: network provider -registration 10192/com.lukas.jarvis.debug/69200783
+    09-25 15:47:34.182: network provider request = ProviderRequest[@+6h0m0s0ms, LOW_POWER, WorkSource{10124 com.google.android.as}]
+    09-25 15:47:34.185: gps provider -registration 10192/com.lukas.jarvis.debug/69200783
+    09-25 15:47:34.185: gps provider request = ProviderRequest[OFF]
+    09-25 15:49:20.432: location [u0] enabled
+    09-25 15:49:22.677: gps provider +registration 10192/com.lukas.jarvis.debug/D303555E -> Request[@+2s0ms HIGH_ACCURACY, minUpdateDistance=3.0, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:49:22.677: gps provider request = ProviderRequest[@+2s0ms, HIGH_ACCURACY, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:49:22.678: network provider +registration 10192/com.lukas.jarvis.debug/D303555E -> Request[@+2s0ms BALANCED, minUpdateDistance=3.0, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:49:22.678: network provider request = ProviderRequest[@+2s0ms, WorkSource{10192 com.lukas.jarvis.debug}]
+    09-25 15:49:31.736: passive provider delivered location[1] to 10131/com.google.android.gms[fused_location_provider]/C1505FEA
+    09-25 15:49:33.734: gps provider received location[1]
+    09-25 15:49:33.734: passive provider delivered location[1] to 10131/com.google.android.gms[network_location_provider]/E27D9371
+    09-25 15:49:33.734: passive provider delivered location[1] to 10131/com.google.android.gms[fused_location_provider]/C1505FEA
+    09-25 15:49:33.736: fused provider received location[1]
+    09-25 15:49:33.736: passive provider delivered location[1] to 10131/com.google.android.gms[network_location_provider]/E27D9371
+    09-25 15:49:33.736: passive provider delivered location[1] to 10131/com.google.android.gms[fused_location_provider]/C1505FEA
+    09-25 15:49:35.735: gps provider received location[1]
+    09-25 15:49:35.735: passive provider delivered location[1] to 10131/com.google.android.gms[network_location_provider]/E27D9371
+    09-25 15:49:35.735: passive provider delivered location[1] to 10131/com.google.android.gms[fused_location_provider]/C1505FEA
+    09-25 15:49:35.736: fused provider received location[1]
+    09-25 15:49:35.737: passive provider delivered location[1] to 10131/com.google.android.gms[network_location_provider]/E27D9371
+    09-25 15:49:35.737: passive provider delivered location[1] to 10131/com.google.android.gms[fused_location_provider]/C1505FEA
+    09-25 15:49:37.735: gps provider received location[1]
+    09-25 15:49:37.736: passive provider delivered location[1] to 10131/com.google.android.gms[network_location_provider]/E27D9371
+    09-25 15:49:37.736: passive provider delivered location[1] to 10131/com.google.android.gms[fused_location_provider]/C1505FEA
+    09-25 15:49:37.737: fused provider received location[1]
+    09-25 15:49:37.737: passive provider delivered location[1] to 10131/com.google.android.gms[network_location_provider]/E27D9371
