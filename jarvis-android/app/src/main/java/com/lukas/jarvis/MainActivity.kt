@@ -312,6 +312,7 @@ private fun JarvisRoot(
     val lists by viewModel.lists.collectAsStateWithLifecycle()
     val timers by viewModel.timers.collectAsStateWithLifecycle()
     val stopwatch by viewModel.stopwatch.collectAsStateWithLifecycle()
+    val countdowns by viewModel.countdowns.collectAsStateWithLifecycle()
     val online by viewModel.online.collectAsStateWithLifecycle()
     val ringingTimers by viewModel.ringingTimers.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
@@ -652,7 +653,9 @@ private fun JarvisRoot(
                     onAsk = { sentence ->
                         viewModel.showElement(Element.Globe)
                         viewModel.sendTyped(sentence)
-                    }
+                    },
+                    countdowns = countdowns,
+                    onForgetCountdown = viewModel::forgetCountdown
                 )
 
                 Element.Globe -> VoiceScreen(

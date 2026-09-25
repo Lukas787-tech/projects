@@ -43,7 +43,9 @@ data class DayBrief(
     /** The top stories, when the web is switched on. */
     val headlines: List<com.lukas.jarvis.web.Headline> = emptyList(),
     /** Whether the calendar is read at all; off, an empty day is unknown, not clear. */
-    val calendarOn: Boolean = true
+    val calendarOn: Boolean = true,
+    /** The days being counted down to, soonest first. */
+    val countdowns: List<com.lukas.jarvis.core.Countdown> = emptyList()
 ) {
 
     /** The version that gets read out. Prose, no lists, no headings. */
@@ -97,6 +99,12 @@ data class DayBrief(
                 }
         }
 
+        // A birthday or a holiday is worth a line only once it is close.
+        val today = java.time.LocalDate.now()
+        countdowns.filter { (it.daysLeft(today) ?: Long.MAX_VALUE) <= 7 }.take(2).forEach {
+            append(" ").append(it.describe(today)).append(".")
+        }
+
         headlines.firstOrNull()?.let { top ->
             append(" In the news: ${top.title}.")
         }
@@ -121,7 +129,8 @@ class Briefer(
     private val locator: Locator,
     private val places: PlacesClient,
     private val device: Device,
-    private val knowledge: com.lukas.jarvis.web.Knowledge? = null
+    private val knowledge: com.lukas.jarvis.web.Knowledge? = null,
+    private val countdowns: com.lukas.jarvis.core.CountdownStore? = null
 ) {
 
     companion object {
@@ -196,7 +205,10 @@ class Briefer(
             battery = device.battery(),
             connection = device.connection(),
             headlines = news.await(),
-            calendarOn = settings.calendarEnabled
+            calendarOn = settings.calendarEnabled,
+            countdowns = countdowns?.let {
+                com.lukas.jarvis.core.Countdown.upcoming(it.current, java.time.LocalDate.now()).take(5)
+            }.orEmpty()
         )
     }
 

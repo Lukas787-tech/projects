@@ -350,6 +350,12 @@ class ScreensTest {
         )
         container.profiles.save(com.lukas.jarvis.core.Profile.of("Work", com.lukas.jarvis.core.Settings(personality = "pro")))
         container.profiles.schedule("Night", "22:00", emptySet())
+        run {
+            val day = java.time.LocalDate.now()
+            container.countdowns.current.forEach { container.countdowns.removeId(it.id) }
+            container.countdowns.add("Holiday in Lisbon", day.plusDays(17), yearly = false, knowsYear = true, birthday = false)
+            container.countdowns.add("Mum", day.plusDays(1).withYear(1966), yearly = true, knowsYear = true, birthday = true)
+        }
         container.profiles.schedule("Work", "08:00", setOf(2, 3, 4, 5, 6))
 
         container.lists.change { book ->

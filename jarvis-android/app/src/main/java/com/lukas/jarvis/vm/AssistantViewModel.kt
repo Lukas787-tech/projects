@@ -935,6 +935,10 @@ class AssistantViewModel(
 
     val stopwatch: StateFlow<com.lukas.jarvis.notify.StopwatchState> = container.stopwatch.state
 
+    val countdowns: StateFlow<List<com.lukas.jarvis.core.Countdown>> = container.countdowns.all
+
+    fun forgetCountdown(id: Long) = container.countdowns.removeId(id)
+
     fun toggleStopwatch() {
         if (container.stopwatch.state.value.running) container.stopwatch.pause() else container.stopwatch.start()
     }
@@ -1601,6 +1605,7 @@ class AssistantViewModel(
                 container.lists.reload()
                 container.placeReminders.reload()
                 container.profiles.reload()
+                container.countdowns.reload()
                 configureVoice()
                 // The old provider's model list and test result describe
                 // settings that no longer exist.

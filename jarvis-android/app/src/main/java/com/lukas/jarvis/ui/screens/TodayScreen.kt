@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Tune
@@ -127,7 +129,10 @@ fun TodayScreen(
     /** Sends a sentence to the assistant, for a headline tapped to hear more. */
     onAsk: (String) -> Unit = {},
     /** How the user is addressed now, for the greeting. */
-    address: String = ""
+    address: String = "",
+    /** Holidays, birthdays and other days being counted down to. */
+    countdowns: List<com.lukas.jarvis.core.Countdown> = emptyList(),
+    onForgetCountdown: (Long) -> Unit = {}
 ) {
     var editing by remember { mutableStateOf<Routine?>(null) }
     editing?.let { draft ->
@@ -168,6 +173,23 @@ fun TodayScreen(
     var calendarFolded by rememberStored("today.fold.calendar", false)
     var balancesFolded by rememberStored("today.fold.balances", false)
     var newsFolded by rememberStored("today.fold.news", false)
+    var comingFolded by rememberStored("today.fold.coming", false)
+    var forgetting by remember { mutableStateOf<com.lukas.jarvis.core.Countdown?>(null) }
+    forgetting?.let { countdown ->
+        GlassDialog(
+            title = "Stop counting down to '${countdown.name}'?",
+            onDismiss = { forgetting = null },
+            confirmLabel = "Forget it",
+            onConfirm = {
+                onForgetCountdown(countdown.id)
+                forgetting = null
+            }
+        ) {
+            Text("It goes from Today and from the morning brief.", color = TextSecondary)
+        }
+    }
+    val today = remember { java.time.LocalDate.now() }
+    val coming = remember(countdowns, today) { com.lukas.jarvis.core.Countdown.upcoming(countdowns, today) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = Space.gutter),
@@ -317,6 +339,41 @@ fun TodayScreen(
                         }
                     )
                 }
+            }
+        }
+
+        // Days being counted down to, soonest first; tap one to stop counting.
+        if (coming.isNotEmpty()) {
+            item {
+                GroupHeader(
+                    "Coming up",
+                    trailing = coming.size.toString(),
+                    folded = comingFolded,
+                    onToggle = { comingFolded = !comingFolded }
+                )
+            }
+            if (!comingFolded) items(coming.take(6), key = { "countdown-${it.id}" }) { countdown ->
+                val days = countdown.daysLeft(today) ?: 0
+                val years = countdown.yearsAt(today)
+                ListRow(
+                    title = when {
+                        countdown.birthday && years != null -> "${countdown.name} turns $years"
+                        countdown.birthday -> "${countdown.name}'s birthday"
+                        years != null -> "${countdown.name} · $years years"
+                        else -> countdown.name
+                    },
+                    subtitle = countdown.next(today)?.format(
+                        java.time.format.DateTimeFormatter.ofPattern("EEE d MMM yyyy", java.util.Locale.getDefault())
+                    ),
+                    leading = if (countdown.birthday) Icons.Default.Cake else Icons.Default.Event,
+                    trailing = when (days) {
+                        0L -> "today"
+                        1L -> "tomorrow"
+                        else -> "$days days"
+                    },
+                    trailingTint = if (days <= 1) Accent else TextSecondary,
+                    onClick = { forgetting = countdown }
+                )
             }
         }
 

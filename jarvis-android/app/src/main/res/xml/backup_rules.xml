@@ -19,5 +19,6 @@
     <include domain="sharedpref" path="jarvis_lists.xml" />
     <include domain="sharedpref" path="jarvis_place_reminders.xml" />
     <include domain="sharedpref" path="jarvis_profiles.xml" />
+    <include domain="sharedpref" path="jarvis_countdowns.xml" />
     <include domain="database" path="jarvis.db" />
 </full-backup-content>

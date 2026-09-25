@@ -100,9 +100,10 @@ class AppContainer(context: Context) {
     val stopwatch = com.lukas.jarvis.notify.Stopwatch(context)
     val placeReminders = com.lukas.jarvis.notify.PlaceReminders(context)
     val profiles = com.lukas.jarvis.core.ProfileStore(context)
+    val countdowns = com.lukas.jarvis.core.CountdownStore(context)
 
     /** One day, gathered once, for the dashboard and the spoken brief alike. */
-    val briefer = Briefer(brain, agenda, weather, locator, places, device, knowledge)
+    val briefer = Briefer(brain, agenda, weather, locator, places, device, knowledge, countdowns)
 
     private val tools = Tools(
         brain = brain,
@@ -133,6 +134,7 @@ class AppContainer(context: Context) {
         stopwatch = stopwatch,
         placeReminders = placeReminders,
         profiles = profiles,
+        countdowns = countdowns,
         settingsStore = settings
     )
 

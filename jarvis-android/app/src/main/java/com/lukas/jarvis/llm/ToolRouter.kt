@@ -43,7 +43,8 @@ object ToolRouter {
             "on saturday", "on sunday", " at ", "i did it", "done with", "finished", "open",
             "erinner", "aufgabe", "morgen", "später", "heute abend", "nicht vergessen",
             "erledigt", "verschieb", "nächste woche", " um ", "list", "shopping", "groceries",
-            "packing", "i got the", "einkauf", "liste", "pack"
+            "packing", "i got the", "einkauf", "liste", "pack", "birthday", "geburtstag", "anniversary",
+            "jahrestag", "countdown", "until my", "until the", "bis zu", "bis zum", "coming up", "holiday", "urlaub"
         ),
         ToolGroup.Web to listOf(
             "search", "google", "look up", "lookup", "latest", "who is", "who was", "what is",

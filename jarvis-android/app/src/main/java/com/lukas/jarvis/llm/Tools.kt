@@ -98,6 +98,7 @@ class Tools(
     private val stopwatch: com.lukas.jarvis.notify.Stopwatch,
     private val placeReminders: com.lukas.jarvis.notify.PlaceReminders,
     private val profiles: com.lukas.jarvis.core.ProfileStore,
+    private val countdowns: com.lukas.jarvis.core.CountdownStore,
     private val settingsStore: com.lukas.jarvis.core.SettingsStore
 ) {
 
@@ -265,6 +266,21 @@ class Tools(
     )
 
     private fun taskTools(): List<JSONObject> = listOf(
+        tool(
+            "countdown",
+            "Days worth counting down to, kept and shown on Today: a holiday, an exam, a wedding, " +
+                "and birthdays and anniversaries that come every year. 'My holiday starts on 12 October', " +
+                "'Mum's birthday is 3 March 1966', 'how long until the holiday', 'what's coming up', " +
+                "'forget the exam'. For a one-off question with nothing to keep, use `date_calc`.",
+            props(
+                "action" to str("add, list, check (one by name), or remove.", listOf("add", "list", "check", "remove")),
+                "name" to str("What it is: 'Holiday', 'Mum', 'Exam'. For a birthday, the person's name."),
+                "date" to str("The day: 'YYYY-MM-DD', or '03-15' (month-day) when no year is known."),
+                "yearly" to bool("True when it comes back every year: birthdays, anniversaries."),
+                "birthday" to bool("True for a person's birthday.")
+            ),
+            listOf("action")
+        ),
         tool(
             "add_task",
             "Add a task or reminder. The phone will notify at the due time.",
@@ -1158,6 +1174,7 @@ class Tools(
                 "calculate" -> calculate(args)
                 "convert_units" -> convert(args)
                 "date_calc" -> dateCalc(args)
+                "countdown" -> countdown(args)
                 "briefing" -> if (args.optBoolean("evening", false)) {
                     briefer.evening(settings).let { (title, text) -> "$title. $text" }
                 } else {
@@ -2220,6 +2237,32 @@ class Tools(
                         laps.mapIndexed { i, ms -> "${i + 1}) ${clock(ms)}" }.joinToString(", ") + "."
                     (if (before.running) "Running: " else "Paused at ") + clock(before.elapsed(now)) + "." + lapText
                 }
+            }
+        }
+    }
+
+    private fun countdown(args: JSONObject): String {
+        val today = java.time.LocalDate.now()
+        val name = args.optString("name").trim()
+        return when (args.optString("action").trim().lowercase(Locale.ROOT)) {
+            "add", "save", "set" -> {
+                if (name.isBlank()) return "What should it be called?"
+                val (date, knowsYear) = com.lukas.jarvis.core.Countdown.parseDay(args.optString("date"), today)
+                    ?: return "Which day is '$name'? Give it as YYYY-MM-DD."
+                val birthday = args.optBoolean("birthday", false)
+                val yearly = args.optBoolean("yearly", birthday)
+                if (!yearly && date.isBefore(today)) return "${date} has already passed."
+                val saved = countdowns.add(name, date, yearly, knowsYear && yearly, birthday)
+                "Kept: ${saved.describe(today)}. It shows on Today."
+            }
+            "remove", "delete", "forget" -> countdowns.remove(name)?.let { "Forgot '${it.name}'." }
+                ?: "Nothing called '$name' is being counted down."
+            "check", "get", "when" -> countdowns.find(name)?.let { it.describe(today) + " (" + it.next(today) + ")." }
+                ?: "Nothing called '$name' is being counted down."
+            else -> {
+                val coming = com.lukas.jarvis.core.Countdown.upcoming(countdowns.current, today)
+                if (coming.isEmpty()) "Nothing is being counted down yet."
+                else coming.take(10).joinToString("\n") { it.describe(today) + " (" + it.next(today) + ")" }
             }
         }
     }

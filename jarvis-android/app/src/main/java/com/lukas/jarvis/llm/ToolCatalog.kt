@@ -60,6 +60,7 @@ object ToolCatalog {
 
         // tasks
         ToolInfo("add_task", ToolGroup.Tasks, "adding a reminder", "Reminder"),
+        ToolInfo("countdown", ToolGroup.Tasks, "counting the days", "Countdown"),
         ToolInfo("list", ToolGroup.Tasks, "the list", "List"),
         ToolInfo("list_tasks", ToolGroup.Tasks, "checking tasks", "Tasks", readOnly = true),
         ToolInfo("complete_task", ToolGroup.Tasks, "ticking it off", "Done"),
@@ -210,6 +211,8 @@ object ToolCatalog {
         "convert" to "convert_units", "unit_convert" to "convert_units",
         "currency" to "convert_currency", "exchange_rate" to "convert_currency",
         "convert_money" to "convert_currency",
+        "add_countdown" to "countdown", "birthday" to "countdown", "add_birthday" to "countdown",
+        "countdowns" to "countdown", "upcoming" to "countdown",
         "days_between" to "date_calc", "date_diff" to "date_calc", "count_days" to "date_calc",
         "log_expense" to "log_entry", "add_expense" to "log_entry",
         "log_purchase" to "log_entry", "add_entry" to "log_entry",
@@ -391,12 +394,15 @@ object Abilities {
         Ability(
             ToolGroup.Tasks,
             "Tasks, reminders and lists",
-            "Reminders with real alarms, moved or cancelled by saying so, and lists for the shop or the trip.",
+            "Reminders with real alarms, moved or cancelled by saying so, lists for the shop or the trip, " +
+                "and countdowns to holidays and birthdays.",
             listOf(
                 "Remind me to call mum tomorrow at six",
                 "Move that reminder to Friday",
                 "What's still open?",
-                "Add oat milk to the shopping list"
+                "Add oat milk to the shopping list",
+                "My holiday starts on 12 October",
+                "Mum's birthday is 3 March 1966"
             )
         ),
         Ability(
