@@ -617,6 +617,7 @@ private fun RoutineHint(onCreate: () -> Unit, onTemplate: (Routine) -> Unit = {}
                 icon = when (template.name) {
                     "morning" -> Icons.Default.WbSunny
                     "bedtime" -> Icons.Default.NightsStay
+                    "umbrella" -> Icons.Default.Umbrella
                     else -> Icons.Default.DirectionsWalk
                 },
                 label = template.name.replaceFirstChar { it.uppercase() },
@@ -628,7 +629,7 @@ private fun RoutineHint(onCreate: () -> Unit, onTemplate: (Routine) -> Unit = {}
     }
 }
 
-/** Three routines worth having on day one, as starting points. */
+/** Four routines worth having on day one, as starting points. */
 private val ROUTINE_TEMPLATES = listOf(
     Routine(
         name = "morning",
@@ -646,6 +647,14 @@ private val ROUTINE_TEMPLATES = listOf(
     Routine(
         name = "heading out",
         steps = listOf("What's the weather for the next few hours", "What's on my shopping list")
+    ),
+    // Runs by itself: the answer arrives as a notification before leaving.
+    Routine(
+        name = "umbrella",
+        steps = listOf("Will it rain today where I am? Answer in one sentence, and say if I need an umbrella."),
+        time = "07:30",
+        days = RoutineDays.WEEKDAYS,
+        quiet = true
     )
 )
 
