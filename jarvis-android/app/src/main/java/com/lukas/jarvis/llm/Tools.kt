@@ -733,6 +733,14 @@ class Tools(
             listOf("time")
         ),
         tool(
+            "focus_session",
+            "A focus block: Do Not Disturb for the length given, with a Focus timer on screen " +
+                "that rings at the end. 'Focus for 25 minutes', 'pomodoro', 'I need an hour to " +
+                "concentrate'. Default 25 minutes.",
+            props("minutes" to num("How long. Default 25.")),
+            emptyList()
+        ),
+        tool(
             "set_timer",
             "Start a named countdown: pasta, laundry, a break. It shows on screen and in the " +
                 "notification shade, rings until stopped, and can be asked about with `timers`.",
@@ -1201,6 +1209,7 @@ class Tools(
                 // the phone
                 "set_alarm" -> setAlarm(args)
                 "set_timer" -> setTimer(args)
+                "focus_session" -> focusSession(args)
                 "timers" -> timerAction(args)
                 "show_alarms" -> launcher.showAlarms()
                 "device_status" -> deviceStatus(args)
@@ -2079,6 +2088,14 @@ class Tools(
             minute = calendar.get(Calendar.MINUTE),
             label = args.optString("label").takeIf { it.isNotBlank() }
         )
+    }
+
+    private fun focusSession(args: JSONObject): String {
+        val minutes = (number(args, "minutes") ?: 25.0).toInt().coerceIn(1, 8 * 60)
+        val quiet = device.doNotDisturb("priority", minutes)
+        val timer = timers.start(minutes * 60, "Focus")
+        return "Focus session: ${com.lukas.jarvis.notify.Timers.spoken(timer.lengthMs)}, until " +
+            "${TimeUtil.formatTime(timer.endsAt)}. Do Not Disturb: $quiet"
     }
 
     private fun setTimer(args: JSONObject): String {

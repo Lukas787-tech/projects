@@ -94,6 +94,16 @@ class ReflexTest {
         assertNull(Reflexes.parse("remember this"))
     }
 
+    @Test fun focusSessions() {
+        val (name, args) = parsed("Focus for 50 minutes")!!
+        assertEquals("focus_session", name)
+        assertEquals(50.0, args.getDouble("minutes"), 0.01)
+        assertEquals("focus_session", parsed("start a pomodoro")?.first)
+        assertEquals(false, parsed("start a pomodoro")!!.second.has("minutes"))
+        assertEquals("focus_session", parsed("Fokus 45 Minuten")?.first)
+        assertNull(Reflexes.parse("how do I focus better when I'm tired"))
+    }
+
     @Test fun sleepTimers() {
         val (name, args) = parsed("Stop the music in 30 minutes")!!
         assertEquals("set_timer", name)

@@ -26,6 +26,7 @@ object Reflexes {
         }
         timerQuestion(text)?.let { return it }
         sleepTimer(text)?.let { return it }
+        focus(text)?.let { return it }
         timer(text)?.let { return it }
         remind(text)?.let { return it }
         alarm(text)?.let { return it }
@@ -107,6 +108,18 @@ object Reflexes {
         val minutes = amount * unitMinutes(match.groupValues[2])
         if (minutes <= 0) return null
         return call("set_timer", JSONObject().put("minutes", minutes).put("stop_music", true))
+    }
+
+    /** "Focus for 25 minutes", "start a pomodoro", "Fokus 50 Minuten". */
+    private fun focus(text: String): ToolCall? {
+        if (!FOCUS.containsMatchIn(text)) return null
+        val args = JSONObject()
+        DURATION.find(text)?.let { span ->
+            val amount = span.groupValues[1].replace(',', '.').toDoubleOrNull() ?: return@let
+            val minutes = amount * unitMinutes(span.groupValues[2])
+            if (minutes > 0) args.put("minutes", minutes)
+        }
+        return call("focus_session", args)
     }
 
     private fun timer(text: String): ToolCall? {
@@ -275,6 +288,7 @@ object Reflexes {
             "(?:\\s+that|,?\\s+dass)?[,:]?\\s+(.+)$",
         RegexOption.IGNORE_CASE
     )
+    private val FOCUS = Regex("^(start (a )?)?(focus( session| mode| time)?|pomodoro|fokus( zeit| modus)?)\\b")
     private val SLEEP = Regex(
         "sleep timer|schlaftimer|(stop|pause|turn off) (the )?(music|playback|audio)( playing)? (in|after)|" +
             "musik (aus|stoppen|anhalten) (in|nach)"

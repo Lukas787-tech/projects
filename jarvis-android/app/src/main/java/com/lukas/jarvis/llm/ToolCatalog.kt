@@ -119,6 +119,7 @@ object ToolCatalog {
         // the phone itself
         ToolInfo("set_alarm", ToolGroup.Phone, "setting the alarm", "Alarm"),
         ToolInfo("set_timer", ToolGroup.Phone, "starting the timer", "Timer"),
+        ToolInfo("focus_session", ToolGroup.Phone, "starting a focus session", "Focus"),
         ToolInfo("timers", ToolGroup.Phone, "checking the timers", "Timers"),
         ToolInfo("show_alarms", ToolGroup.Phone, "opening your alarms", "Alarms"),
         ToolInfo("device_status", ToolGroup.Phone, "checking the phone", "Phone", readOnly = true),
@@ -239,6 +240,7 @@ object ToolCatalog {
         "go_back" to "system_action", "go_home" to "system_action", "global_action" to "system_action",
         "interpret" to "interpreter", "interpreter_mode" to "interpreter", "live_translate" to "interpreter",
         "conversation_mode" to "interpreter",
+        "focus" to "focus_session", "pomodoro" to "focus_session", "focus_mode" to "focus_session",
         "location_reminder" to "place_reminder", "geofence" to "place_reminder",
         "remind_at_place" to "place_reminder", "add_place_reminder" to "place_reminder",
         "send_location" to "share_location", "my_location" to "share_location",
