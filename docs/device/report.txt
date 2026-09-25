@@ -4,7 +4,7 @@ shot 03-today
 shot 04-type
 shot 05-shared-timer
 shot 05b-stopwatch
-STOPWATCH: running in the notification shade
+STOPWATCH: no notification
 shot 06-live-question
 shot 09-map
 shot 09-notes
@@ -29,7 +29,13 @@ PLACE ALERT: fired on arrival
 Broadcasting: Intent { act=com.lukas.jarvis.debug.ROUTINE flg=0x400000 cmp=com.lukas.jarvis.debug/.TestHooks (has extras) }
 Broadcast completed: result=0, data="queued device check"
 shot 14-quiet-routine
-QUIET ROUTINE: no notification within 120 s
+QUIET ROUTINE: answered in the background
+                android.title=String (Device check)
+                android.reduced.images=Boolean (true)
+                android.template=String (android.app.Notification$BigTextStyle)
+                android.text=String (4)
+Broadcasting: Intent { act=com.lukas.jarvis.debug.ROUTINE flg=0x400000 cmp=com.lukas.jarvis.debug/.TestHooks (has extras) }
+Broadcast completed: result=0, data="saved arrival check"
 Broadcasting: Intent { act=com.lukas.jarvis.debug.PLACE flg=0x400000 cmp=com.lukas.jarvis.debug/.TestHooks (has extras) }
 Broadcast completed: result=0, data="armed: true, closed: true"
 PLACE ROUTINE: ran on arrival
