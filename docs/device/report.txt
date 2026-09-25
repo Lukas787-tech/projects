@@ -23,6 +23,6 @@ shot 07-talk
 Broadcasting: Intent { act=com.lukas.jarvis.debug.PLACE flg=0x400000 cmp=com.lukas.jarvis.debug/.TestHooks (has extras) }
 Broadcast completed: result=0, data="armed: true, closed: true"
 shot 13-place-reminder
-PLACE ALERT: did not fire within 100 s
+PLACE ALERT: did not fire within 180 s
 shot 08-landscape
 No crash on the device.
