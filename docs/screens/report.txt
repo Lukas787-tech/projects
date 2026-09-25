@@ -1,4 +1,1 @@
-Run 36163554645: no pictures.
-e: file:///home/runner/work/projects/projects/jarvis-android/app/src/main/java/com/lukas/jarvis/ui/screens/MapScreen.kt:250:58 No value passed for parameter 'onClick'.
-e: file:///home/runner/work/projects/projects/jarvis-android/app/src/main/java/com/lukas/jarvis/ui/screens/MapScreen.kt:260:54 No value passed for parameter 'onClick'.
-* What went wrong:
+Every screen rendered.
