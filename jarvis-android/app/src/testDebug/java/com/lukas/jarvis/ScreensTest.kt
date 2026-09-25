@@ -210,7 +210,7 @@ class ScreensTest {
         // the tasks, the calendar, the days counted down to — is in the picture.
         run {
             val folds = activity.getSharedPreferences("jarvis_ui", android.content.Context.MODE_PRIVATE)
-            val keys = listOf("today.fold.shortcuts", "today.fold.routines")
+            val keys = listOf("today.fold.shortcuts", "today.fold.routines", "today.fold.overdue", "today.fold.due")
             folds.edit().apply { keys.forEach { putBoolean(it, true) } }.commit()
             runCatching { vm.showElement(Element.Today) }.onFailure { note("04b-today-lower", it) }
             settle()
