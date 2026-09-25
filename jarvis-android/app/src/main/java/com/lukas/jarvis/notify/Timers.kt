@@ -361,7 +361,7 @@ class TimerReceiver : BroadcastReceiver() {
                 if (!timer.sleep && app.inForeground && container.settings.current.speakReplies) {
                     val address = com.lukas.jarvis.llm.Personas.address(container.settings.current)
                     val lead = if (address.isBlank()) "Time's up" else "Time's up, $address"
-                    runCatching { container.speaker.speak("$lead: ${timer.label}.") { } }
+                    runCatching { container.speaker.announce("$lead: ${timer.label}.") }
                 }
             }
             Timers.ACTION_CANCEL -> timers.cancelId(id)

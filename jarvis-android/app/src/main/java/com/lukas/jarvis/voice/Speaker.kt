@@ -210,6 +210,8 @@ class Speaker(context: Context) {
     fun speak(text: String, onDone: (() -> Unit)? = null) = speakWith(text, onDone, homeLanguage = null)
 
     private fun speakWith(text: String, onDone: (() -> Unit)?, homeLanguage: String?) {
+        // A whole reply replaces whatever a failed streamed one left behind.
+        streaming = false
         val clean = sanitize(text)
         currentDone = onDone
         if (clean.isBlank()) {
@@ -341,6 +343,26 @@ class Speaker(context: Context) {
         tts.language = locale
         true
     }.getOrDefault(false)
+
+    /**
+     * A short line that must not cut off what is being said — a timer going
+     * off mid-answer. Queued after the reply, which keeps its own ending and
+     * callback; said at once when nothing is playing.
+     */
+    fun announce(text: String) {
+        val clean = sanitize(text)
+        if (clean.isBlank() || !_ready.value) return
+        if (_speaking.value) {
+            runCatching { tts.speak(clean, TextToSpeech.QUEUE_ADD, Bundle(), "jarvis_announce_${System.currentTimeMillis()}") }
+        } else {
+            speak(clean) { }
+        }
+    }
+
+    /** Ends a streamed reply that will not be finished, so the speaker does not wait on it. */
+    fun abandonStream() {
+        if (streaming) endStream("") { }
+    }
 
     fun stop() {
         streaming = false

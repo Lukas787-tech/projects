@@ -78,7 +78,7 @@ class ReminderReceiver : BroadcastReceiver() {
             if (settings.speakReplies) {
                 val address = com.lukas.jarvis.llm.Personas.address(settings)
                 val lead = if (address.isBlank()) "A reminder" else "A reminder, $address"
-                runCatching { app.container.speaker.speak("$lead: $title.") { } }
+                runCatching { app.container.speaker.announce("$lead: $title.") }
             }
         }
 

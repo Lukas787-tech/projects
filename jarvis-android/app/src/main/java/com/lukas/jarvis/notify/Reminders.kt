@@ -73,19 +73,22 @@ class Reminders(private val context: Context) {
 
     fun cancel(taskId: Long) {
         val manager = alarms ?: return
-        val intent = Intent(context, ReminderReceiver::class.java).apply {
-            action = ACTION_FIRE
-            data = android.net.Uri.parse("jarvis://task/$taskId")
-        }
-        val pending = PendingIntent.getBroadcast(
-            context,
-            taskId.toInt(),
-            intent,
-            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-        )
-        if (pending != null) {
-            manager.cancel(pending)
-            pending.cancel()
+        // The task's own alarm, and the one-off ring a snooze set beside it.
+        listOf("", "/once").forEach { suffix ->
+            val intent = Intent(context, ReminderReceiver::class.java).apply {
+                action = ACTION_FIRE
+                data = android.net.Uri.parse("jarvis://task/$taskId$suffix")
+            }
+            val pending = PendingIntent.getBroadcast(
+                context,
+                taskId.toInt(),
+                intent,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            )
+            if (pending != null) {
+                manager.cancel(pending)
+                pending.cancel()
+            }
         }
     }
 

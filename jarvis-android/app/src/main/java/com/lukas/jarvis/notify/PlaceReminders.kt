@@ -222,7 +222,7 @@ class PlaceReceiver : BroadcastReceiver() {
         val entering = intent.getBooleanExtra(LocationManager.KEY_PROXIMITY_ENTERING, false)
         val fired = container.placeReminders.crossed(id, entering) ?: return
         if (app.inForeground && container.settings.current.speakReplies) {
-            runCatching { container.speaker.speak("Reminder: ${fired.text}.") { } }
+            runCatching { container.speaker.announce("Reminder: ${fired.text}.") }
         }
     }
 }

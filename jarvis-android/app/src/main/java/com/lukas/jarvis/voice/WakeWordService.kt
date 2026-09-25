@@ -207,9 +207,14 @@ class WakeWordService : Service() {
         override fun onEndOfSpeech() = Unit
 
         override fun onError(error: Int) {
+            // Silence is the normal state of a room, not a failure: only real
+            // errors count towards backing off, or a quiet evening would stretch
+            // the gaps between listening windows and miss the wake phrase.
+            val silence = error == SpeechRecognizer.ERROR_NO_MATCH ||
+                error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
             // Repeated hard failures usually mean the recognizer was taken over
             // by another app; backing off avoids a hot restart loop.
-            consecutiveFailures++
+            if (silence) consecutiveFailures = 0 else consecutiveFailures++
             val delay = if (consecutiveFailures > 5) LONG_RETRY_DELAY_MS else RETRY_DELAY_MS
             if (error == SpeechRecognizer.ERROR_CLIENT ||
                 error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY

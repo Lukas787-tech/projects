@@ -81,12 +81,16 @@ class SpeechInput(private val context: Context) {
     }
 
     fun stop() {
+        // A retry after "busy" still waiting would reopen the mic just
+        // after the user closed it.
+        handler.removeCallbacksAndMessages(null)
         _listening.value = false
         _level.value = 0f
         runCatching { recognizer?.stopListening() }
     }
 
     fun cancel() {
+        handler.removeCallbacksAndMessages(null)
         _listening.value = false
         _level.value = 0f
         _partial.value = ""

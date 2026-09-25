@@ -171,6 +171,16 @@ class AssistantViewModel(
     private var lastTurnWasVoice = false
     private var busy = false
 
+    /**
+     * Hands-free wants the mic back, but a turn is still winding down: the
+     * mic opens the moment it is free, instead of the request being dropped.
+     */
+    private var listenWhenFree = false
+
+    private fun listenSoon() {
+        if (busy) listenWhenFree = true else startListening()
+    }
+
     private val earcon = com.lukas.jarvis.voice.Earcon()
 
     /** The turn in flight, so tapping the dot while it works can stop it. */
@@ -194,7 +204,7 @@ class AssistantViewModel(
                     if (_interpreter.value != null) {
                         interpretListen(com.lukas.jarvis.voice.InterpreterState.Side.Me)
                     } else {
-                        startListening()
+                        listenSoon()
                     }
                 }
             }
@@ -250,6 +260,7 @@ class AssistantViewModel(
         speaker.stop()
         turnJob = null
         busy = false
+        listenWhenFree = false
         _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "", activity = emptyList(), draft = "")
     }
 
@@ -534,6 +545,10 @@ class AssistantViewModel(
                 if (turnJob === self || turnJob == null) {
                     busy = false
                     turnJob = null
+                    if (listenWhenFree) {
+                        listenWhenFree = false
+                        startListening()
+                    }
                 }
             }
         }
@@ -572,7 +587,9 @@ class AssistantViewModel(
             if (said.isEmpty()) return reply
             return when {
                 reply.startsWith(said) -> reply.substring(said.length)
-                squash(reply).startsWith(squash(said)) -> reply.drop(said.length.coerceAtMost(reply.length))
+                // Same words, different spacing: skip as far into the reply
+                // as the spoken words reach, not as many characters.
+                squash(reply).startsWith(squash(said)) -> reply.substring(reached(reply, said))
                 // The final wording drifted from the draft; better to finish
                 // with the whole answer than to leave half of it unsaid.
                 else -> reply
@@ -583,6 +600,20 @@ class AssistantViewModel(
             com.lukas.jarvis.voice.Sentences.boundary(text, from, MIN_SPOKEN_CHUNK)
 
         private fun squash(text: String) = text.replace(Regex("\\s+"), " ").trim()
+
+        /** Where in [reply] the words of [said] end, ignoring differences in whitespace. */
+        private fun reached(reply: String, said: String): Int {
+            var i = 0
+            var j = 0
+            while (j < said.length) {
+                if (said[j].isWhitespace()) { j++; continue }
+                while (i < reply.length && reply[i].isWhitespace()) i++
+                if (i >= reply.length) return reply.length
+                i++
+                j++
+            }
+            return i
+        }
     }
 
     /** Stores, shows and speaks a finished answer. */
@@ -614,7 +645,7 @@ class AssistantViewModel(
             }
         } else {
             _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "")
-            if (lastTurnWasVoice && current.handsFree) startListening()
+            if (lastTurnWasVoice && current.handsFree) listenSoon()
         }
     }
 
@@ -627,6 +658,9 @@ class AssistantViewModel(
     }
 
     private fun fail(message: String) {
+        // Sentences already spoken stay said; the speaker must not keep
+        // waiting for the rest of a reply that is not coming.
+        speaker.abandonStream()
         _ui.value = _ui.value.copy(
             stage = Stage.Idle,
             stageLabel = "",
