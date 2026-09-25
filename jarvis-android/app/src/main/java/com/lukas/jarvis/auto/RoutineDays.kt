@@ -40,14 +40,36 @@ object RoutineDays {
     fun parse(raw: String?): Set<Int> {
         val text = raw?.trim()?.lowercase(Locale.ROOT).orEmpty()
         if (text.isBlank() || EVERY.any { text == it }) return emptySet()
+
+        // "every day except sunday", "weekdays but not friday": the days
+        // after the exception are taken away, not added.
+        val cut = EXCEPT.find(text)
+        if (cut != null) {
+            val before = text.substring(0, cut.range.first).trim()
+            val after = text.substring(cut.range.last + 1)
+            val base = parse(before).ifEmpty { ORDER.toSet() }
+            val left = base - mentioned(after)
+            return if (left.size == 7) emptySet() else left
+        }
+
         if (WORKDAY_WORDS.any { text.contains(it) }) return WEEKDAYS
         if (WEEKEND_WORDS.any { text.contains(it) }) return WEEKEND
+        val days = mentioned(text)
+        return if (days.size == 7) emptySet() else days
+    }
 
+    /** The days named in [text], ranges included. */
+    private fun mentioned(text: String): Set<Int> {
+        val words = text.split(Regex("[^\\p{L}]+")).filter { it.isNotBlank() }
+        // Two-letter abbreviations ("Mo, Mi, Fr") only count in a phrase
+        // made of nothing else, so "do", "so" and "we" in a sentence are
+        // words and not Thursday, Sunday and Wednesday.
+        val terse = words.all { it in CONNECTORS || day(it, terse = true) != null }
         val days = mutableSetOf<Int>()
         // "mon-fri", "montag bis freitag", "monday to thursday"
         Regex("(\\p{L}+)\\s*(?:-|–|to|until|through|bis)\\s*(\\p{L}+)").findAll(text).forEach { match ->
-            val from = day(match.groupValues[1])
-            val to = day(match.groupValues[2])
+            val from = day(match.groupValues[1], terse)
+            val to = day(match.groupValues[2], terse)
             if (from != null && to != null) {
                 var index = ORDER.indexOf(from)
                 val end = ORDER.indexOf(to)
@@ -58,14 +80,15 @@ object RoutineDays {
                 }
             }
         }
-        text.split(Regex("[^\\p{L}]+")).mapNotNullTo(days) { day(it) }
-        return if (days.size == 7) emptySet() else days
+        words.mapNotNullTo(days) { day(it, terse) }
+        return days
     }
 
-    /** One word as a day: "mon", "Mondays", "Mo", "freitags". */
-    private fun day(word: String): Int? {
+    /** One word as a day: "mon", "Mondays", "freitags", and "Mo" in a terse list. */
+    private fun day(word: String, terse: Boolean): Int? {
         val clean = word.lowercase(Locale.ROOT).removeSuffix("s")
         if (clean.length < 2) return null
+        if (!terse && (clean.length < 3 || clean in AMBIGUOUS)) return null
         return NAMES.entries.firstOrNull { (_, names) -> names.any { it.startsWith(clean) } }?.key
     }
 
@@ -106,6 +129,12 @@ object RoutineDays {
         }
         return calendar.timeInMillis
     }
+
+    private val EXCEPT = Regex("\\b(except|but not|apart from|excluding|außer|ausser|nicht am|ohne)\\b")
+    private val CONNECTORS = setOf("and", "und", "to", "bis", "until", "through", "on", "am", "or", "oder")
+
+    /** Words that start like a day but are ordinary words in a sentence. */
+    private val AMBIGUOUS = setOf("mit", "son", "die", "don", "fre", "sam")
 
     private val EVERY = listOf("daily", "every day", "everyday", "all days", "täglich", "jeden tag", "each day")
     private val WORKDAY_WORDS = listOf("weekday", "week day", "workday", "work day", "werktag", "wochentag", "arbeitstag")

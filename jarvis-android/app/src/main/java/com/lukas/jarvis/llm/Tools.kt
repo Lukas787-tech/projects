@@ -1137,7 +1137,7 @@ class Tools(
                     args.optString("topic").takeIf { it.isNotBlank() },
                     args.optInt("limit", 5)
                 )
-                "interpreter" -> interpreter(args)
+                "interpreter" -> interpreter(args, settings)
                 "translate" -> knowledge.translate(
                     args.optString("text"),
                     args.optString("from"),
@@ -1274,7 +1274,7 @@ class Tools(
         }
     }
 
-    private fun interpreter(args: JSONObject): String {
+    private fun interpreter(args: JSONObject, settings: Settings): String {
         if (args.optString("action").trim().lowercase(Locale.ROOT) == "stop") {
             stage.show(stage.current, StageStore.INTERPRETER_STOP)
             return "Interpreter closed."
@@ -1282,6 +1282,13 @@ class Tools(
         val wanted = args.optString("language").trim()
         val code = knowledge.codeFor(wanted)
             ?: return "Which language does the other person speak?"
+        // The same check the screen makes, so the reply never promises a
+        // panel that will not open.
+        val own = knowledge.codeFor(settings.speechLanguage) ?: Locale.getDefault().language
+        if (code == own) {
+            return "${knowledge.nameOf(code)} is the user's own language, so there is nothing to " +
+                "interpret. Ask which language the other person speaks."
+        }
         stage.show(Element.Globe, StageStore.INTERPRETER_PREFIX + code)
         // Asked from the floating dot, the app is not on screen yet.
         launcher.showJarvis()
@@ -1890,8 +1897,9 @@ class Tools(
         if (text.isBlank()) return "What should the reminder say?"
         if (!placeReminders.canWatch) {
             placeReminders.askPermission()
-            return "A place reminder needs location, which is off for Jarvis. I've asked for it — " +
-                "say the reminder again once it's allowed."
+            return "A place reminder needs precise location, which Jarvis doesn't have (approximate " +
+                "is not enough for Android to watch a spot). I've asked for it — tell the user to " +
+                "choose \"Precise\" and say the reminder again."
         }
         val wanted = args.optString("place").trim()
         val target = navigator.locate(wanted.takeIf { it.isNotBlank() })

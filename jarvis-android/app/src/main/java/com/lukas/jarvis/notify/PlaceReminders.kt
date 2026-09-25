@@ -41,10 +41,12 @@ class PlaceReminders(context: Context) {
 
     val current: List<PlaceWatch> get() = _all.value
 
-    /** Location at all: without it no alert can be drawn. */
+    /**
+     * Precise location: Android refuses a proximity alert to an app that was
+     * only allowed the approximate kind.
+     */
     val canWatch: Boolean
-        get() = granted(Manifest.permission.ACCESS_FINE_LOCATION) ||
-            granted(Manifest.permission.ACCESS_COARSE_LOCATION)
+        get() = granted(Manifest.permission.ACCESS_FINE_LOCATION)
 
     /**
      * Location with the app closed. Without it Android hands the alerts only

@@ -41,6 +41,29 @@ class ScheduleTest {
         assertTrue(RoutineDays.parse("mon tue wed thu fri sat sun").isEmpty())
     }
 
+    @Test fun exceptionsAreTakenAway() {
+        val allButSunday = setOf(
+            Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY,
+            Calendar.FRIDAY, Calendar.SATURDAY
+        )
+        assertEquals(allButSunday, RoutineDays.parse("every day except sunday"))
+        assertEquals(allButSunday, RoutineDays.parse("täglich außer sonntags"))
+        assertEquals(
+            setOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY),
+            RoutineDays.parse("weekdays but not friday")
+        )
+    }
+
+    @Test fun ordinaryWordsAreNotDays() {
+        // "do", "so", "we" and "mit" start like day names but are words here.
+        assertEquals(setOf(Calendar.FRIDAY), RoutineDays.parse("so we do it on fridays"))
+        assertEquals(setOf(Calendar.MONDAY), RoutineDays.parse("montags mit Kaffee"))
+        assertEquals(
+            setOf(Calendar.MONDAY, Calendar.WEDNESDAY, Calendar.FRIDAY),
+            RoutineDays.parse("Mo, Mi, Fr")
+        )
+    }
+
     @Test fun describedBack() {
         assertEquals("every day", RoutineDays.describe(emptySet()))
         assertEquals("on weekdays", RoutineDays.describe(RoutineDays.WEEKDAYS))
