@@ -171,6 +171,9 @@ class AssistantViewModel(
     private var lastTurnWasVoice = false
     private var busy = false
 
+    /** Turns asked for while one was running, in order; run as each finishes. */
+    private val waiting = ArrayDeque<() -> Unit>()
+
     /**
      * Hands-free wants the mic back, but a turn is still winding down: the
      * mic opens the moment it is free, instead of the request being dropped.
@@ -261,6 +264,8 @@ class AssistantViewModel(
         turnJob = null
         busy = false
         listenWhenFree = false
+        // Stopping means stopping: what was waiting behind it goes too.
+        waiting.clear()
         _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "", activity = emptyList(), draft = "")
     }
 
@@ -467,8 +472,17 @@ class AssistantViewModel(
         ) -> AgentResult
     ) {
         if (busy) {
-            // Dropping a typed message without a word looked like a broken send button.
-            _ui.value = _ui.value.copy(error = "Still on the last one — tap the core to stop it.")
+            // Asked while the last one is still being worked on — a shared
+            // text, a second typed line: it waits its turn rather than being
+            // lost. A few at most; beyond that, say so.
+            if (waiting.size < MAX_WAITING) {
+                waiting.addLast { turn(display, createdAt, rewriteDisplay, work) }
+                _ui.value = _ui.value.copy(
+                    error = "Next up: \u201C${display.take(60)}\u201D — right after this one."
+                )
+            } else {
+                _ui.value = _ui.value.copy(error = "Still on the last one — tap the core to stop it.")
+            }
             return
         }
         val current = settingsStore.current
@@ -551,7 +565,11 @@ class AssistantViewModel(
                 if (turnJob === self || turnJob == null) {
                     busy = false
                     turnJob = null
-                    if (listenWhenFree) {
+                    val next = waiting.removeFirstOrNull()
+                    if (next != null) {
+                        // After this turn has fully let go, on the main thread.
+                        viewModelScope.launch { next() }
+                    } else if (listenWhenFree) {
                         listenWhenFree = false
                         startListening()
                     }
@@ -1649,6 +1667,9 @@ class AssistantViewModel(
     }
 
     companion object {
+        /** How many asks may wait behind a running turn. */
+        private const val MAX_WAITING = 3
+
         private val SILENCE = Regex(
             "^(stop|stop it|stop the (timer|alarm)|ok|okay|thanks|thank you|silence|quiet|enough|" +
                 "aus|stopp|halt|danke|ruhe)$"
