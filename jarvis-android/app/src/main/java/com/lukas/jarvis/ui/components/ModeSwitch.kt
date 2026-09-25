@@ -36,7 +36,9 @@ import com.lukas.jarvis.ui.theme.glass
 fun ModeSwitch(
     voice: Boolean,
     onChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Narrower sides, for a header on a small phone. */
+    compact: Boolean = false
 ) {
     Row(
         modifier = modifier
@@ -45,8 +47,9 @@ fun ModeSwitch(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Side(Icons.Default.GraphicEq, "Voice mode", voice) { onChange(true) }
-        Side(Icons.Default.Keyboard, "Text mode", !voice) { onChange(false) }
+        val pad = if (compact) 9.dp else 14.dp
+        Side(Icons.Default.GraphicEq, "Voice mode", voice, pad) { onChange(true) }
+        Side(Icons.Default.Keyboard, "Text mode", !voice, pad) { onChange(false) }
     }
 }
 
@@ -55,6 +58,7 @@ private fun Side(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     selected: Boolean,
+    pad: androidx.compose.ui.unit.Dp,
     onClick: () -> Unit
 ) {
     val fill by animateColorAsState(
@@ -73,7 +77,7 @@ private fun Side(
             .clip(RoundedCornerShape(11.dp))
             .background(fill)
             .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 7.dp)
+            .padding(horizontal = pad, vertical = 7.dp)
             .size(18.dp)
     )
 }

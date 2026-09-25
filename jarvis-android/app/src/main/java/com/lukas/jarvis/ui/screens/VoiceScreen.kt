@@ -522,6 +522,10 @@ private fun Header(
     onNewChat: (() -> Unit)? = null,
     online: Boolean = true
 ) {
+    // A small phone (about 320 dp) leaves the name some 40 dp beside the
+    // switch and three buttons; there they all move closer together.
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    val compact = maxWidth < 360.dp
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = Space.snug, bottom = Space.hair),
         verticalAlignment = Alignment.CenterVertically
@@ -541,9 +545,13 @@ private fun Header(
                 BoxWithConstraints(modifier = Modifier.weight(1f)) {
                     val dotted = name.uppercase().toCharArray().joinToString(".")
                     val roomy = maxWidth >= (dotted.length * 9).dp
+                    // Plain, it shrinks to fit rather than lose letters: about
+                    // 0.75 of the font size per letter at this spacing.
+                    val base = MaterialTheme.typography.labelMedium
+                    val fitted = (maxWidth.value / (name.length.coerceAtLeast(1) * 0.78f)).coerceIn(8f, base.fontSize.value)
                     Text(
                         text = if (roomy) dotted else name.uppercase(),
-                        style = MaterialTheme.typography.labelMedium.copy(letterSpacing = if (roomy) 2.sp else 1.sp),
+                        style = if (roomy) base.copy(letterSpacing = 2.sp) else base.copy(letterSpacing = 0.5.sp, fontSize = fitted.sp),
                         color = Accent,
                         maxLines = 1,
                         softWrap = false,
@@ -553,7 +561,8 @@ private fun Header(
             }
             Text(
                 text = when {
-                    !online -> "OFFLINE · REFLEXES ONLY"
+                    !online -> if (compact) "OFFLINE" else "OFFLINE · REFLEXES ONLY"
+                    compact -> "ONLINE"
                     brainLabel != null ->
                         "ONLINE · ${brainLabel.substringBefore(" · ").substringBefore(" (").uppercase()}"
                     else -> "ONLINE"
@@ -565,16 +574,18 @@ private fun Header(
                 modifier = Modifier.padding(start = 15.dp, top = 2.dp)
             )
         }
-        ModeSwitch(voice = voiceMode, onChange = onModeChange)
-        onNewChat?.let { HeaderButton(Icons.Default.AddComment, "New conversation", it) }
-        HeaderButton(Icons.Default.AutoAwesome, "What $name can do", onOpenSkills)
-        HeaderButton(Icons.Default.Settings, "Settings", onOpenSettings)
+        ModeSwitch(voice = voiceMode, onChange = onModeChange, compact = compact)
+        val button = if (compact) 34.dp else 40.dp
+        onNewChat?.let { HeaderButton(Icons.Default.AddComment, "New conversation", it, button) }
+        HeaderButton(Icons.Default.AutoAwesome, "What $name can do", onOpenSkills, button)
+        HeaderButton(Icons.Default.Settings, "Settings", onOpenSettings, button)
+    }
     }
 }
 
 @Composable
-private fun HeaderButton(icon: ImageVector, label: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.size(40.dp)) {
+private fun HeaderButton(icon: ImageVector, label: String, onClick: () -> Unit, size: androidx.compose.ui.unit.Dp = 40.dp) {
+    IconButton(onClick = onClick, modifier = Modifier.size(size)) {
         Icon(icon, contentDescription = label, tint = TextSecondary, modifier = Modifier.size(19.dp))
     }
 }
