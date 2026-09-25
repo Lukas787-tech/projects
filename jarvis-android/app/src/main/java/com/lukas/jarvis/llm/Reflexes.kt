@@ -112,7 +112,10 @@ object Reflexes {
 
     /** "Focus for 25 minutes", "start a pomodoro", "Fokus 50 Minuten". */
     private fun focus(text: String): ToolCall? {
-        if (!FOCUS.containsMatchIn(text)) return null
+        if (!FOCUS.matches(text)) return null
+        if (Regex("\\b(off|aus|stop|stopp|end|beenden|cancel)\\b").containsMatchIn(text)) {
+            return call("focus_session", JSONObject().put("action", "stop"))
+        }
         val args = JSONObject()
         DURATION.find(text)?.let { span ->
             val amount = span.groupValues[1].replace(',', '.').toDoubleOrNull() ?: return@let
@@ -288,7 +291,11 @@ object Reflexes {
             "(?:\\s+that|,?\\s+dass)?[,:]?\\s+(.+)$",
         RegexOption.IGNORE_CASE
     )
-    private val FOCUS = Regex("^(start (a )?)?(focus( session| mode| time)?|pomodoro|fokus( zeit| modus)?)\\b")
+    /** The whole sentence is the command: "focus on the road" is not one. */
+    private val FOCUS = Regex(
+        "^(start (a )?|(end|stop) (the )?)?(focus( session| mode| time)?|pomodoro|fokus( ?zeit| ?modus)?)" +
+            "( (on|an|off|aus|stop|beenden))?( (for|für) )?( ?\\d+([.,]\\d+)? ?\\p{L}+)?$"
+    )
     private val SLEEP = Regex(
         "sleep timer|schlaftimer|(stop|pause|turn off) (the )?(music|playback|audio)( playing)? (in|after)|" +
             "musik (aus|stoppen|anhalten) (in|nach)"

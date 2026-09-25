@@ -102,6 +102,10 @@ class ReflexTest {
         assertEquals(false, parsed("start a pomodoro")!!.second.has("minutes"))
         assertEquals("focus_session", parsed("Fokus 45 Minuten")?.first)
         assertNull(Reflexes.parse("how do I focus better when I'm tired"))
+        assertNull(Reflexes.parse("focus on the road"))
+        assertEquals("stop", parsed("focus mode off")!!.second.getString("action"))
+        assertEquals("stop", parsed("Fokus aus")!!.second.getString("action"))
+        assertEquals("stop", parsed("end the focus session")!!.second.getString("action"))
     }
 
     @Test fun sleepTimers() {

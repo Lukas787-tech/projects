@@ -737,7 +737,10 @@ class Tools(
             "A focus block: Do Not Disturb for the length given, with a Focus timer on screen " +
                 "that rings at the end. 'Focus for 25 minutes', 'pomodoro', 'I need an hour to " +
                 "concentrate'. Default 25 minutes.",
-            props("minutes" to num("How long. Default 25.")),
+            props(
+                "minutes" to num("How long. Default 25."),
+                "action" to str("start (default) or stop, to end the session early.", listOf("start", "stop"))
+            ),
             emptyList()
         ),
         tool(
@@ -2091,11 +2094,21 @@ class Tools(
     }
 
     private fun focusSession(args: JSONObject): String {
+        if (args.optString("action").trim().lowercase(Locale.ROOT) in setOf("stop", "end", "off", "cancel")) {
+            val gone = timers.cancel("Focus")
+            val quiet = if (device.canSilence) device.doNotDisturb("off", null) else ""
+            return if (gone.isEmpty()) "No focus session was running. $quiet".trim()
+            else "Focus session ended. $quiet".trim()
+        }
+        // No timer without the silence: a session that does not quiet the
+        // phone is only a countdown, and a second ask would make two.
+        if (!device.canSilence) return device.doNotDisturb("priority", null)
         val minutes = (number(args, "minutes") ?: 25.0).toInt().coerceIn(1, 8 * 60)
+        timers.cancel("Focus")
         val quiet = device.doNotDisturb("priority", minutes)
         val timer = timers.start(minutes * 60, "Focus")
         return "Focus session: ${com.lukas.jarvis.notify.Timers.spoken(timer.lengthMs)}, until " +
-            "${TimeUtil.formatTime(timer.endsAt)}. Do Not Disturb: $quiet"
+            "${TimeUtil.formatTime(timer.endsAt)}. $quiet"
     }
 
     private fun setTimer(args: JSONObject): String {

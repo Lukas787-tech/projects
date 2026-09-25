@@ -297,6 +297,9 @@ class Device(context: Context) {
      * Do Not Disturb. [minutes] ends it again by itself — "for an hour" —
      * with a one-off alarm, since Android has no public call for a timed one.
      */
+    /** Whether Jarvis may switch Do Not Disturb, which Android grants on its own page. */
+    val canSilence: Boolean get() = notifications?.isNotificationPolicyAccessGranted == true
+
     fun doNotDisturb(mode: String, minutes: Int?): String {
         val manager = notifications ?: return "No notification service on this phone."
         if (!manager.isNotificationPolicyAccessGranted) {
