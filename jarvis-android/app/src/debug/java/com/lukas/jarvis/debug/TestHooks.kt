@@ -17,8 +17,20 @@ import com.lukas.jarvis.maps.GeoPoint
 class TestHooks : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != ACTION_PLACE) return
         val container = (context.applicationContext as? JarvisApp)?.container ?: return
+        if (intent.action == ACTION_ROUTINE) {
+            // A quiet routine saved and started at once through WorkManager,
+            // exactly as its alarm would start it.
+            val name = intent.getStringExtra("name") ?: "device check"
+            val step = intent.getStringExtra("step") ?: "What is 2 plus 2?"
+            container.routines.save(
+                com.lukas.jarvis.auto.Routine(name = name, steps = listOf(step), time = null, quiet = true)
+            )
+            com.lukas.jarvis.auto.RoutineWorker.enqueue(context, name)
+            resultData = "queued $name"
+            return
+        }
+        if (intent.action != ACTION_PLACE) return
         val lat = intent.getStringExtra("lat")?.toDoubleOrNull() ?: return
         val lon = intent.getStringExtra("lon")?.toDoubleOrNull() ?: return
         val text = intent.getStringExtra("text") ?: "test reminder"
@@ -35,5 +47,6 @@ class TestHooks : BroadcastReceiver() {
 
     companion object {
         const val ACTION_PLACE = "com.lukas.jarvis.debug.PLACE"
+        const val ACTION_ROUTINE = "com.lukas.jarvis.debug.ROUTINE"
     }
 }

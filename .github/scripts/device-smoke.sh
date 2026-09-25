@@ -119,6 +119,24 @@ if [ -n "$FIRED" ]; then echo "PLACE ALERT: fired on arrival" >> "$REPORT"; else
   adb shell dumpsys location 2>/dev/null | grep -iE -A3 "geofence|proximity|last location|gps provider|fused provider|$PKG" | head -n 120
 } >> "$OUT/location.txt"
 
+# A quiet routine: WorkManager runs it in the background, the free model
+# answers, and the answer arrives as a notification. The app goes to the
+# background first, which is when quiet routines normally run.
+adb shell input keyevent KEYCODE_HOME
+sleep 2
+adb shell am broadcast -n "$PKG/com.lukas.jarvis.debug.TestHooks" -a com.lukas.jarvis.debug.ROUTINE \
+  --es name "'device check'" --es step "'What is 2 plus 2? Answer with the number only.'" >> "$REPORT" 2>&1
+DONE=""
+for i in $(seq 1 24); do
+  sleep 5
+  if adb shell dumpsys notification --noredact 2>/dev/null | grep -q "Device check"; then DONE=yes; break; fi
+done
+adb shell cmd statusbar expand-notifications >/dev/null 2>&1; sleep 2
+shot 14-quiet-routine
+adb shell cmd statusbar collapse >/dev/null 2>&1
+if [ -n "$DONE" ]; then echo "QUIET ROUTINE: answered in the background" >> "$REPORT"; else echo "QUIET ROUTINE: no notification within 120 s" >> "$REPORT"; fi
+adb shell dumpsys notification --noredact 2>/dev/null | grep -A3 -i "device check" | head -n 12 >> "$REPORT"
+
 # Rotation recreates the activity, which is where restored state goes wrong.
 adb shell settings put system accelerometer_rotation 0
 adb shell settings put system user_rotation 1

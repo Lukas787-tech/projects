@@ -7,6 +7,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="com.lukas.jarvis.debug.PLACE" />
+                <action android:name="com.lukas.jarvis.debug.ROUTINE" />
             </intent-filter>
         </receiver>
     </application>
