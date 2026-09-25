@@ -48,7 +48,7 @@ jobs:
         timeout-minutes: 25
         run: |
           set -o pipefail
-          ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.ScreensTest' --tests 'com.lukas.jarvis.PlaceAlertTest' --no-daemon 2>&1 | tee screens.log
+          ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.ScreensTest' --tests 'com.lukas.jarvis.PlaceAlertTest' --tests 'com.lukas.jarvis.ProfileSwitchTest' --no-daemon 2>&1 | tee screens.log
 
       - name: What failed
         if: failure()

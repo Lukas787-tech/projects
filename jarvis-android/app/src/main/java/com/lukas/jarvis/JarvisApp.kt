@@ -192,6 +192,7 @@ class JarvisApp : Application() {
             runCatching { container.routines.rescheduleAll() }
             runCatching { container.timers.rescheduleAll() }
             runCatching { container.stopwatch.restore() }
+            runCatching { container.profiles.rescheduleAll() }
             runCatching { container.placeReminders.armAll() }
         }
         // The written brief follows its setting wherever it changes — the

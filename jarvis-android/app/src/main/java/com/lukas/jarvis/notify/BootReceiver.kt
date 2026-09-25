@@ -22,6 +22,8 @@ class BootReceiver : BroadcastReceiver() {
                 // Proximity alerts are forgotten at a reboot like everything else.
                 (context.applicationContext as? com.lukas.jarvis.JarvisApp)
                     ?.container?.placeReminders?.armAll()
+                (context.applicationContext as? com.lukas.jarvis.JarvisApp)
+                    ?.container?.profiles?.rescheduleAll()
             } finally {
                 pending.finish()
             }

@@ -130,7 +130,8 @@ fun SettingsScreen(
     profiles: List<com.lukas.jarvis.core.Profile> = emptyList(),
     onSaveProfile: (String) -> Unit = {},
     onApplyProfile: (com.lukas.jarvis.core.Profile) -> Unit = {},
-    onDeleteProfile: (String) -> Unit = {}
+    onDeleteProfile: (String) -> Unit = {},
+    onScheduleProfile: (String, String, String) -> Unit = { _, _, _ -> }
 ) {
     val context = LocalContext.current
     var tab by rememberSaveable(initialTab) { mutableIntStateOf(initialTab) }
@@ -167,7 +168,7 @@ fun SettingsScreen(
         0 -> AssistantSection(settings, onUpdate)
         1 -> VoiceSection(settings, onUpdate, voices, onPreviewVoice)
         2 -> {
-            ProfilesPanel(settings, profiles, onSaveProfile, onApplyProfile, onDeleteProfile)
+            ProfilesPanel(settings, profiles, onSaveProfile, onApplyProfile, onDeleteProfile, onScheduleProfile)
             LookSection(settings, onUpdate)
         }
         3 -> {

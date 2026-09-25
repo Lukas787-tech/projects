@@ -60,6 +60,7 @@ import com.lukas.jarvis.ui.theme.AccentTone
 import com.lukas.jarvis.ui.theme.Backdrop
 import com.lukas.jarvis.ui.theme.Corner
 import com.lukas.jarvis.ui.theme.Film
+import com.lukas.jarvis.ui.theme.Negative
 import com.lukas.jarvis.ui.theme.OnAccent
 import com.lukas.jarvis.ui.theme.Palettes
 import com.lukas.jarvis.ui.theme.Space
@@ -782,14 +783,15 @@ fun ProfilesPanel(
     profiles: List<com.lukas.jarvis.core.Profile>,
     onSave: (String) -> Unit,
     onApply: (com.lukas.jarvis.core.Profile) -> Unit,
-    onDelete: (String) -> Unit
+    onDelete: (String) -> Unit,
+    onSchedule: (String, String, String) -> Unit = { _, _, _ -> }
 ) {
     var naming by remember { mutableStateOf("") }
-    var deleting by remember { mutableStateOf<String?>(null) }
+    var editing by remember { mutableStateOf<com.lukas.jarvis.core.Profile?>(null) }
     Panel(
         title = "Profiles",
-        subtitle = "A whole look, character and voice under one name. Tap to switch, hold to delete, " +
-            "or say \"switch to night mode\"."
+        subtitle = "A whole look, character and voice under one name. Tap to switch, hold to set a time " +
+            "it switches on by itself or to delete it — or say \"switch to night mode\"."
     ) {
         if (profiles.isNotEmpty()) {
             FlowRow(
@@ -797,20 +799,32 @@ fun ProfilesPanel(
                 verticalArrangement = Arrangement.spacedBy(Space.tight)
             ) {
                 profiles.forEach { profile ->
-                    val lit = profile == com.lukas.jarvis.core.Profile.of(profile.name, settings)
-                    Text(
-                        profile.name,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (lit) Accent else TextPrimary,
+                    val lit = profile.matches(settings)
+                    Column(
                         modifier = Modifier
                             .clip(RoundedCornerShape(Corner.small))
                             .glass(RoundedCornerShape(Corner.small), raised = lit)
                             .combinedClickable(
                                 onClick = { onApply(profile) },
-                                onLongClick = { deleting = profile.name }
+                                onLongClick = { editing = profile }
                             )
                             .padding(horizontal = Space.snug, vertical = Space.tight)
-                    )
+                    ) {
+                        Text(
+                            profile.name,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (lit) Accent else TextPrimary
+                        )
+                        if (profile.autoAt.isNotBlank()) {
+                            Text(
+                                profile.autoAt + if (profile.autoDays.isEmpty()) "" else " · " +
+                                    com.lukas.jarvis.auto.RoutineDays.describe(profile.autoDays).removePrefix("on ").removePrefix("at "),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextFaint,
+                                maxLines = 1
+                            )
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(Space.snug))
@@ -831,17 +845,56 @@ fun ProfilesPanel(
             }
         )
     }
-    deleting?.let { name ->
+    editing?.let { profile ->
+        var time by remember(profile.name) { mutableStateOf(profile.autoAt) }
+        var days by remember(profile.name) {
+            mutableStateOf(if (profile.autoDays.isEmpty()) "" else com.lukas.jarvis.auto.RoutineDays.describe(profile.autoDays))
+        }
+        var confirmDelete by remember(profile.name) { mutableStateOf(false) }
+        val timeOk = time.isBlank() || com.lukas.jarvis.core.Profile.clockOf(time) != null
         GlassDialog(
-            title = "Delete '$name'?",
-            onDismiss = { deleting = null },
-            confirmLabel = "Delete",
+            title = if (confirmDelete) "Delete '${profile.name}'?" else profile.name,
+            onDismiss = { editing = null },
+            confirmLabel = if (confirmDelete) "Delete" else "Save",
+            confirmEnabled = confirmDelete || timeOk,
             onConfirm = {
-                onDelete(name)
-                deleting = null
+                if (confirmDelete) onDelete(profile.name) else onSchedule(profile.name, time.trim(), days.trim())
+                editing = null
             }
         ) {
-            Text("The profile goes; the current look stays as it is.", color = TextSecondary)
+            if (confirmDelete) {
+                Text("The profile goes; the current look stays as it is.", color = TextSecondary)
+            } else {
+                Text(
+                    "Switch to it by itself at a time of day — no signal needed. Leave the time empty for never.",
+                    color = TextSecondary,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(Space.snug))
+                GlassField(
+                    value = time,
+                    onValueChange = { time = it.take(5) },
+                    placeholder = "Time, e.g. 22:00",
+                    isError = !timeOk
+                )
+                Spacer(Modifier.height(Space.tight))
+                GlassField(
+                    value = days,
+                    onValueChange = { days = it.take(40) },
+                    placeholder = "Days: every day, weekdays, mon wed fri…"
+                )
+                Spacer(Modifier.height(Space.snug))
+                Text(
+                    "Delete this profile",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Negative,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(Corner.small))
+                        .clickable { confirmDelete = true }
+                        .padding(vertical = Space.tight)
+                )
+            }
         }
     }
 }
+

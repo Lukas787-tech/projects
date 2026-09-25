@@ -993,6 +993,12 @@ class AssistantViewModel(
         container.profiles.save(com.lukas.jarvis.core.Profile.of(name, settingsStore.current))
     }
 
+    /** [at] as "HH:MM", or blank to stop it switching on by itself. */
+    fun scheduleProfile(name: String, at: String, days: String) {
+        val time = if (at.isBlank()) "" else com.lukas.jarvis.auto.Routines.normalizeTime(at) ?: return
+        container.profiles.schedule(name, time, com.lukas.jarvis.auto.RoutineDays.parse(days))
+    }
+
     fun applyProfile(profile: com.lukas.jarvis.core.Profile) {
         settingsStore.update { profile.applyTo(it) }
     }

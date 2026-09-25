@@ -748,11 +748,14 @@ class Tools(
             "profile",
             "Saved setups of Jarvis's look, character and voice. 'Save this as night mode', " +
                 "'switch to work mode', 'Mark III profile', 'what profiles do I have', " +
-                "'delete the party profile'. Switching changes colour, backdrop, core, " +
+                "'delete the party profile', 'switch to night mode every day at 22:00' (schedule). " +
+                "Switching changes colour, backdrop, core, " +
                 "personality, reply length, wit, voice and speech; nothing else.",
             props(
-                "action" to str("What to do.", listOf("apply", "save", "list", "delete")),
-                "name" to str("The profile's name, e.g. 'night', 'work'.")
+                "action" to str("What to do.", listOf("apply", "save", "list", "delete", "schedule")),
+                "name" to str("The profile's name, e.g. 'night', 'work'."),
+                "time" to str("For schedule: 'HH:MM' it switches on by itself, or 'off' to stop that."),
+                "days" to str("For schedule: 'weekdays', 'weekends', 'mon,wed,fri', 'every day except sunday'. Omit for every day.")
             ),
             listOf("action")
         ),
@@ -2150,7 +2153,24 @@ class Tools(
             "list" -> if (all.isEmpty()) {
                 "No profiles yet. Set Jarvis up the way you like and say 'save this as night mode'."
             } else {
-                "Profiles: " + all.joinToString { it.name } + "."
+                "Profiles: " + all.joinToString { p ->
+                    p.name + p.scheduleLabel().takeIf { it.isNotBlank() }?.let { " (switches on $it)" }.orEmpty()
+                } + "."
+            }
+            "schedule" -> {
+                val target = profiles.find(name)
+                    ?: return if (all.isEmpty()) "There are no saved profiles yet." else
+                        "No profile called '$name'. There is: ${all.joinToString { it.name }}."
+                val raw = args.optString("time").trim()
+                if (raw.lowercase(Locale.ROOT) in setOf("", "off", "none", "never", "no", "aus")) {
+                    profiles.schedule(target.name, "", emptySet())
+                    return "'${target.name}' no longer switches on by itself."
+                }
+                val at = com.lukas.jarvis.auto.Routines.normalizeTime(raw)
+                    ?: return "What time should '${target.name}' switch on? Say it as 'HH:MM'."
+                val days = com.lukas.jarvis.auto.RoutineDays.parse(args.optString("days"))
+                val saved = profiles.schedule(target.name, at, days) ?: return "No profile called '$name'."
+                "'${saved.name}' will switch on ${saved.scheduleLabel()}, even with no signal."
             }
             "delete", "remove" -> if (profiles.remove(name)) "Deleted the '$name' profile." else "No profile called '$name'."
             else -> {

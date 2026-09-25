@@ -52,4 +52,28 @@ class ProfileTest {
         assertEquals("Mode", Profile.cleanName("Mode"))
         assertEquals("Work", Profile.cleanName("\"Work profile\""))
     }
+
+    @Test fun switchesOnByItself() {
+        val zone = java.util.TimeZone.getTimeZone("Europe/Berlin")
+        val cal = java.util.Calendar.getInstance(zone).apply { clear(); set(2026, java.util.Calendar.SEPTEMBER, 25, 21, 0) } // a Friday
+        val night = Profile.of("Night", night).copy(autoAt = "22:00")
+        val at = java.util.Calendar.getInstance(zone).apply { timeInMillis = night.nextSwitch(cal.timeInMillis, zone)!! }
+        assertEquals(22, at.get(java.util.Calendar.HOUR_OF_DAY))
+        assertEquals(25, at.get(java.util.Calendar.DAY_OF_MONTH))
+        // Weekdays only: from Friday night, the next is Monday.
+        val work = Profile.of("Work", Settings()).copy(autoAt = "08:00", autoDays = setOf(2, 3, 4, 5, 6))
+        val monday = java.util.Calendar.getInstance(zone).apply { timeInMillis = work.nextSwitch(cal.timeInMillis, zone)!! }
+        assertEquals(28, monday.get(java.util.Calendar.DAY_OF_MONTH))
+        assertEquals("on weekdays at 08:00", work.scheduleLabel())
+        assertNull(Profile.of("Plain", Settings()).nextSwitch(0))
+        // Kept in the store.
+        assertEquals(work, Profile.fromJson(work.toJson()))
+        assertEquals("", Profile.fromJson(work.toJson().put("at", "25:99"))!!.autoAt)
+    }
+
+    @Test fun litWhateverItsSchedule() {
+        val saved = Profile.of("Night", night).copy(autoAt = "22:00")
+        assert(saved.matches(night))
+        assert(!saved.matches(Settings()))
+    }
 }

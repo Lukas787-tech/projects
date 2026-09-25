@@ -349,6 +349,8 @@ class ScreensTest {
             )
         )
         container.profiles.save(com.lukas.jarvis.core.Profile.of("Work", com.lukas.jarvis.core.Settings(personality = "pro")))
+        container.profiles.schedule("Night", "22:00", emptySet())
+        container.profiles.schedule("Work", "08:00", setOf(2, 3, 4, 5, 6))
 
         container.lists.change { book ->
             book.add("shopping", listOf("Oat milk", "Free-range eggs", "Sourdough", "Basil", "Parmesan"))

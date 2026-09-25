@@ -840,6 +840,7 @@ private fun JarvisRoot(
                     onSaveProfile = viewModel::saveProfile,
                     onApplyProfile = viewModel::applyProfile,
                     onDeleteProfile = viewModel::deleteProfile,
+                    onScheduleProfile = viewModel::scheduleProfile,
                     initialTab = when {
                         stage.note == SETTINGS_POWERS -> 4
                         // "settings:tab:2" opens a tab by number, for links and the screenshots.

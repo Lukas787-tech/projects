@@ -254,6 +254,11 @@
             android:name=".notify.TimerReceiver"
             android:exported="false" />
 
+        <!-- A profile switching itself on at its time. -->
+        <receiver
+            android:name=".core.ProfileSwitchReceiver"
+            android:exported="false" />
+
         <!-- The buttons on the stopwatch's notification. -->
         <receiver
             android:name=".notify.StopwatchReceiver"

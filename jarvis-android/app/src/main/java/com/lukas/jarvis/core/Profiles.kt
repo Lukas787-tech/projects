@@ -26,8 +26,25 @@ data class Profile(
     val speechRate: Float,
     val speechPitch: Float,
     val speakReplies: Boolean,
-    val reduceMotion: Boolean
+    val reduceMotion: Boolean,
+    /** "22:00": switched to by itself at that time; blank for never. */
+    val autoAt: String = "",
+    /** The days [autoAt] applies on, 1 = Sunday … 7 = Saturday; empty for every day. */
+    val autoDays: Set<Int> = emptySet()
 ) {
+
+    /** Whether [settings] already look, sound and behave like this profile. */
+    fun matches(settings: Settings): Boolean = applyTo(settings) == settings
+
+    /** The next time this profile switches itself on, after [now]; null when it never does. */
+    fun nextSwitch(now: Long, zone: java.util.TimeZone = java.util.TimeZone.getDefault()): Long? {
+        val (hour, minute) = clockOf(autoAt) ?: return null
+        return com.lukas.jarvis.auto.RoutineDays.next(now, hour, minute, autoDays, zone)
+    }
+
+    /** "every day at 22:00", "on weekdays at 08:00"; blank when it never switches itself on. */
+    fun scheduleLabel(): String =
+        if (clockOf(autoAt) == null) "" else com.lukas.jarvis.auto.RoutineDays.describe(autoDays) + " at " + autoAt
 
     /** [settings] with this profile's look, character and voice. */
     fun applyTo(settings: Settings): Settings = settings.copy(
@@ -63,6 +80,8 @@ data class Profile(
         .put("pitch", speechPitch.toDouble())
         .put("speak", speakReplies)
         .put("calm", reduceMotion)
+        .put("at", autoAt)
+        .put("days", com.lukas.jarvis.auto.RoutineDays.encode(autoDays))
 
     companion object {
 
@@ -104,8 +123,18 @@ data class Profile(
                 speechRate = obj.optDouble("rate", base.speechRate.toDouble()).toFloat(),
                 speechPitch = obj.optDouble("pitch", base.speechPitch.toDouble()).toFloat(),
                 speakReplies = obj.optBoolean("speak", base.speakReplies),
-                reduceMotion = obj.optBoolean("calm", base.reduceMotion)
+                reduceMotion = obj.optBoolean("calm", base.reduceMotion),
+                autoAt = clockOf(obj.optString("at"))?.let { (h, m) -> "%02d:%02d".format(h, m) }.orEmpty(),
+                autoDays = com.lukas.jarvis.auto.RoutineDays.decode(obj.optString("days"))
             )
+        }
+
+        /** "22:00", "7:30", "22.15" -> hour and minute; null for anything else. */
+        fun clockOf(text: String): Pair<Int, Int>? {
+            val m = Regex("^\\s*(\\d{1,2})(?:[:.](\\d{2}))?\\s*$").find(text) ?: return null
+            val hour = m.groupValues[1].toInt()
+            val minute = m.groupValues[2].ifBlank { "0" }.toInt()
+            return if (hour in 0..23 && minute in 0..59) hour to minute else null
         }
 
         /** "the night mode" -> "night"; "Work profile" -> "Work". A bare "Mode" stays. */
