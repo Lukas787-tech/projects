@@ -98,6 +98,7 @@ class AppContainer(context: Context) {
     val lists = com.lukas.jarvis.data.Lists(context)
     val timers = com.lukas.jarvis.notify.Timers(context)
     val placeReminders = com.lukas.jarvis.notify.PlaceReminders(context)
+    val profiles = com.lukas.jarvis.core.ProfileStore(context)
 
     /** One day, gathered once, for the dashboard and the spoken brief alike. */
     val briefer = Briefer(brain, agenda, weather, locator, places, device, knowledge)
@@ -128,7 +129,9 @@ class AppContainer(context: Context) {
         home = home,
         lists = lists,
         timers = timers,
-        placeReminders = placeReminders
+        placeReminders = placeReminders,
+        profiles = profiles,
+        settingsStore = settings
     )
 
     val models = ModelCatalog()

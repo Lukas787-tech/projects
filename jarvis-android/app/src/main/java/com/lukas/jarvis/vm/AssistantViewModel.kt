@@ -975,6 +975,22 @@ class AssistantViewModel(
 
     fun stopTimerAlarm(id: Int) = container.timers.silence(id)
 
+    /** Saved setups of the look, character and voice. */
+    val profiles: StateFlow<List<com.lukas.jarvis.core.Profile>> = container.profiles.all
+
+    fun saveProfile(name: String) {
+        if (name.isBlank()) return
+        container.profiles.save(com.lukas.jarvis.core.Profile.of(name, settingsStore.current))
+    }
+
+    fun applyProfile(profile: com.lukas.jarvis.core.Profile) {
+        settingsStore.update { profile.applyTo(it) }
+    }
+
+    fun deleteProfile(name: String) {
+        container.profiles.remove(name)
+    }
+
     /** Reminders waiting at a place rather than a time. */
     val placeReminders: StateFlow<List<com.lukas.jarvis.notify.PlaceWatch>> = container.placeReminders.all
 
@@ -1568,6 +1584,7 @@ class AssistantViewModel(
                 container.savedPlaces.reload()
                 container.lists.reload()
                 container.placeReminders.reload()
+                container.profiles.reload()
                 configureVoice()
                 // The old provider's model list and test result describe
                 // settings that no longer exist.

@@ -53,6 +53,9 @@ model was asked to add eggs to the shopping list and read it back, and did.
 - **Remembers with no connection** — "remember that my locker code is 3917"
   is kept even when no model can be reached, and "what's my locker code?" is
   answered from memory the same way.
+- **Profiles** — save a whole look, character and voice under a name
+  ("Night", "Work", "Mark III") and switch with one tap in Settings → Look,
+  or by saying "switch to night mode".
 - **Routines that start at a place** — "when I get home, run my evening
   routine": the routine runs in the background on arrival and its answer
   arrives as a notification.

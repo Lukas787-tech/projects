@@ -13,6 +13,7 @@
         <include domain="sharedpref" path="jarvis_routines.xml" />
         <include domain="sharedpref" path="jarvis_lists.xml" />
         <include domain="sharedpref" path="jarvis_place_reminders.xml" />
+        <include domain="sharedpref" path="jarvis_profiles.xml" />
         <include domain="database" path="jarvis.db" />
     </cloud-backup>
     <device-transfer>
@@ -22,6 +23,7 @@
         <include domain="sharedpref" path="jarvis_routines.xml" />
         <include domain="sharedpref" path="jarvis_lists.xml" />
         <include domain="sharedpref" path="jarvis_place_reminders.xml" />
+        <include domain="sharedpref" path="jarvis_profiles.xml" />
         <include domain="database" path="jarvis.db" />
     </device-transfer>
 </data-extraction-rules>

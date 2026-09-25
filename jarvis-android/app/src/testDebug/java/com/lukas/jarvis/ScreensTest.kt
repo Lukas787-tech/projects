@@ -337,6 +337,14 @@ class ScreensTest {
         container.placeReminders.add("pick up the parcel", "home", berlin, leaving = false, every = false, here = gymSpot)
         container.placeReminders.add("stretch first", "the gym", gymSpot, leaving = false, every = true, here = berlin)
 
+        container.profiles.save(
+            com.lukas.jarvis.core.Profile.of(
+                "Night",
+                com.lukas.jarvis.core.Settings(accent = "crimson", backdrop = "oled", coreStyle = "orb", personality = "zen")
+            )
+        )
+        container.profiles.save(com.lukas.jarvis.core.Profile.of("Work", com.lukas.jarvis.core.Settings(personality = "pro")))
+
         container.lists.change { book ->
             book.add("shopping", listOf("Oat milk", "Free-range eggs", "Sourdough", "Basil", "Parmesan"))
                 .check("shopping", listOf("basil", "sourdough"), true).first

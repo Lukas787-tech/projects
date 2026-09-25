@@ -98,7 +98,7 @@ object ToolRouter {
             "dunkler", "heller", "lautstärke", "lock", "screenshot", "screen shot", "go back",
             "home screen", "recent apps", "notifications", "quick settings", "power menu",
             "split screen", "sperr", "bildschirmfoto", "zurück", "startbildschirm",
-            "benachrichtigungen", "sleep timer", "music in", "music after", "schlaftimer", "pomodoro", "concentrate",
+            "benachrichtigungen", "sleep timer", "music in", "music after", "schlaftimer", "pomodoro", "concentrate", "profile", "mode", "look like", "profil", "modus",
             "konzentrier", "fokus",
             "musik aus"
         ),

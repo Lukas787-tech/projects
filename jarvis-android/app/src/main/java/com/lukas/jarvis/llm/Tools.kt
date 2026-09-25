@@ -95,7 +95,9 @@ class Tools(
     private val home: Home,
     private val lists: com.lukas.jarvis.data.Lists,
     private val timers: com.lukas.jarvis.notify.Timers,
-    private val placeReminders: com.lukas.jarvis.notify.PlaceReminders
+    private val placeReminders: com.lukas.jarvis.notify.PlaceReminders,
+    private val profiles: com.lukas.jarvis.core.ProfileStore,
+    private val settingsStore: com.lukas.jarvis.core.SettingsStore
 ) {
 
     /**
@@ -742,6 +744,18 @@ class Tools(
             listOf("time")
         ),
         tool(
+            "profile",
+            "Saved setups of Jarvis's look, character and voice. 'Save this as night mode', " +
+                "'switch to work mode', 'Mark III profile', 'what profiles do I have', " +
+                "'delete the party profile'. Switching changes colour, backdrop, core, " +
+                "personality, reply length, wit, voice and speech; nothing else.",
+            props(
+                "action" to str("What to do.", listOf("apply", "save", "list", "delete")),
+                "name" to str("The profile's name, e.g. 'night', 'work'.")
+            ),
+            listOf("action")
+        ),
+        tool(
             "focus_session",
             "A focus block: Do Not Disturb for the length given, with a Focus timer on screen " +
                 "that rings at the end. 'Focus for 25 minutes', 'pomodoro', 'I need an hour to " +
@@ -1222,6 +1236,7 @@ class Tools(
                 "set_alarm" -> setAlarm(args)
                 "set_timer" -> setTimer(args)
                 "focus_session" -> focusSession(args)
+                "profile" -> profile(args, settings)
                 "timers" -> timerAction(args)
                 "show_alarms" -> launcher.showAlarms()
                 "device_status" -> deviceStatus(args)
@@ -2107,6 +2122,34 @@ class Tools(
             minute = calendar.get(Calendar.MINUTE),
             label = args.optString("label").takeIf { it.isNotBlank() }
         )
+    }
+
+    private fun profile(args: JSONObject, settings: Settings): String {
+        val name = args.optString("name").trim()
+        val all = profiles.current
+        return when (args.optString("action").trim().lowercase(Locale.ROOT)) {
+            "save" -> {
+                if (name.isBlank()) return "What should the profile be called?"
+                profiles.save(com.lukas.jarvis.core.Profile.of(name, settings))
+                "Saved the current look, character and voice as '$name'."
+            }
+            "list" -> if (all.isEmpty()) {
+                "No profiles yet. Set Jarvis up the way you like and say 'save this as night mode'."
+            } else {
+                "Profiles: " + all.joinToString { it.name } + "."
+            }
+            "delete", "remove" -> if (profiles.remove(name)) "Deleted the '$name' profile." else "No profile called '$name'."
+            else -> {
+                val target = profiles.find(name)
+                    ?: return if (all.isEmpty()) {
+                        "There are no saved profiles yet. Say 'save this as $name' once Jarvis looks the way you want."
+                    } else {
+                        "No profile called '$name'. There is: ${all.joinToString { it.name }}."
+                    }
+                settingsStore.update { target.applyTo(it) }
+                "Switched to '${target.name}'."
+            }
+        }
     }
 
     private fun focusSession(args: JSONObject): String {

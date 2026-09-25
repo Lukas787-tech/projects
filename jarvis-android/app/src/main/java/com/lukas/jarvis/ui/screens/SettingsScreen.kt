@@ -126,7 +126,11 @@ fun SettingsScreen(
     hasFreeBrain: Boolean = true,
     onRestoreFreeBrain: () -> Unit = {},
     onReplayIntro: () -> Unit = {},
-    onCheckHome: suspend () -> String = { "" }
+    onCheckHome: suspend () -> String = { "" },
+    profiles: List<com.lukas.jarvis.core.Profile> = emptyList(),
+    onSaveProfile: (String) -> Unit = {},
+    onApplyProfile: (com.lukas.jarvis.core.Profile) -> Unit = {},
+    onDeleteProfile: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     var tab by rememberSaveable(initialTab) { mutableIntStateOf(initialTab) }
@@ -162,7 +166,10 @@ fun SettingsScreen(
         when (tab) {
         0 -> AssistantSection(settings, onUpdate)
         1 -> VoiceSection(settings, onUpdate, voices, onPreviewVoice)
-        2 -> LookSection(settings, onUpdate)
+        2 -> {
+            ProfilesPanel(settings, profiles, onSaveProfile, onApplyProfile, onDeleteProfile)
+            LookSection(settings, onUpdate)
+        }
         3 -> {
         FreeBrainPanel(hasFreeBrain = hasFreeBrain, lastUsedEndpoint = lastUsedEndpoint, onRestore = onRestoreFreeBrain)
 

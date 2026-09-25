@@ -301,6 +301,7 @@ private fun JarvisRoot(
     val savedPlaces by viewModel.savedPlaces.collectAsStateWithLifecycle()
     val placeReminders by viewModel.placeReminders.collectAsStateWithLifecycle()
     val interpreter by viewModel.interpreter.collectAsStateWithLifecycle()
+    val profiles by viewModel.profiles.collectAsStateWithLifecycle()
     val hereLabel by viewModel.hereLabel.collectAsStateWithLifecycle()
     val routines by viewModel.routines.collectAsStateWithLifecycle()
     val levels by viewModel.levels.collectAsStateWithLifecycle()
@@ -831,6 +832,10 @@ private fun JarvisRoot(
                 )
 
                 Element.Settings -> SettingsScreen(
+                    profiles = profiles,
+                    onSaveProfile = viewModel::saveProfile,
+                    onApplyProfile = viewModel::applyProfile,
+                    onDeleteProfile = viewModel::deleteProfile,
                     initialTab = when {
                         stage.note == SETTINGS_POWERS -> 4
                         // "settings:tab:2" opens a tab by number, for links and the screenshots.

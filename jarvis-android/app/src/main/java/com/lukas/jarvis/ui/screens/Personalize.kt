@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import com.lukas.jarvis.ui.components.GlassDialog
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -763,5 +767,81 @@ private fun LabeledSlider(
                 inactiveTrackColor = Film.lifted
             )
         )
+    }
+}
+
+/**
+ * Saved setups: one tap puts back a whole look, character and voice, and the
+ * current one is kept under a name. "Switch to night mode" does the same by
+ * voice.
+ */
+@OptIn(ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun ProfilesPanel(
+    settings: Settings,
+    profiles: List<com.lukas.jarvis.core.Profile>,
+    onSave: (String) -> Unit,
+    onApply: (com.lukas.jarvis.core.Profile) -> Unit,
+    onDelete: (String) -> Unit
+) {
+    var naming by remember { mutableStateOf("") }
+    var deleting by remember { mutableStateOf<String?>(null) }
+    Panel(
+        title = "Profiles",
+        subtitle = "A whole look, character and voice under one name. Tap to switch, hold to delete, " +
+            "or say \"switch to night mode\"."
+    ) {
+        if (profiles.isNotEmpty()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Space.tight),
+                verticalArrangement = Arrangement.spacedBy(Space.tight)
+            ) {
+                profiles.forEach { profile ->
+                    val lit = profile == com.lukas.jarvis.core.Profile.of(profile.name, settings)
+                    Text(
+                        profile.name,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (lit) Accent else TextPrimary,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(Corner.small))
+                            .glass(RoundedCornerShape(Corner.small), raised = lit)
+                            .combinedClickable(
+                                onClick = { onApply(profile) },
+                                onLongClick = { deleting = profile.name }
+                            )
+                            .padding(horizontal = Space.snug, vertical = Space.tight)
+                    )
+                }
+            }
+            Spacer(Modifier.height(Space.snug))
+        }
+        GlassField(
+            value = naming,
+            onValueChange = { naming = it.take(24) },
+            placeholder = "Save the current setup as…",
+            trailing = {
+                IconButton(onClick = {
+                    if (naming.isNotBlank()) {
+                        onSave(naming.trim())
+                        naming = ""
+                    }
+                }, enabled = naming.isNotBlank()) {
+                    Icon(Icons.Default.Add, contentDescription = "Save profile", tint = Accent)
+                }
+            }
+        )
+    }
+    deleting?.let { name ->
+        GlassDialog(
+            title = "Delete '$name'?",
+            onDismiss = { deleting = null },
+            confirmLabel = "Delete",
+            onConfirm = {
+                onDelete(name)
+                deleting = null
+            }
+        ) {
+            Text("The profile goes; the current look stays as it is.", color = TextSecondary)
+        }
     }
 }
