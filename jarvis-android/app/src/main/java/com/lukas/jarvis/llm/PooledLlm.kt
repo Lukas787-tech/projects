@@ -49,6 +49,9 @@ class PooledLlm(
 
         var last: LlmException? = null
         val tried = StringBuilder()
+        // Endpoints that failed in a way that often passes in a second — a
+        // 502 from a busy gateway, a dropped connection — for one more try.
+        val flaky = mutableListOf<Pair<Endpoint, Settings>>()
 
         for ((index, endpoint) in plan.endpoints.withIndex()) {
             if (index > 0) {
@@ -78,9 +81,30 @@ class PooledLlm(
                 pool.recordFailure(endpoint, e)
                 last = e
                 tried.appendLine("• ${endpoint.label}: ${headline(e)}")
+                if (e.kind == FailureKind.ServerError || e.kind == FailureKind.Network) {
+                    flaky += endpoint to attempt
+                }
 
                 // A dead key on the only endpoint there is, is the whole story.
                 if (e.kind == FailureKind.AuthFailed && plan.endpoints.size == 1) throw e
+            }
+        }
+
+        // Everything failed, but something failed the passing kind of way: one
+        // short pause and one more try on it beats telling the user to retry.
+        flaky.firstOrNull()?.let { (endpoint, attempt) ->
+            onEndpointChange("trying ${endpoint.label} again")
+            stream?.restart()
+            delay(SECOND_CHANCE_MS)
+            val known = pool.entries.value.firstOrNull { it.endpoint.id == endpoint.id }?.health?.capability
+            pool.recordAttempt(endpoint)
+            try {
+                val reply = client.chat(attempt, messages, tools, known, stream)
+                pool.recordSuccess(endpoint, reply)
+                return reply
+            } catch (e: LlmException) {
+                pool.recordFailure(endpoint, e)
+                last = e
             }
         }
 
@@ -214,6 +238,9 @@ class PooledLlm(
          * at a silent orb.
          */
         const val MAX_WAIT_MS = 4_000L
+
+        /** The pause before the one extra try on an endpoint that failed in passing. */
+        const val SECOND_CHANCE_MS = 1_500L
 
         /** A photo that five endpoints could not see is not going to be seen by a sixth. */
         const val MAX_LOOKS = 6

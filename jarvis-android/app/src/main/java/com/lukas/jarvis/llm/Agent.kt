@@ -168,7 +168,7 @@ class Agent(
      * when no model can be reached; null when the sentence is not one of those.
      */
     suspend fun offline(utterance: String, settings: Settings): AgentResult? {
-        val call = Reflexes.parse(utterance) ?: return null
+        val call = Reflexes.parse(utterance) ?: return fromMemory(utterance)
         val available = names(tools.schemas(settings))
         if (call.name !in available) return null
         val effects = ToolEffects()
@@ -178,6 +178,34 @@ class Agent(
                 result.replace(Regex("\\s*\\(ISO [^)]*\\)"), ""),
             effects = effects,
             toolsUsed = listOf(call.name)
+        )
+    }
+
+    /**
+     * "What's my locker code?" with no model to ask: the memory is on the
+     * phone, so a question whose words clearly match something stored is
+     * answered from it. Only a close match is used — two of the question's
+     * own words at least — because an unrelated memory said with confidence
+     * is worse than admitting the model is out of reach.
+     */
+    private fun fromMemory(utterance: String): AgentResult? {
+        val text = utterance.trim().lowercase()
+        val asking = text.endsWith("?") || QUESTION.containsMatchIn(text)
+        if (!asking) return null
+        val words = text.split(Regex("[^\\p{L}\\p{N}]+"))
+            .filter { it.length >= 3 && it !in STOP_WORDS }
+            .toSet()
+        if (words.isEmpty()) return null
+        val needed = if (words.size == 1) 1 else 2
+        val hit = runCatching { brain.searchMemories(utterance, limit = 3) }.getOrDefault(emptyList())
+            .firstOrNull { memory ->
+                val content = memory.content.lowercase()
+                words.count { it in content } >= needed
+            } ?: return null
+        return AgentResult(
+            reply = "I can't reach my thinking right now, but I remember this: ${hit.content}",
+            effects = ToolEffects(),
+            toolsUsed = listOf("recall")
         )
     }
 
@@ -464,6 +492,13 @@ class Agent(
     }
 
     private companion object {
+        private val QUESTION = Regex("^(what|what's|whats|where|when|who|which|how|do you|did i|was|wo|wann|wer|welche|wie)\\b")
+        private val STOP_WORDS = setOf(
+            "what", "what's", "whats", "where", "when", "who", "which", "how", "the", "my", "your",
+            "you", "did", "does", "was", "were", "are", "is", "and", "for", "with", "that", "this",
+            "tell", "remember", "again", "about", "mein", "meine", "meinen", "der", "die", "das",
+            "was", "wie", "wo", "ist", "sind", "von"
+        )
         /**
          * Six rounds, up from four: "text Anna I'm late" is a contact lookup, a
          * send and an answer on its own, and a turn that also checks the time or
