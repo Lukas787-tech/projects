@@ -83,6 +83,8 @@ class Agent(
         // What the last thing done (not looked up) said, in case the model's
         // answer forgets to: "Stopwatch started."
         var lastAction: String? = null
+        // Asked once per turn at most: "you said it was done — do it".
+        var nudged = false
 
         for (round in 1..MAX_ROUNDS) {
             onStage(if (round == 1) "thinking" else "working")
@@ -109,6 +111,20 @@ class Agent(
                         ?.let { return AgentResult(it, effects, used.distinct()) }
                 }
                 val text = clean(reply.content)
+                // A claim of something done with nothing done: once, the model
+                // is told so and asked to do it — or to say it cannot.
+                val asked = utterance.trim().endsWith("?") || QUESTION.containsMatchIn(utterance.trim().lowercase())
+                if (!nudged && !asked && used.isEmpty() && round < MAX_ROUNDS && text != null && claimsAction(text) &&
+                    offered.any { !ToolCatalog.isReadOnly(it) }
+                ) {
+                    nudged = true
+                    messages += LlmMessage.assistant(text)
+                    messages += LlmMessage.user(
+                        "You said that was done, but no tool was called, so nothing happened. " +
+                            "Call the tool that does it now. If no tool can, say plainly that you can't."
+                    )
+                    continue
+                }
                 if (!text.isNullOrBlank()) return AgentResult(confirmed(text, lastAction), effects, used.distinct())
                 lastText = text
                 break
@@ -200,6 +216,9 @@ class Agent(
         val result = runCatching { tools.execute(call.copy(name = tool), settings, effects) }.getOrNull() ?: return null
         return result.replace(Regex("\\s*\\(ISO [^)]*\\)"), "").replace(Regex("\\s*\\(id \\d+\\)"), "")
     }
+
+    /** "I've changed…", "Done, saved", "Timer set", "Ich habe … geändert": words of a thing done. */
+    private fun claimsAction(text: String): Boolean = CLAIM.containsMatchIn(text.lowercase())
 
     /**
      * A reply to something done that only asks "what next?" — seen from small
@@ -571,6 +590,16 @@ class Agent(
     }
 
     private companion object {
+        private val CLAIM = Regex(
+            "\\b((i've|i have) (now )?(set|changed|switched|saved|turned|started|stopped|added|created|deleted|removed|" +
+                "updated|renamed|scheduled|enabled|disabled|marked|put|made)|all set|" +
+                "(changed|switched|set|saved|turned (on|off)|started|stopped|added|created|deleted|removed|updated|" +
+                "renamed|scheduled|enabled|disabled|marked) (to|as|for)\\b|" +
+                "(timer|alarm|reminder|stopwatch|colou?r|setting|place|home|task) (is )?(now )?(set|saved|changed|started|running|on|off)\\b|" +
+                "(ich habe|habe ich) .{0,40}(geändert|gespeichert|gestellt|eingeschaltet|ausgeschaltet|gestartet|angelegt|gelöscht|hinzugefügt)|" +
+                "(ist|sind) (jetzt )?(geändert|gespeichert|gestellt|gestartet|an|aus)\\b)"
+        )
+
         private val QUESTION = Regex("^(what|what's|whats|where|when|who|which|how|do you|did i|was|wo|wann|wer|welche|wie)\\b")
         private val STOP_WORDS = setOf(
             "what", "what's", "whats", "where", "when", "who", "which", "how", "the", "my", "your",
