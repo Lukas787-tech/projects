@@ -157,16 +157,19 @@ adb shell am force-stop "$PKG"
 sleep 2
 start
 sleep 3
+# A routine of its own, so a late answer from the quiet one above cannot pass for it.
+adb shell am broadcast -n "$PKG/com.lukas.jarvis.debug.TestHooks" -a com.lukas.jarvis.debug.ROUTINE \
+  --es name "'arrival check'" --es step "'What is 3 plus 3? Answer with the number only.'" --ez run false >> "$REPORT" 2>&1
 tap_text "Map" && sleep 4
 for i in 1 2 3 4; do adb emu geo fix 13.3777 52.5163 >/dev/null; sleep 4; done
 adb shell am broadcast -n "$PKG/com.lukas.jarvis.debug.TestHooks" -a com.lukas.jarvis.debug.PLACE \
-  --es text "''" --es routine "'device check'" --es lat 52.5070 --es lon 13.3900 >> "$REPORT" 2>&1
+  --es text "''" --es routine "'arrival check'" --es lat 52.5070 --es lon 13.3900 >> "$REPORT" 2>&1
 for i in 1 2 3; do adb emu geo fix 13.3777 52.5163 >/dev/null; sleep 4; done
 RAN=""
 for i in $(seq 1 36); do
   adb emu geo fix 13.3900 52.5070 >/dev/null
   sleep 5
-  if adb shell dumpsys notification --noredact 2>/dev/null | grep -q "Device check"; then RAN=yes; break; fi
+  if adb shell dumpsys notification --noredact 2>/dev/null | grep -q "Arrival check"; then RAN=yes; break; fi
 done
 if [ -n "$RAN" ]; then echo "PLACE ROUTINE: ran on arrival" >> "$REPORT"; else echo "PLACE ROUTINE: nothing within 180 s" >> "$REPORT"; fi
 

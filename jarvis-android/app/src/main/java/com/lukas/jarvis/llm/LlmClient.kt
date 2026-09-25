@@ -162,13 +162,17 @@ data class Diagnostics(
 class LlmClient {
 
     private val http = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(90, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        // Thirty-five seconds without a byte is a stalled free endpoint, not a
+        // slow one: seen on the emulator, a 90-second wait on one made a
+        // two-plus-two routine take over three minutes while the next
+        // endpoint sat idle. A streamed answer keeps bytes coming.
+        .readTimeout(35, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
         // A whole call has to finish inside this, otherwise a provider that
         // accepts the connection and then stalls would hold the turn forever
         // while healthy endpoints sit unused.
-        .callTimeout(110, TimeUnit.SECONDS)
+        .callTimeout(60, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build()
 

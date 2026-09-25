@@ -26,6 +26,11 @@ class TestHooks : BroadcastReceiver() {
             container.routines.save(
                 com.lukas.jarvis.auto.Routine(name = name, steps = listOf(step), time = null, quiet = true)
             )
+            // "run" false: only saved, for a place reminder to start later.
+            if (!intent.getBooleanExtra("run", true)) {
+                resultData = "saved $name"
+                return
+            }
             com.lukas.jarvis.auto.RoutineWorker.enqueue(context, name)
             resultData = "queued $name"
             return
