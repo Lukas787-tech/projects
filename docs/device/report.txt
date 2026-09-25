@@ -4,6 +4,21 @@ shot 03-today
 shot 04-type
 shot 05-shared-timer
 shot 06-live-question
+shot 09-map
+shot 09-notes
+shot 09-settings
+shot 09-today
+shot 10-hub-trackers
+shot 10-hub-tasks
+shot 10-hub-lists
+shot 10-hub-memory
+shot 11-settings-you
+shot 11-settings-voice
+shot 11-settings-look
+shot 11-settings-brain
+shot 11-settings-powers
+shot 11-settings-data
+shot 12-skills
 shot 07-talk
 shot 08-landscape
 No crash on the device.
