@@ -1,8 +1,8 @@
 package com.lukas.jarvis.ui.components
 
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.rememberTextMeasurer
 
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -128,21 +128,29 @@ fun QuickAction(
     ) {
         Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(20.dp))
         // With large text a word like "Controls" no longer fits five to a
-        // row; it shrinks a little rather than losing its end.
+        // row; it is measured and set just small enough to fit whole.
         val base = MaterialTheme.typography.labelSmall
-        var shrink by remember(label) { mutableFloatStateOf(1f) }
-        Text(
-            text = label,
-            style = base.copy(fontSize = base.fontSize * shrink),
-            color = tint,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            softWrap = false,
-            overflow = TextOverflow.Ellipsis,
-            onTextLayout = { layout ->
-                if (layout.hasVisualOverflow && shrink > 0.7f) shrink -= 0.06f
+        val measurer = rememberTextMeasurer()
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            val available = constraints.maxWidth
+            val natural = remember(label, base, available) {
+                measurer.measure(label, base, maxLines = 1, softWrap = false).size.width
             }
-        )
+            val fit = if (natural > available && available > 0) {
+                (available.toFloat() / natural).coerceAtLeast(0.7f)
+            } else {
+                1f
+            }
+            Text(
+                text = label,
+                style = if (fit < 1f) base.copy(fontSize = base.fontSize * (fit * 0.98f)) else base,
+                color = tint,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
