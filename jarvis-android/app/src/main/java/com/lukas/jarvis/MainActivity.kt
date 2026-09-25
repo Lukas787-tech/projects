@@ -905,6 +905,7 @@ private fun JarvisRoot(
         // a long press opens the assistant ready to type.
         val selected = barSelection(element)
         JarvisDock(
+            compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480,
             left = remember { listOf(Element.Today, Element.Notes).map { NavEntry(it.name, it.title, iconFor(it)) } },
             right = remember { listOf(Element.Map, Element.Settings).map { NavEntry(it.name, it.title, iconFor(it)) } },
             selectedId = if (showHistory) null else selected.name,

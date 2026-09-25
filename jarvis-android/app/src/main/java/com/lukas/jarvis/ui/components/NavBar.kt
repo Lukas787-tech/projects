@@ -71,20 +71,27 @@ fun JarvisDock(
     onCoreTap: () -> Unit,
     onCoreLongPress: () -> Unit,
     haptics: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * For a short screen — a phone on its side — where a full-height dock
+     * left the conversation a strip of two lines.
+     */
+    compact: Boolean = false
 ) {
     val feel = LocalHapticFeedback.current
+    val barHeight = if (compact) 48.dp else 64.dp
+    val coreSize = if (compact) 56.dp else 80.dp
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(96.dp),
+            .height(if (compact) 64.dp else 96.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Space.snug, vertical = Space.tight)
-                .height(64.dp)
+                .padding(horizontal = Space.snug, vertical = if (compact) Space.hair else Space.tight)
+                .height(barHeight)
                 .glass(RoundedCornerShape(28.dp))
                 .background(InkRaised.copy(alpha = 0.55f), RoundedCornerShape(28.dp)),
             verticalAlignment = Alignment.CenterVertically
@@ -96,7 +103,7 @@ fun JarvisDock(
                 }
             }
             // Room for the core, which sits above the bar.
-            Spacer(Modifier.width(84.dp))
+            Spacer(Modifier.width(coreSize + 4.dp))
             right.forEach { entry ->
                 DockItem(entry, entry.id == selectedId, Modifier.weight(1f)) {
                     if (haptics) feel.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -117,7 +124,7 @@ fun JarvisDock(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .offset(y = 2.dp)
-                .size(80.dp)
+                .size(coreSize)
                 .glow(strength = lift)
                 .clip(CircleShape)
                 .background(
@@ -146,7 +153,7 @@ fun JarvisDock(
                 level = level,
                 compact = true,
                 style = if (coreStyle == CoreStyle.Orb) CoreStyle.Orb else CoreStyle.Reactor,
-                modifier = Modifier.size(76.dp)
+                modifier = Modifier.size(coreSize - 4.dp)
             )
         }
     }

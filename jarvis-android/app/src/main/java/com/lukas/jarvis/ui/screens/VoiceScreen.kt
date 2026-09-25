@@ -471,12 +471,20 @@ private fun Header(
                         .background(if (lit) Accent else Accent.copy(alpha = 0.45f))
                 )
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    text = name.uppercase().toCharArray().joinToString("."),
-                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 2.sp),
-                    color = Accent,
-                    maxLines = 1
-                )
+                // J.A.R.V.I.S where it fits; on a narrow phone, beside four
+                // controls, the plain name rather than "J.A.R" cut off.
+                BoxWithConstraints(modifier = Modifier.weight(1f)) {
+                    val dotted = name.uppercase().toCharArray().joinToString(".")
+                    val roomy = maxWidth >= (dotted.length * 9).dp
+                    Text(
+                        text = if (roomy) dotted else name.uppercase(),
+                        style = MaterialTheme.typography.labelMedium.copy(letterSpacing = if (roomy) 2.sp else 1.sp),
+                        color = Accent,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             Text(
                 text = when {

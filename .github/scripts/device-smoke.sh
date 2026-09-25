@@ -31,6 +31,8 @@ tap_text() {
   adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
 }
 
+# adb shell joins its arguments into one command line for the phone's
+# shell, so text with spaces is passed wrapped in single quotes.
 start() { adb shell am start -W -n "$PKG/$ACT" "$@" >/dev/null; }
 
 adb install -r -g app/build/outputs/apk/debug/app-debug.apk || { echo "install failed" >> "$REPORT"; exit 1; }
@@ -52,12 +54,12 @@ sleep 4
 shot 04-type
 
 # A turn that needs no model: answered by the phone itself.
-start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "set a timer for 5 minutes"
+start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "'set a timer for 5 minutes'"
 sleep 12
 shot 05-shared-timer
 
 # A turn through the free models, when they answer.
-start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "What is the capital of Australia? One word."
+start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "'What is the capital of Australia? One word.'"
 sleep 40
 shot 06-live-question
 
