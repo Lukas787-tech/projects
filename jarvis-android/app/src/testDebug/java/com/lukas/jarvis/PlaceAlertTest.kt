@@ -3,10 +3,8 @@ package com.lukas.jarvis
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationManager
-import android.location.Location
 import android.location.LocationManager
 import android.os.Looper
-import android.os.SystemClock
 import com.lukas.jarvis.maps.GeoPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -19,10 +17,12 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /*
- * Place reminders through Android's own location service, as far as it can
- * be driven without a phone: the reminder is armed as a proximity alert, the
- * phone "moves", and what the location service fires reaches the receiver,
- * which posts the notification. Only the physical GPS is left out.
+ * Place reminders from the moment Android reports a crossing: the broadcast
+ * the location service sends for a proximity alert (entering or leaving) is
+ * delivered to the app's receiver, which decides, posts the notification and
+ * updates the store. Robolectric does not run proximity alerts itself, so the
+ * test plays the location service's part; the watching of the circle is the
+ * one piece only a phone exercises.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -47,15 +47,30 @@ class PlaceAlertTest {
         app.container.placeReminders.current.forEach { app.container.placeReminders.remove(it.id) }
     }
 
+    /** Where the phone is, as the location service would see it. */
+    private var inside = mutableMapOf<Long, Boolean>()
+    private var at: GeoPoint = away
+
+    /**
+     * Moves the phone and, for every reminder whose circle it crosses, sends
+     * the broadcast Android's location service sends.
+     */
     private fun moveTo(point: GeoPoint) {
-        val fix = Location(LocationManager.GPS_PROVIDER).apply {
-            latitude = point.lat
-            longitude = point.lon
-            accuracy = 5f
-            time = System.currentTimeMillis()
-            elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+        at = point
+        app.container.placeReminders.current.forEach { watch ->
+            val now = com.lukas.jarvis.maps.Geo.distance(point, watch.point) <= watch.radius
+            val was = inside[watch.id]
+            inside[watch.id] = now
+            // The service reports the first fix inside, and every change after.
+            if ((was == null && now) || (was != null && was != now)) {
+                app.sendBroadcast(
+                    android.content.Intent(app, com.lukas.jarvis.notify.PlaceReceiver::class.java)
+                        .setAction(com.lukas.jarvis.notify.PlaceReminders.ACTION_CROSSED)
+                        .putExtra(com.lukas.jarvis.notify.PlaceReminders.EXTRA_ID, watch.id)
+                        .putExtra(LocationManager.KEY_PROXIMITY_ENTERING, now)
+                )
+            }
         }
-        shadowOf(locations).simulateLocation(fix)
         shadowOf(Looper.getMainLooper()).idle()
     }
 
