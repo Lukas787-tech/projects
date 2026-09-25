@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: a hook for the device test. Release builds never have it. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <receiver
+            android:name="com.lukas.jarvis.debug.TestHooks"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.lukas.jarvis.debug.PLACE" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

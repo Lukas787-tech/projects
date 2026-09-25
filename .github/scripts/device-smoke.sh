@@ -88,6 +88,28 @@ start -a com.lukas.jarvis.TALK
 sleep 6
 shot 07-talk
 
+# A place reminder on a moving GPS: Android's own proximity alert, which no
+# simulated test can exercise. Set through a debug-only hook so no model is
+# involved; the result is written down rather than failing the run, since
+# the emulator's location service can be slow to wake.
+start
+sleep 3
+adb shell settings put secure location_mode 3 >/dev/null 2>&1 || true
+for i in 1 2 3; do adb emu geo fix 13.4050 52.5400 >/dev/null; sleep 4; done
+adb shell am broadcast -n "$PKG/com.lukas.jarvis.debug.TestHooks" -a com.lukas.jarvis.debug.PLACE \
+  --es text "'buy test milk'" --es lat 52.5200 --es lon 13.4050 >> "$REPORT" 2>&1
+for i in 1 2 3; do adb emu geo fix 13.4050 52.5400 >/dev/null; sleep 4; done
+FIRED=""
+for i in $(seq 1 20); do
+  adb emu geo fix 13.4050 52.5200 >/dev/null
+  sleep 5
+  if adb shell dumpsys notification --noredact 2>/dev/null | grep -qi "buy test milk"; then FIRED=yes; break; fi
+done
+adb shell cmd statusbar expand-notifications >/dev/null 2>&1; sleep 2
+shot 13-place-reminder
+adb shell cmd statusbar collapse >/dev/null 2>&1
+if [ -n "$FIRED" ]; then echo "PLACE ALERT: fired on arrival" >> "$REPORT"; else echo "PLACE ALERT: did not fire within 100 s" >> "$REPORT"; fi
+
 # Rotation recreates the activity, which is where restored state goes wrong.
 adb shell settings put system accelerometer_rotation 0
 adb shell settings put system user_rotation 1
