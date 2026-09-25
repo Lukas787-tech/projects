@@ -98,7 +98,18 @@ class Home {
         val wantsAll = lower.startsWith("all ") || lower.startsWith("every ") || lower.contains(" all ")
         val domainWord = DOMAIN_WORDS.entries.firstOrNull { (word, _) -> lower.contains(word) }?.value
         val targets = when {
-            wantsAll && domainWord != null -> all.filter { it.domain == domainWord }
+            wantsAll && domainWord != null -> {
+                // "All lights in the kitchen" is the kitchen's lights: any
+                // words beyond "all" and the device kind narrow it down.
+                val kind = all.filter { it.domain == domainWord }
+                val place = lower.split(Regex("[^\\p{L}\\p{N}]+"))
+                    .filter { it.length > 1 && it !in ROOM_FILLER && DOMAIN_WORDS.keys.none { word -> it.startsWith(word) } }
+                if (place.isEmpty()) kind
+                else kind.filter { device ->
+                    val words = (device.name + " " + device.id.replace('_', ' ').replace('.', ' ')).lowercase(Locale.ROOT)
+                    place.all { words.contains(it) }
+                }
+            }
             else -> match(all, target, controllable = true)
         }
         if (targets.isEmpty()) {
@@ -257,6 +268,10 @@ class Home {
         val CONTROLLABLE = TOGGLEABLE + setOf("cover", "lock", "climate", "scene", "script", "button", "input_button")
         val INTERESTING = CONTROLLABLE + setOf("sensor", "binary_sensor", "weather", "person", "alarm_control_panel")
         val FILLER = setOf("the", "my", "all", "every", "in", "on", "off", "der", "die", "das", "im", "alle")
+        val ROOM_FILLER = setOf(
+            "all", "every", "the", "in", "on", "of", "at", "my", "alle", "alles", "im",
+            "der", "die", "das", "den", "dem", "und", "and"
+        )
         val DOMAIN_WORDS = mapOf(
             "light" to "light", "lamp" to "light", "licht" to "light", "lampe" to "light",
             "switch" to "switch", "plug" to "switch", "steckdose" to "switch",

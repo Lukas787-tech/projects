@@ -142,7 +142,10 @@ class PlacesClient {
     ): List<Place> {
         val around = "(around:$radiusMeters,${fmt(center.lat)},${fmt(center.lon)})"
         val clauses = filters.joinToString("") { "nwr$it$around;" }
-        val query = "[out:json][timeout:20];($clauses);out center ${(limit * 3).coerceAtMost(60)};"
+        // Overpass returns matches in its own order, not by distance, so the
+        // cap must be wide enough that the nearest are inside it before they
+        // are sorted; a few hundred small elements is still a small reply.
+        val query = "[out:json][timeout:20];($clauses);out center ${(limit * 40).coerceIn(200, 400)};"
 
         // An endpoint that answers with nothing is an answer: there is nothing
         // of that kind nearby. Only when every endpoint refuses is this a

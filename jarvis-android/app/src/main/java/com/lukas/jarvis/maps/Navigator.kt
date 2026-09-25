@@ -264,7 +264,13 @@ class Navigator(
     private fun ordinal(text: String): Int? {
         val cleaned = text.lowercase(Locale.ROOT).removePrefix("the ").trim()
         cleaned.toIntOrNull()?.let { return it - 1 }
-        return ORDINALS.indexOfFirst { cleaned.startsWith(it) }.takeIf { it >= 0 }
+        // Only "the second one", "second", "2nd result": "Fifth Avenue" is a street.
+        Regex("^(\\d+)(st|nd|rd|th)( (one|place|result|pin|option))?$").find(cleaned)?.let {
+            return it.groupValues[1].toInt() - 1
+        }
+        return ORDINALS.indexOfFirst { word ->
+            cleaned == word || Regex("^$word (one|place|result|pin|option)$").matches(cleaned)
+        }.takeIf { it >= 0 }
     }
 
     private fun String.looksLikeHere(): Boolean {

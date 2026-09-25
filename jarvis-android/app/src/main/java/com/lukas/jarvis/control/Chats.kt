@@ -76,8 +76,26 @@ class Chats(context: Context, private val people: People) {
         }
     }
 
+    /**
+     * The number as WhatsApp's link wants it: country code and all, digits
+     * only. A saved "0151 …" means nothing to wa.me without the country, so
+     * it is completed from the phone's own network or SIM country.
+     */
+    private fun international(number: String): String? {
+        val trimmed = number.trim()
+        if (trimmed.startsWith("+")) return trimmed.filter { it.isDigit() }
+        if (trimmed.startsWith("00")) return trimmed.filter { it.isDigit() }.removePrefix("00")
+        val telephony = app.getSystemService(android.telephony.TelephonyManager::class.java)
+        val country = listOfNotNull(telephony?.networkCountryIso, telephony?.simCountryIso, java.util.Locale.getDefault().country)
+            .map { it.uppercase(java.util.Locale.ROOT) }
+            .firstOrNull { it.length == 2 }
+            ?: return null
+        return android.telephony.PhoneNumberUtils.formatNumberToE164(trimmed, country)
+            ?.filter { it.isDigit() }
+    }
+
     private fun open(chat: Chat, number: String, text: String): Boolean {
-        val digits = number.filter { it.isDigit() }
+        val digits = if (chat == Chat.WhatsApp) international(number) ?: return false else number.filter { it.isDigit() }
         val body = URLEncoder.encode(text, "UTF-8")
         // wa.me is WhatsApp's own documented link and the most reliable of the
         // three; the others take a plain sendto with their package named.

@@ -72,6 +72,11 @@ class HomeTest {
         assertTrue(calls.all { it.first == "light/turn_off" })
     }
 
+    @Test fun allLightsInARoomStayInTheRoom(): Unit = runBlocking {
+        Home().control(base, "token", "all lights in the bedroom", "off", null)
+        assertEquals(listOf("light.bedroom"), calls.map { it.second.getString("entity_id") })
+    }
+
     @Test fun roomWordsReachEveryDeviceInIt(): Unit = runBlocking {
         Home().control(base, "token", "living room", "off", null)
         assertEquals(setOf("light.living_room_ceiling", "light.living_room_lamp"), calls.map { it.second.getString("entity_id") }.toSet())

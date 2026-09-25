@@ -171,6 +171,24 @@ class Knowledge {
         }.getOrNull()
     }
 
+    /**
+     * "Germany", "Deutschland", "de" or "DE" as an ISO country code; null
+     * when blank or unknown. Cutting a name to two letters made Germany
+     * Georgia and Austria Australia.
+     */
+    private fun countryCode(raw: String): String? {
+        val text = raw.trim()
+        if (text.isBlank()) return null
+        COUNTRY_ALIASES[text.lowercase(Locale.ROOT)]?.let { return it }
+        if (text.length == 2) return text.uppercase(Locale.ROOT)
+        return Locale.getISOCountries().firstOrNull { iso ->
+            val locale = Locale("", iso)
+            listOf(Locale.ENGLISH, Locale.GERMAN, Locale.getDefault()).any {
+                locale.getDisplayCountry(it).equals(text, ignoreCase = true)
+            }
+        }
+    }
+
     /** A language name or code, as a two-letter code; null when it is not one. */
     fun codeFor(raw: String?): String? = raw?.let(::languageCode)
 
@@ -235,18 +253,24 @@ class Knowledge {
     }
 
     private fun stock(query: String): String? {
-        val symbol = if (TICKER.matches(query.trim())) {
-            query.trim().uppercase(Locale.ROOT)
-        } else {
-            val search = JSONObject(
-                get("https://query1.finance.yahoo.com/v1/finance/search?q=${enc(query)}&quotesCount=3&newsCount=0")
-            )
-            search.optJSONArray("quotes")?.let { quotes ->
-                (0 until quotes.length()).mapNotNull { quotes.optJSONObject(it) }
-                    .firstOrNull { it.optString("quoteType") in setOf("EQUITY", "ETF", "INDEX", "MUTUALFUND") }
-                    ?.optString("symbol")
-            } ?: return null
+        // Something shaped like a ticker is tried as one first, but "Apple"
+        // is shaped like one too: when no such symbol exists, it is searched
+        // for by name instead of being handed to the coin lookup.
+        if (TICKER.matches(query.trim())) {
+            runCatching { quote(query.trim().uppercase(Locale.ROOT)) }.getOrNull()?.let { return it }
         }
+        val search = JSONObject(
+            get("https://query1.finance.yahoo.com/v1/finance/search?q=${enc(query)}&quotesCount=3&newsCount=0")
+        )
+        val symbol = search.optJSONArray("quotes")?.let { quotes ->
+            (0 until quotes.length()).mapNotNull { quotes.optJSONObject(it) }
+                .firstOrNull { it.optString("quoteType") in setOf("EQUITY", "ETF", "INDEX", "MUTUALFUND") }
+                ?.optString("symbol")
+        } ?: return null
+        return quote(symbol)
+    }
+
+    private fun quote(symbol: String): String? {
         val chart = JSONObject(
             get("https://query1.finance.yahoo.com/v8/finance/chart/${enc(symbol)}?range=1d&interval=1d")
         )
@@ -288,9 +312,7 @@ class Knowledge {
 
     /** Public holidays from Nager.Date, upcoming first. */
     suspend fun holidays(country: String, year: Int?): String = withContext(Dispatchers.IO) {
-        val code = country.trim().uppercase(Locale.ROOT).take(2).ifBlank {
-            Locale.getDefault().country.ifBlank { "US" }
-        }
+        val code = countryCode(country) ?: Locale.getDefault().country.ifBlank { "US" }
         val thisYear = Calendar.getInstance().get(Calendar.YEAR)
         val body = runCatching {
             get("https://date.nager.at/api/v3/PublicHolidays/${year ?: thisYear}/$code")
@@ -523,6 +545,11 @@ class Knowledge {
         val CRYPTO_WORDS = listOf(
             "bitcoin", "btc", "ethereum", "eth", "solana", "dogecoin", "doge", "crypto", "coin",
             "xrp", "cardano", "litecoin", "tether", "bnb"
+        )
+        val COUNTRY_ALIASES = mapOf(
+            "usa" to "US", "us" to "US", "america" to "US", "united states" to "US",
+            "uk" to "GB", "england" to "GB", "britain" to "GB", "great britain" to "GB",
+            "scotland" to "GB", "wales" to "GB", "holland" to "NL", "czechia" to "CZ"
         )
         val LANGUAGES = mapOf(
             "german" to "de", "deutsch" to "de", "english" to "en", "englisch" to "en",

@@ -86,15 +86,23 @@ data class ListBook(val lists: List<NamedList> = emptyList()) {
         return a.equals(b, ignoreCase = true) || (stem(a) == stem(b) && stem(a).length >= 3)
     }
 
+    private fun words(text: String): List<String> =
+        text.split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotBlank() }
+
     /** Exactly, then a word match either way: "eggs" finds "free-range eggs". */
     private fun match(list: NamedList, text: String): ListItem? {
         val wanted = text.trim().lowercase(Locale.ROOT)
         if (wanted.isBlank()) return null
-        return list.items.firstOrNull { it.text.lowercase(Locale.ROOT) == wanted }
-            ?: list.items.firstOrNull {
-                val have = it.text.lowercase(Locale.ROOT)
-                have.contains(wanted) || wanted.contains(have)
-            }
+        list.items.firstOrNull { it.text.lowercase(Locale.ROOT) == wanted }?.let { return it }
+        // By whole words, as promised: "tea" finds "green tea" but not "steak".
+        val want = words(wanted)
+        if (want.isEmpty()) return null
+        return list.items.firstOrNull { item ->
+            val have = words(item.text.lowercase(Locale.ROOT))
+            have.isNotEmpty() && (
+                want.all { w -> have.any { same(it, w) } } || have.all { h -> want.any { same(it, h) } }
+            )
+        }
     }
 
     fun toJson(): String = JSONArray().apply {

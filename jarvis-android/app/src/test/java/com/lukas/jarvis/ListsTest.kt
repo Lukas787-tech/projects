@@ -15,6 +15,14 @@ import org.junit.Test
 
 class ListsTest {
 
+    @Test fun tickingOffMatchesWholeWords() {
+        var book = ListBook().add("shopping", listOf("Steak", "Green tea"))
+        book = book.check("shopping", listOf("tea"), true).first
+        val items = book.find("shopping")!!.items.associate { it.text to it.done }
+        assertTrue(items["Green tea"] == true)
+        assertFalse(items["Steak"] == true)
+    }
+
     @Test fun namesMeanTheSameList() {
         assertEquals("shopping", ListBook.canonical("my shopping list"))
         assertEquals("shopping", ListBook.canonical("Einkaufsliste"))

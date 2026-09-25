@@ -81,11 +81,15 @@ class Routines(private val context: Context) {
         val wanted = text?.trim()?.lowercase(Locale.ROOT)?.removePrefix("my ")?.removeSuffix(" routine")
             ?.trim().orEmpty()
         if (wanted.isBlank()) return null
-        return _all.value.firstOrNull { it.name.lowercase(Locale.ROOT) == wanted }
-            ?: _all.value.firstOrNull {
-                wanted.contains(it.name.lowercase(Locale.ROOT)) ||
-                    it.name.lowercase(Locale.ROOT).contains(wanted)
-            }
+        _all.value.firstOrNull { it.name.lowercase(Locale.ROOT) == wanted }?.let { return it }
+        // A loose match only when it points at one routine: with "good
+        // morning" and "morning run", "morning" names neither for certain,
+        // and deleting the wrong one is worse than asking.
+        val loose = _all.value.filter {
+            wanted.contains(it.name.lowercase(Locale.ROOT)) ||
+                it.name.lowercase(Locale.ROOT).contains(wanted)
+        }
+        return loose.singleOrNull()
     }
 
     fun markRun(name: String) {

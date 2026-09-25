@@ -140,7 +140,20 @@ class Agenda(context: Context) {
                 }
             }
         }
-        val hit = hits.firstOrNull() ?: return "Nothing called '$title' is on the calendar in the next $daysAhead days."
+        // The best kind of match decides, and a vague one is never acted on:
+        // "the call with the dentist" must not cancel an event called "Call".
+        val exact = hits.filter { it.title.lowercase() == wanted }
+        val within = hits.filter { it.title.lowercase().contains(wanted) }
+        val hit = when {
+            exact.isNotEmpty() -> exact.first()
+            within.map { it.title.lowercase() }.distinct().size == 1 -> within.first()
+            within.isNotEmpty() -> return "More than one event matches '$title': " +
+                within.map { "'${it.title}' on ${TimeUtil.format(it.begin)}" }.distinct().take(4).joinToString("; ") +
+                ". Which one?"
+            hits.isNotEmpty() -> return "The closest event is '${hits.first().title}' on " +
+                "${TimeUtil.format(hits.first().begin)}. Is that the one? Say its name to go ahead."
+            else -> return "Nothing called '$title' is on the calendar in the next $daysAhead days."
+        }
         if (hit.repeating) {
             return "'${hit.title}' is part of a repeating series; change it in the calendar app so the rest " +
                 "of the series is handled the way you want."

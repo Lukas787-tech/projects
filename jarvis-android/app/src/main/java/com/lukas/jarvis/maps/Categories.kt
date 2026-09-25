@@ -16,13 +16,20 @@ object Categories {
         val query = rawQuery.lowercase(Locale.ROOT)
         if (query.isBlank()) return emptyList()
 
-        CUISINES.firstOrNull { cuisine -> query.contains(cuisine) }?.let { cuisine ->
+        CUISINES.firstOrNull { cuisine -> says(query, cuisine) }?.let { cuisine ->
             return listOf("[\"amenity\"~\"restaurant|fast_food\"][\"cuisine\"~\"$cuisine\",i]")
         }
 
-        val hit = TABLE.firstOrNull { (words, _) -> words.any { query.contains(it) } }
+        val hit = TABLE.firstOrNull { (words, _) -> words.any { says(query, it) } }
         return hit?.second ?: emptyList()
     }
+
+    /**
+     * [word] as a word of [query], plural allowed: "bars" is a bar, but
+     * "barber" is not, and "theatre" does not contain a wish to eat.
+     */
+    internal fun says(query: String, word: String): Boolean =
+        Regex("(^|[^\\p{L}])" + Regex.escape(word) + "(s|es)?($|[^\\p{L}])").containsMatchIn(query)
 
     /** A short human label for a place, from whatever tag carries its kind. */
     fun labelFor(tags: JSONObject): String? {

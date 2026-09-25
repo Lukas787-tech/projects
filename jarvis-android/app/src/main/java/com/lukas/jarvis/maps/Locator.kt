@@ -181,7 +181,9 @@ class Locator(context: Context) {
         prefs.edit()
             .putFloat(KEY_LAT, location.latitude.toFloat())
             .putFloat(KEY_LON, location.longitude.toFloat())
-            .putLong(KEY_AT, System.currentTimeMillis())
+            // When the fix was taken, not when it was stored: a days-old last
+            // known location must still look days old.
+            .putLong(KEY_AT, location.time.takeIf { it in 1..System.currentTimeMillis() } ?: System.currentTimeMillis())
             .apply()
         return GeoPoint(location.latitude, location.longitude)
     }
