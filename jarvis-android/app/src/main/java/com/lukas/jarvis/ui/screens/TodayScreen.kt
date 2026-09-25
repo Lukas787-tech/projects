@@ -575,7 +575,7 @@ private fun Shortcuts(
             )
             QuickAction(
                 icon = Icons.Default.Tune,
-                label = "Controls",
+                label = "Phone",
                 onClick = { onOpen(Element.Devices) },
                 modifier = Modifier.weight(1f)
             )
