@@ -1,0 +1,9 @@
+shot 01-first-open
+shot 02-after-onboarding
+shot 03-today
+shot 04-type
+shot 05-shared-timer
+shot 06-live-question
+shot 07-talk
+shot 08-landscape
+No crash on the device.
