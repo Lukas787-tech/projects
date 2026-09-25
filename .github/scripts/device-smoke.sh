@@ -89,6 +89,16 @@ done
 shot 06b-setting-red
 if [ -n "$RED" ]; then echo "SETTING: colour changed to red by asking" >> "$REPORT"; else echo "SETTING: colour not changed within 60 s" >> "$REPORT"; fi
 
+# One the phone does not read by itself, so the model has to call the tool.
+start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "'Could you change the map over to the satellite pictures?'"
+SAT=""
+for i in $(seq 1 12); do
+  sleep 5
+  if adb shell run-as "$PKG" cat shared_prefs/jarvis_settings.xml 2>/dev/null | grep -q '>satellite<'; then SAT=yes; break; fi
+done
+shot 06c-setting-satellite
+if [ -n "$SAT" ]; then echo "SETTING (model): map switched to satellite" >> "$REPORT"; else echo "SETTING (model): map style not changed within 60 s" >> "$REPORT"; fi
+
 # Every main screen, through the bar at the bottom as a person would.
 for tab in "Map" "Notes" "Settings" "Today"; do
   tap_text "$tab" && sleep 5
