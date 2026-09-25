@@ -162,6 +162,17 @@ class ScreensTest {
             .onFailure { note("third live turn", it) }
         live(seconds = 60)
         shot(activity, "03d-live-web")
+
+        // Memory, both ways: told something, then asked for it back.
+        runCatching { vm.newConversation() }
+        settle(400)
+        runCatching { vm.sendTyped("Remember that my gym locker code is 3917.") }
+            .onFailure { note("memory turn", it) }
+        live(seconds = 40)
+        runCatching { vm.sendTyped("What's my gym locker code?") }
+            .onFailure { note("recall turn", it) }
+        live(seconds = 40)
+        shot(activity, "03e-live-memory")
         listOf(
             Element.Today to "04-today",
             Element.Notes to "05-memory",
