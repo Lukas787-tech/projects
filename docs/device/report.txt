@@ -10,6 +10,9 @@ shot 09-map
 shot 09-notes
 shot 09-settings
 shot 09-today
+shot 09b-map-pin
+shot 09c-map-home
+MAP PIN: saved as home
 shot 10-hub-trackers
 shot 10-hub-tasks
 shot 10-hub-lists
