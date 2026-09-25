@@ -59,6 +59,11 @@ class PlaceAlertTest {
         shadowOf(Looper.getMainLooper()).idle()
     }
 
+    /** What happened, for a failure message: broadcasts sent and the reminders' state. */
+    private fun trace(): String =
+        "broadcasts=" + shadowOf(app).broadcastIntents.map { "${it.action} ${it.extras?.keySet()}" } +
+            " reminders=" + app.container.placeReminders.current.map { "${it.text}:armed=${it.armed}" }
+
     private fun titles(): List<String> =
         shadowOf(app.getSystemService(NotificationManager::class.java)).allNotifications
             .mapNotNull { it.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() }
@@ -71,7 +76,7 @@ class PlaceAlertTest {
         assertTrue("nothing yet while away", "Buy milk" !in titles())
 
         moveTo(home)
-        assertTrue("fired on arrival: ${titles()}", "Buy milk" in titles())
+        assertTrue("fired on arrival: ${titles()} ${trace()}", "Buy milk" in titles())
         // Used up: it is gone from the list, and the alert with it.
         assertTrue(app.container.placeReminders.current.isEmpty())
     }
@@ -85,7 +90,7 @@ class PlaceAlertTest {
 
         moveTo(away)
         moveTo(home)
-        assertTrue("fired on coming back: ${titles()}", "Water the plants" in titles())
+        assertTrue("fired on coming back: ${titles()} ${trace()}", "Water the plants" in titles())
     }
 
     @Test
@@ -96,7 +101,7 @@ class PlaceAlertTest {
         assertTrue("Take the keys" !in titles())
 
         moveTo(away)
-        assertTrue("fired on leaving: ${titles()}", "Take the keys" in titles())
+        assertTrue("fired on leaving: ${titles()} ${trace()}", "Take the keys" in titles())
     }
 
     @Test
@@ -104,7 +109,7 @@ class PlaceAlertTest {
         moveTo(away)
         app.container.placeReminders.add("stretch", "the gym", home, leaving = false, every = true, here = away)
         moveTo(home)
-        assertTrue("Stretch" in titles())
+        assertTrue("${titles()} ${trace()}", "Stretch" in titles())
         assertEquals(1, app.container.placeReminders.current.size)
     }
 }
