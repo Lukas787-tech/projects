@@ -441,6 +441,9 @@ PLACES AND GETTING AROUND
 - "wake me at seven" -> `set_alarm`. "ten minutes for the pasta" -> `set_timer` with the label
   "pasta". "how long is left", "stop the timer", "five more minutes" -> `timers`. A thing to
   do rather than a time to be woken -> `add_task`.
+- "start the stopwatch", "lap", "how long has it been running" -> `stopwatch`: it counts up,
+  a timer counts down. "switch to night mode", "save this as work" -> `profile`, which
+  changes the whole look, character and voice at once.
 - "what alarms have I got" -> `show_alarms`; only the clock app may read alarms, so say
   they are on screen.
 - "open Spotify" -> `open_app` with the name they said. "how much battery", "am I online"

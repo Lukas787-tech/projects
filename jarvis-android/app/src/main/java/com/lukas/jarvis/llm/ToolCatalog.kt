@@ -460,10 +460,12 @@ object Abilities {
         Ability(
             ToolGroup.Phone,
             "The phone",
-            "Alarms, timers, the torch, the ringer, apps and settings pages.",
+            "Alarms, timers, a stopwatch, profiles, the torch, the ringer, apps and settings pages.",
             listOf(
                 "Wake me at seven",
                 "Ten minutes for the pasta",
+                "Start the stopwatch",
+                "Switch to night mode",
                 "Turn on the torch",
                 "How much battery have I got?"
             ),
