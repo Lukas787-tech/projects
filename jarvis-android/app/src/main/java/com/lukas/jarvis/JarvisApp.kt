@@ -97,6 +97,7 @@ class AppContainer(context: Context) {
     val routines = Routines(context)
     val lists = com.lukas.jarvis.data.Lists(context)
     val timers = com.lukas.jarvis.notify.Timers(context)
+    val stopwatch = com.lukas.jarvis.notify.Stopwatch(context)
     val placeReminders = com.lukas.jarvis.notify.PlaceReminders(context)
     val profiles = com.lukas.jarvis.core.ProfileStore(context)
 
@@ -129,6 +130,7 @@ class AppContainer(context: Context) {
         home = home,
         lists = lists,
         timers = timers,
+        stopwatch = stopwatch,
         placeReminders = placeReminders,
         profiles = profiles,
         settingsStore = settings
@@ -189,6 +191,7 @@ class JarvisApp : Application() {
             runCatching { container.reminders.rescheduleAll(container.brain.pendingReminders()) }
             runCatching { container.routines.rescheduleAll() }
             runCatching { container.timers.rescheduleAll() }
+            runCatching { container.stopwatch.restore() }
             runCatching { container.placeReminders.armAll() }
         }
         // The written brief follows its setting wherever it changes — the

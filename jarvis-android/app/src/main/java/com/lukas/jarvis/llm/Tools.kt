@@ -95,6 +95,7 @@ class Tools(
     private val home: Home,
     private val lists: com.lukas.jarvis.data.Lists,
     private val timers: com.lukas.jarvis.notify.Timers,
+    private val stopwatch: com.lukas.jarvis.notify.Stopwatch,
     private val placeReminders: com.lukas.jarvis.notify.PlaceReminders,
     private val profiles: com.lukas.jarvis.core.ProfileStore,
     private val settingsStore: com.lukas.jarvis.core.SettingsStore
@@ -789,6 +790,18 @@ class Tools(
             listOf("action")
         ),
         tool(
+            "stopwatch",
+            "Jarvis's stopwatch, counting up: 'start the stopwatch', 'lap', 'how long has it been " +
+                "running', 'pause it', 'stop and reset'. It shows in the notification shade.",
+            props(
+                "action" to str(
+                    "start (or resume), pause, lap, status, reset (stop and clear).",
+                    listOf("start", "pause", "lap", "status", "reset")
+                )
+            ),
+            listOf("action")
+        ),
+        tool(
             "show_alarms",
             "Open the clock app's list of alarms, for 'what alarms have I got' or to switch one " +
                 "off. Android does not let other apps read or delete alarms, so say it is on screen.",
@@ -1238,6 +1251,7 @@ class Tools(
                 "focus_session" -> focusSession(args)
                 "profile" -> profile(args, settings)
                 "timers" -> timerAction(args)
+                "stopwatch" -> stopwatchAction(args)
                 "show_alarms" -> launcher.showAlarms()
                 "device_status" -> deviceStatus(args)
                 "torch" -> device.torch(args.optBoolean("on", true))
@@ -2148,6 +2162,43 @@ class Tools(
                     }
                 settingsStore.update { target.applyTo(it) }
                 "Switched to '${target.name}'."
+            }
+        }
+    }
+
+    private fun stopwatchAction(args: JSONObject): String {
+        val clock = com.lukas.jarvis.notify.StopwatchState.Companion::clock
+        val before = stopwatch.state.value
+        val now = System.currentTimeMillis()
+        return when (args.optString("action").trim().lowercase(Locale.ROOT)) {
+            "start", "resume", "go" -> when {
+                before.running -> "The stopwatch is already running: ${clock(before.elapsed(now))}."
+                before.idle -> { stopwatch.start(now); "Stopwatch started." }
+                else -> { stopwatch.start(now); "Carrying on from ${clock(before.elapsed(now))}." }
+            }
+            "pause", "stop", "halt" -> if (!before.running) {
+                if (before.idle) "The stopwatch isn't running." else "It is already paused at ${clock(before.elapsed(now))}."
+            } else {
+                val after = stopwatch.pause(now)
+                "Stopped at ${clock(after.elapsed(now))}."
+            }
+            "lap", "split" -> if (before.idle) "The stopwatch isn't running." else {
+                val after = stopwatch.lap(now)
+                "Lap ${after.laps.size}: ${clock(after.lapLengths().last())}, ${clock(after.elapsed(now))} in total."
+            }
+            "reset", "clear", "cancel" -> if (before.idle) "The stopwatch is already at zero." else {
+                val total = clock(before.elapsed(now))
+                stopwatch.reset()
+                "Reset. It had reached $total."
+            }
+            else -> when {
+                before.idle -> "The stopwatch isn't running."
+                else -> {
+                    val laps = before.lapLengths()
+                    val lapText = if (laps.isEmpty()) "" else " Laps: " +
+                        laps.mapIndexed { i, ms -> "${i + 1}) ${clock(ms)}" }.joinToString(", ") + "."
+                    (if (before.running) "Running: " else "Paused at ") + clock(before.elapsed(now)) + "." + lapText
+                }
             }
         }
     }

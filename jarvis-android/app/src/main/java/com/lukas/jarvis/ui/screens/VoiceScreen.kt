@@ -48,8 +48,10 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.BatteryStd
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Warning
@@ -178,6 +180,10 @@ fun VoiceScreen(
     online: Boolean = true,
     ringing: List<RunningTimer> = emptyList(),
     onStopRinging: (Int) -> Unit = {},
+    /** The stopwatch, shown with the timers while it runs or is paused. */
+    stopwatch: com.lukas.jarvis.notify.StopwatchState = com.lukas.jarvis.notify.StopwatchState(),
+    onStopwatchToggle: () -> Unit = {},
+    onStopwatchReset: () -> Unit = {},
     /** Two people talking through the phone; while open it takes the screen. */
     interpreter: com.lukas.jarvis.voice.InterpreterState? = null,
     onInterpretListen: (com.lukas.jarvis.voice.InterpreterState.Side) -> Unit = {},
@@ -202,8 +208,16 @@ fun VoiceScreen(
             online = online
         )
 
-        if (timers.isNotEmpty() || ringing.isNotEmpty()) {
-            TimerStrip(timers = timers, onCancel = onCancelTimer, ringing = ringing, onStop = onStopRinging)
+        if (timers.isNotEmpty() || ringing.isNotEmpty() || !stopwatch.idle) {
+            TimerStrip(
+                timers = timers,
+                onCancel = onCancelTimer,
+                ringing = ringing,
+                onStop = onStopRinging,
+                stopwatch = stopwatch,
+                onStopwatchToggle = onStopwatchToggle,
+                onStopwatchReset = onStopwatchReset
+            )
         }
 
         if (interpreter != null) {
@@ -342,13 +356,16 @@ private fun TimerStrip(
     timers: List<RunningTimer>,
     onCancel: (Int) -> Unit,
     ringing: List<RunningTimer> = emptyList(),
-    onStop: (Int) -> Unit = {}
+    onStop: (Int) -> Unit = {},
+    stopwatch: com.lukas.jarvis.notify.StopwatchState = com.lukas.jarvis.notify.StopwatchState(),
+    onStopwatchToggle: () -> Unit = {},
+    onStopwatchReset: () -> Unit = {}
 ) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(timers) {
+    LaunchedEffect(timers, stopwatch) {
         while (true) {
             now = System.currentTimeMillis()
-            delay(250)
+            delay(if (stopwatch.running) 100 else 250)
         }
     }
     Row(
@@ -376,6 +393,54 @@ private fun TimerStrip(
                 )
                 Spacer(Modifier.width(10.dp))
                 Text("STOP", style = MaterialTheme.typography.labelLarge, color = OnAccent)
+            }
+        }
+        if (!stopwatch.idle) {
+            Row(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .glass(CircleShape)
+                    .clickable(onClickLabel = if (stopwatch.running) "Pause the stopwatch" else "Resume the stopwatch") {
+                        onStopwatchToggle()
+                    }
+                    .padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    if (stopwatch.running) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = if (stopwatch.running) Accent else TextFaint,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    com.lukas.jarvis.notify.StopwatchState.clock(stopwatch.elapsed(now)),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (stopwatch.running) TextPrimary else TextSecondary
+                )
+                if (stopwatch.laps.isNotEmpty()) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "Lap ${stopwatch.laps.size}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextFaint,
+                        maxLines = 1
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .clickable { onStopwatchReset() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Reset the stopwatch",
+                        tint = TextFaint,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
             }
         }
         timers.sortedBy { it.endsAt }.forEach { timer ->

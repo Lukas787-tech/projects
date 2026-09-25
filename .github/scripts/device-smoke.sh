@@ -58,6 +58,16 @@ start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT
 sleep 12
 shot 05-shared-timer
 
+# The stopwatch, through the model when it answers: its notification is the proof.
+start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "'start the stopwatch'"
+sleep 25
+shot 05b-stopwatch
+if adb shell dumpsys notification --noredact 2>/dev/null | grep -q "Stopwatch"; then
+  echo "STOPWATCH: running in the notification shade" >> "$REPORT"
+else
+  echo "STOPWATCH: no notification" >> "$REPORT"
+fi
+
 # A turn through the free models, when they answer.
 start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "'What is the capital of Australia? One word.'"
 sleep 40

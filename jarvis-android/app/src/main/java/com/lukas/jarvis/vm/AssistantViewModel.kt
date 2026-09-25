@@ -933,6 +933,16 @@ class AssistantViewModel(
 
     fun cancelTimer(id: Int) = container.timers.cancelId(id)
 
+    val stopwatch: StateFlow<com.lukas.jarvis.notify.StopwatchState> = container.stopwatch.state
+
+    fun toggleStopwatch() {
+        if (container.stopwatch.state.value.running) container.stopwatch.pause() else container.stopwatch.start()
+    }
+
+    fun resetStopwatch() {
+        container.stopwatch.reset()
+    }
+
     init {
         // The interpreter tool asks for the interpreter through the stage,
         // the one channel a tool has to the screen.

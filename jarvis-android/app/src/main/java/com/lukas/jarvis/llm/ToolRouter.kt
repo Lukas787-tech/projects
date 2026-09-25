@@ -87,7 +87,7 @@ object ToolRouter {
             "number", "contact", "phone number", "nummer", "kontakt", "telefonnummer"
         ),
         ToolGroup.Phone to listOf(
-            "alarm", "wake me", "timer", "torch", "flashlight", "light", "battery", "silent",
+            "alarm", "wake me", "timer", "stopwatch", "stop watch", "stoppuhr", "lap", "zwischenzeit", "torch", "flashlight", "light", "battery", "silent",
             "ringer", "vibrat", "open ", "launch", "app", "settings", "wifi", "wi-fi",
             "clipboard", "copy", "storage", "brightness", "airplane", "wecker", "weck mich",
             "taschenlampe", "licht", "akku", "lautlos", "öffne", "starte", "einstellung",

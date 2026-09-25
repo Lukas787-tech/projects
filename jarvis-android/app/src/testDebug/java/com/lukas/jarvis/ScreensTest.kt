@@ -331,6 +331,11 @@ class ScreensTest {
 
         container.timers.start(7 * 60 + 30, "Pasta")
         container.timers.start(42 * 60, "Laundry")
+        // A paused stopwatch with a lap, so the capsule renders still.
+        container.stopwatch.reset()
+        container.stopwatch.start(System.currentTimeMillis() - 83_400)
+        container.stopwatch.lap(System.currentTimeMillis() - 20_000)
+        container.stopwatch.pause()
 
         val berlin = com.lukas.jarvis.maps.GeoPoint(52.5200, 13.4050)
         val gymSpot = com.lukas.jarvis.maps.GeoPoint(52.5290, 13.4120)

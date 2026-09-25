@@ -25,6 +25,7 @@ object Reflexes {
             return call("system_action", JSONObject().put("action", action.id))
         }
         profile(text)?.let { return it }
+        stopwatch(text)?.let { return it }
         timerQuestion(text)?.let { return it }
         sleepTimer(text)?.let { return it }
         focus(text)?.let { return it }
@@ -155,6 +156,20 @@ object Reflexes {
         // The phone's own modes are not profiles.
         if (name.split(' ').size > 3 || DEVICE_MODES.containsMatchIn(name)) return null
         return call("profile", JSONObject().put("action", "apply").put("name", name))
+    }
+
+    /** "Start the stopwatch", "lap", "Stoppuhr anhalten". */
+    private fun stopwatch(text: String): ToolCall? {
+        val action = when {
+            LAP.matches(text) -> "lap"
+            !STOPWATCH.containsMatchIn(text) -> return null
+            Regex("\\b(reset|clear|zurücksetzen|löschen|nullen)\\b").containsMatchIn(text) -> "reset"
+            Regex("\\b(lap|split|runde|zwischenzeit)\\b").containsMatchIn(text) -> "lap"
+            Regex("\\b(stop|pause|halt|anhalten|stoppen|stopp)\\b").containsMatchIn(text) -> "pause"
+            Regex("\\b(start|begin|resume|go|starten|starte|weiter|los)\\b").containsMatchIn(text) -> "start"
+            else -> "status"
+        }
+        return call("stopwatch", JSONObject().put("action", action))
     }
 
     /** "Remind me to call mum in 10 minutes": the time said last. */
@@ -355,6 +370,8 @@ object Reflexes {
     private val REMIND = Regex(
         "(?:remind me|erinnere mich)\\s+(?:in|in)\\s+(\\d+(?:[.,]\\d+)?)\\s*(seconds?|minutes?|mins?|hours?|minuten?|stunden?|sekunden?)\\s+(?:to|zu|an|dass|that)?\\s*(.+)"
     )
+    private val STOPWATCH = Regex("stop ?watch|stoppuhr")
+    private val LAP = Regex("^(lap|split|runde|zwischenzeit)( please| bitte)?$")
     private val PROFILE_SWITCH = Regex(
         "^(?:switch|change|go) (?:to|into) (?:the |my )?(.+?) (?:mode|profile)$|" +
             "^(?:use|load|apply) (?:the |my )?(.+?) profile$|" +

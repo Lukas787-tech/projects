@@ -307,6 +307,7 @@ private fun JarvisRoot(
     val levels by viewModel.levels.collectAsStateWithLifecycle()
     val lists by viewModel.lists.collectAsStateWithLifecycle()
     val timers by viewModel.timers.collectAsStateWithLifecycle()
+    val stopwatch by viewModel.stopwatch.collectAsStateWithLifecycle()
     val online by viewModel.online.collectAsStateWithLifecycle()
     val ringingTimers by viewModel.ringingTimers.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
@@ -686,6 +687,9 @@ private fun JarvisRoot(
                     online = online,
                     ringing = ringingTimers,
                     onStopRinging = viewModel::stopTimerAlarm,
+                    stopwatch = stopwatch,
+                    onStopwatchToggle = viewModel::toggleStopwatch,
+                    onStopwatchReset = viewModel::resetStopwatch,
                     interpreter = interpreter,
                     onInterpretListen = viewModel::interpretListen,
                     onInterpretType = viewModel::interpretTyped,

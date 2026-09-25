@@ -254,6 +254,11 @@
             android:name=".notify.TimerReceiver"
             android:exported="false" />
 
+        <!-- The buttons on the stopwatch's notification. -->
+        <receiver
+            android:name=".notify.StopwatchReceiver"
+            android:exported="false" />
+
         <!-- The phone crossing the circle of a place reminder. -->
         <receiver
             android:name=".notify.PlaceReceiver"
