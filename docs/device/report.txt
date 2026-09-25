@@ -7,7 +7,7 @@ shot 05b-stopwatch
 STOPWATCH: running in the notification shade
 shot 06-live-question
 shot 06b-setting-red
-SETTING: colour not changed within 60 s
+SETTING: colour changed to red by asking
 shot 09-map
 shot 09-notes
 shot 09-settings
