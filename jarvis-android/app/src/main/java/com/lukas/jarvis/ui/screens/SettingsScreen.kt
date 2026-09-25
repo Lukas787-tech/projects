@@ -451,14 +451,21 @@ fun SettingsScreen(
                 }
             )
             Spacer(Modifier.height(8.dp))
+            // Typed freely and saved only when it is a sensible number:
+            // clamping each keystroke turned "2" of "2000" into 128.
+            var tokensText by remember(settings.maxTokens) { mutableStateOf(settings.maxTokens.toString()) }
+            val tokens = tokensText.toIntOrNull()
             GlassField(
-                value = settings.maxTokens.toString(),
+                value = tokensText,
                 onValueChange = { value ->
-                    value.toIntOrNull()?.let { parsed ->
-                        onUpdate { it.copy(maxTokens = parsed.coerceIn(128, 8192)) }
+                    tokensText = value.filter { it.isDigit() }.take(5)
+                    tokensText.toIntOrNull()?.takeIf { it in 128..8192 }?.let { parsed ->
+                        onUpdate { it.copy(maxTokens = parsed) }
                     }
                 },
                 label = "Max reply length (tokens)",
+                supportingText = if (tokens == null || tokens !in 128..8192) "Between 128 and 8192" else null,
+                isError = tokens == null || tokens !in 128..8192,
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()

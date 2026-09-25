@@ -303,9 +303,9 @@ private fun TrackerDialog(
                     },
                     kind = kind,
                     unit = unit.trim(),
-                    budget = budget.toDoubleOrNull(),
+                    budget = decimal(budget),
                     period = period,
-                    startingBalance = balance.toDoubleOrNull()
+                    startingBalance = decimal(balance)
                 )
             )
         }
@@ -343,9 +343,9 @@ private fun EntryDialog(
         title = tracker.label,
         onDismiss = onDismiss,
         confirmLabel = "Log",
-        confirmEnabled = amount.toDoubleOrNull() != null,
+        confirmEnabled = decimal(amount) != null,
         onConfirm = {
-            amount.toDoubleOrNull()?.let {
+            decimal(amount)?.let {
                 onConfirm(it, direction, note.takeIf { n -> n.isNotBlank() })
             }
         }
@@ -384,4 +384,14 @@ private fun format(value: Double, tracker: Tracker?): String {
         }
     }
     return if (unit.isBlank()) text else "$text $unit"
+}
+
+/**
+ * A typed amount with either decimal mark: "250,50" on a German keyboard is
+ * 250.5, not nothing. Anything that is not just a number is null.
+ */
+private fun decimal(text: String): Double? {
+    val trimmed = text.trim()
+    if (!Regex("^-?[\\d.,' ]+$").matches(trimmed)) return null
+    return com.lukas.jarvis.core.Numbers.first(trimmed.replace(" ", "").replace("'", ""))
 }

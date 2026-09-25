@@ -134,6 +134,11 @@ fun TodayScreen(
             initial = draft,
             onDismiss = { editing = null },
             onSave = { saved ->
+                // A rename is a new name for the same routine: the old one
+                // goes, with its alarm, instead of staying as a duplicate.
+                if (draft.name.isNotBlank() && !draft.name.equals(saved.name, ignoreCase = true)) {
+                    onDeleteRoutine(draft.name)
+                }
                 onSaveRoutine(saved)
                 editing = null
             },
@@ -494,7 +499,7 @@ private fun Vitals(brief: DayBrief) {
         )
         StatTile(
             value = brief.appointments.firstOrNull()
-                ?.let { TimeUtil.formatTime(it.startsAt) } ?: "Clear",
+                ?.let { if (it.allDay) "All day" else TimeUtil.formatTime(it.startsAt) } ?: "Clear",
             label = "Next",
             caption = brief.appointments.firstOrNull()?.title,
             modifier = Modifier.weight(1f)
@@ -820,9 +825,18 @@ private fun TrackerLine(status: TrackerStatus, onOpen: () -> Unit) {
             )
         }
 
-        if (cap != null && cap > 0) {
+        // The bar measures what the period is measured against: the budget
+        // when there is one, else how much of the starting balance is gone.
+        // Spending against a balance of 500 hid a monthly budget of 200 at 95%.
+        val budget = t.budget?.takeIf { it > 0 }
+        val start = t.startingBalance?.takeIf { it > 0 }
+        if (budget != null || start != null) {
             Spacer(Modifier.height(Space.tight))
-            val used = (status.periodSpent / cap).toFloat()
+            val used = if (budget != null) {
+                (status.periodSpent / budget).toFloat()
+            } else {
+                ((start!! - (status.balance ?: start)) / start).toFloat()
+            }
             MeterBar(
                 fraction = used,
                 tint = when {
@@ -833,8 +847,12 @@ private fun TrackerLine(status: TrackerStatus, onOpen: () -> Unit) {
             )
             Spacer(Modifier.height(Space.hair + 2.dp))
             Text(
-                text = "${format(status.periodSpent)} of ${format(cap)} ${t.unit} " +
-                    "this ${Tracker.periodWord(t.period)}",
+                text = if (budget != null) {
+                    "${format(status.periodSpent)} of ${format(budget)} ${t.unit} " +
+                        "this ${Tracker.periodWord(t.period)}"
+                } else {
+                    "${format(status.balance ?: start!!)} of ${format(start!!)} ${t.unit} left"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = TextFaint,
                 modifier = Modifier.clickable { onOpen() }

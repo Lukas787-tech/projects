@@ -149,11 +149,15 @@ fun Globe(
     // start, so a spin would only ever register as a tap.
     val gestures = Modifier.pointerInput(turning) {
         // While the camera is flying to a place, it is not the user's to turn.
+        // A drag cut off by an answer arriving is not always reported as
+        // cancelled; a globe left thinking it is held would never drift again.
+        dragging = false
         if (!turning) return@pointerInput
         coroutineScope {
             launch { detectTapGestures { onTap() } }
             launch {
                 var lastMoveNanos = 0L
+                try {
                 detectDragGestures(
                     onDragStart = {
                         dragging = true
@@ -177,6 +181,9 @@ fun Globe(
                         fling = fling * 0.6f + (-degrees / seconds) * 0.4f
                     }
                     lastMoveNanos = now
+                }
+                } finally {
+                    dragging = false
                 }
             }
         }
