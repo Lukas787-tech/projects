@@ -62,7 +62,8 @@ shot 05-shared-timer
 start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "'start the stopwatch'"
 sleep 25
 shot 05b-stopwatch
-if adb shell dumpsys notification --noredact 2>/dev/null | grep -q "Stopwatch"; then
+# The channel is called "Stopwatch" too, so look for the posted notification itself.
+if adb shell dumpsys notification --noredact 2>/dev/null | grep -q "android.title=String (Stopwatch)"; then
   echo "STOPWATCH: running in the notification shade" >> "$REPORT"
 else
   echo "STOPWATCH: no notification" >> "$REPORT"

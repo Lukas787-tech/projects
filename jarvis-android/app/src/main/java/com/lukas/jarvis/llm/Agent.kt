@@ -100,6 +100,14 @@ class Agent(
             if (calls.isNotEmpty()) draft.restart()
 
             if (calls.isEmpty()) {
+                // Nothing was done at all, yet the sentence plainly asks for
+                // something the phone can do by itself: a small model saying
+                // "Stopwatch running." without starting it is caught here,
+                // and the thing is done for real.
+                if (used.isEmpty()) {
+                    doneInstead(utterance, settings, effects, available, used, onTool)
+                        ?.let { return AgentResult(it, effects, used.distinct()) }
+                }
                 val text = clean(reply.content)
                 if (!text.isNullOrBlank()) return AgentResult(confirmed(text, lastAction), effects, used.distinct())
                 lastText = text
@@ -167,6 +175,29 @@ class Agent(
             effects = effects,
             toolsUsed = used.distinct()
         )
+    }
+
+    /**
+     * The action an unmistakable sentence asks for ("set a timer for five
+     * minutes", "start the stopwatch"), run when the model answered without
+     * running anything. Only a thing that changes something; a lookup the
+     * model answered from context is left to it.
+     */
+    private suspend fun doneInstead(
+        utterance: String,
+        settings: Settings,
+        effects: ToolEffects,
+        available: Set<String>,
+        used: MutableList<String>,
+        onTool: (String) -> Unit
+    ): String? {
+        val call = Reflexes.parse(utterance) ?: return null
+        val tool = ToolCatalog.resolve(call.name, available) ?: return null
+        if (ToolCatalog.isReadOnly(tool) || tool == "remember") return null
+        used += tool
+        onTool(tool)
+        val result = runCatching { tools.execute(call.copy(name = tool), settings, effects) }.getOrNull() ?: return null
+        return result.replace(Regex("\\s*\\(ISO [^)]*\\)"), "").replace(Regex("\\s*\\(id \\d+\\)"), "")
     }
 
     /**
