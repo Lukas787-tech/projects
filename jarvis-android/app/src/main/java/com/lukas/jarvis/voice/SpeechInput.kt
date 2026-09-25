@@ -38,6 +38,9 @@ class SpeechInput(private val context: Context) {
     /** Guards the one automatic retry after the recognizer reports itself busy. */
     private var retriedAfterBusy = false
 
+    /** This listen is being retried on the phone's own model after a network error. */
+    private var offlineRetry = false
+
     val available: Boolean get() = SpeechRecognizer.isRecognitionAvailable(context)
 
     /** A BCP-47 tag to recognise in. Blank follows the phone. */
@@ -45,6 +48,7 @@ class SpeechInput(private val context: Context) {
 
     fun start(onResult: (String) -> Unit, onFailure: (String) -> Unit) {
         retriedAfterBusy = false
+        offlineRetry = false
         begin(onResult, onFailure)
     }
 
@@ -115,12 +119,22 @@ class SpeechInput(private val context: Context) {
         )
         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+        // With no network, or after the network failed this listen, the
+        // phone's own speech model is asked for; many phones have one for
+        // their language, and voice then works offline like the reflexes.
+        if (offlineRetry || !online()) putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
         // Give people a beat to think mid-sentence instead of cutting them off.
         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1200L)
     }
+
+    private fun online(): Boolean = runCatching {
+        val manager = context.getSystemService(android.net.ConnectivityManager::class.java)
+        manager?.getNetworkCapabilities(manager.activeNetwork)
+            ?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+    }.getOrDefault(true)
 
     private val listener = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
@@ -154,6 +168,17 @@ class SpeechInput(private val context: Context) {
             // "Busy" usually means the previous session has not finished letting
             // go of the microphone. Dropping the engine and trying once more
             // clears it far more often than telling the user to tap again.
+            if ((error == SpeechRecognizer.ERROR_NETWORK || error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT) &&
+                !offlineRetry
+            ) {
+                offlineRetry = true
+                val resume = onResult
+                val fail = onFailure
+                if (resume != null && fail != null) {
+                    handler.postDelayed({ begin(resume, fail) }, BUSY_RETRY_MS)
+                    return
+                }
+            }
             if (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY && !retriedAfterBusy) {
                 retriedAfterBusy = true
                 val resume = onResult
@@ -199,7 +224,8 @@ class SpeechInput(private val context: Context) {
         SpeechRecognizer.ERROR_AUDIO -> "Microphone error."
         SpeechRecognizer.ERROR_CLIENT -> "Recognizer was interrupted."
         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is off."
-        SpeechRecognizer.ERROR_NETWORK -> "Speech recognition needs a network connection."
+        SpeechRecognizer.ERROR_NETWORK -> "Speech recognition needs a network connection, and this " +
+            "phone has no offline speech model for the language. Typing works offline."
         SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Speech recognition timed out."
         SpeechRecognizer.ERROR_RECOGNIZER_BUSY ->
             "Another app is holding the microphone. Close Google Assistant or any " +
