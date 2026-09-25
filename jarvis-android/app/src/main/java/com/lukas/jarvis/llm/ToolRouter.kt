@@ -98,7 +98,8 @@ object ToolRouter {
             "dunkler", "heller", "lautstärke", "lock", "screenshot", "screen shot", "go back",
             "home screen", "recent apps", "notifications", "quick settings", "power menu",
             "split screen", "sperr", "bildschirmfoto", "zurück", "startbildschirm",
-            "benachrichtigungen"
+            "benachrichtigungen", "sleep timer", "music in", "music after", "schlaftimer",
+            "musik aus"
         ),
         ToolGroup.Messages to listOf(
             "text ", "message", "sms", "whatsapp", "telegram", "signal", "send", "reply",

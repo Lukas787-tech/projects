@@ -25,6 +25,7 @@ object Reflexes {
             return call("system_action", JSONObject().put("action", action.id))
         }
         timerQuestion(text)?.let { return it }
+        sleepTimer(text)?.let { return it }
         timer(text)?.let { return it }
         remind(text)?.let { return it }
         alarm(text)?.let { return it }
@@ -96,6 +97,16 @@ object Reflexes {
         TIMER_LEFT.containsMatchIn(text) -> call("timers", JSONObject().put("action", "list"))
         TIMER_STOP.matches(text) -> call("timers", JSONObject().put("action", "cancel"))
         else -> null
+    }
+
+    /** "Stop the music in 30 minutes", "sleep timer 20 minutes". */
+    private fun sleepTimer(text: String): ToolCall? {
+        if (!SLEEP.containsMatchIn(text)) return null
+        val match = DURATION.find(text) ?: return null
+        val amount = match.groupValues[1].replace(',', '.').toDoubleOrNull() ?: return null
+        val minutes = amount * unitMinutes(match.groupValues[2])
+        if (minutes <= 0) return null
+        return call("set_timer", JSONObject().put("minutes", minutes).put("stop_music", true))
     }
 
     private fun timer(text: String): ToolCall? {
@@ -263,6 +274,10 @@ object Reflexes {
         "^(?:hey jarvis,?\\s+|jarvis,?\\s+)?(?:please\\s+)?(?:remember|note|merk dir|merke dir|notier dir)" +
             "(?:\\s+that|,?\\s+dass)?[,:]?\\s+(.+)$",
         RegexOption.IGNORE_CASE
+    )
+    private val SLEEP = Regex(
+        "sleep timer|schlaftimer|(stop|pause|turn off) (the )?(music|playback|audio)( playing)? (in|after)|" +
+            "musik (aus|stoppen|anhalten) (in|nach)"
     )
     private val JOURNAL = Regex(
         "^(?:journal|dear diary|diary|for my journal|tagebuch|liebes tagebuch)[,:.]?\\s+(.+)$",

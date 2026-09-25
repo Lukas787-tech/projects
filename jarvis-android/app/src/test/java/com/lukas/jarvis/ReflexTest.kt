@@ -94,6 +94,17 @@ class ReflexTest {
         assertNull(Reflexes.parse("remember this"))
     }
 
+    @Test fun sleepTimers() {
+        val (name, args) = parsed("Stop the music in 30 minutes")!!
+        assertEquals("set_timer", name)
+        assertEquals(30.0, args.getDouble("minutes"), 0.01)
+        assertEquals(true, args.getBoolean("stop_music"))
+        assertEquals(true, parsed("sleep timer 20 minutes")!!.second.getBoolean("stop_music"))
+        assertEquals(true, parsed("Musik aus in 45 Minuten")!!.second.getBoolean("stop_music"))
+        // An ordinary timer stays one.
+        assertEquals(false, parsed("set a timer for 10 minutes")!!.second.optBoolean("stop_music", false))
+    }
+
     @Test fun journalEntries() {
         val (name, args) = parsed("Dear diary, today I finally fixed the bike.")!!
         assertEquals("remember", name)

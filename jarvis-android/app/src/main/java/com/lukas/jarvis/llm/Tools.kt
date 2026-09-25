@@ -738,7 +738,8 @@ class Tools(
                 "notification shade, rings until stopped, and can be asked about with `timers`.",
             props(
                 "minutes" to num("How long, in minutes. Decimals are fine."),
-                "label" to str("What it is timing.")
+                "label" to str("What it is timing."),
+                "stop_music" to bool("True for a sleep timer: 'stop the music in 30 minutes' — the music pauses at the end and nothing rings.")
             ),
             listOf("minutes")
         ),
@@ -2077,8 +2078,10 @@ class Tools(
         if (minutes.isNaN() || minutes <= 0) return "A timer needs a length in minutes."
         val seconds = (minutes * 60).toInt().coerceAtLeast(1)
         val label = args.optString("label").takeIf { it.isNotBlank() }
-        val timer = timers.start(seconds, label)
+        val sleep = args.optBoolean("stop_music", false)
+        val timer = timers.start(seconds, label, sleep)
         val length = com.lukas.jarvis.notify.Timers.spoken(timer.lengthMs)
+        if (sleep) return "Sleep timer set: the music stops in $length, at ${TimeUtil.formatTime(timer.endsAt)}."
         val what = if (label == null) "Timer set for $length" else "${timer.label} timer set for $length"
         return "$what — done at ${TimeUtil.formatTime(timer.endsAt)}."
     }

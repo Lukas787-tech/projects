@@ -53,6 +53,8 @@ model was asked to add eggs to the shopping list and read it back, and did.
 - **Remembers with no connection** — "remember that my locker code is 3917"
   is kept even when no model can be reached, and "what's my locker code?" is
   answered from memory the same way.
+- **Sleep timer** — "stop the music in 30 minutes": when it runs out the
+  music pauses and nothing rings. Works offline too.
 - **A journal** — "dear diary, …" or "journal: …" keeps an entry in your own
   words (even offline), the evening wrap-up notification has a *Write in
   journal* box, and "what did I write last week?" reads them back.

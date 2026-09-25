@@ -26,7 +26,9 @@ data class RunningTimer(
     val id: Int,
     val label: String,
     val endsAt: Long,
-    val lengthMs: Long
+    val lengthMs: Long,
+    /** A sleep timer: at the end the music stops, and nothing rings. */
+    val sleep: Boolean = false
 ) {
     fun leftMs(now: Long = System.currentTimeMillis()): Long = (endsAt - now).coerceAtLeast(0)
 }
@@ -60,11 +62,12 @@ class Timers(context: Context) {
     }
 
     @Synchronized
-    fun start(seconds: Int, label: String?): RunningTimer {
+    fun start(seconds: Int, label: String?, sleep: Boolean = false): RunningTimer {
         val now = System.currentTimeMillis()
         val id = ((prefs.getInt(KEY_NEXT, 1)).also { prefs.edit().putInt(KEY_NEXT, if (it >= 9_000) 1 else it + 1).apply() })
-        val name = label?.trim()?.takeIf { it.isNotBlank() } ?: defaultName(seconds)
-        val timer = RunningTimer(id, name, now + seconds * 1000L, seconds * 1000L)
+        val name = label?.trim()?.takeIf { it.isNotBlank() }
+            ?: if (sleep) "Music off" else defaultName(seconds)
+        val timer = RunningTimer(id, name, now + seconds * 1000L, seconds * 1000L, sleep)
         write(_all.value + timer)
         arm(timer)
         showRunning(timer)
@@ -125,7 +128,7 @@ class Timers(context: Context) {
     @Synchronized
     fun catchUp(now: Long = System.currentTimeMillis(), grace: Long = 3_000L): List<RunningTimer> {
         val late = _all.value.filter { it.endsAt + grace < now }
-        late.forEach { timer -> finished(timer.id)?.let { ring(it) } }
+        late.forEach { timer -> finished(timer.id)?.let { end(it) } }
         return late
     }
 
@@ -200,6 +203,31 @@ class Timers(context: Context) {
         runCatching { notifications?.notify(runningId(timer.id), notification) }
     }
 
+    /**
+     * A timer's end: a sleep timer pauses whatever is playing and says so
+     * quietly; any other rings.
+     */
+    internal fun end(timer: RunningTimer) {
+        if (!timer.sleep) {
+            ring(timer)
+            return
+        }
+        runCatching {
+            val audio = app.getSystemService(android.media.AudioManager::class.java)
+            listOf(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.ACTION_UP).forEach { action ->
+                audio?.dispatchMediaKeyEvent(android.view.KeyEvent(action, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE))
+            }
+        }
+        val notification = Notification.Builder(app, CHANNEL_RUNNING)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Music paused")
+            .setContentText("Your sleep timer ran out. Good night.")
+            .setAutoCancel(true)
+            .setTimeoutAfter(60_000L)
+            .build()
+        runCatching { notifications?.notify(doneId(timer.id), notification) }
+    }
+
     internal fun ring(timer: RunningTimer) {
         val stop = PendingIntent.getBroadcast(
             app,
@@ -270,14 +298,14 @@ class Timers(context: Context) {
         val array = JSONArray(prefs.getString(KEY, "[]"))
         (0 until array.length()).mapNotNull { i ->
             val o = array.optJSONObject(i) ?: return@mapNotNull null
-            RunningTimer(o.optInt("id"), o.optString("label"), o.optLong("ends"), o.optLong("length"))
+            RunningTimer(o.optInt("id"), o.optString("label"), o.optLong("ends"), o.optLong("length"), o.optBoolean("sleep"))
         }
     }.getOrDefault(emptyList())
 
     private fun write(timers: List<RunningTimer>) {
         val array = JSONArray()
         timers.forEach {
-            array.put(JSONObject().put("id", it.id).put("label", it.label).put("ends", it.endsAt).put("length", it.lengthMs))
+            array.put(JSONObject().put("id", it.id).put("label", it.label).put("ends", it.endsAt).put("length", it.lengthMs).put("sleep", it.sleep))
         }
         prefs.edit().putString(KEY, array.toString()).apply()
         _all.value = timers
@@ -327,10 +355,10 @@ class TimerReceiver : BroadcastReceiver() {
         when (intent.action) {
             Timers.ACTION_FIRE -> {
                 val timer = timers.finished(id) ?: return
-                timers.ring(timer)
+                timers.end(timer)
                 // With the app in front of them, the assistant says it too.
                 val app = context.applicationContext as JarvisApp
-                if (app.inForeground && container.settings.current.speakReplies) {
+                if (!timer.sleep && app.inForeground && container.settings.current.speakReplies) {
                     val address = com.lukas.jarvis.llm.Personas.address(container.settings.current)
                     val lead = if (address.isBlank()) "Time's up" else "Time's up, $address"
                     runCatching { container.speaker.speak("$lead: ${timer.label}.") { } }
