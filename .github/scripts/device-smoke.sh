@@ -79,6 +79,16 @@ start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT
 sleep 40
 shot 06-live-question
 
+# The assistant changing its own settings when asked, through the free models.
+start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "'Make your colour red.'"
+RED=""
+for i in $(seq 1 12); do
+  sleep 5
+  if adb shell run-as "$PKG" cat shared_prefs/jarvis_settings.xml 2>/dev/null | grep -q '"crimson"'; then RED=yes; break; fi
+done
+shot 06b-setting-red
+if [ -n "$RED" ]; then echo "SETTING: colour changed to red by asking" >> "$REPORT"; else echo "SETTING: colour not changed within 60 s" >> "$REPORT"; fi
+
 # Every main screen, through the bar at the bottom as a person would.
 for tab in "Map" "Notes" "Settings" "Today"; do
   tap_text "$tab" && sleep 5
