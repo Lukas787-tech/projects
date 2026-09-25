@@ -253,7 +253,7 @@ sealed interface Launch {
 
 /**
  * What to ask about something shared in. A link is read; a stretch of text is
- * explained and summed up; either way the question is Jarvis's to answer, in
+ * explained and summed up; one short line is taken as if it had been typed; either way the question is Jarvis's to answer, in
  * the chat, where the whole reply can be read.
  */
 private fun sharedPrompt(text: String): String {
@@ -261,6 +261,10 @@ private fun sharedPrompt(text: String): String {
     val link = Regex("https?://\\S+").find(trimmed)?.value
     return if (link != null && trimmed.length < link.length + 80) {
         "Open this link, read it, and give me the gist in a few sentences: $link"
+    } else if (trimmed.length <= 140 && '\n' !in trimmed) {
+        // One short line — "set a timer for 5 minutes", "call mum at six" —
+        // is a request or a note, not a text to sum up: it goes as said.
+        trimmed
     } else {
         "I'm sharing this with you. Summarise it, explain anything unclear, and tell me " +
             "if there's something I should do about it:\n\n${trimmed.take(6000)}"
