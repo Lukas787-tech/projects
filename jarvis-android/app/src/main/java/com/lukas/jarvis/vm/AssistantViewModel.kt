@@ -783,6 +783,13 @@ class AssistantViewModel(
 
     fun stopTimerAlarm(id: Int) = container.timers.silence(id)
 
+    /** Reminders waiting at a place rather than a time. */
+    val placeReminders: StateFlow<List<com.lukas.jarvis.notify.PlaceWatch>> = container.placeReminders.all
+
+    fun cancelPlaceReminder(id: Long) {
+        container.placeReminders.remove(id)
+    }
+
     /** The user's lists, straight from their store, which the tools write too. */
     val lists: StateFlow<com.lukas.jarvis.data.ListBook> = container.lists.book
 
@@ -1368,6 +1375,7 @@ class AssistantViewModel(
                 container.routines.reload()
                 container.savedPlaces.reload()
                 container.lists.reload()
+                container.placeReminders.reload()
                 configureVoice()
                 // The old provider's model list and test result describe
                 // settings that no longer exist.

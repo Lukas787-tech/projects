@@ -173,6 +173,14 @@ class ScreensTest {
             .onFailure { note("recall turn", it) }
         live(seconds = 40)
         shot(activity, "03e-live-memory")
+
+        // A reminder tied to a place, looked up live and armed on the phone.
+        runCatching { vm.newConversation() }
+        settle(400)
+        runCatching { vm.sendTyped("Remind me to post the letter when I get to Alexanderplatz.") }
+            .onFailure { note("place turn", it) }
+        live(seconds = 45)
+        shot(activity, "03f-live-place")
         listOf(
             Element.Today to "04-today",
             Element.Notes to "05-memory",
@@ -295,6 +303,11 @@ class ScreensTest {
 
         container.timers.start(7 * 60 + 30, "Pasta")
         container.timers.start(42 * 60, "Laundry")
+
+        val berlin = com.lukas.jarvis.maps.GeoPoint(52.5200, 13.4050)
+        val gymSpot = com.lukas.jarvis.maps.GeoPoint(52.5290, 13.4120)
+        container.placeReminders.add("pick up the parcel", "home", berlin, leaving = false, every = false, here = gymSpot)
+        container.placeReminders.add("stretch first", "the gym", gymSpot, leaving = false, every = true, here = berlin)
 
         container.lists.change { book ->
             book.add("shopping", listOf("Oat milk", "Free-range eggs", "Sourdough", "Basil", "Parmesan"))

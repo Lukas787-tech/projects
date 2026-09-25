@@ -72,7 +72,10 @@ object ToolRouter {
             "walk", "drive", "parked", "park ", "my car", "take me", "home", "work", "location",
             "address", "how far", "hier", "in der nähe", "hunger", "essen", "kaffee", "apotheke",
             "weg ", "navigation", "navi", "karte", "geparkt", "wo ist", "wo bin", "adresse",
-            "standort", "nach hause", "wie weit", "supermarkt", "tankstelle", "gas station"
+            "standort", "nach hause", "wie weit", "supermarkt", "tankstelle", "gas station",
+            "when i get", "when i arrive", "when i leave", "when i'm at", "when im at",
+            "arrive at", "get back", "wenn ich ankomme", "wenn ich da bin", "sobald ich",
+            "wenn ich losgehe", "wenn ich gehe"
         ),
         ToolGroup.Calendar to listOf(
             "calendar", "meeting", "appointment", "event", "schedule", "agenda", "busy",
@@ -92,7 +95,10 @@ object ToolRouter {
             "turn it up", "turn it down", "mute", "disturb", "dnd", "focus", "dimmer",
             "brighter", "screen", "lauter", "leiser", "stumm", "nicht stören", "bildschirm",
             "how long", "left on", "more minutes", "noch übrig", "wie lange",
-            "dunkler", "heller", "lautstärke"
+            "dunkler", "heller", "lautstärke", "lock", "screenshot", "screen shot", "go back",
+            "home screen", "recent apps", "notifications", "quick settings", "power menu",
+            "split screen", "sperr", "bildschirmfoto", "zurück", "startbildschirm",
+            "benachrichtigungen"
         ),
         ToolGroup.Messages to listOf(
             "text ", "message", "sms", "whatsapp", "telegram", "signal", "send", "reply",

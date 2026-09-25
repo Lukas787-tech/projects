@@ -10,7 +10,8 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 
 /**
- * Reads the text on the screen, once, when asked to.
+ * Reads the text on the screen, once, when asked to — and presses the
+ * system's own buttons (back, home, lock, screenshot) when told to.
  *
  * "Summarise this article", "what does this say", "reply to this" — asked
  * through the floating dot or the wake word while another app is open — need
@@ -75,6 +76,21 @@ class ScreenReader : AccessibilityService() {
         return Reading(appLabel(app), lines.joinToString("\n").take(limit))
     }
 
+    private fun press(action: SystemAction): Boolean {
+        val code = when (action) {
+            SystemAction.Back -> GLOBAL_ACTION_BACK
+            SystemAction.Home -> GLOBAL_ACTION_HOME
+            SystemAction.Recents -> GLOBAL_ACTION_RECENTS
+            SystemAction.Notifications -> GLOBAL_ACTION_NOTIFICATIONS
+            SystemAction.QuickSettings -> GLOBAL_ACTION_QUICK_SETTINGS
+            SystemAction.PowerMenu -> GLOBAL_ACTION_POWER_DIALOG
+            SystemAction.SplitScreen -> GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN
+            SystemAction.Lock -> GLOBAL_ACTION_LOCK_SCREEN
+            SystemAction.Screenshot -> GLOBAL_ACTION_TAKE_SCREENSHOT
+        }
+        return runCatching { performGlobalAction(code) }.getOrDefault(false)
+    }
+
     private fun appLabel(pkg: String): String = runCatching {
         packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
     }.getOrDefault(pkg.substringAfterLast('.'))
@@ -87,6 +103,16 @@ class ScreenReader : AccessibilityService() {
         private var instance: ScreenReader? = null
 
         val running: Boolean get() = instance != null
+
+        /**
+         * Presses one of the system's own buttons. Null when the screen access
+         * is off, false when Android refused or is too old for that button.
+         */
+        fun press(action: SystemAction): Boolean? {
+            val service = instance ?: return null
+            if (android.os.Build.VERSION.SDK_INT < action.minSdk) return false
+            return service.press(action)
+        }
 
         /** The words on screen right now, or null when reading is not switched on. */
         fun capture(limit: Int = 6000): Reading? = instance?.read(limit)

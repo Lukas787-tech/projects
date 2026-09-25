@@ -82,6 +82,40 @@ class ReflexTest {
         assertEquals("set_timer", parsed("set a timer for 10 minutes")?.first)
     }
 
+    @Test fun rememberingWithNoModel() {
+        val (name, args) = parsed("Remember that my gym locker code is 3917.")!!
+        assertEquals("remember", name)
+        // Kept in the user's own words and case.
+        assertEquals("My gym locker code is 3917", args.getString("content"))
+        assertEquals("Mein Spindcode ist 3917", parsed("Merk dir, dass mein Spindcode ist 3917")!!.second.getString("content"))
+        // A task and a question are not things to store.
+        assertEquals(null, parsed("remember to call mum")?.first?.takeIf { it == "remember" })
+        assertNull(Reflexes.parse("remember when we went to Rome?"))
+        assertNull(Reflexes.parse("remember this"))
+    }
+
+    @Test fun memoriesSaidBack() {
+        assertEquals("Your gym locker code is 3917", Reflexes.secondPerson("My gym locker code is 3917"))
+        assertEquals("You are allergic to peanuts", Reflexes.secondPerson("I am allergic to peanuts"))
+        assertEquals("Your train leaves at 9 am", Reflexes.secondPerson("My train leaves at 9 am"))
+        assertEquals("Lukas's bike is blue", Reflexes.secondPerson("Lukas's bike is blue"))
+        assertEquals("Anna gave you hers, and you kept yours.", Reflexes.secondPerson("Anna gave me hers, and I kept mine."))
+    }
+
+    @Test fun systemButtons() {
+        assertEquals("lock", parsed("Lock the phone")!!.second.getString("action"))
+        assertEquals("screenshot", parsed("take a screenshot please")!!.second.getString("action"))
+        assertEquals("notifications", parsed("open notifications")!!.second.getString("action"))
+        assertEquals("back", parsed("Jarvis, go back")!!.second.getString("action"))
+        assertEquals("screenshot", parsed("Mach einen Screenshot")!!.second.getString("action"))
+        // A longer sentence is a conversation, not a button.
+        assertNull(Reflexes.parse("go back to what we said about Rome"))
+        assertEquals(
+            com.lukas.jarvis.control.SystemAction.QuickSettings,
+            com.lukas.jarvis.control.SystemAction.byId("quick settings")
+        )
+    }
+
     @Test fun ordinarySentencesAreLeftToTheModel() {
         assertNull(Reflexes.parse("tell me about the Brandenburg Gate"))
         assertNull(Reflexes.parse("what is 42"))

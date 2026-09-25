@@ -28,6 +28,25 @@ workflow (any commit whose message contains `[screens]`); all of them are in
 [`docs/screens`](../docs/screens). The second is a live turn: the free, keyless
 model was asked to add eggs to the shopping list and read it back, and did.
 
+## What's new in 5.5
+
+- **Reminders at a place** — "remind me to buy milk when I get home", "when
+  I leave work, remind me to call Mum", "every time I get to the gym…". The
+  phone's own location service watches the spot, so nothing runs in between
+  and no Google services are needed. They sit on the Tasks tab under *At
+  places*, and one set while you are already there waits for the next arrival.
+- **The phone's own buttons by voice** — "lock the phone", "take a
+  screenshot", "go back", "open notifications", "quick settings", through the
+  screen access you already switched on for reading.
+- **Remembers with no connection** — "remember that my locker code is 3917"
+  is kept even when no model can be reached, and "what's my locker code?" is
+  answered from memory the same way.
+- **Rides out a busy moment** — a model that fails with a passing error (a
+  502 from a busy gateway, a dropped connection) gets one more try before the
+  turn gives up.
+- **Fixes** — "take me home" before home was saved used to search the map
+  for a place called "Home"; a saved "car" matched "Carrefour".
+
 ## What's new in 5.4
 
 - **Lists** — shopping, packing, anything without a time, by voice or on the
@@ -273,6 +292,19 @@ a reminder, a business card is remembered. The gallery works too.
 "Take me home" or "where's my car" then draws the way, and the Today screen
 and the map carry one-tap buttons for each. "Send Anna my location" texts a
 map link.
+
+**Reminds you at a place.** "Remind me to post the letter when I get to
+Alexanderplatz", "when I leave work, remind me to take the charger", "every
+time I get home, remind me to water the plants". Saved places, shops and
+addresses all work; "here" is where you are. Android's own proximity alerts
+do the watching, so it costs no battery while nothing happens. For it to fire
+with Jarvis closed, location has to be allowed *all the time* — Jarvis asks
+the first time you set one.
+
+**Presses the phone's buttons.** With screen reading switched on, "lock the
+phone", "take a screenshot", "go back", "go home", "recent apps", "open
+notifications", "quick settings", "power menu" and "split screen" work by
+voice, including from the floating dot while another app is open.
 
 **Runs routines.** Several things under one name — "every morning at seven,
 tell me my day, the weather, and play the radio". Say its name, tap it on

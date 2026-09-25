@@ -173,9 +173,13 @@ class Agent(
         if (call.name !in available) return null
         val effects = ToolEffects()
         val result = tools.execute(call, settings, effects)
+        val said = if (call.name == "remember" && effects.memoriesChanged) {
+            "Noted: ${Reflexes.secondPerson(JSONObject(call.argumentsJson).optString("content"))}."
+        } else {
+            result.replace(Regex("\\s*\\(ISO [^)]*\\)"), "").replace(Regex("\\s*\\(id \\d+\\)"), "")
+        }
         return AgentResult(
-            reply = "I can't reach my thinking right now, but that one I can do myself. " +
-                result.replace(Regex("\\s*\\(ISO [^)]*\\)"), ""),
+            reply = "I can't reach my thinking right now, but that one I can do myself. $said",
             effects = effects,
             toolsUsed = listOf(call.name)
         )
@@ -203,7 +207,8 @@ class Agent(
                 words.count { it in content } >= needed
             } ?: return null
         return AgentResult(
-            reply = "I can't reach my thinking right now, but I remember this: ${hit.content}",
+            reply = "I can't reach my thinking right now, but I remember this: " +
+                Reflexes.secondPerson(hit.content).trimEnd('.') + ".",
             effects = ToolEffects(),
             toolsUsed = listOf("recall")
         )

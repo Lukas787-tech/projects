@@ -106,6 +106,7 @@ object ToolCatalog {
         ToolInfo("save_place", ToolGroup.Places, "saving the spot", "Saved place"),
         ToolInfo("saved_places", ToolGroup.Places, "checking your places", "Places", readOnly = true),
         ToolInfo("forget_place", ToolGroup.Places, "forgetting the place", "Place"),
+        ToolInfo("place_reminder", ToolGroup.Places, "setting a place reminder", "Place reminder"),
         ToolInfo("share_location", ToolGroup.Places, "sharing where you are", "Location"),
 
         // calendar and people
@@ -129,6 +130,7 @@ object ToolCatalog {
         ToolInfo("open_app", ToolGroup.Phone, "opening the app", "App"),
         ToolInfo("open_settings_page", ToolGroup.Phone, "opening settings", "Settings"),
         ToolInfo("open_link", ToolGroup.Phone, "opening the page", "Browser"),
+        ToolInfo("system_action", ToolGroup.Phone, "pressing the button", "Phone"),
 
         // reaching people
         ToolInfo("call", ToolGroup.Messages, "readying the call", "Call"),
@@ -231,6 +233,11 @@ object ToolCatalog {
         "wiki" to "wikipedia", "encyclopedia" to "wikipedia",
         "park" to "save_place", "remember_place" to "save_place", "save_location" to "save_place",
         "list_places" to "saved_places", "my_places" to "saved_places",
+        "lock_phone" to "system_action", "lock_screen" to "system_action",
+        "take_screenshot" to "system_action", "screenshot" to "system_action",
+        "go_back" to "system_action", "go_home" to "system_action", "global_action" to "system_action",
+        "location_reminder" to "place_reminder", "geofence" to "place_reminder",
+        "remind_at_place" to "place_reminder", "add_place_reminder" to "place_reminder",
         "send_location" to "share_location", "my_location" to "share_location",
         "routine" to "run_routine", "start_routine" to "run_routine",
         "make_routine" to "create_routine", "add_routine" to "create_routine",
@@ -415,12 +422,14 @@ object Abilities {
         Ability(
             ToolGroup.Places,
             "Places and routes",
-            "Finds what is nearby, pins it on the map and draws the way there.",
+            "Finds what is nearby, pins it on the map, draws the way there, and reminds " +
+                "you of things when you arrive or leave.",
             listOf(
                 "I'm hungry, what's around here?",
                 "How do I get to the second one?",
                 "I parked here",
                 "Take me home",
+                "Remind me to buy milk when I get home",
                 "Send Anna my location"
             ),
             AbilitySwitch.Maps

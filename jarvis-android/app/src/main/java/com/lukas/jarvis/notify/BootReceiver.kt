@@ -19,6 +19,9 @@ class BootReceiver : BroadcastReceiver() {
                 val brain = Brain(context)
                 Reminders(context).rescheduleAll(brain.pendingReminders())
                 com.lukas.jarvis.auto.Routines(context).rescheduleAll()
+                // Proximity alerts are forgotten at a reboot like everything else.
+                (context.applicationContext as? com.lukas.jarvis.JarvisApp)
+                    ?.container?.placeReminders?.armAll()
             } finally {
                 pending.finish()
             }

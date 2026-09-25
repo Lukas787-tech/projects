@@ -8,6 +8,9 @@
     <!-- Coarse alone is enough for "what is near me"; fine sharpens the route start. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Only for place reminders ("when I get home"), and only asked for when
+         one is set: Android hands proximity alerts to a closed app with it. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Without this the app is never listed on Android's Do Not Disturb access
@@ -244,6 +247,11 @@
         <!-- A timer's end, and the buttons on its notifications. -->
         <receiver
             android:name=".notify.TimerReceiver"
+            android:exported="false" />
+
+        <!-- The phone crossing the circle of a place reminder. -->
+        <receiver
+            android:name=".notify.PlaceReceiver"
             android:exported="false" />
 
         <!-- Ends a Do Not Disturb that was asked for a set time. -->

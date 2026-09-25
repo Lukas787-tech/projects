@@ -57,10 +57,10 @@ class Navigator(
         store.setHere(here)
 
         val target = resolveDestination(destination, here)
-            ?: return if (destination.isNullOrBlank()) {
-                "Tell me where to, or search for somewhere first."
-            } else {
-                "I could not find '$destination' anywhere near you."
+            ?: return when {
+                destination.isNullOrBlank() -> "Tell me where to, or search for somewhere first."
+                saved.isPersonal(destination) -> unknownPersonal(destination.orEmpty())
+                else -> "I could not find '$destination' anywhere near you."
             }
 
         val travel = Geo.normalizeMode(mode ?: settings.travelMode)
@@ -117,7 +117,11 @@ class Navigator(
     suspend fun startNavigation(destination: String?, mode: String?, settings: Settings): String {
         val here = locator.current()
         val target = resolveDestination(destination, here)
-            ?: return "I do not have a destination yet. Search for somewhere first."
+            ?: return if (saved.isPersonal(destination)) {
+                unknownPersonal(destination.orEmpty())
+            } else {
+                "I do not have a destination yet. Search for somewhere first."
+            }
         val travel = Geo.normalizeMode(mode ?: settings.travelMode)
         val opened = store.openExternalNavigation(target.point, target.name, travel)
         return if (opened) {
@@ -125,6 +129,33 @@ class Navigator(
         } else {
             "No maps app on this phone would take the directions. " +
                 "The route is on the Jarvis map instead."
+        }
+    }
+
+    /**
+     * Where a spoken place is, for things that are not a route: a saved name,
+     * a pin on the map, an address, or — said as "here" or not said at all —
+     * where the phone is now.
+     */
+    suspend fun locate(text: String?): Place? {
+        val here = locator.current()
+        if (text.isNullOrBlank() || text.looksLikeHere()) {
+            return here?.let { Place(name = "here", point = it, category = "your location", distanceMeters = 0.0) }
+        }
+        return resolveDestination(text, here)
+    }
+
+    /** "home", "work" or "the car", said before any of them was saved. */
+    fun isUnsavedPersonal(text: String): Boolean = saved.isPersonal(text) && saved.find(text) == null
+
+    /** What to say when "home" or "work" is asked for before it was ever saved. */
+    fun unknownPersonal(name: String): String {
+        val word = saved.canonicalName(name)
+        return if (word == "car") {
+            "I don't know where the car is — nothing was saved when you parked. " +
+                "Next time, say 'I parked here' as you leave it."
+        } else {
+            "I don't know where $word is yet. When you're there, say 'this is $word' and I'll keep it."
         }
     }
 
@@ -215,6 +246,9 @@ class Navigator(
             )
         }
 
+        // An unsaved "home" is not something to search the map for.
+        if (saved.isPersonal(text)) return null
+
         ordinal(text)?.let { index -> current.places.getOrNull(index)?.let { return it } }
 
         current.places.firstOrNull { it.name.equals(text, ignoreCase = true) }?.let { return it }
@@ -235,7 +269,10 @@ class Navigator(
 
     private fun String.looksLikeHere(): Boolean {
         val text = lowercase(Locale.ROOT).trim()
-        return text in setOf("me", "here", "my area", "nearby", "around me", "my location", "us")
+        return text in setOf(
+            "me", "here", "my area", "nearby", "around me", "my location", "us",
+            "this place", "where i am", "current location", "hier"
+        )
     }
 
     /**

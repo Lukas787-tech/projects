@@ -296,6 +296,7 @@ private fun JarvisRoot(
     val brief by viewModel.brief.collectAsStateWithLifecycle()
     val briefLoading by viewModel.briefLoading.collectAsStateWithLifecycle()
     val savedPlaces by viewModel.savedPlaces.collectAsStateWithLifecycle()
+    val placeReminders by viewModel.placeReminders.collectAsStateWithLifecycle()
     val hereLabel by viewModel.hereLabel.collectAsStateWithLifecycle()
     val routines by viewModel.routines.collectAsStateWithLifecycle()
     val levels by viewModel.levels.collectAsStateWithLifecycle()
@@ -738,6 +739,8 @@ private fun JarvisRoot(
                             onAdd = viewModel::addTask,
                             onToggle = viewModel::toggleTask,
                             onDelete = viewModel::deleteTask,
+                            placeReminders = placeReminders,
+                            onCancelPlace = viewModel::cancelPlaceReminder,
                             embedded = true
                         )
                     }

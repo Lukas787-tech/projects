@@ -66,13 +66,27 @@ class SavedPlaces(context: Context) {
         if (wanted.isBlank()) return null
         val key = canonical(wanted)
         _places.value.firstOrNull { it.name.equals(key, ignoreCase = true) }?.let { return it }
-        return _places.value.firstOrNull { wanted.contains(it.name.lowercase(Locale.ROOT)) }
+        // As a whole word: a saved "car" is not in "Carrefour".
+        return _places.value.firstOrNull { place ->
+            Regex("(^|[^\\p{L}\\p{N}])${Regex.escape(place.name.lowercase(Locale.ROOT))}($|[^\\p{L}\\p{N}])")
+                .containsMatchIn(wanted)
+        }
     }
 
+    /**
+     * Home, work, the car: places only the user can say where they are. Asked
+     * for before they are saved, a search for the word "home" would happily
+     * come back with a shop of that name, so these are never looked up.
+     */
+    fun isPersonal(text: String?): Boolean =
+        !text.isNullOrBlank() && canonical(text) in PERSONAL
+
+    fun canonicalName(raw: String): String = canonical(raw)
+
     private fun canonical(raw: String): String {
-        val text = raw.trim().lowercase(Locale.ROOT).removePrefix("my ").trim()
+        val text = raw.trim().lowercase(Locale.ROOT).removePrefix("my ").removePrefix("the ").trim()
         return when (text) {
-            "zuhause", "daheim", "house", "home address", "my home" -> "home"
+            "zuhause", "daheim", "house", "home address", "my home", "nach hause", "heim" -> "home"
             "arbeit", "office", "büro", "buero", "job" -> "work"
             "auto", "wagen", "parking", "parked car", "parkplatz", "my car" -> "car"
             else -> text
@@ -111,5 +125,6 @@ class SavedPlaces(context: Context) {
 
     private companion object {
         const val KEY = "places"
+        val PERSONAL = setOf("home", "work", "car")
     }
 }

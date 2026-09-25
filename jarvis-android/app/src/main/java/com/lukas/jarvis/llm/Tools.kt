@@ -94,7 +94,8 @@ class Tools(
     private val imagine: Imagine,
     private val home: Home,
     private val lists: com.lukas.jarvis.data.Lists,
-    private val timers: com.lukas.jarvis.notify.Timers
+    private val timers: com.lukas.jarvis.notify.Timers,
+    private val placeReminders: com.lukas.jarvis.notify.PlaceReminders
 ) {
 
     /**
@@ -625,6 +626,21 @@ class Tools(
             listOf("name")
         ),
         tool(
+            "place_reminder",
+            "A reminder that goes off at a place instead of a time: 'remind me to buy milk " +
+                "when I get home', 'when I leave work remind me to call Mum', 'every time I " +
+                "get to the gym remind me to stretch'. Also lists and cancels them. For a " +
+                "reminder at a time use add_task.",
+            props(
+                "action" to str("What to do. Default add.", listOf("add", "list", "cancel")),
+                "text" to str("What to remind about, e.g. 'buy milk'. To cancel: words from it, or its id."),
+                "place" to str("Where: a saved place such as 'home' or 'work', a shop, or an address. Omit for where the user is now."),
+                "leaving" to bool("True for 'when I leave', false for 'when I get there'."),
+                "every" to bool("True for every arrival or departure, not only the next.")
+            ),
+            emptyList()
+        ),
+        tool(
             "share_location",
             "Give someone the user's current position as a map link. With a number it is " +
                 "texted straight away; without, the link comes back for you to use, for " +
@@ -686,6 +702,14 @@ class Tools(
     )
 
     private fun deviceTools(): List<JSONObject> = listOf(
+        tool(
+            "system_action",
+            "Press one of the phone's own system buttons: go back, go to the home screen, " +
+                "show recent apps, pull down notifications or quick settings, open the power " +
+                "menu, split the screen, lock the phone, or take a screenshot.",
+            props("action" to str("Which button.", com.lukas.jarvis.control.SystemAction.ids)),
+            listOf("action")
+        ),
         tool(
             "set_alarm",
             "Set an alarm in the phone's clock app. Use for wake-ups and fixed times of day; " +
@@ -1088,6 +1112,7 @@ class Tools(
                     useSelectedPin = args.optBoolean("use_selected_pin", false)
                 )
                 "saved_places" -> navigator.savedPlaces(locator.remembered())
+                "place_reminder" -> placeReminder(args)
                 "forget_place" -> navigator.forgetPlace(args.optString("name").trim())
                 "share_location" -> shareLocation(args)
                 "wikipedia" -> wikipedia(args)
@@ -1212,6 +1237,7 @@ class Tools(
                 // eyes
                 "take_photo" -> takePhoto(args)
                 "read_screen" -> readScreen()
+                "system_action" -> systemAction(args)
                 "open_camera" -> launcher.openCamera(args.optString("mode") == "video")
 
                 // routines
@@ -1240,6 +1266,31 @@ class Tools(
         }
         if (reading.text.isBlank()) return "The screen (${reading.app}) shows no readable text."
         return "On screen in ${reading.app}:\n${reading.text}"
+    }
+
+    private suspend fun systemAction(args: JSONObject): String {
+        val action = com.lukas.jarvis.control.SystemAction.byId(args.optString("action"))
+            ?: return "Which button? One of: ${com.lukas.jarvis.control.SystemAction.ids.joinToString()}."
+        if (android.os.Build.VERSION.SDK_INT < action.minSdk) {
+            return "This phone's Android is too old to press ${action.id.replace('_', ' ')} from an app."
+        }
+        if (!ScreenReader.running) {
+            return "Pressing system buttons goes through Jarvis's screen access, which is switched " +
+                "off. Tell the user it is in Settings -> Powers -> Screen reading, and that Android " +
+                "asks once on its accessibility page."
+        }
+        // A screenshot of Jarvis's own answer coming up is not the one wanted,
+        // and a lock that lands mid-sentence cuts the answer off: a beat first.
+        if (action == com.lukas.jarvis.control.SystemAction.Screenshot ||
+            action == com.lukas.jarvis.control.SystemAction.Lock
+        ) {
+            kotlinx.coroutines.delay(700)
+        }
+        return when (ScreenReader.press(action)) {
+            true -> action.done
+            false -> "Android would not press ${action.id.replace('_', ' ')} just now."
+            null -> "The screen access stopped running. It can be switched on again under Settings -> Powers -> Screen reading."
+        }
     }
 
     private suspend fun generateImage(args: JSONObject, effects: ToolEffects): String {
@@ -1788,6 +1839,61 @@ class Tools(
             mode = args.optString("mode").trim().takeIf { it.isNotBlank() },
             settings = settings
         )
+
+    private suspend fun placeReminder(args: JSONObject): String {
+        val action = args.optString("action").trim().lowercase(Locale.ROOT).ifBlank { "add" }
+        val text = args.optString("text").trim()
+        when (action) {
+            "list", "show" -> return placeReminders.describe()
+            "cancel", "delete", "remove" -> {
+                if (placeReminders.current.isEmpty()) return "There are no place reminders to cancel."
+                val target = placeReminders.find(text)
+                    ?: return "No place reminder matches '$text'. These are set:\n${placeReminders.describe()}"
+                placeReminders.remove(target.id)
+                return "Cancelled: ${target.describe()}."
+            }
+        }
+        if (text.isBlank()) return "What should the reminder say?"
+        if (!placeReminders.canWatch) {
+            placeReminders.askPermission()
+            return "A place reminder needs location, which is off for Jarvis. I've asked for it — " +
+                "say the reminder again once it's allowed."
+        }
+        val wanted = args.optString("place").trim()
+        val target = navigator.locate(wanted.takeIf { it.isNotBlank() })
+            ?: return when {
+                wanted.isBlank() -> "I can't tell where you are right now, so I can't pin this here. " +
+                    "Name the place instead."
+                navigator.isUnsavedPersonal(wanted) -> navigator.unknownPersonal(wanted)
+                else -> "I couldn't find '$wanted'. Give me an address, or save it as a place while you're there."
+            }
+        val name = when {
+            target.name == "here" -> "here"
+            target.category == "saved place" && target.name == "your parked car" -> "the car"
+            else -> target.name
+        }
+        val watch = placeReminders.add(
+            text = text,
+            place = name,
+            point = target.point,
+            leaving = args.optBoolean("leaving", false),
+            every = args.optBoolean("every", false),
+            here = locator.remembered()
+        )
+        return buildString {
+            append("Set: ${watch.text}, ${watch.trigger}")
+            if (watch.every) append(", every time")
+            append(".")
+            if (!watch.leaving && !watch.armed) append(" You're there now, so it counts from the next time you arrive.")
+            if (!placeReminders.canWatchClosed) {
+                placeReminders.askPermission()
+                append(
+                    " For it to go off with Jarvis closed, location has to be allowed all the time — " +
+                        "I've opened that choice."
+                )
+            }
+        }
+    }
 
     // --------------------------------------------------------------------- web
 

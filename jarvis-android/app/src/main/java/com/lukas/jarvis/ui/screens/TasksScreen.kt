@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Checkbox
@@ -33,6 +35,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.core.TimeUtil
 import com.lukas.jarvis.data.Task
+import com.lukas.jarvis.notify.PlaceWatch
 import com.lukas.jarvis.ui.components.EmptyState
 import com.lukas.jarvis.ui.components.JarvisCard
 import com.lukas.jarvis.ui.components.Picker
@@ -50,6 +53,8 @@ fun TasksScreen(
     onToggle: (Task) -> Unit,
     onDelete: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    placeReminders: List<PlaceWatch> = emptyList(),
+    onCancelPlace: (Long) -> Unit = {},
     embedded: Boolean = false
 ) {
     var showAdd by remember { mutableStateOf(false) }
@@ -59,21 +64,37 @@ fun TasksScreen(
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         ScreenHeader(
             title = if (embedded) null else "Tasks",
-            subtitle = if (open.isEmpty()) "All clear" else "${open.size} open",
+            subtitle = when {
+                open.isEmpty() && placeReminders.isEmpty() -> "All clear"
+                placeReminders.isEmpty() -> "${open.size} open"
+                else -> "${open.size} open · ${placeReminders.size} at places"
+            },
             actionIcon = Icons.Default.Add,
             actionLabel = "New task",
             onAction = { showAdd = true }
         )
 
-        if (tasks.isEmpty()) {
+        if (tasks.isEmpty() && placeReminders.isEmpty()) {
             EmptyState(
                 title = "No tasks",
-                subtitle = "Say \"remind me to call mum tomorrow at six\"."
+                subtitle = "Say \"remind me to call mum tomorrow at six\", or \"remind me to " +
+                    "buy milk when I get home\"."
             )
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(open, key = { it.id }) { task ->
                     TaskRow(task, { onToggle(task) }, { onDelete(task.id) })
+                }
+                if (placeReminders.isNotEmpty()) {
+                    item {
+                        Column {
+                            Spacer(Modifier.height(12.dp))
+                            SectionLabel("At places")
+                        }
+                    }
+                    items(placeReminders, key = { "place-${it.id}" }) { watch ->
+                        PlaceRow(watch) { onCancelPlace(watch.id) }
+                    }
                 }
                 if (done.isNotEmpty()) {
                     item {
@@ -138,6 +159,45 @@ private fun TaskRow(task: Task, onToggle: () -> Unit, onDelete: () -> Unit) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Delete",
+                    tint = TextFaint,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+/** A reminder waiting at a place: the pin stands where a checkbox would. */
+@Composable
+private fun PlaceRow(watch: PlaceWatch, onCancel: () -> Unit) {
+    JarvisCard {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                if (watch.leaving) Icons.AutoMirrored.Filled.DirectionsWalk else Icons.Default.Place,
+                contentDescription = null,
+                tint = Accent,
+                modifier = Modifier.padding(12.dp).size(20.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    watch.text.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TextPrimary
+                )
+                Text(
+                    watch.trigger.replaceFirstChar { it.uppercase() } +
+                        if (watch.every) " · every time" else "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary
+                )
+            }
+            IconButton(onClick = onCancel, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Cancel",
                     tint = TextFaint,
                     modifier = Modifier.size(16.dp)
                 )

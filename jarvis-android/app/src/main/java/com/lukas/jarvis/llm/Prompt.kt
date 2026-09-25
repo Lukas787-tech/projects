@@ -139,6 +139,18 @@ ROUTINES AND SAVED PLACES
                 )
             }
 
+            if (has("place_reminder")) {
+                appendLine()
+                appendLine(
+                    """
+PLACE REMINDERS
+- A reminder tied to arriving or leaving somewhere ("when I get home", "when I leave
+  work", "next time I'm at Aldi") -> `place_reminder`, never `add_task`. "Here" or no
+  place means where $user is now.
+                    """.trim()
+                )
+            }
+
             if (has("play_music", "bluetooth")) {
                 appendLine()
                 appendLine(

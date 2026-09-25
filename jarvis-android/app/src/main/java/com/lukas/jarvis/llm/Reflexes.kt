@@ -20,6 +20,10 @@ object Reflexes {
         val text = raw.trim().lowercase(Locale.ROOT).trimEnd('?', '.', '!')
         if (text.isBlank()) return null
 
+        remember(raw)?.let { return it }
+        com.lukas.jarvis.control.SystemAction.heard(text)?.let { action ->
+            return call("system_action", JSONObject().put("action", action.id))
+        }
         timerQuestion(text)?.let { return it }
         timer(text)?.let { return it }
         remind(text)?.let { return it }
@@ -35,6 +39,47 @@ object Reflexes {
         if (TIME.containsMatchIn(text) || DATE.containsMatchIn(text)) return call("now", JSONObject())
         sum(text)?.let { return it }
         return null
+    }
+
+    /**
+     * "Remember that my locker code is 3917": kept word for word, since with no
+     * model there is nobody to rewrite it, and the words are the user's own.
+     * "Remember to…" is a task and "remember when…?" a question, so neither is
+     * taken as something to store.
+     */
+    private fun remember(raw: String): ToolCall? {
+        val trimmed = raw.trim()
+        if (trimmed.endsWith("?")) return null
+        val match = REMEMBER.find(trimmed) ?: return null
+        val content = match.groupValues[1].trim().trimEnd('.', '!').trim()
+        if (content.split(Regex("\\s+")).size < 3) return null
+        if (Regex("^(to|when|zu|wann)\\b", RegexOption.IGNORE_CASE).containsMatchIn(content)) return null
+        return call(
+            "remember",
+            JSONObject().put("content", content.replaceFirstChar { it.titlecase(Locale.ROOT) })
+        )
+    }
+
+    /**
+     * The user's own words said back to them: "my code is 3917" becomes "your
+     * code is 3917". English only; a German memory reads fine either way.
+     */
+    fun secondPerson(text: String): String {
+        val verbs = text
+            .replace(Regex("\\bI am\\b"), "you are")
+            .replace(Regex("\\bI was\\b"), "you were")
+        val swapped = verbs.split(Regex("(?<=\\s)|(?=\\s)")).joinToString("") { token ->
+            val bare = token.trimEnd(',', '.', '!', '?', ';', ':')
+            val tail = token.substring(bare.length)
+            val replacement = PERSON[bare.lowercase(Locale.ROOT)] ?: return@joinToString token
+            val cased = if (bare.first().isUpperCase() && bare != "I") {
+                replacement.replaceFirstChar { it.titlecase(Locale.ROOT) }
+            } else {
+                replacement
+            }
+            cased + tail
+        }
+        return swapped.replaceFirstChar { it.titlecase(Locale.ROOT) }
     }
 
     private fun timerQuestion(text: String): ToolCall? = when {
@@ -204,6 +249,15 @@ object Reflexes {
     private val PREVIOUS = Regex("^(previous|last|go back to the previous)( (song|track|one))?$|^(vorheriges lied|zurück)$")
     private val COIN = Regex("\\b(flip|toss) a coin\\b|\\bheads or tails\\b|\\bmünze werfen\\b|\\bwirf eine münze\\b|\\bkopf oder zahl\\b")
     private val DICE = Regex("\\broll (a|the|some) (die|dice)\\b|\\bwürfel(n|e)?\\b")
+    private val REMEMBER = Regex(
+        "^(?:hey jarvis,?\\s+|jarvis,?\\s+)?(?:please\\s+)?(?:remember|note|merk dir|merke dir|notier dir)" +
+            "(?:\\s+that|,?\\s+dass)?[,:]?\\s+(.+)$",
+        RegexOption.IGNORE_CASE
+    )
+    private val PERSON = mapOf(
+        "my" to "your", "i" to "you", "i'm" to "you're", "me" to "you", "mine" to "yours",
+        "myself" to "yourself", "i've" to "you've", "i'll" to "you'll", "i'd" to "you'd"
+    )
     private val BATTERY = Regex("^(how much battery|battery( level| status)?|what'?s my battery|how'?s (my|the) battery|wie viel akku|akku(stand)?)( do i have| left| is left)?$")
     private val OPEN = Regex("^(open|launch|start|öffne|starte)\\s+(.+?)(\\s+app)?$")
     private val NOT_APPS = Regex("\\b(door|window|garage|blind|blinds|shutter|gate|tür|fenster|tor|rollo|curtain|timer|alarm|a |an )")
