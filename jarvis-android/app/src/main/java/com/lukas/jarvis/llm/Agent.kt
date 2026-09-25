@@ -193,7 +193,8 @@ class Agent(
     ): String? {
         val call = Reflexes.parse(utterance) ?: return null
         val tool = ToolCatalog.resolve(call.name, available) ?: return null
-        if (ToolCatalog.isReadOnly(tool) || tool == "remember") return null
+        // "Start over", "open a new chapter": opening an app is too easily misheard to do unasked.
+        if (ToolCatalog.isReadOnly(tool) || tool == "remember" || tool == "open_app") return null
         used += tool
         onTool(tool)
         val result = runCatching { tools.execute(call.copy(name = tool), settings, effects) }.getOrNull() ?: return null
