@@ -113,7 +113,9 @@ class Agent(
                 val text = clean(reply.content)
                 // A claim of something done with nothing done: once, the model
                 // is told so and asked to do it — or to say it cannot.
-                val asked = utterance.trim().endsWith("?") || QUESTION.containsMatchIn(utterance.trim().lowercase())
+                // "Could you…?" is a request in a question's clothes.
+                val polite = POLITE.containsMatchIn(utterance.trim().lowercase())
+                val asked = !polite && (utterance.trim().endsWith("?") || QUESTION.containsMatchIn(utterance.trim().lowercase()))
                 if (!nudged && !asked && used.isEmpty() && round < MAX_ROUNDS && text != null && claimsAction(text) &&
                     offered.any { !ToolCatalog.isReadOnly(it) }
                 ) {
@@ -599,6 +601,8 @@ class Agent(
                 "(ich habe|habe ich) .{0,40}(geändert|gespeichert|gestellt|eingeschaltet|ausgeschaltet|gestartet|angelegt|gelöscht|hinzugefügt)|" +
                 "(ist|sind) (jetzt )?(geändert|gespeichert|gestellt|gestartet|an|aus)\\b)"
         )
+
+        private val POLITE = Regex("^(please |bitte )?(could|can|would|will) you\\b|^(kannst|könntest|würdest) du\\b")
 
         private val QUESTION = Regex("^(what|what's|whats|where|when|who|which|how|do you|did i|was|wo|wann|wer|welche|wie)\\b")
         private val STOP_WORDS = setOf(
