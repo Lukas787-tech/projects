@@ -2167,7 +2167,8 @@ class Tools(
     }
 
     private fun stopwatchAction(args: JSONObject): String {
-        val clock = com.lukas.jarvis.notify.StopwatchState.Companion::clock
+        // Said, not shown: "1 minute 23 seconds" reads aloud better than "1:23.4".
+        val clock = { ms: Long -> com.lukas.jarvis.notify.Timers.spoken((ms / 1000) * 1000) }
         val before = stopwatch.state.value
         val now = System.currentTimeMillis()
         return when (args.optString("action").trim().lowercase(Locale.ROOT)) {
