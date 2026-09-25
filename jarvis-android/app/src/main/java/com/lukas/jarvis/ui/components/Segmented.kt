@@ -20,6 +20,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,20 +86,36 @@ fun SegmentedTabs(
                 .background(SelectedFill)
         )
 
+        // One size for every label, from the widest: on a narrow phone six
+        // settings tabs did not fit, and "Powers" lost its last letter.
+        val labels = options.mapIndexed { position, option ->
+            val badge = badges.getOrNull(position)
+            if (badge.isNullOrBlank()) option else "$option  $badge"
+        }
+        val base = MaterialTheme.typography.titleMedium
+        val measurer = rememberTextMeasurer()
+        val density = LocalDensity.current
+        val room = with(density) { (slot - 6.dp).toPx() }
+        val widest = remember(labels, base) {
+            labels.maxOf { measurer.measure(it, base, maxLines = 1, softWrap = false).size.width }
+        }
+        val fit = if (widest > room && room > 0f) (room / widest).coerceAtLeast(0.72f) else 1f
+        val style = if (fit < 1f) base.copy(fontSize = base.fontSize * fit) else base
+
         Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-            options.forEachIndexed { position, option ->
+            options.forEachIndexed { position, _ ->
                 val selected = position == index
                 val foreground by animateColorAsState(
                     targetValue = if (selected) Accent else TextSecondary,
                     label = "segment-foreground"
                 )
-                val badge = badges.getOrNull(position)
                 Text(
-                    text = if (badge.isNullOrBlank()) option else "$option  $badge",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = labels[position],
+                    style = style,
                     color = foreground,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
+                    softWrap = false,
                     modifier = Modifier
                         .width(slot)
                         .fillMaxHeight()
