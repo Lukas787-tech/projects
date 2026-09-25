@@ -493,15 +493,20 @@ private fun Vitals(brief: DayBrief) {
         StatTile(
             value = "${brief.dueToday.size + brief.overdue.size}",
             label = "To do",
-            caption = if (brief.overdue.isEmpty()) "due today" else "${brief.overdue.size} overdue",
+            caption = when {
+                brief.overdue.isEmpty() -> "due today"
+                brief.dueToday.isEmpty() -> "${brief.overdue.size} overdue"
+                else -> "${brief.overdue.size} overdue · ${brief.dueToday.size} today"
+            },
             tint = if (brief.overdue.isEmpty()) TextPrimary else Negative,
             modifier = Modifier.weight(1f)
         )
         StatTile(
             value = brief.appointments.firstOrNull()
-                ?.let { if (it.allDay) "All day" else TimeUtil.formatTime(it.startsAt) } ?: "Clear",
+                ?.let { if (it.allDay) "All day" else TimeUtil.formatTime(it.startsAt) }
+                ?: if (brief.calendarOn) "Clear" else "—",
             label = "Next",
-            caption = brief.appointments.firstOrNull()?.title,
+            caption = brief.appointments.firstOrNull()?.title ?: if (brief.calendarOn) null else "Calendar off",
             modifier = Modifier.weight(1f)
         )
     }

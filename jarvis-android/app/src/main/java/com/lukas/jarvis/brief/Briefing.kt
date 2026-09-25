@@ -41,7 +41,9 @@ data class DayBrief(
     val battery: String,
     val connection: String,
     /** The top stories, when the web is switched on. */
-    val headlines: List<com.lukas.jarvis.web.Headline> = emptyList()
+    val headlines: List<com.lukas.jarvis.web.Headline> = emptyList(),
+    /** Whether the calendar is read at all; off, an empty day is unknown, not clear. */
+    val calendarOn: Boolean = true
 ) {
 
     /** The version that gets read out. Prose, no lists, no headings. */
@@ -65,7 +67,7 @@ data class DayBrief(
 
         when {
             dueToday.isEmpty() && appointments.isEmpty() ->
-                append(" Nothing is due today and the calendar is clear.")
+                append(if (calendarOn) " Nothing is due today and the calendar is clear." else " Nothing is due today.")
             else -> {
                 if (dueToday.isNotEmpty()) {
                     append(" ${dueToday.size} task${plural(dueToday.size)} due today")
@@ -193,7 +195,8 @@ class Briefer(
             trackers = trackers,
             battery = device.battery(),
             connection = device.connection(),
-            headlines = news.await()
+            headlines = news.await(),
+            calendarOn = settings.calendarEnabled
         )
     }
 
