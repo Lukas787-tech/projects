@@ -206,6 +206,18 @@ class ScreensTest {
             shot(activity, name)
         }
 
+        // Today again with the top sections folded, so what sits lower —
+        // the tasks, the calendar, the days counted down to — is in the picture.
+        run {
+            val folds = activity.getSharedPreferences("jarvis_ui", android.content.Context.MODE_PRIVATE)
+            val keys = listOf("today.fold.shortcuts", "today.fold.routines")
+            folds.edit().apply { keys.forEach { putBoolean(it, true) } }.commit()
+            runCatching { vm.showElement(Element.Today) }.onFailure { note("04b-today-lower", it) }
+            settle()
+            shot(activity, "04b-today-lower")
+            folds.edit().apply { keys.forEach { remove(it) } }.commit()
+        }
+
         listOf("You", "Voice", "Look", "Brain", "Powers", "Data").forEachIndexed { index, tab ->
             runCatching { vm.showElement(Element.Settings, "settings:tab:$index") }
             settle()
