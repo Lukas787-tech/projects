@@ -40,6 +40,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -777,6 +778,19 @@ class AssistantViewModel(
     val timers: StateFlow<List<com.lukas.jarvis.notify.RunningTimer>> = container.timers.all
 
     fun cancelTimer(id: Int) = container.timers.cancelId(id)
+
+    init {
+        // While a timer runs, a late alarm is caught here, on screen.
+        viewModelScope.launch {
+            container.timers.all.collectLatest { running ->
+                if (running.isEmpty()) return@collectLatest
+                while (true) {
+                    delay(1_000)
+                    container.timers.catchUp()
+                }
+            }
+        }
+    }
 
     /** Timers that ran out and are still sounding. */
     val ringingTimers: StateFlow<List<com.lukas.jarvis.notify.RunningTimer>> = container.timers.ringing

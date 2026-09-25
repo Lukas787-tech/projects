@@ -1892,8 +1892,8 @@ class Tools(
             if (!placeReminders.canWatchClosed) {
                 placeReminders.askPermission()
                 append(
-                    " For it to go off with Jarvis closed, location has to be allowed all the time — " +
-                        "I've opened that choice."
+                    " Tell the user, since a settings page just opened: for it to go off while Jarvis " +
+                        "is closed, location has to be allowed \"all the time\" there."
                 )
             }
         }

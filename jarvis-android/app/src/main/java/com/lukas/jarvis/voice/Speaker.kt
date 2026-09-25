@@ -228,7 +228,7 @@ class Speaker(context: Context) {
         chunks.forEachIndexed { index, part ->
             val mode = if (index == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
             val result = runCatching {
-                tts.speak(part, mode, Bundle(), "jarvis_${stamp}_$index")
+                say(part, mode, "jarvis_${stamp}_$index")
             }.getOrDefault(TextToSpeech.ERROR)
             if (result == TextToSpeech.ERROR) refused = true
         }
@@ -257,7 +257,7 @@ class Speaker(context: Context) {
         _speaking.value = true
         val id = "jarvis_stream_${System.currentTimeMillis()}_${streamCounter++}"
         runCatching {
-            tts.speak(clean, if (first) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, Bundle(), id)
+            say(clean, if (first) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, id)
         }
     }
 
@@ -283,11 +283,42 @@ class Speaker(context: Context) {
             if (clean.isBlank()) {
                 tts.playSilentUtterance(1, TextToSpeech.QUEUE_ADD, id)
             } else {
-                tts.speak(clean, TextToSpeech.QUEUE_ADD, Bundle(), id)
+                say(clean, TextToSpeech.QUEUE_ADD, id)
             }
         }.getOrDefault(TextToSpeech.ERROR)
         if (result == TextToSpeech.ERROR) finish()
     }
+
+    /**
+     * Queues [text], handing any stretch in another alphabet to a voice for
+     * that language when the phone has one. The last piece carries [id], so
+     * the end of the whole text is still the end the callbacks wait for.
+     */
+    private fun say(text: String, mode: Int, id: String): Int {
+        // Stretches in the language already being spoken keep the chosen voice.
+        val home = (languageTag.takeIf { it.isNotBlank() }?.let(Locale::forLanguageTag) ?: Locale.getDefault()).language
+        val pieces = Scripts.split(text).map { if (it.language == home) it.copy(language = null) else it }
+        if (pieces.none { it.language != null }) return tts.speak(text, mode, Bundle(), id)
+        var result = TextToSpeech.SUCCESS
+        pieces.forEachIndexed { index, piece ->
+            val pieceId = if (index == pieces.lastIndex) id else "${id}_p$index"
+            val switched = piece.language?.let { switchTo(it) } == true
+            val queued = tts.speak(piece.text, if (index == 0) mode else TextToSpeech.QUEUE_ADD, Bundle(), pieceId)
+            // The language is taken when a piece is queued, so the usual voice
+            // can come straight back for the next one.
+            if (switched) applyVoice()
+            if (queued == TextToSpeech.ERROR) result = TextToSpeech.ERROR
+        }
+        return result
+    }
+
+    /** Switches to a voice for [language] if one is installed; false leaves the voice as it was. */
+    private fun switchTo(language: String): Boolean = runCatching {
+        val locale = Locale.forLanguageTag(language)
+        if (tts.isLanguageAvailable(locale) < TextToSpeech.LANG_AVAILABLE) return false
+        tts.language = locale
+        true
+    }.getOrDefault(false)
 
     fun stop() {
         streaming = false

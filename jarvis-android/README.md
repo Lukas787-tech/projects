@@ -42,6 +42,10 @@ model was asked to add eggs to the shopping list and read it back, and did.
   need an umbrella": a quiet routine runs at its time with the app closed and
   sends the answer as a notification. Routines can keep to weekdays,
   weekends or any days you name.
+- **Says foreign words in their own voice** — in "thank you in Japanese is
+  ありがとう", the Japanese is read by a Japanese voice. Chinese, Korean,
+  Russian, Greek, Arabic, Hebrew, Hindi, Thai and more work the same way, using
+  whichever voices the phone has installed.
 - **Remembers with no connection** — "remember that my locker code is 3917"
   is kept even when no model can be reached, and "what's my locker code?" is
   answered from memory the same way.

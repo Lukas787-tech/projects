@@ -253,6 +253,25 @@ class ScreensTest {
         settle()
         shot(activity, "14-chat-emerald")
 
+        // Larger text, as set in Android's display settings by plenty of
+        // people: whatever does not fit shows up here first.
+        runCatching {
+            val bigger = android.content.res.Configuration(activity.resources.configuration)
+                .apply { fontScale = 1.3f }
+            controller.configurationChange(bigger)
+            val large = controller.get()
+            settle(1600)
+            listOf(
+                Element.Today to "17a-large-text-today",
+                Element.Tasks to "17b-large-text-tasks",
+                Element.Globe to "17c-large-text-chat"
+            ).forEach { (element, name) ->
+                runCatching { vm.showElement(element) }.onFailure { note(name, it) }
+                settle()
+                shot(large, name)
+            }
+        }.onFailure { note("large text", it) }
+
         File(dir, "report.txt").writeText(report.ifEmpty { "Every screen rendered." }.toString())
     }
 

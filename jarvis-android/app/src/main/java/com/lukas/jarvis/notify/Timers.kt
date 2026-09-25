@@ -118,6 +118,17 @@ class Timers(context: Context) {
         return timer
     }
 
+    /**
+     * Rings any timer whose end has passed without its alarm arriving — one
+     * Android held back, or lost to a force-stop — so nothing sits at 0:00.
+     */
+    @Synchronized
+    fun catchUp(now: Long = System.currentTimeMillis(), grace: Long = 3_000L): List<RunningTimer> {
+        val late = _all.value.filter { it.endsAt + grace < now }
+        late.forEach { timer -> finished(timer.id)?.let { ring(it) } }
+        return late
+    }
+
     /** Alarms do not survive a reboot; a timer that ended meanwhile rings at once. */
     fun rescheduleAll() {
         _all.value.forEach { arm(it); showRunning(it) }
