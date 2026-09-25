@@ -437,9 +437,17 @@ fun VoiceSection(
         }
     }
 
-    Panel(title = "Language", collapsible = true, initiallyExpanded = settings.speechLanguage.isNotBlank()) {
+    Panel(title = "Language", collapsible = true, initiallyExpanded = true) {
+        ToggleRow(
+            title = "Recognise the language by itself",
+            subtitle = "French is read by a French voice, Spanish by a Spanish one — no German accent " +
+                "on a French answer. On Android 14 and later it also hears which language you speak.",
+            checked = settings.autoLanguage,
+            onChange = { value -> onUpdate { it.copy(autoLanguage = value) } }
+        )
+        Spacer(Modifier.height(8.dp))
         Text(
-            "Which language to listen for and speak in. Blank follows the phone.",
+            "The main language to listen for and speak in. Blank follows the phone.",
             style = MaterialTheme.typography.bodySmall,
             color = TextSecondary
         )

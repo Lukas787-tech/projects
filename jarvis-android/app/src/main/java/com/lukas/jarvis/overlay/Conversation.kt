@@ -77,7 +77,8 @@ class Conversation(private val container: AppContainer) {
 
         container.speaker.stop()
         container.speech.language = settings.speechLanguage
-        container.speaker.configure(settings.speechRate, settings.speechPitch, settings.voiceName, settings.speechLanguage)
+        container.speech.autoDetect = settings.autoLanguage
+        container.speaker.configure(settings.speechRate, settings.speechPitch, settings.voiceName, settings.speechLanguage, settings.autoLanguage)
         _stage.value = Stage.Listening
         if (settings.earcons) earcon.listening()
         container.speech.start(
@@ -120,7 +121,7 @@ class Conversation(private val container: AppContainer) {
             var acted = false
             try {
                 val settings = container.settings.current
-                container.speaker.configure(settings.speechRate, settings.speechPitch, settings.voiceName, settings.speechLanguage)
+                container.speaker.configure(settings.speechRate, settings.speechPitch, settings.voiceName, settings.speechLanguage, settings.autoLanguage)
                 val user = ChatMessage(role = ChatMessage.ROLE_USER, content = text)
                 val history = withContext(Dispatchers.IO) {
                     container.brain.addMessage(user)

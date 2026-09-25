@@ -2,6 +2,7 @@ package com.lukas.jarvis.voice
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -45,6 +46,22 @@ class SpeechInput(private val context: Context) {
 
     /** A BCP-47 tag to recognise in. Blank follows the phone. */
     var language: String = ""
+
+    /**
+     * Hear which language is spoken rather than insisting on [language]. Off
+     * for the interpreter, which knows exactly whose turn — and language — it is.
+     */
+    @Volatile
+    var autoDetect: Boolean = true
+
+    /**
+     * The language the user last spoke or typed in, when it could be told.
+     * Android 14 and later detect the language as they listen; older phones
+     * listen in this one, since people tend to carry on in the language they
+     * started in.
+     */
+    @Volatile
+    var lastHeard: String? = null
 
     fun start(onResult: (String) -> Unit, onFailure: (String) -> Unit) {
         retriedAfterBusy = false
@@ -113,10 +130,25 @@ class SpeechInput(private val context: Context) {
             RecognizerIntent.EXTRA_LANGUAGE_MODEL,
             RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
         )
-        putExtra(
-            RecognizerIntent.EXTRA_LANGUAGE,
-            language.ifBlank { Locale.getDefault().toLanguageTag() }
-        )
+        val home = language.ifBlank { Locale.getDefault().toLanguageTag() }
+        val homeBase = Locale.forLanguageTag(home).language
+        val recent = lastHeard?.takeIf { autoDetect && it != homeBase }
+        if (autoDetect && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            // The recogniser tells the language itself among these, and may
+            // switch mid-conversation: German, then a French sentence, works.
+            val allowed = ArrayList(
+                (listOf(home) + listOfNotNull(recent?.let { fullTag(it) }) + DETECTABLE)
+                    .distinctBy { Locale.forLanguageTag(it).language }
+                    .take(MAX_DETECTED)
+            )
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, home)
+            putExtra(RecognizerIntent.EXTRA_ENABLE_LANGUAGE_DETECTION, true)
+            putStringArrayListExtra(RecognizerIntent.EXTRA_LANGUAGE_DETECTION_ALLOWED_LANGUAGES, allowed)
+            putExtra(RecognizerIntent.EXTRA_ENABLE_LANGUAGE_SWITCH, RecognizerIntent.LANGUAGE_SWITCH_BALANCED)
+            putStringArrayListExtra(RecognizerIntent.EXTRA_LANGUAGE_SWITCH_ALLOWED_LANGUAGES, allowed)
+        } else {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, recent?.let { fullTag(it) } ?: home)
+        }
         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
         // With no network, or after the network failed this listen, the
@@ -202,7 +234,17 @@ class SpeechInput(private val context: Context) {
                 .orEmpty()
                 .trim()
             _partial.value = ""
+            if (autoDetect) LanguageGuess.of(text)?.let { lastHeard = it }
             if (text.isBlank()) onFailure?.invoke("") else onResult?.invoke(text)
+        }
+
+        /** Android 14+: the language the recogniser heard, before the words. */
+        override fun onLanguageDetection(results: Bundle) {
+            if (!autoDetect) return
+            results.getString(SpeechRecognizer.DETECTED_LANGUAGE)
+                ?.let { Locale.forLanguageTag(it).language }
+                ?.takeIf { it.isNotBlank() && it != "und" }
+                ?.let { lastHeard = it }
         }
 
         override fun onPartialResults(partialResults: Bundle?) {
@@ -217,6 +259,14 @@ class SpeechInput(private val context: Context) {
     }
 
     private companion object {
+        /** Languages the recogniser is asked to listen for besides the main one. */
+        private val DETECTABLE = listOf("en-US", "de-DE", "fr-FR", "es-ES", "it-IT", "pt-PT", "nl-NL", "tr-TR", "pl-PL")
+        private const val MAX_DETECTED = 6
+
+        /** "fr" -> "fr-FR": recognisers want a region. */
+        fun fullTag(language: String): String =
+            DETECTABLE.firstOrNull { Locale.forLanguageTag(it).language == language } ?: language
+
         const val BUSY_RETRY_MS = 450L
     }
 

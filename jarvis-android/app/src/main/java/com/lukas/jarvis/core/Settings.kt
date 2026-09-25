@@ -73,6 +73,8 @@ data class Settings(
     val voiceName: String = "",
     /** A BCP-47 tag for recognition and speech. Blank follows the phone. */
     val speechLanguage: String = "",
+    /** Hear and read each language in its own voice, whatever the language above. */
+    val autoLanguage: Boolean = true,
     /** A short tone when the microphone opens and closes. */
     val earcons: Boolean = true,
     /** A tick under the finger on the main controls. */
@@ -174,6 +176,7 @@ class SettingsStore(context: Context) {
             quickCommands = prefs.getString(KEY_QUICK_COMMANDS, "").orEmpty(),
             voiceName = prefs.getString(KEY_VOICE_NAME, "").orEmpty(),
             speechLanguage = prefs.getString(KEY_SPEECH_LANGUAGE, "").orEmpty(),
+            autoLanguage = prefs.getBoolean(KEY_AUTO_LANGUAGE, true),
             earcons = prefs.getBoolean(KEY_EARCONS, true),
             haptics = prefs.getBoolean(KEY_HAPTICS, true),
             morningBrief = prefs.getBoolean(KEY_MORNING_BRIEF, true),
@@ -243,6 +246,7 @@ class SettingsStore(context: Context) {
             .putString(KEY_QUICK_COMMANDS, next.quickCommands)
             .putString(KEY_VOICE_NAME, next.voiceName)
             .putString(KEY_SPEECH_LANGUAGE, next.speechLanguage)
+            .putBoolean(KEY_AUTO_LANGUAGE, next.autoLanguage)
             .putBoolean(KEY_EARCONS, next.earcons)
             .putBoolean(KEY_HAPTICS, next.haptics)
             .putBoolean(KEY_MORNING_BRIEF, next.morningBrief)
@@ -382,6 +386,7 @@ class SettingsStore(context: Context) {
         const val KEY_QUICK_COMMANDS = "quick_commands"
         const val KEY_VOICE_NAME = "voice_name"
         const val KEY_SPEECH_LANGUAGE = "speech_language"
+        const val KEY_AUTO_LANGUAGE = "auto_language"
         const val KEY_EARCONS = "earcons"
         const val KEY_HAPTICS = "haptics"
         const val KEY_MORNING_BRIEF = "morning_brief"

@@ -62,6 +62,18 @@ class Speaker(context: Context) {
     private var rate = 1.05f
     private var pitch = 1f
     private var voiceName = ""
+
+    /** Read each reply in the voice of the language it is written in. */
+    @Volatile
+    private var autoLanguage = true
+
+    /**
+     * The language the reply being spoken turned out to be in. A short
+     * sentence ("Bien sûr.") gives too little away on its own, so it keeps
+     * the language the reply started in; a new reply starts afresh.
+     */
+    @Volatile
+    private var replyLanguage: String? = null
     private var languageTag = ""
 
     private val tts: TextToSpeech = TextToSpeech(context.applicationContext) { status ->
@@ -146,11 +158,12 @@ class Speaker(context: Context) {
         }
     }
 
-    fun configure(rate: Float, pitch: Float, voiceName: String = "", language: String = "") {
+    fun configure(rate: Float, pitch: Float, voiceName: String = "", language: String = "", autoLanguage: Boolean = true) {
         this.rate = rate
         this.pitch = pitch
         this.voiceName = voiceName
         this.languageTag = language
+        this.autoLanguage = autoLanguage
         if (_ready.value) applyVoice()
     }
 
@@ -319,8 +332,24 @@ class Speaker(context: Context) {
         // Stretches in the language already being spoken keep the chosen voice.
         val home = homeLanguage
             ?: (languageTag.takeIf { it.isNotBlank() }?.let(Locale::forLanguageTag) ?: Locale.getDefault()).language
+        if (mode == TextToSpeech.QUEUE_FLUSH) replyLanguage = null
         val pieces = Scripts.split(text).map { if (it.language == home) it.copy(language = null) else it }
-        if (pieces.none { it.language != null }) return tts.speak(text, mode, Bundle(), id)
+        if (pieces.none { it.language != null }) {
+            // All in the Latin alphabet: French, Spanish, English… are told
+            // apart by their words, and read by a voice of their own rather
+            // than with the home voice's accent. Not for the interpreter,
+            // which says exactly which language it wants.
+            val spoken = if (autoLanguage && homeLanguage == null) {
+                LanguageGuess.of(text)?.also { replyLanguage = it } ?: replyLanguage
+            } else {
+                null
+            }
+            if (spoken == null || spoken == home) return tts.speak(text, mode, Bundle(), id)
+            val switched = switchTo(spoken)
+            val queued = tts.speak(text, mode, Bundle(), id)
+            if (switched) applyVoice()
+            return queued
+        }
         var result = TextToSpeech.SUCCESS
         pieces.forEachIndexed { index, piece ->
             val pieceId = if (index == pieces.lastIndex) id else "${id}_p$index"

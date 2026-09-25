@@ -192,8 +192,9 @@ class AssistantViewModel(
     private var turnJob: Job? = null
 
     private fun configureVoice(settings: Settings = settingsStore.current) {
-        speaker.configure(settings.speechRate, settings.speechPitch, settings.voiceName, settings.speechLanguage)
+        speaker.configure(settings.speechRate, settings.speechPitch, settings.voiceName, settings.speechLanguage, settings.autoLanguage)
         speech.language = settings.speechLanguage
+        speech.autoDetect = settings.autoLanguage
     }
 
     init {
@@ -308,6 +309,11 @@ class AssistantViewModel(
 
     fun sendTyped(text: String) {
         lastTurnWasVoice = false
+        // Typing in French says which language to listen for next, on phones
+        // that cannot tell it by ear.
+        if (settingsStore.current.autoLanguage) {
+            com.lukas.jarvis.voice.LanguageGuess.of(text)?.let { speech.lastHeard = it }
+        }
         send(text)
     }
 
@@ -880,6 +886,7 @@ class AssistantViewModel(
         speech.cancel()
         speaker.stop()
         speech.language = settingsStore.current.speechLanguage
+        speech.autoDetect = settingsStore.current.autoLanguage
         _ui.update { it.copy(stage = Stage.Idle, stageLabel = "", partial = "") }
     }
 
@@ -889,6 +896,8 @@ class AssistantViewModel(
         if (state.working) return
         speaker.stop()
         speech.cancel()
+        // Each side is heard in its own language, exactly; no guessing.
+        speech.autoDetect = false
         speech.language = if (side == com.lukas.jarvis.voice.InterpreterState.Side.Me) {
             settingsStore.current.speechLanguage.ifBlank { state.mine }
         } else {
@@ -900,10 +909,12 @@ class AssistantViewModel(
         speech.start(
             onResult = { text ->
                 speech.language = settingsStore.current.speechLanguage
+                speech.autoDetect = settingsStore.current.autoLanguage
                 interpret(text, side)
             },
             onFailure = { message ->
                 speech.language = settingsStore.current.speechLanguage
+                speech.autoDetect = settingsStore.current.autoLanguage
                 _interpreter.update { it?.copy(listening = null, note = message.takeIf { m -> m.isNotBlank() }) }
                 _ui.update { it.copy(stage = Stage.Idle, stageLabel = "", partial = "") }
             }
