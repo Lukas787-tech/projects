@@ -1,0 +1,76 @@
+name: Jarvis on a device
+
+# Runs the app on a real Android system image (an emulator) and checks it
+# does not crash. Triggered by "[device]" in a commit message, or by hand.
+on:
+  push:
+    paths:
+      - 'jarvis-android/**'
+      - '.github/workflows/jarvis-device.yml'
+      - '.github/scripts/device-smoke.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  device:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[device]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    defaults:
+      run:
+        working-directory: jarvis-android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare Android SDK
+        run: |
+          set -eu
+          SDKMANAGER=$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | head -n1)
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build the debug app
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: jarvis-android
+          script: bash ../.github/scripts/device-smoke.sh
+
+      - name: Commit the device pictures
+        if: always()
+        working-directory: .
+        run: |
+          [ -d docs/device ] || exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/device
+          git commit -m "Update Jarvis device run" || exit 0
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep 5
+          done
