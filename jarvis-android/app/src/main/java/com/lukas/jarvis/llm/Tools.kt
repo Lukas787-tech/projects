@@ -2033,6 +2033,16 @@ class Tools(
         }
         val wanted = Element.match(args.optString("element"))
             ?: return "I do not have an element called that. I have: ${Element.names()}."
+        if (wanted == Element.Settings) {
+            // "Open the voice settings", "change your colour": the right tab,
+            // not the first one.
+            val words = (raw + " " + args.optString("note")).lowercase(Locale.ROOT)
+            val tab = SETTINGS_TABS.entries.firstOrNull { (_, cues) -> cues.any { it in words } }?.key
+            if (tab != null) {
+                stage.show(Element.Settings, "settings:tab:$tab")
+                return "Showing the settings."
+            }
+        }
         stage.show(wanted, args.optString("note").trim())
         return "Showing the ${wanted.title.lowercase(Locale.ROOT)}."
     }
@@ -2270,6 +2280,15 @@ class Tools(
     private fun optDoubleOrNull(args: JSONObject, key: String): Double? = number(args, key)
 
     private companion object {
+        /** Settings tabs by what people call what is on them. */
+        val SETTINGS_TABS = linkedMapOf(
+            1 to listOf("voice", "speak", "speech", "wake word", "stimme", "sprache"),
+            2 to listOf("look", "colour", "color", "theme", "accent", "backdrop", "farbe", "design"),
+            3 to listOf("brain", "model", "api key", "provider", "modell"),
+            4 to listOf("power", "abilit", "permission", "home assistant", "smart home", "fähigkeit"),
+            5 to listOf("backup", "restore", "data", "sicherung"),
+            0 to listOf("personality", "name", "about me", "instruction", "persönlichkeit")
+        )
         val ITEM_SEPARATOR = Regex("\\s*(?:,|;|\\band\\b|\\bund\\b)\\s*")
         val CURRENCIES = setOf(
             "EUR", "USD", "GBP", "CHF", "PLN", "CZK", "SEK", "NOK", "DKK",
