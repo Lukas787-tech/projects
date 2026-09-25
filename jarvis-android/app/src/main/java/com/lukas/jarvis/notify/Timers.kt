@@ -237,7 +237,7 @@ class Timers(context: Context) {
         )
         val notification = Notification.Builder(app, CHANNEL_DONE)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("${timer.label} — time's up")
+            .setContentTitle("${timer.label.replaceFirstChar { it.titlecase(Locale.ROOT) }} — time's up")
             .setContentText("Tap Stop to silence it")
             .setCategory(Notification.CATEGORY_ALARM)
             .setAutoCancel(true)

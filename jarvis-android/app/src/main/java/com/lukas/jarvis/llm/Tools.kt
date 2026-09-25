@@ -2246,7 +2246,10 @@ class Tools(
         val minutes = number(args, "minutes") ?: Double.NaN
         if (minutes.isNaN() || minutes <= 0) return "A timer needs a length in minutes."
         val seconds = (minutes * 60).toInt().coerceAtLeast(1)
-        val label = args.optString("label").takeIf { it.isNotBlank() }
+        // "timer" says nothing the notification does not; the length names it better.
+        val label = args.optString("label").trim().takeIf {
+            it.isNotBlank() && it.lowercase(Locale.ROOT).removePrefix("a ").removePrefix("the ") !in GENERIC_TIMER_LABELS
+        }
         val sleep = args.optBoolean("stop_music", false)
         val timer = timers.start(seconds, label, sleep)
         val length = com.lukas.jarvis.notify.Timers.spoken(timer.lengthMs)
@@ -2606,6 +2609,9 @@ class Tools(
     private fun optDoubleOrNull(args: JSONObject, key: String): Double? = number(args, key)
 
     private companion object {
+        /** Timer names that are no name at all. */
+        val GENERIC_TIMER_LABELS = setOf("timer", "countdown", "count down", "alarm", "wecker", "kurzzeitwecker")
+
         /** Settings tabs by what people call what is on them. */
         val SETTINGS_TABS = linkedMapOf(
             1 to listOf("voice", "speak", "speech", "wake word", "stimme", "sprache"),
