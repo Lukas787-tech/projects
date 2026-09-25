@@ -65,9 +65,9 @@ jobs:
           mkdir -p out
           # Fixed name so the release download URL is stable build to build.
           cp app/build/outputs/apk/release/app-release.apk out/jarvis.apk
-          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
-          CODE=$(grep -oP 'versionCode = \K[0-9]+' app/build.gradle.kts)
-          echo "APP_VERSION=$VERSION (build $CODE)" >> "$GITHUB_ENV"
+          # The same numbers the build gave itself from the run number.
+          echo "APP_VERSION=5.5.${GITHUB_RUN_NUMBER} (build $((23 + GITHUB_RUN_NUMBER)))" >> "$GITHUB_ENV"
+          echo "BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
           ls -la out
 
       - name: Upload APK artifact
@@ -106,7 +106,7 @@ jobs:
             install did not replace the old one.
 
             Version: ${{ env.APP_VERSION }}
-            Built: ${{ github.event.repository.updated_at }}
+            Built: ${{ env.BUILT_AT }}
             Commit: ${{ github.sha }}
           files: jarvis-android/out/jarvis.apk
 
@@ -130,7 +130,7 @@ jobs:
             install did not replace the old one.
 
             Version: ${{ env.APP_VERSION }}
-            Built: ${{ github.event.repository.updated_at }}
+            Built: ${{ env.BUILT_AT }}
             Commit: ${{ github.sha }}
           files: jarvis-android/out/jarvis.apk
 

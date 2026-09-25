@@ -12,8 +12,11 @@ android {
         applicationId = "com.lukas.jarvis"
         minSdk = 26
         targetSdk = 35
-        versionCode = 23
-        versionName = "5.5"
+        // Every CI build gets its own number, so Settings and the release page
+        // say which one is installed; a local build stays plain 5.5.
+        val ciRun = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 0
+        versionCode = 23 + ciRun
+        versionName = if (ciRun > 0) "5.5.$ciRun" else "5.5"
         vectorDrawables { useSupportLibrary = true }
 
         // Phones only. The on-device vision models ship native code for every
