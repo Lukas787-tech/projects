@@ -416,8 +416,10 @@ class LlmClient {
             if (content.isBlank() && toolCalls.isEmpty()) {
                 throw LlmException("Provider streamed an empty answer.", FailureKind.ServerError)
             }
+            val said = ProviderNotices.strip(content.toString())
+            if (toolCalls.isEmpty()) ProviderNotices.failure(said)?.let { throw it }
             return LlmReply(
-                content = content.toString().takeIf { it.isNotBlank() },
+                content = said.takeIf { it.isNotBlank() },
                 toolCalls = toolCalls,
                 capability = capability,
                 rate = rate,
@@ -639,7 +641,9 @@ class LlmClient {
                 )
             }
         }
-        return LlmReply(content, calls)
+        val said = content?.let { ProviderNotices.strip(it) }?.takeIf { it.isNotBlank() }
+        if (calls.isEmpty() && said != null) ProviderNotices.failure(said)?.let { throw it }
+        return LlmReply(said, calls)
     }
 
     private fun LlmMessage.toJson(): JSONObject = JSONObject().apply {
@@ -687,5 +691,52 @@ class LlmClient {
 
     private companion object {
         val JSON = "application/json; charset=utf-8".toMediaType()
+    }
+}
+
+/**
+ * What a free endpoint sometimes sends in place of an answer.
+ *
+ * A keyless service that has run out for the moment does not always say so
+ * with a status code: it answers 200 with a notice about credits or a queue
+ * as the reply, which would otherwise be shown and read out as if the
+ * assistant had said it. Such a reply is a failure of that endpoint, and the
+ * pool moves on. Advert footers some add to real answers are cut off instead.
+ */
+object ProviderNotices {
+
+    private val STRONG = listOf(
+        "doesn't have enough credits", "does not have enough credits", "not enough credits",
+        "complete a quest", "top up or", "rate limit reached", "rate limit exceeded",
+        "too many requests", "queue full", "queue is full", "insufficient_quota",
+        "you have exceeded your", "exceeded your current quota", "please sign up",
+        "get a free api key", "auth.pollinations", "enter.pollinations"
+    )
+
+    private val RATE = listOf("rate limit", "too many requests", "queue")
+
+    /** The endpoint's own notice, as the failure it is; null for a real answer. */
+    fun failure(text: String): LlmException? {
+        if (text.length > 900) return null
+        val lower = text.lowercase()
+        val hit = STRONG.firstOrNull { it in lower } ?: return null
+        val kind = if (RATE.any { it in hit }) FailureKind.RateLimited else FailureKind.OutOfCredit
+        return LlmException("The endpoint answered with a notice instead of a reply: ${text.take(160)}", kind)
+    }
+
+    /** A real answer without the advert some free services append to it. */
+    fun strip(text: String): String {
+        val lower = text.lowercase()
+        val footer = Regex("\\n\\s*-{3,}\\s*\\n").findAll(text)
+            .map { it.range.first }
+            .firstOrNull { start -> "pollinations" in lower.substring(start) }
+        val cut = footer?.let { text.substring(0, it) } ?: text
+        return cut.lines()
+            .filterNot { line ->
+                val l = line.lowercase()
+                "🌸 ad 🌸" in l || ("powered by" in l && "pollinations" in l)
+            }
+            .joinToString("\n")
+            .trimEnd()
     }
 }

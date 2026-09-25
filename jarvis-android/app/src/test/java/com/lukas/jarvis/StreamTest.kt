@@ -77,6 +77,26 @@ class StreamTest {
         assertEquals("now", reply.toolCalls[1].name)
     }
 
+    @Test fun aNoticeInPlaceOfAnAnswerIsAFailure(): Unit = runBlocking {
+        val notice = "The account behind this API key doesn't have enough credits. Please top up " +
+            "or complete a quest, then try again."
+        server.enqueue(sse(chunk(notice)))
+        val error = assertThrows(LlmException::class.java) {
+            runBlocking { LlmClient().chat(settings(), listOf(LlmMessage.user("hi")), stream = Collect()) }
+        }
+        assertEquals(FailureKind.OutOfCredit, error.kind)
+    }
+
+    @Test fun advertFootersAreCutAndOrdinaryWordsAreNotNotices() {
+        val answer = "It is 14 degrees.\n\n---\n**Support Pollinations.AI:** 🌸 Ad 🌸 Try our app!"
+        assertEquals("It is 14 degrees.", com.lukas.jarvis.llm.ProviderNotices.strip(answer))
+        assertEquals(null, com.lukas.jarvis.llm.ProviderNotices.failure("To top up your phone credit, open your carrier's app."))
+        assertEquals(
+            FailureKind.RateLimited,
+            com.lukas.jarvis.llm.ProviderNotices.failure("Too many requests. Please slow down.")?.kind
+        )
+    }
+
     @Test fun serverThatIgnoresStreamIsReadPlainly(): Unit = runBlocking {
         server.enqueue(
             MockResponse().setHeader("Content-Type", "application/json")
