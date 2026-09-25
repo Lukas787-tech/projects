@@ -348,6 +348,9 @@ PLACES AND GETTING AROUND
   first turn or two; the full list is on the map.
 - Only call `start_navigation` when they ask to start or open navigation.
 - Default travel mode is ${Geo.modeVerb(settings.travelMode)} unless they say otherwise.
+- "This is my house", "I live here" -> `save_place` name "home". "My house is Hauptstraße 5" ->
+  `save_place` with that `address`. "The pin is my house", "save that one as work" -> `save_place`
+  with `use_selected_pin`. "Show me my house" -> `show_on_map`. "Call the flat home" -> `rename_place`.
         """.trim()
 
     /**
@@ -445,6 +448,9 @@ PLACES AND GETTING AROUND
 - "wake me at seven" -> `set_alarm`. "ten minutes for the pasta" -> `set_timer` with the label
   "pasta". "how long is left", "stop the timer", "five more minutes" -> `timers`. A thing to
   do rather than a time to be woken -> `add_task`.
+- "make it red", "speak slower", "call me boss", "your name is Friday", "bigger text",
+  "satellite map", "shorter answers" -> `change_setting`, one call per setting. Jarvis is theirs
+  to shape: change what they ask for, then say what changed.
 - "start the stopwatch", "lap", "how long has it been running" -> `stopwatch`: it counts up,
   a timer counts down. "switch to night mode", "save this as work" -> `profile`, which
   changes the whole look, character and voice at once.

@@ -163,17 +163,22 @@ class Navigator(
      * Pins where the phone is now — or the selected result — under a name.
      * "I parked here" and "this is home" are the same call.
      */
-    suspend fun savePlace(name: String, note: String?, useSelectedPin: Boolean): String {
+    suspend fun savePlace(name: String, note: String?, useSelectedPin: Boolean, address: String? = null): String {
         if (name.isBlank()) return "What should I call this place?"
-        val point = if (useSelectedPin) {
+        val point = if (!address.isNullOrBlank()) {
+            // "My house is Hauptstraße 5": looked up, not where the phone is.
+            runCatching { places.geocode(address, near = locator.remembered(), limit = 1) }.getOrNull()
+                ?.firstOrNull()?.point
+                ?: return "I couldn't find '$address' on the map. Try it with the town, like 'Hauptstraße 5, Berlin'."
+        } else if (useSelectedPin) {
             store.current.selectedPlace?.point
-                ?: return "No place is selected on the map to save."
+                ?: return "No place is selected on the map. Hold a finger on the map to drop a pin, then save it."
         } else {
             locator.current(maxAgeMillis = 60_000L)
                 ?: return noLocation()
         }
         val place = saved.save(name, point, note)
-        store.setHere(if (useSelectedPin) null else point)
+        if (address.isNullOrBlank()) store.setHere(if (useSelectedPin) null else point)
         val street = runCatching { places.describe(point) }.getOrNull()
             ?.split(",")?.take(2)?.joinToString(",")?.trim()
         val where = street?.let { " at $it" }.orEmpty()
@@ -191,6 +196,23 @@ class Navigator(
             val away = here?.let { " — ${Geo.formatDistance(Geo.distance(it, place.point))} away" }.orEmpty()
             "- ${place.name}$away" + (place.note?.let { " ($it)" } ?: "")
         }
+    }
+
+    fun renamePlace(old: String, new: String): String {
+        if (new.isBlank()) return "What should it be called?"
+        val renamed = saved.rename(old, new) ?: return "No saved place called '$old'."
+        return "'$old' is now called '${renamed.name}'."
+    }
+
+    /** "Show me my house": the map flies there and puts a pin on it. */
+    suspend fun showOnMap(text: String): String {
+        val here = locator.remembered()
+        val target = saved.find(text)?.let { Place(name = it.name.replaceFirstChar { c -> c.uppercase() }, point = it.point, category = "saved", address = it.note) }
+            ?: resolveDestination(text, here)
+            ?: return "I couldn't find '$text' on the map."
+        val distance = here?.let { Geo.distance(it, target.point) }
+        store.showPlaces(target.name, here, listOf(target.copy(distanceMeters = distance)))
+        return "Showing ${target.name} on the map" + (distance?.let { ", ${Geo.formatDistance(it)} from you" } ?: "") + "."
     }
 
     fun forgetPlace(name: String): String =

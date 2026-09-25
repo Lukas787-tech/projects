@@ -251,6 +251,11 @@ class ScreensTest {
         live(seconds = 12)
         shot(activity, "15-map")
 
+        // A pin dropped by hand, named by its street, with "My home" and "Work" under it.
+        runCatching { vm.dropPin(com.lukas.jarvis.maps.GeoPoint(52.5163, 13.3777)) }.onFailure { note("drop pin", it) }
+        live(seconds = 8)
+        shot(activity, "15b-map-pin")
+
         // The core powers up over a second and a half each time it appears,
         // an animation Robolectric's paused frame clock does not carry on a
         // later screen. Calm motion starts it at full power, which is how it

@@ -1261,6 +1261,7 @@ class AssistantViewModel(
                 container.navigator.savePlace(name, note = null, useSelectedPin = false)
             }
             report(message)
+            _mapMessage.value = message
         }
     }
 
@@ -1289,6 +1290,44 @@ class AssistantViewModel(
     }
 
     fun clearMap() = container.mapStore.clear()
+
+    private val _mapMessage = MutableStateFlow<String?>(null)
+
+    /** A line shown briefly on the map itself: "Saved 'home' at Hauptstraße 5." */
+    val mapMessage: StateFlow<String?> = _mapMessage.asStateFlow()
+
+    fun mapMessageShown() {
+        _mapMessage.value = null
+    }
+
+    /** A finger held on the map: a pin there, named by its street once that is known. */
+    fun dropPin(point: com.lukas.jarvis.maps.GeoPoint) {
+        container.mapStore.dropPin(point)
+        viewModelScope.launch {
+            val address = withContext(Dispatchers.IO) { runCatching { container.places.describe(point) }.getOrNull() }
+            if (!address.isNullOrBlank()) container.mapStore.describePin(point, address)
+        }
+    }
+
+    /** The selected or dropped pin kept under [name]: "home", "work", anything. */
+    fun saveSelected(name: String) {
+        if (name.isBlank()) return
+        val note = container.mapStore.current.selectedPlace?.let { listOfNotNull(it.name.takeIf { n -> n != "Dropped pin" }, it.address).joinToString(", ") }
+        viewModelScope.launch {
+            val message = withContext(Dispatchers.IO) {
+                container.navigator.savePlace(name, note = note?.takeIf { it.isNotBlank() }, useSelectedPin = true)
+            }
+            _mapMessage.value = message
+        }
+    }
+
+    fun renameSaved(old: String, new: String) {
+        _mapMessage.value = container.navigator.renamePlace(old, new)
+    }
+
+    fun forgetSaved(name: String) {
+        _mapMessage.value = container.navigator.forgetPlace(name)
+    }
 
     // ---------------------------------------------------------------- settings
 

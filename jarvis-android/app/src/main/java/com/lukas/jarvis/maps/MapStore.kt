@@ -22,7 +22,9 @@ data class MapState(
     /** How far off [here] may be, drawn as the pale disc around the dot. */
     val accuracy: Float? = null,
     /** Direction of travel from GPS while moving; the compass covers standing still. */
-    val bearing: Float? = null
+    val bearing: Float? = null,
+    /** Set by a pin dropped by hand: the map stays where the finger left it. */
+    val quiet: Boolean = false
 ) {
     val selectedPlace: Place? get() = places.getOrNull(selected)
 
@@ -75,6 +77,35 @@ class MapStore(context: Context) {
             selected = destination?.let { target -> places.indexOfFirst { it.samePlace(target) } }
                 ?: existing.selected,
             route = route
+        )
+    }
+
+    /** A pin dropped by holding a finger on the map, selected at once. */
+    fun dropPin(point: GeoPoint) {
+        val state = _state.value
+        _state.value = MapState(
+            revision = state.revision + 1,
+            title = "Dropped pin",
+            here = state.here,
+            places = listOf(Place(name = "Dropped pin", point = point, category = "pin")),
+            selected = 0,
+            route = null,
+            accuracy = state.accuracy,
+            bearing = state.bearing,
+            quiet = true
+        )
+    }
+
+    /** The street a dropped pin turned out to be on, once it is known. */
+    fun describePin(point: GeoPoint, address: String) {
+        val state = _state.value
+        val index = state.places.indexOfFirst { it.category == "pin" && Geo.distance(it.point, point) < 1.0 }
+        if (index < 0) return
+        val parts = address.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val name = parts.take(2).joinToString(" ").ifBlank { "Dropped pin" }
+        val rest = parts.drop(2).take(2).joinToString(", ").takeIf { it.isNotBlank() }
+        _state.value = state.copy(
+            places = state.places.toMutableList().also { it[index] = it[index].copy(name = name, address = rest) }
         )
     }
 

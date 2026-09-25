@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -74,9 +75,12 @@ import com.lukas.jarvis.maps.Geo
 import com.lukas.jarvis.maps.MapState
 import com.lukas.jarvis.maps.MapStyle
 import com.lukas.jarvis.maps.Place
+import com.lukas.jarvis.maps.GeoPoint
 import com.lukas.jarvis.maps.SavedPlace
 import com.lukas.jarvis.maps.TileCache
 import com.lukas.jarvis.ui.components.ChipButton
+import com.lukas.jarvis.ui.components.GlassDialog
+import com.lukas.jarvis.ui.components.GlassField
 import com.lukas.jarvis.ui.map.MapCamera
 import com.lukas.jarvis.ui.map.MapCanvas
 import com.lukas.jarvis.ui.map.rememberMapCamera
@@ -122,6 +126,15 @@ fun MapScreen(
     onSaveHere: (String) -> Unit,
     onRouteSaved: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** A finger held on the map: drop a pin there. */
+    onDropPin: (GeoPoint) -> Unit = {},
+    /** Keep the selected or dropped pin under a name. */
+    onSaveSelected: (String) -> Unit = {},
+    onRenameSaved: (String, String) -> Unit = { _, _ -> },
+    onForgetSaved: (String) -> Unit = {},
+    /** A short line to show on the map for a moment, then clear. */
+    message: String? = null,
+    onMessageShown: () -> Unit = {},
     /** 0..1 while arriving from the globe; the map zooms in from orbit as it rises. */
     intro: Float = 1f,
     introFromZoom: Float = 5f
@@ -142,6 +155,17 @@ fun MapScreen(
 
     var sheetOpen by remember { mutableStateOf(true) }
     var stylesOpen by remember { mutableStateOf(false) }
+    // A saved place held or tapped: rename it, route to it, or forget it.
+    var managing by remember { mutableStateOf<SavedPlace?>(null) }
+    // A name being typed for the selected pin.
+    var naming by remember { mutableStateOf(false) }
+
+    LaunchedEffect(message) {
+        if (message != null) {
+            kotlinx.coroutines.delay(3500)
+            onMessageShown()
+        }
+    }
 
     // Everything drawn over the map can be put away with one tap on the map
     // itself, and brought back the same way. A map covered by a card, a row of
@@ -176,7 +200,13 @@ fun MapScreen(
             onTapEmpty = {
                 stylesOpen = false
                 controls = !controls
-            }
+            },
+            onLongPress = { point ->
+                onDropPin(point)
+                controls = true
+                sheetOpen = true
+            },
+            onTapSaved = { place -> managing = place }
         )
 
         // ---------------------------------------------------------- top
@@ -198,6 +228,20 @@ fun MapScreen(
                 canClear = state.places.isNotEmpty() || state.route != null,
                 onClear = onClear
             )
+            AnimatedVisibility(visible = message != null, enter = fadeIn(), exit = fadeOut()) {
+                Text(
+                    message.orEmpty(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextPrimary,
+                    modifier = Modifier
+                        .padding(top = Space.tight)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(Corner.medium))
+                        .background(MapGlass)
+                        .glass(RoundedCornerShape(Corner.medium))
+                        .padding(horizontal = Space.snug, vertical = Space.tight)
+                )
+            }
             Spacer(Modifier.height(Space.tight))
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -208,7 +252,8 @@ fun MapScreen(
                     FloatingChip(
                         icon = savedIcon(place),
                         label = if (place.isCar) "My car" else place.name.replaceFirstChar { it.uppercase() },
-                        onClick = { onRouteSaved(place.name) }
+                        onClick = { onRouteSaved(place.name) },
+                        onLongClick = { managing = place }
                     )
                 }
                 if (saved.none { it.name.equals("home", true) }) {
@@ -359,7 +404,10 @@ fun MapScreen(
                                 routing = routing && index == state.selected,
                                 onSelect = { onSelect(index) },
                                 onRoute = { onRoute(index) },
-                                onNavigate = { onNavigate(index) }
+                                onNavigate = { onNavigate(index) },
+                                onSaveAs = { name ->
+                                    if (name == null) naming = true else onSaveSelected(name)
+                                }
                             )
                         }
                         item { Spacer(Modifier.height(Space.tight)) }
@@ -372,7 +420,8 @@ fun MapScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Ask \"what's around here\" or \"take me home\". Tap the map to hide everything on it.",
+                            text = "Hold a finger on the map to drop a pin and save it as home. " +
+                                "Ask \"what's around here\" or \"take me home\". Tap the map to hide everything on it.",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextFaint,
                             modifier = Modifier.weight(1f)
@@ -395,6 +444,53 @@ fun MapScreen(
                 }
             }
         }
+        }
+
+        if (naming) {
+            var name by remember { mutableStateOf("") }
+            GlassDialog(
+                title = "Save this place as…",
+                onDismiss = { naming = false },
+                confirmLabel = "Save",
+                confirmEnabled = name.isNotBlank(),
+                onConfirm = {
+                    onSaveSelected(name.trim())
+                    naming = false
+                }
+            ) {
+                GlassField(value = name, onValueChange = { name = it.take(30) }, placeholder = "e.g. Mum's, gym, the lake")
+            }
+        }
+        managing?.let { place ->
+            var name by remember(place.name) { mutableStateOf(place.name) }
+            var forgetting by remember(place.name) { mutableStateOf(false) }
+            GlassDialog(
+                title = if (forgetting) "Forget '${place.name}'?" else place.name.replaceFirstChar { it.uppercase() },
+                onDismiss = { managing = null },
+                confirmLabel = if (forgetting) "Forget" else "Save",
+                confirmEnabled = forgetting || name.isNotBlank(),
+                onConfirm = {
+                    if (forgetting) onForgetSaved(place.name)
+                    else if (!name.trim().equals(place.name, ignoreCase = true)) onRenameSaved(place.name, name.trim())
+                    managing = null
+                }
+            ) {
+                if (forgetting) {
+                    Text("It goes from the map and from \"take me there\".", color = TextSecondary)
+                } else {
+                    place.note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = TextSecondary) }
+                    Spacer(Modifier.height(Space.tight))
+                    GlassField(value = name, onValueChange = { name = it.take(30) }, label = "Name")
+                    Spacer(Modifier.height(Space.snug))
+                    Row(horizontalArrangement = Arrangement.spacedBy(Space.tight)) {
+                        ChipButton(label = "Route", icon = Icons.Default.Directions, onClick = {
+                            onRouteSaved(place.name)
+                            managing = null
+                        })
+                        ChipButton(label = "Forget", icon = Icons.Default.Close, onClick = { forgetting = true })
+                    }
+                }
+            }
         }
 
         // Every tile source asks for its credit to be visible on the map.
@@ -489,13 +585,14 @@ private fun MapButton(
 }
 
 @Composable
-private fun FloatingChip(icon: ImageVector, label: String, onClick: () -> Unit) {
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private fun FloatingChip(icon: ImageVector, label: String, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(Corner.small))
             .background(MapGlass)
             .glass(RoundedCornerShape(Corner.small))
-            .clickable { onClick() }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -537,7 +634,9 @@ private fun PlaceRow(
     routing: Boolean,
     onSelect: () -> Unit,
     onRoute: () -> Unit,
-    onNavigate: () -> Unit
+    onNavigate: () -> Unit,
+    /** Save this place: a name, or null to ask for one. */
+    onSaveAs: (String?) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -588,6 +687,17 @@ private fun PlaceRow(
             ) {
                 ChipButton(label = "Route", icon = Icons.Default.Directions, busy = routing, onClick = onRoute)
                 ChipButton(label = "Navigate", icon = Icons.Default.Navigation, prominent = true, onClick = onNavigate)
+            }
+            // Any place on the map can become one of yours: "this is my house".
+            Row(
+                modifier = Modifier
+                    .padding(top = 8.dp, start = 34.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ChipButton(label = "My home", icon = Icons.Default.Home, onClick = { onSaveAs("home") })
+                ChipButton(label = "Work", icon = Icons.Default.Work, onClick = { onSaveAs("work") })
+                ChipButton(label = "Save as…", icon = Icons.Default.Add, onClick = { onSaveAs(null) })
             }
         }
     }

@@ -643,14 +643,29 @@ class Tools(
         tool(
             "save_place",
             "Remember a place under a name so it can be routed to later: 'I parked here' " +
-                "(name 'car'), 'this is home', 'save this as work', 'save that restaurant'. " +
-                "route_to and start_navigation accept these names afterwards.",
+                "(name 'car'), 'this is home', 'save this as work', 'save that restaurant', " +
+                "'my house is Hauptstraße 5, Berlin' (address), 'the pin is my house' (use_selected_pin). " +
+                "Saving under a name that exists moves it. route_to and start_navigation accept these names afterwards.",
             props(
                 "name" to str("Short name: 'car', 'home', 'work', or anything the user says."),
                 "note" to str("Anything worth keeping with it, e.g. 'level 2, bay 41'."),
-                "use_selected_pin" to bool("True to save the pin selected on the map instead of where the user is now.")
+                "address" to str("An address or place to look up and save, instead of where the user is now."),
+                "use_selected_pin" to bool("True to save the pin selected or dropped on the map instead of where the user is now.")
             ),
             listOf("name")
+        ),
+        tool(
+            "rename_place",
+            "Give a saved place a new name: 'call the flat home', 'rename work to office'.",
+            props("name" to str("Its current name."), "new_name" to str("The new name.")),
+            listOf("name", "new_name")
+        ),
+        tool(
+            "show_on_map",
+            "Show a place on the map and fly there: 'show me my house', 'where is work on the map', " +
+                "'show Alexanderplatz'. A saved name, a place or an address.",
+            props("place" to str("What to show.")),
+            listOf("place")
         ),
         tool(
             "saved_places",
@@ -807,6 +822,18 @@ class Tools(
                 "minutes" to num("For 'add': minutes to add; negative takes time away.")
             ),
             listOf("action")
+        ),
+        tool(
+            "change_setting",
+            "Change how Jarvis looks, sounds and behaves, as the user asks: 'make it red', 'speak slower', " +
+                "'call me boss', 'your name is Friday', 'satellite map', 'bigger text', 'shorter answers', " +
+                "'turn off the emoji', 'always answer in English', 'morning brief at 7'. One setting per call; " +
+                "call it again for several. API keys cannot be changed this way.",
+            props(
+                "setting" to str("Which one.", com.lukas.jarvis.core.SettingChange.KEYS),
+                "value" to str("The new value in plain words: 'red', 'slower', 'on', 'boss', '07:00', '120%'.")
+            ),
+            listOf("setting", "value")
         ),
         tool(
             "stopwatch",
@@ -1193,8 +1220,11 @@ class Tools(
                 "save_place" -> navigator.savePlace(
                     name = args.optString("name").trim(),
                     note = args.optString("note").trim().takeIf { it.isNotBlank() },
-                    useSelectedPin = args.optBoolean("use_selected_pin", false)
+                    useSelectedPin = args.optBoolean("use_selected_pin", false),
+                    address = args.optString("address").trim().takeIf { it.isNotBlank() }
                 )
+                "rename_place" -> navigator.renamePlace(args.optString("name").trim(), args.optString("new_name").trim())
+                "show_on_map" -> navigator.showOnMap(args.optString("place").trim())
                 "saved_places" -> navigator.savedPlaces(locator.remembered())
                 "place_reminder" -> placeReminder(args)
                 "forget_place" -> navigator.forgetPlace(args.optString("name").trim())
@@ -1272,6 +1302,7 @@ class Tools(
                 "profile" -> profile(args, settings)
                 "timers" -> timerAction(args)
                 "stopwatch" -> stopwatchAction(args)
+                "change_setting" -> changeSetting(args, settings)
                 "show_alarms" -> launcher.showAlarms()
                 "device_status" -> deviceStatus(args)
                 "torch" -> device.torch(args.optBoolean("on", true))
@@ -2200,6 +2231,17 @@ class Tools(
                 settingsStore.update { target.applyTo(it) }
                 "Switched to '${target.name}'."
             }
+        }
+    }
+
+    private fun changeSetting(args: JSONObject, settings: Settings): String {
+        val current = settingsStore.current
+        return when (val result = com.lukas.jarvis.core.SettingChange.apply(current, args.optString("setting"), args.optString("value"))) {
+            is com.lukas.jarvis.core.SettingChange.Result.Changed -> {
+                settingsStore.update { result.settings }
+                result.said
+            }
+            is com.lukas.jarvis.core.SettingChange.Result.Refused -> result.why
         }
     }
 

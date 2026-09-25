@@ -313,6 +313,7 @@ private fun JarvisRoot(
     val timers by viewModel.timers.collectAsStateWithLifecycle()
     val stopwatch by viewModel.stopwatch.collectAsStateWithLifecycle()
     val countdowns by viewModel.countdowns.collectAsStateWithLifecycle()
+    val mapMessage by viewModel.mapMessage.collectAsStateWithLifecycle()
     val online by viewModel.online.collectAsStateWithLifecycle()
     val ringingTimers by viewModel.ringingTimers.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
@@ -788,7 +789,13 @@ private fun JarvisRoot(
                     onStyleChange = { viewModel.setMapStyle(it.id) },
                     onFollow = viewModel::followLocation,
                     onSaveHere = viewModel::saveHere,
-                    onRouteSaved = viewModel::routeToSaved
+                    onRouteSaved = viewModel::routeToSaved,
+                    onDropPin = viewModel::dropPin,
+                    onSaveSelected = viewModel::saveSelected,
+                    onRenameSaved = viewModel::renameSaved,
+                    onForgetSaved = viewModel::forgetSaved,
+                    message = mapMessage,
+                    onMessageShown = viewModel::mapMessageShown
                 )
 
                 Element.Music -> {

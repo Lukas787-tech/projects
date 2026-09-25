@@ -76,7 +76,8 @@ object ToolRouter {
             "standort", "nach hause", "wie weit", "supermarkt", "tankstelle", "gas station",
             "when i get", "when i arrive", "when i leave", "when i'm at", "when im at",
             "arrive at", "get back", "wenn ich ankomme", "wenn ich da bin", "sobald ich",
-            "wenn ich losgehe", "wenn ich gehe"
+            "wenn ich losgehe", "wenn ich gehe", "house", "haus", "wohnung", "flat", "pin", "nadel",
+            "zuhause", "arbeit", "büro", "office", "rename", "umbenennen", "zeig mir"
         ),
         ToolGroup.Calendar to listOf(
             "calendar", "meeting", "appointment", "event", "schedule", "agenda", "busy",
@@ -88,7 +89,11 @@ object ToolRouter {
             "number", "contact", "phone number", "nummer", "kontakt", "telefonnummer"
         ),
         ToolGroup.Phone to listOf(
-            "alarm", "wake me", "timer", "stopwatch", "stop watch", "stoppuhr", "lap", "zwischenzeit", "torch", "flashlight", "light", "battery", "silent",
+            "alarm", "wake me", "timer", "stopwatch", "colour", "color", "farbe", "call me", "nenn mich",
+            "your name", "dein name", "slower", "faster", "langsamer", "schneller", "text size", "schrift",
+            "background", "hintergrund", "personality", "persönlichkeit", "shorter", "kürzer", "longer",
+            "emoji", "satellite", "satellit", "answer in", "antworte", "voice", "stimme", "setting",
+ "stop watch", "stoppuhr", "lap", "zwischenzeit", "torch", "flashlight", "light", "battery", "silent",
             "ringer", "vibrat", "open ", "launch", "app", "settings", "wifi", "wi-fi",
             "clipboard", "copy", "storage", "brightness", "airplane", "wecker", "weck mich",
             "taschenlampe", "licht", "akku", "lautlos", "öffne", "starte", "einstellung",

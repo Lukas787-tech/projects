@@ -53,6 +53,16 @@ class SavedPlaces(context: Context) {
         return place
     }
 
+    /** "Call the flat 'home'": the same spot under a new name. */
+    fun rename(old: String, new: String): SavedPlace? {
+        val target = find(old) ?: return null
+        val clean = canonical(new)
+        if (clean.isBlank()) return null
+        val renamed = target.copy(name = clean)
+        write(_places.value.filterNot { it === target || it.name.equals(clean, ignoreCase = true) } + renamed)
+        return renamed
+    }
+
     fun remove(name: String): Boolean {
         val target = find(name) ?: return false
         write(_places.value - target)

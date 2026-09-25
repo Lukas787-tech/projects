@@ -174,7 +174,11 @@ fun MapCanvas(
     interactive: Boolean = true,
     onSelectPlace: (Int) -> Unit = {},
     /** A tap that landed on no pin — the map screen uses it to hide its controls. */
-    onTapEmpty: () -> Unit = {}
+    onTapEmpty: () -> Unit = {},
+    /** A finger held on the map: a pin dropped at that spot. */
+    onLongPress: (GeoPoint) -> Unit = {},
+    /** A tap on one of the saved places — home, work, the car. */
+    onTapSaved: (SavedPlace) -> Unit = {}
 ) {
     val density = LocalDensity.current.density
     val scope = rememberCoroutineScope()
@@ -204,6 +208,8 @@ fun MapCanvas(
             camera.center = center
             camera.zoom = zoom
             camera.framed = true
+        } else if (state.quiet) {
+            // A pin dropped by hand is already where the eye is.
         } else {
             camera.following = false
             camera.flyTo(scope, center, zoom, 1100)
@@ -254,6 +260,9 @@ fun MapCanvas(
     val latestState by rememberUpdatedState(state)
     val latestSelect by rememberUpdatedState(onSelectPlace)
     val latestEmpty by rememberUpdatedState(onTapEmpty)
+    val latestLong by rememberUpdatedState(onLongPress)
+    val latestSaved by rememberUpdatedState(onTapSaved)
+    val latestSavedList by rememberUpdatedState(saved)
     val gesturesOn = interactive && intro >= 1f
 
     Canvas(
@@ -272,16 +281,24 @@ fun MapCanvas(
                         )
                         camera.flyTo(scope, halfway, camera.zoom + 1f, 320)
                     },
+                    onLongPress = { at ->
+                        camera.following = false
+                        latestLong(pointAt(camera, at, camera.size, density))
+                    },
                     onTap = { tap ->
                         val world = worldSize(camera.zoom, density)
                         val origin = topLeft(camera.center, world, camera.size)
                         val hit = latestState.places.withIndex().minByOrNull { (_, place) ->
                             (screenOf(place.point, world, origin) - tap).getDistance()
                         }
+                        val savedHit = latestSavedList.minByOrNull { (screenOf(it.point, world, origin) - tap).getDistance() }
+                            ?.takeIf { (screenOf(it.point, world, origin) - tap).getDistance() < TAP_SLOP * density }
                         if (hit != null &&
                             (screenOf(hit.value.point, world, origin) - tap).getDistance() < TAP_SLOP * density
                         ) {
                             latestSelect(hit.index)
+                        } else if (savedHit != null) {
+                            latestSaved(savedHit)
                         } else {
                             latestEmpty()
                         }
