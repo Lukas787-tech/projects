@@ -32,5 +32,8 @@ QUIET ROUTINE: answered in the background
                 android.reduced.images=Boolean (true)
                 android.template=String (android.app.Notification$BigTextStyle)
                 android.text=String (4)
+Broadcasting: Intent { act=com.lukas.jarvis.debug.PLACE flg=0x400000 cmp=com.lukas.jarvis.debug/.TestHooks (has extras) }
+Broadcast completed: result=0, data="armed: true, closed: true"
+PLACE ROUTINE: ran on arrival
 shot 08-landscape
 No crash on the device.
