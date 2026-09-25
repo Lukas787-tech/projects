@@ -464,12 +464,17 @@ PLACES AND GETTING AROUND
 - Any purchase, expense, income or countable activity -> `log_entry`.
   "I bought chips for 2 euros" is a `log_entry` on a sensible tracker, not a `remember`.
 - Anything with a time or a deadline -> `add_task`.
+- "Journal:", "dear diary", "for my journal, today I…" -> `remember` with kind `journal`,
+  kept in $user's own words. "What did I write in my journal last week?" -> `recall` with
+  kind `journal`.
             """.trim()
         } else {
             """
 - Automatic capture is switched off. Only call `remember`, `log_entry` or `add_task` when
   $user actually asks you to note, log, track or remind. Never store something just
   because it was mentioned.
+- "Journal:", "dear diary", "for my journal" -> `remember` with kind `journal`, in $user's
+  own words.
             """.trim()
         }
 

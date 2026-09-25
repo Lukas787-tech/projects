@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
@@ -89,7 +90,9 @@ import java.io.File
 class MessageActions(
     val onSpeak: ((ChatMessage) -> Unit)? = null,
     val onDelete: ((ChatMessage) -> Unit)? = null,
-    val onRetry: ((ChatMessage) -> Unit)? = null
+    val onRetry: ((ChatMessage) -> Unit)? = null,
+    /** Keeps a line as a memory, for an answer worth having again. */
+    val onRemember: ((ChatMessage) -> Unit)? = null
 )
 
 /**
@@ -98,7 +101,7 @@ class MessageActions(
  * Yours sits on the right in a lit pane of the accent; the assistant's on the
  * left as glass, with its reply drawn as Markdown, any picture it drew, and
  * the chips saying which tools answered it. A long press opens the actions:
- * copy, read aloud, share, try again, delete.
+ * copy, read aloud, share, remember, try again, delete.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -217,6 +220,9 @@ fun MessageBubble(
             MenuRow("Share", Icons.Default.Share) {
                 share(context, Markdown.plain(message.content), message.image)
                 menu = false
+            }
+            actions.onRemember?.let { remember ->
+                MenuRow("Remember this", Icons.Default.Psychology) { remember(message); menu = false }
             }
             actions.onRetry?.let { retry ->
                 if (isLast && !fromUser) MenuRow("Try again", Icons.Default.Refresh) { retry(message); menu = false }

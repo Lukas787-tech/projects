@@ -322,7 +322,11 @@ private fun JarvisRoot(
         MessageActions(
             onSpeak = viewModel::speakMessage,
             onDelete = viewModel::deleteMessage,
-            onRetry = { viewModel.retryLast() }
+            onRetry = { viewModel.retryLast() },
+            onRemember = { message ->
+                viewModel.rememberMessage(message)
+                android.widget.Toast.makeText(context, "Kept in memory", android.widget.Toast.LENGTH_SHORT).show()
+            }
         )
     }
 

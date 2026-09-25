@@ -34,7 +34,8 @@ object BriefAlarm {
     private const val REQUEST = 7411
     private const val NOTIFICATION_ID = 7411
     private const val EVENING_REQUEST = 7412
-    private const val EVENING_ID = 7412
+    const val EVENING_ID = 7412
+    private const val JOURNAL_REQUEST = 7413
     const val EXTRA_EVENING = "evening"
 
     /** Sets tomorrow's (or today's, if still ahead) brief, or clears it for a blank time. */
@@ -67,9 +68,9 @@ object BriefAlarm {
     }
 
     internal fun postEvening(context: Context, title: String, text: String) =
-        post(context, title, text, EVENING_ID)
+        post(context, title, text, EVENING_ID, journal = true)
 
-    private fun post(context: Context, title: String, text: String, id: Int) {
+    private fun post(context: Context, title: String, text: String, id: Int, journal: Boolean = false) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL, "Morning brief", NotificationManager.IMPORTANCE_DEFAULT)
@@ -83,15 +84,34 @@ object BriefAlarm {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val notification = Notification.Builder(context, CHANNEL)
+        val builder = Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(Notification.BigTextStyle().bigText(text))
             .setAutoCancel(true)
             .setContentIntent(open)
-            .build()
-        runCatching { manager.notify(id, notification) }
+        // The end of the day is when a line about it is easiest to write:
+        // typed straight into the notification, kept as a journal entry.
+        if (journal) {
+            val write = PendingIntent.getBroadcast(
+                context,
+                JOURNAL_REQUEST,
+                Intent(context, JournalReceiver::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            )
+            val input = android.app.RemoteInput.Builder(JournalReceiver.KEY_TEXT)
+                .setLabel("How was your day?")
+                .build()
+            builder.addAction(
+                Notification.Action.Builder(
+                    android.graphics.drawable.Icon.createWithResource(context, R.drawable.ic_notification),
+                    "Write in journal",
+                    write
+                ).addRemoteInput(input).build()
+            )
+        }
+        runCatching { manager.notify(id, builder.build()) }
     }
 
     private fun pending(context: Context, evening: Boolean): PendingIntent = PendingIntent.getBroadcast(
@@ -134,5 +154,47 @@ class BriefReceiver : BroadcastReceiver() {
                 pending.finish()
             }
         }
+    }
+}
+
+/** A line typed into the evening wrap-up, kept as a journal entry. */
+class JournalReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        val text = android.app.RemoteInput.getResultsFromIntent(intent)
+            ?.getCharSequence(KEY_TEXT)?.toString()?.trim()
+        if (text.isNullOrBlank()) return
+        val container = (context.applicationContext as? JarvisApp)?.container ?: return
+        val pending = goAsync()
+        Thread {
+            try {
+                runCatching {
+                    container.brain.addMemory(
+                        com.lukas.jarvis.data.Memory(
+                            kind = com.lukas.jarvis.data.Memory.KIND_JOURNAL,
+                            content = text,
+                            tags = listOf("journal"),
+                            importance = 3,
+                            source = "journal"
+                        )
+                    )
+                }
+                // The notification is answered: say so where it was typed.
+                val manager = context.getSystemService(NotificationManager::class.java)
+                val done = Notification.Builder(context, BriefAlarm.CHANNEL)
+                    .setSmallIcon(R.drawable.ic_notification)
+                    .setContentTitle("Kept in your journal")
+                    .setContentText(text)
+                    .setTimeoutAfter(4_000L)
+                    .build()
+                runCatching { manager?.notify(BriefAlarm.EVENING_ID, done) }
+            } finally {
+                pending.finish()
+            }
+        }.start()
+    }
+
+    companion object {
+        const val KEY_TEXT = "journal_text"
     }
 }

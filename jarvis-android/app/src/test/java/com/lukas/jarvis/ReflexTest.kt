@@ -94,6 +94,15 @@ class ReflexTest {
         assertNull(Reflexes.parse("remember this"))
     }
 
+    @Test fun journalEntries() {
+        val (name, args) = parsed("Dear diary, today I finally fixed the bike.")!!
+        assertEquals("remember", name)
+        assertEquals("journal", args.getString("kind"))
+        assertEquals("Today I finally fixed the bike.", args.getString("content"))
+        assertEquals("journal", parsed("Journal: long walk by the river")!!.second.getString("kind"))
+        assertNull(Reflexes.parse("journal"))
+    }
+
     @Test fun memoriesSaidBack() {
         assertEquals("Your gym locker code is 3917", Reflexes.secondPerson("My gym locker code is 3917"))
         assertEquals("You are allergic to peanuts", Reflexes.secondPerson("I am allergic to peanuts"))

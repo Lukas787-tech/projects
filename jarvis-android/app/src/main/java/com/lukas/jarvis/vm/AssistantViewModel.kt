@@ -736,6 +736,13 @@ class AssistantViewModel(
         }
     }
 
+    /** A line of the conversation kept as a memory, from its long-press menu. */
+    fun rememberMessage(message: ChatMessage) {
+        val text = com.lukas.jarvis.ui.components.Markdown.plain(message.content).trim()
+        if (text.isBlank()) return
+        addMemory(text.take(1_000), Memory.KIND_FACT, emptyList(), 3)
+    }
+
     fun deleteMemory(id: Long) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { brain.deleteMemory(id) }

@@ -49,6 +49,16 @@ object Reflexes {
      */
     private fun remember(raw: String): ToolCall? {
         val trimmed = raw.trim()
+        JOURNAL.find(trimmed)?.let { match ->
+            val entry = match.groupValues[1].trim()
+            if (entry.split(Regex("\\s+")).size < 2) return null
+            return call(
+                "remember",
+                JSONObject()
+                    .put("content", entry.replaceFirstChar { it.titlecase(Locale.ROOT) })
+                    .put("kind", "journal")
+            )
+        }
         if (trimmed.endsWith("?")) return null
         val match = REMEMBER.find(trimmed) ?: return null
         val content = match.groupValues[1].trim().trimEnd('.', '!').trim()
@@ -253,6 +263,10 @@ object Reflexes {
         "^(?:hey jarvis,?\\s+|jarvis,?\\s+)?(?:please\\s+)?(?:remember|note|merk dir|merke dir|notier dir)" +
             "(?:\\s+that|,?\\s+dass)?[,:]?\\s+(.+)$",
         RegexOption.IGNORE_CASE
+    )
+    private val JOURNAL = Regex(
+        "^(?:journal|dear diary|diary|for my journal|tagebuch|liebes tagebuch)[,:.]?\\s+(.+)$",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
     )
     private val PERSON = mapOf(
         "my" to "your", "i" to "you", "i'm" to "you're", "me" to "you", "mine" to "yours",

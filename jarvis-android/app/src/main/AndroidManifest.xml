@@ -244,6 +244,11 @@
             android:name=".brief.BriefReceiver"
             android:exported="false" />
 
+        <!-- A journal line typed into the evening wrap-up notification. -->
+        <receiver
+            android:name=".brief.JournalReceiver"
+            android:exported="false" />
+
         <!-- A timer's end, and the buttons on its notifications. -->
         <receiver
             android:name=".notify.TimerReceiver"

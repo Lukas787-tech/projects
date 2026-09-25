@@ -53,12 +53,20 @@ model was asked to add eggs to the shopping list and read it back, and did.
 - **Remembers with no connection** — "remember that my locker code is 3917"
   is kept even when no model can be reached, and "what's my locker code?" is
   answered from memory the same way.
+- **A journal** — "dear diary, …" or "journal: …" keeps an entry in your own
+  words (even offline), the evening wrap-up notification has a *Write in
+  journal* box, and "what did I write last week?" reads them back.
+- **"Remember this"** — long-press any line of the conversation to keep it
+  in memory.
 - **Three more backdrops** — Aurora, Ember and Abyss, for eight in all.
 - **Rides out a busy moment** — a model that fails with a passing error (a
   502 from a busy gateway, a dropped connection) gets one more try before the
   turn gives up.
 - **Fixes** — "take me home" before home was saved used to search the map
-  for a place called "Home"; a saved "car" matched "Carrefour".
+  for a place called "Home"; a saved "car" matched "Carrefour"; the Today
+  greeting could say "sir" after the name was set, or "Good morning" all
+  afternoon; a timer whose alarm was held back sat at 0:00; the translation
+  service's quota notice could be read out as a translation.
 
 ## What's new in 5.4
 

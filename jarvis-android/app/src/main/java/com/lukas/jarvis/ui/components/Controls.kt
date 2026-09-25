@@ -1,5 +1,9 @@
 package com.lukas.jarvis.ui.components
 
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.Icons
@@ -123,13 +127,21 @@ fun QuickAction(
         verticalArrangement = Arrangement.spacedBy(Space.hair + 2.dp)
     ) {
         Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(20.dp))
+        // With large text a word like "Controls" no longer fits five to a
+        // row; it shrinks a little rather than losing its end.
+        val base = MaterialTheme.typography.labelSmall
+        var shrink by remember(label) { mutableFloatStateOf(1f) }
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
+            style = base.copy(fontSize = base.fontSize * shrink),
             color = tint,
             textAlign = TextAlign.Center,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { layout ->
+                if (layout.hasVisualOverflow && shrink > 0.7f) shrink -= 0.06f
+            }
         )
     }
 }

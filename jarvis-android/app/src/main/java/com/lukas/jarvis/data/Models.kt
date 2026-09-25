@@ -23,10 +23,12 @@ data class Memory(
         const val KIND_PREFERENCE = "preference"
         const val KIND_PERSON = "person"
         const val KIND_PLACE = "place"
+        /** A diary entry: how the day went, in the user's own words. */
+        const val KIND_JOURNAL = "journal"
 
         val ALL_KINDS = listOf(
             KIND_FACT, KIND_EVENT, KIND_NOTE, KIND_IDEA,
-            KIND_PREFERENCE, KIND_PERSON, KIND_PLACE
+            KIND_PREFERENCE, KIND_PERSON, KIND_PLACE, KIND_JOURNAL
         )
     }
 }
