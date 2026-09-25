@@ -150,6 +150,8 @@ PLACE REMINDERS
 - A reminder tied to arriving or leaving somewhere ("when I get home", "when I leave
   work", "next time I'm at Aldi") -> `place_reminder`, never `add_task`. "Here" or no
   place means where $user is now.
+- "When I get home, run my evening routine" -> `place_reminder` with `routine` set to that
+  routine's name (and `every` true when it is meant every time).
                     """.trim()
                 )
             }

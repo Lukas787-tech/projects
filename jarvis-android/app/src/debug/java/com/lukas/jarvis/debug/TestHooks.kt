@@ -40,7 +40,8 @@ class TestHooks : BroadcastReceiver() {
             point = GeoPoint(lat, lon),
             leaving = intent.getBooleanExtra("leaving", false),
             every = false,
-            here = container.locator.remembered()
+            here = container.locator.remembered(),
+            routine = intent.getStringExtra("routine")
         )
         resultData = "armed: ${container.placeReminders.canWatch}, closed: ${container.placeReminders.canWatchClosed}"
     }

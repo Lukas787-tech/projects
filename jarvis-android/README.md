@@ -53,6 +53,9 @@ model was asked to add eggs to the shopping list and read it back, and did.
 - **Remembers with no connection** — "remember that my locker code is 3917"
   is kept even when no model can be reached, and "what's my locker code?" is
   answered from memory the same way.
+- **Routines that start at a place** — "when I get home, run my evening
+  routine": the routine runs in the background on arrival and its answer
+  arrives as a notification.
 - **Focus sessions** — "focus for 25 minutes" or "start a pomodoro" turns on
   Do Not Disturb for that long and puts a Focus timer on screen that rings at
   the end. Works offline too.

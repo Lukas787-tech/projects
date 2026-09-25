@@ -656,7 +656,8 @@ class Tools(
                 "text" to str("What to remind about, e.g. 'buy milk'. To cancel: words from it, or its id."),
                 "place" to str("Where: a saved place such as 'home' or 'work', a shop, or an address. Omit for where the user is now."),
                 "leaving" to bool("True for 'when I leave', false for 'when I get there'."),
-                "every" to bool("True for every arrival or departure, not only the next.")
+                "every" to bool("True for every arrival or departure, not only the next."),
+                "routine" to str("A saved routine to run there instead, e.g. 'evening' for 'when I get home, run my evening routine'.")
             ),
             emptyList()
         ),
@@ -1914,7 +1915,13 @@ class Tools(
                 return "Cancelled: ${target.describe()}."
             }
         }
-        if (text.isBlank()) return "What should the reminder say?"
+        val routineName = args.optString("routine").trim().takeIf { it.isNotBlank() }?.let { wanted ->
+            routines.find(wanted)?.name
+                ?: return "There is no routine called '$wanted'. Saved: " +
+                    routines.all.value.joinToString { it.name }.ifBlank { "none yet" } + "."
+        }
+        val label = text.ifBlank { routineName?.let { "run the $it routine" } ?: "" }
+        if (label.isBlank()) return "What should the reminder say?"
         if (!placeReminders.canWatch) {
             placeReminders.askPermission()
             return "A place reminder needs precise location, which Jarvis doesn't have (approximate " +
@@ -1935,12 +1942,13 @@ class Tools(
             else -> target.name
         }
         val watch = placeReminders.add(
-            text = text,
+            text = label,
             place = name,
             point = target.point,
             leaving = args.optBoolean("leaving", false),
             every = args.optBoolean("every", false),
-            here = locator.remembered()
+            here = locator.remembered(),
+            routine = routineName
         )
         return buildString {
             append("Set: ${watch.text}, ${watch.trigger}")

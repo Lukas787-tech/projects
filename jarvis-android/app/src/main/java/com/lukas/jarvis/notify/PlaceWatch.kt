@@ -27,7 +27,13 @@ data class PlaceWatch(
     val every: Boolean = false,
     /** An arrival that may fire: the phone has been outside since it was set. */
     val armed: Boolean = true,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    /**
+     * A routine to run on the spot instead of only a note: "when I get home,
+     * run my evening routine". It runs in the background, like a quiet one,
+     * and its answer arrives as the notification.
+     */
+    val routine: String? = null
 ) {
 
     enum class Crossing { Fire, Arm, Ignore }
@@ -65,6 +71,7 @@ data class PlaceWatch(
         .put("every", every)
         .put("armed", armed)
         .put("at", createdAt)
+        .apply { routine?.let { put("routine", it) } }
 
     companion object {
         /**
@@ -83,7 +90,8 @@ data class PlaceWatch(
             leaving: Boolean,
             every: Boolean,
             here: GeoPoint?,
-            radius: Int = DEFAULT_RADIUS
+            radius: Int = DEFAULT_RADIUS,
+            routine: String? = null
         ): PlaceWatch {
             val inside = here != null && Geo.distance(here, point) <= radius
             return PlaceWatch(
@@ -94,7 +102,8 @@ data class PlaceWatch(
                 radius = radius,
                 leaving = leaving,
                 every = every,
-                armed = leaving || !inside
+                armed = leaving || !inside,
+                routine = routine?.trim()?.takeIf { it.isNotBlank() }
             )
         }
 
@@ -110,7 +119,8 @@ data class PlaceWatch(
                 leaving = obj.optBoolean("leaving", false),
                 every = obj.optBoolean("every", false),
                 armed = obj.optBoolean("armed", true),
-                createdAt = obj.optLong("at", 0L)
+                createdAt = obj.optLong("at", 0L),
+                routine = obj.optString("routine").takeIf { it.isNotBlank() }
             )
         }
 

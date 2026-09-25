@@ -64,10 +64,11 @@ class PlaceReminders(context: Context) {
         point: GeoPoint,
         leaving: Boolean,
         every: Boolean,
-        here: GeoPoint?
+        here: GeoPoint?,
+        routine: String? = null
     ): PlaceWatch {
         val id = (current.maxOfOrNull { it.id } ?: 0L).coerceAtLeast(System.currentTimeMillis() / 1000) + 1
-        val watch = PlaceWatch.create(id, text, place, point, leaving, every, here)
+        val watch = PlaceWatch.create(id, text, place, point, leaving, every, here, routine = routine)
         write(current + watch)
         arm(watch)
         return watch
@@ -120,7 +121,12 @@ class PlaceReminders(context: Context) {
                 null
             }
             PlaceWatch.Crossing.Fire -> {
-                post(watch)
+                // A routine sends its own answer as the notification.
+                if (watch.routine != null) {
+                    com.lukas.jarvis.auto.RoutineWorker.enqueue(app, watch.routine)
+                } else {
+                    post(watch)
+                }
                 val next = watch.afterFiring()
                 if (next == null) {
                     disarm(watch)

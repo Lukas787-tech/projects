@@ -137,6 +137,24 @@ adb shell cmd statusbar collapse >/dev/null 2>&1
 if [ -n "$DONE" ]; then echo "QUIET ROUTINE: answered in the background" >> "$REPORT"; else echo "QUIET ROUTINE: no notification within 120 s" >> "$REPORT"; fi
 adb shell dumpsys notification --noredact 2>/dev/null | grep -A3 -i "device check" | head -n 12 >> "$REPORT"
 
+# A routine started by arriving somewhere: the place fires, the routine runs
+# in the background, and its answer is the notification.
+adb shell cmd notification cancel_all >/dev/null 2>&1 || adb shell service call notification 1 >/dev/null 2>&1 || true
+start
+sleep 3
+tap_text "Map" && sleep 4
+for i in 1 2 3 4; do adb emu geo fix 13.3777 52.5163 >/dev/null; sleep 4; done
+adb shell am broadcast -n "$PKG/com.lukas.jarvis.debug.TestHooks" -a com.lukas.jarvis.debug.PLACE \
+  --es text "''" --es routine "'device check'" --es lat 52.5070 --es lon 13.3900 >> "$REPORT" 2>&1
+for i in 1 2 3; do adb emu geo fix 13.3777 52.5163 >/dev/null; sleep 4; done
+RAN=""
+for i in $(seq 1 36); do
+  adb emu geo fix 13.3900 52.5070 >/dev/null
+  sleep 5
+  if adb shell dumpsys notification --noredact 2>/dev/null | grep -q "Device check"; then RAN=yes; break; fi
+done
+if [ -n "$RAN" ]; then echo "PLACE ROUTINE: ran on arrival" >> "$REPORT"; else echo "PLACE ROUTINE: nothing within 180 s" >> "$REPORT"; fi
+
 # Rotation recreates the activity, which is where restored state goes wrong.
 adb shell settings put system accelerometer_rotation 0
 adb shell settings put system user_rotation 1

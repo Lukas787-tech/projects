@@ -65,6 +65,14 @@ class PlaceTest {
         assertEquals("when you leave work", arrival(away).copy(place = "work", leaving = true).trigger)
     }
 
+    @Test fun aRoutineAtAPlaceIsKept() {
+        val watch = PlaceWatch.create(4, "run the evening routine", "home", home, leaving = false,
+            every = true, here = away, routine = " evening ")
+        assertEquals("evening", watch.routine)
+        assertEquals(listOf(watch), PlaceWatch.listFromJson(PlaceWatch.listToJson(listOf(watch))))
+        assertNull(arrival(here = away).routine)
+    }
+
     @Test fun survivesTheStore() {
         val watch = arrival(here = home, every = true)
         val back = PlaceWatch.listFromJson(PlaceWatch.listToJson(listOf(watch)))
