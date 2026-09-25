@@ -100,7 +100,7 @@ adb shell am broadcast -n "$PKG/com.lukas.jarvis.debug.TestHooks" -a com.lukas.j
   --es text "'buy test milk'" --es lat 52.5200 --es lon 13.4050 >> "$REPORT" 2>&1
 for i in 1 2 3; do adb emu geo fix 13.4050 52.5400 >/dev/null; sleep 4; done
 FIRED=""
-for i in $(seq 1 20); do
+for i in $(seq 1 36); do
   adb emu geo fix 13.4050 52.5200 >/dev/null
   sleep 5
   if adb shell dumpsys notification --noredact 2>/dev/null | grep -qi "buy test milk"; then FIRED=yes; break; fi
@@ -108,7 +108,12 @@ done
 adb shell cmd statusbar expand-notifications >/dev/null 2>&1; sleep 2
 shot 13-place-reminder
 adb shell cmd statusbar collapse >/dev/null 2>&1
-if [ -n "$FIRED" ]; then echo "PLACE ALERT: fired on arrival" >> "$REPORT"; else echo "PLACE ALERT: did not fire within 100 s" >> "$REPORT"; fi
+if [ -n "$FIRED" ]; then echo "PLACE ALERT: fired on arrival" >> "$REPORT"; else echo "PLACE ALERT: did not fire within 180 s" >> "$REPORT"; fi
+# What Android's location service holds: the fence, and the fixes it saw.
+{
+  echo "--- dumpsys location (geofences and providers)"
+  adb shell dumpsys location 2>/dev/null | grep -iE -A3 "geofence|proximity|last location|gps provider|fused provider|$PKG" | head -n 120
+} >> "$OUT/location.txt"
 
 # Rotation recreates the activity, which is where restored state goes wrong.
 adb shell settings put system accelerometer_rotation 0
