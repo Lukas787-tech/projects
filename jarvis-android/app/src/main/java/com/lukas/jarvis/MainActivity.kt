@@ -611,6 +611,7 @@ private fun JarvisRoot(
                 label = "element"
             ) { shown -> when (shown) {
                 Element.Today -> TodayScreen(
+                    address = Personas.address(settings),
                     brief = brief,
                     loading = briefLoading,
                     trackers = trackers,

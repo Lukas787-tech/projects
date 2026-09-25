@@ -263,13 +263,12 @@ class ScreensTest {
         settle()
         shot(activity, "14-chat-emerald")
 
-        // Larger text, as set in Android's display settings by plenty of
-        // people: whatever does not fit shows up here first.
+        // Larger text: whatever does not fit shows up here first. The app's
+        // own text size multiplies Android's, so the largest setting stands
+        // in for a phone with large fonts, without recreating the activity.
         runCatching {
-            val bigger = android.content.res.Configuration(activity.resources.configuration)
-                .apply { fontScale = 1.3f }
-            controller.configurationChange(bigger)
-            val large = controller.get()
+            container.settings.update { it.copy(textScale = 1.3f, voiceMode = false) }
+            val large = activity
             settle(1600)
             listOf(
                 Element.Today to "17a-large-text-today",

@@ -122,6 +122,26 @@ class Briefer(
     private val knowledge: com.lukas.jarvis.web.Knowledge? = null
 ) {
 
+    companion object {
+        /**
+         * "Good afternoon, Lukas", for the hour it is now. Worked out when it
+         * is shown rather than kept with the brief, which can be hours old
+         * and made before the user's name was known.
+         */
+        fun greeting(
+            address: String,
+            hour: Int = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        ): String {
+            val part = when (hour) {
+                in 0..4 -> "Still up"
+                in 5..11 -> "Good morning"
+                in 12..17 -> "Good afternoon"
+                else -> "Good evening"
+            }
+            return if (address.isBlank()) part else "$part, $address"
+        }
+    }
+
     /**
      * The town the phone was last found in, kept from the last brief so every
      * turn can know roughly where it is without asking for a location fix.
@@ -250,16 +270,7 @@ class Briefer(
         if (value == value.toLong().toDouble()) value.toLong().toString()
         else String.format(Locale.US, "%.2f", value)
 
-    private fun greeting(userName: String): String {
-        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        val part = when (hour) {
-            in 0..4 -> "Still up"
-            in 5..11 -> "Good morning"
-            in 12..17 -> "Good afternoon"
-            else -> "Good evening"
-        }
-        return if (userName.isBlank()) part else "$part, $userName"
-    }
+    private fun greeting(userName: String): String = Briefer.greeting(userName)
 
     private fun endOfToday(): Long = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 23)

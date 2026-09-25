@@ -45,7 +45,7 @@ jobs:
       # A hang must not eat the job: the step stops, and whatever was
       # rendered before it is still committed below.
       - name: Render the screens
-        timeout-minutes: 15
+        timeout-minutes: 25
         run: |
           set -o pipefail
           ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.ScreensTest' --no-daemon 2>&1 | tee screens.log

@@ -1282,6 +1282,8 @@ class Tools(
         val code = knowledge.codeFor(wanted)
             ?: return "Which language does the other person speak?"
         stage.show(Element.Globe, StageStore.INTERPRETER_PREFIX + code)
+        // Asked from the floating dot, the app is not on screen yet.
+        launcher.showJarvis()
         return "The interpreter is open on screen for ${knowledge.nameOf(code)}. In one short line, tell " +
             "the user to tap their own button to speak, or the other button for the other person; " +
             "each line is translated and read aloud."

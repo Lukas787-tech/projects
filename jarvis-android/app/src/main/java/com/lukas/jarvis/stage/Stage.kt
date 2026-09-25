@@ -81,7 +81,9 @@ class StageStore {
         val element: Element = Element.Globe,
         val revision: Long = 0,
         /** What the assistant said it was doing, shown under the element. */
-        val note: String = ""
+        val note: String = "",
+        /** When it changed, so a screen that opens a moment later can still act on it. */
+        val at: Long = 0L
     )
 
     private val _state = MutableStateFlow(State())
@@ -102,7 +104,8 @@ class StageStore {
         _state.value = State(
             element = element,
             revision = _state.value.revision + 1,
-            note = note
+            note = note,
+            at = System.currentTimeMillis()
         )
     }
 }

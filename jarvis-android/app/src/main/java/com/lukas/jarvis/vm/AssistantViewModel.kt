@@ -804,6 +804,11 @@ class AssistantViewModel(
     fun endInterpreter() {
         if (_interpreter.value == null) return
         _interpreter.value = null
+        // So a screen opened a moment from now does not open it again.
+        val stage = container.stage
+        if (stage.state.value.note.startsWith(com.lukas.jarvis.stage.StageStore.INTERPRETER_PREFIX)) {
+            stage.show(stage.current)
+        }
         speech.cancel()
         speaker.stop()
         speech.language = settingsStore.current.speechLanguage
@@ -885,7 +890,16 @@ class AssistantViewModel(
         // The interpreter tool asks for the interpreter through the stage,
         // the one channel a tool has to the screen.
         viewModelScope.launch {
-            var seen = container.stage.state.value.revision
+            // Asked for a moment ago, before this screen existed — from the
+            // floating dot, which then opened the app.
+            val waiting = container.stage.state.value
+            if (waiting.note.startsWith(com.lukas.jarvis.stage.StageStore.INTERPRETER_PREFIX) &&
+                waiting.note != com.lukas.jarvis.stage.StageStore.INTERPRETER_STOP &&
+                System.currentTimeMillis() - waiting.at < 60_000L
+            ) {
+                startInterpreter(waiting.note.removePrefix(com.lukas.jarvis.stage.StageStore.INTERPRETER_PREFIX))
+            }
+            var seen = waiting.revision
             container.stage.state.collect { stage ->
                 if (stage.revision == seen) return@collect
                 seen = stage.revision

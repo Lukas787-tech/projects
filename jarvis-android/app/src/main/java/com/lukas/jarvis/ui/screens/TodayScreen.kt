@@ -124,7 +124,9 @@ fun TodayScreen(
     onDeleteRoutine: (String) -> Unit,
     modifier: Modifier = Modifier,
     /** Sends a sentence to the assistant, for a headline tapped to hear more. */
-    onAsk: (String) -> Unit = {}
+    onAsk: (String) -> Unit = {},
+    /** How the user is addressed now, for the greeting. */
+    address: String = ""
 ) {
     var editing by remember { mutableStateOf<Routine?>(null) }
     editing?.let { draft ->
@@ -195,7 +197,7 @@ fun TodayScreen(
             }
         }
 
-        item { HeroCard(brief = brief, loading = loading) }
+        item { HeroCard(brief = brief, loading = loading, address = address) }
 
         item {
             GroupHeader(
@@ -351,7 +353,7 @@ fun TodayScreen(
 
 /** The one card that is the subject of the screen: greeting, weather, date. */
 @Composable
-private fun HeroCard(brief: DayBrief?, loading: Boolean) {
+private fun HeroCard(brief: DayBrief?, loading: Boolean, address: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -359,7 +361,13 @@ private fun HeroCard(brief: DayBrief?, loading: Boolean) {
             .padding(Space.gutter)
     ) {
         Text(
-            text = brief?.greeting ?: if (loading) "Getting your day together…" else "Today",
+            text = if (brief != null) {
+                com.lukas.jarvis.brief.Briefer.greeting(address)
+            } else if (loading) {
+                "Getting your day together…"
+            } else {
+                "Today"
+            },
             style = MaterialTheme.typography.displayMedium,
             color = TextPrimary,
             maxLines = 2,

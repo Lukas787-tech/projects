@@ -36,6 +36,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
@@ -667,9 +669,14 @@ internal fun Backdrops(items: List<Backdrop>, selectedId: String, onSelect: (Str
         items.forEach { backdrop ->
             val selected = backdrop.id == selectedId
             val shape = RoundedCornerShape(14.dp)
+            // One width for every column, so the tiles line up as a grid
+            // whatever their names' lengths.
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { onSelect(backdrop.id) }
+                modifier = Modifier
+                    .width(72.dp)
+                    .clip(RoundedCornerShape(Corner.small))
+                    .clickable { onSelect(backdrop.id) }
             ) {
                 Box(
                     modifier = Modifier
@@ -682,7 +689,10 @@ internal fun Backdrops(items: List<Backdrop>, selectedId: String, onSelect: (Str
                 Text(
                     backdrop.label,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (selected) TextPrimary else TextFaint
+                    color = if (selected) TextPrimary else TextFaint,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
                 )
             }
         }

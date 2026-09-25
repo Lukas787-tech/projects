@@ -93,6 +93,21 @@ object Palettes {
             "nebula", "Nebula",
             top = Color(0xFF231433), middle = Color(0xFF0E0918), bottom = Color(0xFF030206),
             raised = Color(0xFF0C0814), card = Color(0xFF1A1226), dialog = Color(0xFF1D142B)
+        ),
+        Backdrop(
+            "aurora", "Aurora",
+            top = Color(0xFF0B2A2A), middle = Color(0xFF061416), bottom = Color(0xFF010404),
+            raised = Color(0xFF051012), card = Color(0xFF0E1E20), dialog = Color(0xFF112325)
+        ),
+        Backdrop(
+            "ember", "Ember",
+            top = Color(0xFF2A130C), middle = Color(0xFF140907), bottom = Color(0xFF040201),
+            raised = Color(0xFF100706), card = Color(0xFF1F1210), dialog = Color(0xFF241512)
+        ),
+        Backdrop(
+            "abyss", "Abyss",
+            top = Color(0xFF062238), middle = Color(0xFF03101C), bottom = Color(0xFF000307),
+            raised = Color(0xFF020C15), card = Color(0xFF0B1A28), dialog = Color(0xFF0E1F2E)
         )
     )
 

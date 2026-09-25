@@ -254,6 +254,20 @@ class Launcher(context: Context) {
         }
     }
 
+    /**
+     * Brings Jarvis's own screen up, for an answer that is a screen — the
+     * interpreter asked for from the floating dot. Nothing happens when the
+     * app is already in front.
+     */
+    fun showJarvis(): Boolean {
+        if ((app as? com.lukas.jarvis.JarvisApp)?.inForeground == true) return true
+        return start(
+            Intent(app, com.lukas.jarvis.MainActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            )
+        )
+    }
+
     private fun start(intent: Intent): Boolean = runCatching {
         app.startActivity(intent)
         true
