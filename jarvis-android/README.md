@@ -403,3 +403,8 @@ around not hitting limits rather than recovering from them:
   first result, and a turn that starts asking for what it already has is told
   to answer instead of spending more rounds. Lookups that do not depend on each
   other run side by side, so weather, calendar and a web search cost one wait.
+- **A notice is not an answer.** A free service that has run out sometimes
+  replies "200 OK" with a message about credits or a queue instead of an
+  answer. That is treated as the endpoint failing — the next one answers — and
+  never shown or read out as if Jarvis had said it. Advert footers some add to
+  real answers are cut off.
