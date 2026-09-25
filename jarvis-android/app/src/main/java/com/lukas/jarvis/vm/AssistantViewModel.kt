@@ -527,14 +527,20 @@ class AssistantViewModel(
                 throw e
             } catch (e: LlmException) {
                 if (rewriteDisplay) storeUserMessage(userMessage, userMessage)
-                // No model to be had: the plain requests are still answered.
-                val offline = if (rewriteDisplay) null else runCatching {
+                // No model to be had: the plain requests are still answered —
+                // but only when this turn did nothing yet. A timer the model
+                // already set before its reply failed would be set twice.
+                val acted = _ui.value.activity
+                val offline = if (rewriteDisplay || acted.isNotEmpty()) null else runCatching {
                     withContext(Dispatchers.IO) { container.agent.offline(display, current) }
                 }.getOrNull()
-                if (offline != null) {
-                    deliver(offline, current)
-                } else {
-                    fail(e.message ?: "The model call failed.")
+                when {
+                    offline != null -> deliver(offline, current)
+                    acted.isNotEmpty() -> fail(
+                        "Done before the connection dropped: ${acted.distinct().joinToString()}. " +
+                            "The reply itself did not come back."
+                    )
+                    else -> fail(e.message ?: "The model call failed.")
                 }
             } catch (e: Exception) {
                 if (rewriteDisplay) storeUserMessage(userMessage, userMessage)

@@ -116,6 +116,8 @@ class Conversation(private val container: AppContainer) {
 
         scope.launch {
             var spoken = false
+            // Whether the model already used a tool this turn.
+            var acted = false
             try {
                 val settings = container.settings.current
                 container.speaker.configure(settings.speechRate, settings.speechPitch, settings.voiceName, settings.speechLanguage)
@@ -133,7 +135,8 @@ class Conversation(private val container: AppContainer) {
                         // the utterance separately and would otherwise see it
                         // twice.
                         history = history.dropLast(1),
-                        onStage = { }
+                        onStage = { },
+                        onTool = { acted = true }
                     )
                 }
 
@@ -159,7 +162,9 @@ class Conversation(private val container: AppContainer) {
             } catch (e: Exception) {
                 // No model to be had: a timer, a sum or the time still get done.
                 val settings = container.settings.current
-                val offline = if (e is kotlinx.coroutines.CancellationException) null else runCatching {
+                // Not when the model already did something this turn: the
+                // fallback would do it a second time.
+                val offline = if (e is kotlinx.coroutines.CancellationException || acted) null else runCatching {
                     withContext(Dispatchers.IO) { container.agent.offline(text, settings) }
                 }.getOrNull()
                 if (offline != null) {
