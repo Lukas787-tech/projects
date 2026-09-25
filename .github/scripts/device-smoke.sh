@@ -63,6 +63,25 @@ start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT
 sleep 40
 shot 06-live-question
 
+# Every main screen, through the bar at the bottom as a person would.
+for tab in "Map" "Notes" "Settings" "Today"; do
+  tap_text "$tab" && sleep 5
+  shot "09-$(echo "$tab" | tr 'A-Z' 'a-z')"
+done
+tap_text "Notes" && sleep 3
+for hub in "Trackers" "Tasks" "Lists" "Memory"; do
+  tap_text "$hub" && sleep 3
+  shot "10-hub-$(echo "$hub" | tr 'A-Z' 'a-z')"
+done
+tap_text "Settings" && sleep 3
+for tab in "You" "Voice" "Look" "Brain" "Powers" "Data"; do
+  tap_text "$tab" && sleep 3
+  shot "11-settings-$(echo "$tab" | tr 'A-Z' 'a-z')"
+done
+tap_text "Today" && sleep 3
+tap_text "Skills" && sleep 4
+shot 12-skills
+
 adb shell input keyevent KEYCODE_HOME
 sleep 3
 start -a com.lukas.jarvis.TALK
