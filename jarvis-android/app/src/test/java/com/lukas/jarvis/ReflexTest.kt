@@ -189,4 +189,21 @@ class ReflexTest {
         assertNull(parsed("switch to airplane mode")?.takeIf { it.first == "profile" })
         assertNull(parsed("schalte in den Flugmodus")?.takeIf { it.first == "profile" })
     }
+
+    @Test fun settingsInPlainWords() {
+        fun setting(text: String) = parsed(text)?.takeIf { it.first == "change_setting" }?.second
+            ?.let { it.getString("setting") to it.getString("value") }
+        assertEquals("accent" to "red", setting("Make your colour red."))
+        assertEquals("accent" to "rot", setting("Mach die Farbe rot"))
+        assertEquals("accent" to "green", setting("make it green"))
+        assertNull(setting("turn it off"))
+        assertNull(setting("switch off"))
+        assertEquals("speech_rate" to "slower", setting("speak a bit slower"))
+        assertEquals("speech_rate" to "langsamer", setting("Sprich langsamer"))
+        assertEquals("call_me" to "boss", setting("call me boss"))
+        assertNull(setting("call me back later"))
+        assertEquals("text_size" to "bigger", setting("bigger text"))
+        assertEquals("map_style" to "satellite", setting("satellite map"))
+        assertEquals("assistant_name" to "Friday", setting("your name is friday"))
+    }
 }

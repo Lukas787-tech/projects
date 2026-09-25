@@ -24,6 +24,7 @@ object Reflexes {
         com.lukas.jarvis.control.SystemAction.heard(text)?.let { action ->
             return call("system_action", JSONObject().put("action", action.id))
         }
+        setting(text)?.let { return it }
         profile(text)?.let { return it }
         stopwatch(text)?.let { return it }
         timerQuestion(text)?.let { return it }
@@ -147,6 +148,29 @@ object Reflexes {
             "add_task",
             JSONObject().put("title", what.replaceFirstChar { it.titlecase(Locale.ROOT) }).put("due", "+${minutes}m")
         )
+    }
+
+    /**
+     * "Make your colour red", "speak slower", "call me boss", "bigger text",
+     * "satellite map", "your name is Friday" — and the German for each.
+     */
+    private fun setting(text: String): ToolCall? {
+        fun change(key: String, value: String) =
+            call("change_setting", JSONObject().put("setting", key).put("value", value.trim()))
+        COLOUR.matchEntire(text)?.let { m ->
+            val value = m.groupValues.drop(1).first { it.isNotBlank() }
+            val named = m.groupValues[1].isNotBlank() || m.groupValues[2].isNotBlank()
+            if (named || value in COLOURS) return change("accent", value)
+        }
+        SPEAK_RATE.matchEntire(text)?.let { m -> return change("speech_rate", m.groupValues[1]) }
+        CALL_ME.matchEntire(text)?.let { m ->
+            val name = m.groupValues[1].trim()
+            if (name.split(' ').size <= 3 && name.split(' ').first() !in NOT_NAMES) return change("call_me", name)
+        }
+        TEXT_SIZE.matchEntire(text)?.let { m -> return change("text_size", m.groupValues.drop(1).first { it.isNotBlank() }) }
+        MAP_STYLE.matchEntire(text)?.let { m -> return change("map_style", m.groupValues.drop(1).first { it.isNotBlank() }) }
+        OWN_NAME.matchEntire(text)?.let { m -> return change("assistant_name", m.groupValues[1].replaceFirstChar { it.titlecase(Locale.ROOT) }) }
+        return null
     }
 
     /** "Switch to night mode", "Arbeitsprofil laden", "wechsle zum Nacht-Modus". */
@@ -378,6 +402,27 @@ object Reflexes {
             "^(?:wechsle|wechsel|schalte?) (?:zu[mr]?|auf|in) (?:den |das |die )?(.+?)(?:-| )?(?:modus|profil)$|" +
             "^(?:lade|aktiviere) (?:den |das |mein |meinen )?(.+?)(?:-| )?(?:modus|profil)$"
     )
+    private val COLOUR = Regex(
+        "^(?:make|change|set|turn|switch)(?: your| the| its)? (?:colou?r|accent|theme)(?: to| into)? (\\p{L}+)(?: please)?$|" +
+            "^(?:mach|ändere|stell|setz)e?(?: die| deine)? farbe(?: auf| zu| in)? (\\p{L}+)(?: bitte)?$|" +
+            "^(?:make|turn) (?:yourself|it|everything|you) (\\p{L}+)(?: please)?$|^(?:mach dich|werd) (\\p{L}+)$"
+    )
+    /** Without the word "colour", only a colour counts: "make it red", not "turn it off". */
+    private val COLOURS = setOf(
+        "red", "blue", "green", "gold", "yellow", "orange", "pink", "purple", "violet", "silver", "white",
+        "teal", "turquoise", "cyan", "magenta", "rot", "blau", "grün", "gelb", "lila", "rosa", "silber", "türkis"
+    )
+    private val SPEAK_RATE = Regex("^(?:speak|talk|sprich|rede)(?: a bit| a little| etwas| ein bisschen)? (slower|faster|langsamer|schneller)(?: please| bitte)?$")
+    private val CALL_ME = Regex("^(?:from now on |ab jetzt )?(?:call me|nenn mich|nenne mich) (.+?)(?: from now on| please| bitte| ab jetzt)?$")
+    private val NOT_NAMES = setOf("back", "later", "a", "an", "at", "in", "on", "tomorrow", "when", "if", "zurück", "später", "morgen", "an", "um", "wenn")
+    private val TEXT_SIZE = Regex(
+        "^(?:make (?:the )?text |text |make everything )(bigger|larger|smaller)$|^(bigger|larger|smaller) text$|" +
+            "^(?:schrift|text) (größer|grösser|kleiner)$|^(größere|kleinere) schrift$"
+    )
+    private val MAP_STYLE = Regex(
+        "^(?:show |switch to |use )?(?:the )?(satellite|dark|light|street) (?:map|view)$|^(satellit)enkarte$|^(satellite) view$"
+    )
+    private val OWN_NAME = Regex("^(?:your name is|you are called|dein name ist|du heißt) (\\p{L}{2,20})$")
     private val DEVICE_MODES = Regex(
         "^(airplane|aeroplane|flight|flug|silent|lautlos|stumm|vibrat|dark|light|hell|dunkel|power|battery|energie|" +
             "strom|do not disturb|nicht stören|driving|auto|guest|gast|landscape|portrait|quer|hoch|reading|lese|" +
