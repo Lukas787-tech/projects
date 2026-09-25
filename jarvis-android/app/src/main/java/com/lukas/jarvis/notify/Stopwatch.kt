@@ -125,7 +125,8 @@ class Stopwatch(context: Context) {
         const val STORE = "jarvis_stopwatch"
         private const val KEY = "state"
         private const val CHANNEL = "stopwatch"
-        private const val NOTIFICATION = 83_500
+        // Clear of the timers' 82 000–101 000 and the place reminders' 70 000s.
+        private const val NOTIFICATION = 60_001
         const val ACTION_PAUSE = "com.lukas.jarvis.stopwatch.PAUSE"
         const val ACTION_RESUME = "com.lukas.jarvis.stopwatch.RESUME"
         const val ACTION_LAP = "com.lukas.jarvis.stopwatch.LAP"

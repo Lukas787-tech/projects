@@ -153,7 +153,10 @@ class ReminderReceiver : BroadcastReceiver() {
 
     private fun brain(context: Context) = (context.applicationContext as JarvisApp).container.brain
 
-    private fun notificationId(taskId: Long) = taskId.toInt().coerceAtLeast(1)
+    // Task ids count up from 1, so on their own they would run into the
+    // other notifications' numbers (4711, 7411, 70 000…); they get a block of
+    // their own above all of them.
+    private fun notificationId(taskId: Long) = 1_000_000 + (taskId % 1_000_000).toInt().coerceAtLeast(0)
 
     companion object {
         const val ACTION_DONE = "com.lukas.jarvis.REMINDER_DONE"

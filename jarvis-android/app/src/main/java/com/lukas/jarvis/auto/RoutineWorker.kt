@@ -114,7 +114,8 @@ class RoutineWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         private const val LIMIT_MS = 4 * 60_000L
         private const val MAX_RETRIES = 3
         private const val CHANNEL_WORKING = "jarvis_working"
-        private const val WORKING_ID = 71_001
+        // Below the place reminders' 70 000–79 999.
+        private const val WORKING_ID = 69_001
 
         fun enqueue(context: Context, name: String) {
             val request = OneTimeWorkRequestBuilder<RoutineWorker>()

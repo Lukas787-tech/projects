@@ -239,7 +239,8 @@ class BubbleService : Service() {
 
     companion object {
         private const val ACTION_STOP = "com.lukas.jarvis.BUBBLE_STOP"
-        private const val NOTIFICATION_ID = 4711
+        // Not the wake word's 4711: with both running, stopping one would take the other's notification.
+        private const val NOTIFICATION_ID = 4713
         private const val DOT_DP = 62f
         private const val LONG_PRESS_MS = 420L
 
