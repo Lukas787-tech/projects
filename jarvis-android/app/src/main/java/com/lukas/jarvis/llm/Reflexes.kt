@@ -17,18 +17,20 @@ import java.util.Locale
 object Reflexes {
 
     fun parse(raw: String): ToolCall? {
-        val text = raw.trim().lowercase(Locale.ROOT).trimEnd('?', '.', '!')
+        val text = spokenDurations(raw.trim().lowercase(Locale.ROOT).trimEnd('?', '.', '!'))
         if (text.isBlank()) return null
 
         remember(raw)?.let { return it }
         com.lukas.jarvis.control.SystemAction.heard(text)?.let { action ->
             return call("system_action", JSONObject().put("action", action.id))
         }
+        profile(text)?.let { return it }
         timerQuestion(text)?.let { return it }
         sleepTimer(text)?.let { return it }
         focus(text)?.let { return it }
         timer(text)?.let { return it }
         remind(text)?.let { return it }
+        remindAfter(text)?.let { return it }
         alarm(text)?.let { return it }
         torch(text)?.let { return it }
         list(text)?.let { return it }
@@ -144,6 +146,44 @@ object Reflexes {
             "add_task",
             JSONObject().put("title", what.replaceFirstChar { it.titlecase(Locale.ROOT) }).put("due", "+${minutes}m")
         )
+    }
+
+    /** "Switch to night mode", "Arbeitsprofil laden", "wechsle zum Nacht-Modus". */
+    private fun profile(text: String): ToolCall? {
+        val name = PROFILE_SWITCH.matchEntire(text)?.groupValues?.drop(1)?.firstOrNull { it.isNotBlank() }?.trim()
+            ?: return null
+        // The phone's own modes are not profiles.
+        if (name.split(' ').size > 3 || DEVICE_MODES.containsMatchIn(name)) return null
+        return call("profile", JSONObject().put("action", "apply").put("name", name))
+    }
+
+    /** "Remind me to call mum in 10 minutes": the time said last. */
+    private fun remindAfter(text: String): ToolCall? {
+        val match = REMIND_AFTER.find(text) ?: return null
+        val what = match.groupValues[1].trim()
+        val amount = match.groupValues[2].replace(',', '.').toDoubleOrNull() ?: return null
+        val minutes = (amount * unitMinutes(match.groupValues[3])).toLong()
+        if (minutes <= 0 || what.isBlank()) return null
+        return call(
+            "add_task",
+            JSONObject().put("title", what.replaceFirstChar { it.titlecase(Locale.ROOT) }).put("due", "+${minutes}m")
+        )
+    }
+
+    /**
+     * Lengths of time said in words, as speech recognition often leaves them:
+     * "half an hour" -> "30 minutes", "five minutes" -> "5 minutes",
+     * "eine halbe Stunde" -> "30 minuten", "a minute" -> "1 minute".
+     * Only a number word right before a unit is touched.
+     */
+    fun spokenDurations(text: String): String {
+        var out = text
+        HALVES.forEach { (phrase, replacement) -> out = out.replace(phrase, replacement) }
+        return DURATION_WORD.replace(out) { m ->
+            val value = NUMBER_WORDS[m.groupValues[1]] ?: return@replace m.value
+            val unit = m.groupValues[2]
+            (if (value % 1.0 == 0.0) value.toLong().toString() else value.toString()) + " " + unit
+        }
     }
 
     private fun alarm(text: String): ToolCall? {
@@ -314,6 +354,44 @@ object Reflexes {
     private val DURATION = Regex("(\\d+(?:[.,]\\d+)?)\\s*(seconds?|secs?|sekunden?|minutes?|mins?|minuten?|hours?|hrs?|stunden?)\\b")
     private val REMIND = Regex(
         "(?:remind me|erinnere mich)\\s+(?:in|in)\\s+(\\d+(?:[.,]\\d+)?)\\s*(seconds?|minutes?|mins?|hours?|minuten?|stunden?|sekunden?)\\s+(?:to|zu|an|dass|that)?\\s*(.+)"
+    )
+    private val PROFILE_SWITCH = Regex(
+        "^(?:switch|change|go) (?:to|into) (?:the |my )?(.+?) (?:mode|profile)$|" +
+            "^(?:use|load|apply) (?:the |my )?(.+?) profile$|" +
+            "^(?:wechsle|wechsel|schalte?) (?:zu[mr]?|auf|in) (?:den |das |die )?(.+?)(?:-| )?(?:modus|profil)$|" +
+            "^(?:lade|aktiviere) (?:den |das |mein |meinen )?(.+?)(?:-| )?(?:modus|profil)$"
+    )
+    private val DEVICE_MODES = Regex(
+        "^(airplane|aeroplane|flight|flug|silent|lautlos|stumm|vibrat|dark|light|hell|dunkel|power|battery|energie|" +
+            "strom|do not disturb|nicht stören|driving|auto|guest|gast|landscape|portrait|quer|hoch|reading|lese|" +
+            "one-handed|kids|kinder|incognito|inkognito|private|privat|safe|sicher|dnd|focus|fokus)"
+    )
+    private val REMIND_AFTER = Regex(
+        "(?:remind me|erinnere mich)\\s+(?:to|zu|an|dass|that)\\s+(.+?)\\s+(?:in|nach)\\s+(\\d+(?:[.,]\\d+)?)\\s*" +
+            "(seconds?|minutes?|mins?|hours?|minuten?|stunden?|sekunden?)$"
+    )
+    private val HALVES = listOf(
+        "an hour and a half" to "90 minutes", "one and a half hours" to "90 minutes",
+        "half an hour" to "30 minutes", "half a minute" to "30 seconds", "a quarter of an hour" to "15 minutes",
+        "quarter of an hour" to "15 minutes", "quarter hour" to "15 minutes",
+        "eineinhalb stunden" to "90 minuten", "anderthalb stunden" to "90 minuten",
+        "einer halben stunde" to "30 minuten", "eine halbe stunde" to "30 minuten", "halbe stunde" to "30 minuten",
+        "einer viertelstunde" to "15 minuten", "eine viertelstunde" to "15 minuten", "viertelstunde" to "15 minuten",
+        "einer dreiviertelstunde" to "45 minuten", "eine dreiviertelstunde" to "45 minuten"
+    )
+    private val NUMBER_WORDS: Map<String, Double> = mapOf(
+        "a" to 1.0, "an" to 1.0, "one" to 1.0, "two" to 2.0, "three" to 3.0, "four" to 4.0, "five" to 5.0,
+        "six" to 6.0, "seven" to 7.0, "eight" to 8.0, "nine" to 9.0, "ten" to 10.0, "eleven" to 11.0,
+        "twelve" to 12.0, "fifteen" to 15.0, "twenty" to 20.0, "thirty" to 30.0, "forty" to 40.0,
+        "forty-five" to 45.0, "fifty" to 50.0, "sixty" to 60.0, "ninety" to 90.0, "a couple of" to 2.0, "a few" to 3.0,
+        "eine" to 1.0, "einer" to 1.0, "einen" to 1.0, "ein" to 1.0, "eins" to 1.0, "zwei" to 2.0, "drei" to 3.0,
+        "vier" to 4.0, "fünf" to 5.0, "sechs" to 6.0, "sieben" to 7.0, "acht" to 8.0, "neun" to 9.0, "zehn" to 10.0,
+        "elf" to 11.0, "zwölf" to 12.0, "fünfzehn" to 15.0, "zwanzig" to 20.0, "dreißig" to 30.0, "vierzig" to 40.0,
+        "fünfundvierzig" to 45.0, "fünfzig" to 50.0, "sechzig" to 60.0, "neunzig" to 90.0, "ein paar" to 3.0
+    )
+    private val DURATION_WORD = Regex(
+        "(?<![\\p{L}\\d-])(" + NUMBER_WORDS.keys.sortedByDescending { it.length }.joinToString("|") { Regex.escape(it) } + ")" +
+            "\\s+(seconds?|secs?|sekunden?|minutes?|mins?|minuten?|hours?|hrs?|stunden?)\\b"
     )
     private val CLOCK = Regex("\\b(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm|uhr)?\\b")
     private val SUM = Regex("^[\\d\\s+\\-*/^().,%]+$")

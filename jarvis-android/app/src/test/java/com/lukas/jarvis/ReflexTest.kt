@@ -157,4 +157,36 @@ class ReflexTest {
         assertNull(Reflexes.parse("how does my day look"))
         assertNull(Reflexes.parse("mute the group chat with my cousins"))
     }
+
+    @Test fun lengthsSaidInWords() {
+        assertEquals(5.0, parsed("set a timer for five minutes")!!.second.getDouble("minutes"), 0.0001)
+        assertEquals(30.0, parsed("timer for half an hour")!!.second.getDouble("minutes"), 0.0001)
+        assertEquals(1.0, parsed("set a timer for a minute")!!.second.getDouble("minutes"), 0.0001)
+        assertEquals(15.0, parsed("Stell einen Timer auf eine Viertelstunde")!!.second.getDouble("minutes"), 0.0001)
+        assertEquals(30.0, parsed("Timer eine halbe Stunde")!!.second.getDouble("minutes"), 0.0001)
+        assertEquals(3.0, parsed("Timer drei Minuten")!!.second.getDouble("minutes"), 0.0001)
+        assertEquals("+120m", parsed("wake me in two hours")!!.second.getString("time"))
+        // Not a length of time: nothing is rewritten.
+        assertEquals("a one and a two", Reflexes.spokenDurations("a one and a two"))
+    }
+
+    @Test fun remindersWithTheTimeLast() {
+        val (name, args) = parsed("Remind me to call mum in 10 minutes")!!
+        assertEquals("add_task", name)
+        assertEquals("Call mum", args.getString("title"))
+        assertEquals("+10m", args.getString("due"))
+        val de = parsed("Erinnere mich an den Müll in einer halben Stunde")!!.second
+        assertEquals("Den müll", de.getString("title"))
+        assertEquals("+30m", de.getString("due"))
+    }
+
+    @Test fun profilesOffline() {
+        val (name, args) = parsed("Switch to night mode")!!
+        assertEquals("profile", name)
+        assertEquals("night", args.getString("name"))
+        assertEquals("arbeit", parsed("Wechsle zum Arbeit-Modus")!!.second.getString("name"))
+        assertEquals("gaming", parsed("load my gaming profile")!!.second.getString("name"))
+        assertNull(parsed("switch to airplane mode")?.takeIf { it.first == "profile" })
+        assertNull(parsed("schalte in den Flugmodus")?.takeIf { it.first == "profile" })
+    }
 }
