@@ -1,224 +1,232 @@
-09-25 10:52:43.647  1057  1361 D ImsResolver: maybeAddedImsService, packageName: com.lukas.jarvis.debug
-09-25 10:52:43.829   523   810 I SdkSandboxManager: No SDKs used. Skipping SDK data reconcilation for CallingInfo{mUid=10192, mPackageName='com.lukas.jarvis.debug, mAppProcessToken='null'}
-09-25 10:52:44.007   523  2456 V SplashScreenExceptionList: SplashScreen checking exception for package com.lukas.jarvis.debug (target sdk:35) -> false
-09-25 10:52:44.017   523  2456 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
-09-25 10:52:44.048   844   875 V WindowManagerShell: Transition requested: android.os.BinderProxy@f8668a1 TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity } baseActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} topActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} origActivity=null realActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} numActivities=1 lastActiveTime=56807 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@da1cac6} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{4cfda87 com.lukas.jarvis.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
-09-25 10:52:44.055   523   967 D CoreBackPreview: Window{5b43115 u0 Splash Screen com.lukas.jarvis.debug}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@d233194, mPriority=0, mIsAnimationCallback=false}
-09-25 10:52:44.134  3487  3487 I as.jarvis.debug: Late-enabling -Xcheck:jni
-09-25 10:52:44.168  3487  3487 I as.jarvis.debug: Using CollectorTypeCC GC.
-09-25 10:52:44.168  3487  3487 W as.jarvis.debug: Unexpected CPU variant for x86: x86_64.
-09-25 10:52:44.168  3487  3487 W as.jarvis.debug: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, tremont, kabylake, default
-09-25 10:52:44.292   523   540 V WindowManager: Sent Transition #6 createdAt=09-25 10:52:43.882 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity } baseActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} topActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} origActivity=null realActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} numActivities=1 lastActiveTime=56807 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{72adc9e Task{4970fc5 #8 type=standard A=10192:com.lukas.jarvis.debug}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{5239f4c com.lukas.jarvis.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
-09-25 10:52:44.293   523   540 V WindowManager:     info={id=6 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{72adc9e Task{4970fc5 #8 type=standard A=10192:com.lukas.jarvis.debug}}} m=OPEN f=NONE leash=Surface(name=Task=8)/@0xd483573 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{RemoteToken{b7c2b95 Task{bf8618b #1 type=home}}} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xfe541d1 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
-09-25 10:52:44.309   523   552 I ActivityManager: Start proc 3487:com.lukas.jarvis.debug/u0a192 for next-top-activity {com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
-09-25 10:52:44.353   523   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
-09-25 10:52:44.522  3487  3487 W ziparchive: Unable to open '/data/app/~~xxEQQDRtKSmREX7uE8gVCQ==/com.lukas.jarvis.debug-7-URASNrhiD1HpgimiwcOw==/base.dm': No such file or directory
-09-25 10:52:44.522  3487  3487 W ziparchive: Unable to open '/data/app/~~xxEQQDRtKSmREX7uE8gVCQ==/com.lukas.jarvis.debug-7-URASNrhiD1HpgimiwcOw==/base.dm': No such file or directory
-09-25 10:52:45.571  3487  3487 D nativeloader: Configuring clns-6 for other apk /data/app/~~xxEQQDRtKSmREX7uE8gVCQ==/com.lukas.jarvis.debug-7-URASNrhiD1HpgimiwcOw==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~xxEQQDRtKSmREX7uE8gVCQ==/com.lukas.jarvis.debug-7-URASNrhiD1HpgimiwcOw==/lib/arm64:/data/app/~~xxEQQDRtKSmREX7uE8gVCQ==/com.lukas.jarvis.debug-7-URASNrhiD1HpgimiwcOw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.lukas.jarvis.debug
-09-25 10:52:45.586   523   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
-09-25 10:52:45.622  3487  3487 V GraphicsEnvironment: ANGLE GameManagerService for com.lukas.jarvis.debug: false
-09-25 10:52:45.622  3487  3487 V GraphicsEnvironment: com.lukas.jarvis.debug is not listed in per-application setting
-09-25 10:52:47.047   523   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
-09-25 10:52:47.279   523   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
-09-25 10:52:47.732  1057  1057 D CarrierSvcBindHelper: onPackageModified: com.lukas.jarvis.debug
-09-25 10:52:47.746  1057  1361 D ImsResolver: maybeAddedImsService, packageName: com.lukas.jarvis.debug
-09-25 10:52:47.874   523  2576 D ConnectivityService: requestNetwork for uid/pid:10192/3487 activeRequest: null callbackRequest: 93 [NetworkRequest [ REQUEST id=94, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: com.lukas.jarvis.debug UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647
-09-25 10:52:47.926   523   762 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=94, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: com.lukas.jarvis.debug UnderlyingNetworks: Null] ]
-09-25 10:52:47.927   523   762 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=94, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: com.lukas.jarvis.debug UnderlyingNetworks: Null] ]
-09-25 10:52:47.927   523   762 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=94, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: com.lukas.jarvis.debug UnderlyingNetworks: Null] ]
-09-25 10:52:47.927   523   762 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=94, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: com.lukas.jarvis.debug UnderlyingNetworks: Null] ]
-09-25 10:52:48.102  3487  3487 W as.jarvis.debug: Method boolean androidx.compose.runtime.snapshots.SnapshotStateList.conditionalUpdate(boolean, kotlin.jvm.functions.Function1) failed lock verification and will run slower.
-09-25 10:52:48.102  3487  3487 W as.jarvis.debug: Common causes for lock verification issues are non-optimized dex code
-09-25 10:52:48.102  3487  3487 W as.jarvis.debug: and incorrect proguard optimizations.
-09-25 10:52:48.114  3487  3487 W as.jarvis.debug: Method boolean androidx.compose.runtime.snapshots.SnapshotStateList.conditionalUpdate$default(androidx.compose.runtime.snapshots.SnapshotStateList, boolean, kotlin.jvm.functions.Function1, int, java.lang.Object) failed lock verification and will run slower.
-09-25 10:52:48.114  3487  3487 W as.jarvis.debug: Method java.lang.Object androidx.compose.runtime.snapshots.SnapshotStateList.mutate(kotlin.jvm.functions.Function1) failed lock verification and will run slower.
-09-25 10:52:48.114  3487  3487 W as.jarvis.debug: Method void androidx.compose.runtime.snapshots.SnapshotStateList.update(boolean, kotlin.jvm.functions.Function1) failed lock verification and will run slower.
-09-25 10:52:48.114  3487  3487 W as.jarvis.debug: Method void androidx.compose.runtime.snapshots.SnapshotStateList.update$default(androidx.compose.runtime.snapshots.SnapshotStateList, boolean, kotlin.jvm.functions.Function1, int, java.lang.Object) failed lock verification and will run slower.
-09-25 10:52:48.278  3487  3487 W as.jarvis.debug: Verification of androidx.compose.animation.core.InfiniteRepeatableSpec androidx.compose.animation.core.AnimationSpecKt.infiniteRepeatable(androidx.compose.animation.core.DurationBasedAnimationSpec, androidx.compose.animation.core.RepeatMode) took 138.290ms (122.93 bytecodes/s) (1744B approximate peak alloc)
-09-25 10:52:48.937   523  2328 D CoreBackPreview: Window{9bfff3d u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@1db5953, mPriority=0, mIsAnimationCallback=false}
-09-25 10:52:50.131   523   540 W system_server: Failed to determine oat file name for dex location /data/app/~~xxEQQDRtKSmREX7uE8gVCQ==/com.lukas.jarvis.debug-7-URASNrhiD1HpgimiwcOw==/base.apk: Dalvik cache directory does not exist
-09-25 10:52:50.131   523   540 W ziparchive: Unable to open '/data/app/~~xxEQQDRtKSmREX7uE8gVCQ==/com.lukas.jarvis.debug-7-URASNrhiD1HpgimiwcOw==/base.dm': No such file or directory
-09-25 10:52:50.134   523   540 I ActivityTaskManager: Displayed com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity for user 0: +6s404ms
-09-25 10:52:50.513   523  2803 D CoreBackPreview: Window{5b43115 u0 Splash Screen com.lukas.jarvis.debug}: Setting back callback null
-09-25 10:52:50.590   523   967 W InputManager-JNI: Input channel object '5b43115 Splash Screen com.lukas.jarvis.debug (client)' was disposed without first being removed with the input manager!
-09-25 10:52:50.637   523   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
-09-25 10:52:50.664   853   853 I SafetyLabelChangedBroadcastReceiver: received broadcast packageName: com.lukas.jarvis.debug, current user: UserHandle{0}, packageChangeEvent: NEW_INSTALL, intent user: UserHandle{0}
-09-25 10:52:50.710   523   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
-09-25 10:52:51.879   523   537 I AppsFilter: interaction: PackageSetting{3515a26 com.lukas.jarvis.debug/10192} -> PackageSetting{27f2667 com.google.android.settings.intelligence/10118} BLOCKED
-09-25 10:52:51.891   523  2456 I AppsFilter: interaction: PackageSetting{3515a26 com.lukas.jarvis.debug/10192} -> PackageSetting{b5c77b9 com.google.android.settings.intelligence/10118} BLOCKED
-09-25 10:52:52.488   523   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
-09-25 10:52:53.135  1602  1602 I AiAiEcho: AppFetcherImplV2 updateApps package:[com.lukas.jarvis.debug], userId:[0], reason:[package is added.].
-09-25 10:52:53.137   523  2067 I ImeTracker: com.lukas.jarvis.debug:b448cc7: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_UNSPECIFIED_WINDOW
-09-25 10:52:53.200   523  2067 I ImeTracker: com.lukas.jarvis.debug:b448cc7: onCancelled at PHASE_SERVER_SHOULD_HIDE
-09-25 10:52:53.217  1496  1496 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, false)
-09-25 10:52:53.269  3487  4063 D ProfileInstaller: Installing profile for com.lukas.jarvis.debug
-09-25 10:52:54.473   523   574 I AppsFilter: interaction: PackageSetting{3515a26 com.lukas.jarvis.debug/10192} -> PackageSetting{331fc36 com.google.android.devicelockcontroller/10191} BLOCKED
-09-25 10:52:54.473   523   574 I AppsFilter: interaction: PackageSetting{3515a26 com.lukas.jarvis.debug/10192} -> PackageSetting{ee50737 com.google.android.rkpdapp/10183} BLOCKED
-09-25 10:52:54.473   523   574 I AppsFilter: interaction: PackageSetting{3515a26 com.lukas.jarvis.debug/10192} -> PackageSetting{b4104a4 com.google.android.settings.intelligence/10118} BLOCKED
-09-25 10:52:54.602  3487  3504 I as.jarvis.debug: Background concurrent copying GC freed 125797(7149KB) AllocSpace objects, 4(208KB) LOS objects, 49% free, 5366KB/10MB, paused 21.273ms,27us total 417.416ms
-09-25 10:52:54.849  1057  1057 D CarrierSvcBindHelper: onPackageModified: com.lukas.jarvis.debug
-09-25 10:52:54.968  1057  1361 D ImsResolver: maybeAddedImsService, packageName: com.lukas.jarvis.debug
-09-25 10:52:55.386   523   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
-09-25 10:52:56.029   523   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
-09-25 10:52:57.794  1483  2817 I BlockstoreStorage: Clearing Blockstore Data for package com.lukas.jarvis.debug [CONTEXT service_id=258 ]
-09-25 10:52:59.984   523   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
-09-25 10:53:00.476   523   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
-09-25 10:53:00.490  1602  1602 I AiAiEcho: AppFetcherImpl onPackageChanged com.lukas.jarvis.debug.
-09-25 10:53:00.491  1602  2635 I AiAiEcho: AppIndexer Package:[com.lukas.jarvis.debug] UserProfile:[0] Enabled:[true].
-09-25 10:53:00.491  1602  2635 I AiAiEcho: AppFetcherImplV2 updateApps package:[com.lukas.jarvis.debug], userId:[0], reason:[package is updated.].
-09-25 10:53:03.303  4542  4542 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:53:03.327  4542  4542 I AndroidRuntime: Using default boot image
-09-25 10:53:03.327  4542  4542 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:53:03.685  4542  4542 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:53:04.236  1602  1602 I AiAiEcho: AppFetcherImpl onPackageChanged com.lukas.jarvis.debug.
-09-25 10:53:04.239  1602  2733 I AiAiEcho: AppIndexer Package:[com.lukas.jarvis.debug] UserProfile:[0] Enabled:[true].
-09-25 10:53:04.240  1602  2733 I AiAiEcho: AppFetcherImplV2 updateApps package:[com.lukas.jarvis.debug], userId:[0], reason:[package is updated.].
-09-25 10:53:05.256  4542  4542 D AndroidRuntime: Shutting down VM
-09-25 10:53:06.835  3487  3504 I as.jarvis.debug: Background young concurrent copying GC freed 61070(3185KB) AllocSpace objects, 51(1480KB) LOS objects, 34% free, 7053KB/10MB, paused 49us,25us total 236.180ms
-09-25 10:53:10.634   844   875 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
-09-25 10:53:10.634   523  2067 I ActivityTaskManager: START u0 {act=com.lukas.jarvis.TODAY flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=3
-09-25 10:53:11.230  3487  3504 I as.jarvis.debug: Background concurrent copying GC freed 82499(4380KB) AllocSpace objects, 68(1636KB) LOS objects, 49% free, 8289KB/16MB, paused 6.674ms,27us total 508.070ms
-09-25 10:53:20.315  3487  3503 I as.jarvis.debug: JIT allocated 58KB for compiled code of void com.lukas.jarvis.MainActivityKt.JarvisRoot(boolean, kotlin.jvm.functions.Function0, java.lang.String, kotlin.jvm.functions.Function0, com.lukas.jarvis.Launch, kotlin.jvm.functions.Function0, androidx.compose.runtime.Composer, int)
-09-25 10:53:20.316  3487  3503 I as.jarvis.debug: Compiler allocated 9055KB to compile void com.lukas.jarvis.MainActivityKt.JarvisRoot(boolean, kotlin.jvm.functions.Function0, java.lang.String, kotlin.jvm.functions.Function0, com.lukas.jarvis.Launch, kotlin.jvm.functions.Function0, androidx.compose.runtime.Composer, int)
-09-25 10:53:20.978   523   536 I ActivityTaskManager: START u0 {act=com.lukas.jarvis.TYPE flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=3
-09-25 10:53:20.984   844   875 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
-09-25 10:53:22.729  3487  3503 I as.jarvis.debug: JIT allocated 81KB for compiled code of void com.lukas.jarvis.MainActivityKt$JarvisRoot$17$1$5.invoke(androidx.compose.animation.AnimatedContentScope, com.lukas.jarvis.stage.Element, androidx.compose.runtime.Composer, int)
-09-25 10:53:22.730  3487  3503 I as.jarvis.debug: Compiler allocated 5755KB to compile void com.lukas.jarvis.MainActivityKt$JarvisRoot$17$1$5.invoke(androidx.compose.animation.AnimatedContentScope, com.lukas.jarvis.stage.Element, androidx.compose.runtime.Composer, int)
-09-25 10:53:25.243   523  2803 I ActivityTaskManager: START u0 {act=android.intent.action.SEND typ=text/plain flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity (has extras)} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=3
-09-25 10:53:25.246   844   875 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
-09-25 10:53:30.931   523  2803 I AppsFilter: interaction: PackageSetting{3515a26 com.lukas.jarvis.debug/10192} -> PackageSetting{15a8e0b com.google.android.settings.intelligence/10118} BLOCKED
-09-25 10:53:37.682   523  2521 I ActivityTaskManager: START u0 {act=android.intent.action.SEND typ=text/plain flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity (has extras)} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=3
-09-25 10:53:37.685   844   875 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
-09-25 10:53:37.990  3487  3504 W as.jarvis.debug: Suspending all threads took: 6.845ms
-09-25 10:53:38.012  3487  3504 I as.jarvis.debug: Background young concurrent copying GC freed 122315(5652KB) AllocSpace objects, 22(1060KB) LOS objects, 27% free, 11MB/16MB, paused 54us,6.918ms total 463.023ms
-09-25 10:53:38.832  3487  3504 I as.jarvis.debug: Background concurrent copying GC freed 150255(7103KB) AllocSpace objects, 52(1836KB) LOS objects, 49% free, 8091KB/15MB, paused 666us,22us total 317.453ms
-09-25 10:54:18.196  5798  5798 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:54:18.204  5798  5798 I AndroidRuntime: Using default boot image
-09-25 10:54:18.204  5798  5798 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:54:18.470  5798  5798 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:54:19.749  5798  5798 D AndroidRuntime: Shutting down VM
-09-25 10:54:26.086  5956  5956 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:54:26.091  5956  5956 I AndroidRuntime: Using default boot image
-09-25 10:54:26.092  5956  5956 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:54:26.279  5956  5956 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:54:26.834  3487  3504 I as.jarvis.debug: Background young concurrent copying GC freed 190410(6491KB) AllocSpace objects, 13(568KB) LOS objects, 42% free, 9260KB/15MB, paused 34us,13us total 246.143ms
-09-25 10:54:27.451  5956  5956 D AndroidRuntime: Shutting down VM
-09-25 10:54:33.714  6028  6028 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:54:33.725  6028  6028 I AndroidRuntime: Using default boot image
-09-25 10:54:33.725  6028  6028 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:54:33.888  6028  6028 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:54:34.962  6028  6028 D AndroidRuntime: Shutting down VM
-09-25 10:54:41.196  6075  6075 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:54:41.201  6075  6075 I AndroidRuntime: Using default boot image
-09-25 10:54:41.201  6075  6075 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:54:41.312  6075  6075 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:54:42.404  6075  6075 D AndroidRuntime: Shutting down VM
-09-25 10:54:48.579  6115  6115 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:54:48.584  6115  6115 I AndroidRuntime: Using default boot image
-09-25 10:54:48.584  6115  6115 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:54:48.685  6115  6115 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:54:49.785  6115  6115 D AndroidRuntime: Shutting down VM
-09-25 10:54:53.763  6155  6155 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:54:53.768  6155  6155 I AndroidRuntime: Using default boot image
-09-25 10:54:53.768  6155  6155 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:54:53.870  6155  6155 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:54:54.955  6155  6155 D AndroidRuntime: Shutting down VM
-09-25 10:54:59.152  6243  6243 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:54:59.157  6243  6243 I AndroidRuntime: Using default boot image
-09-25 10:54:59.157  6243  6243 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:54:59.316  6243  6243 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:55:00.391  6243  6243 D AndroidRuntime: Shutting down VM
-09-25 10:55:04.573  6285  6285 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:55:04.578  6285  6285 I AndroidRuntime: Using default boot image
-09-25 10:55:04.578  6285  6285 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:55:04.679  6285  6285 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:55:05.740  6285  6285 D AndroidRuntime: Shutting down VM
-09-25 10:55:09.900  6313  6313 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:55:09.905  6313  6313 I AndroidRuntime: Using default boot image
-09-25 10:55:09.905  6313  6313 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:55:10.009  6313  6313 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:55:11.064  6313  6313 D AndroidRuntime: Shutting down VM
-09-25 10:55:15.213  6354  6354 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:55:15.218  6354  6354 I AndroidRuntime: Using default boot image
-09-25 10:55:15.218  6354  6354 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:55:15.326  6354  6354 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:55:16.391  6354  6354 D AndroidRuntime: Shutting down VM
-09-25 10:55:20.374  6377  6377 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:55:20.379  6377  6377 I AndroidRuntime: Using default boot image
-09-25 10:55:20.379  6377  6377 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:55:20.480  6377  6377 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:55:21.581  6377  6377 D AndroidRuntime: Shutting down VM
-09-25 10:55:25.748  6406  6406 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:55:25.753  6406  6406 I AndroidRuntime: Using default boot image
-09-25 10:55:25.753  6406  6406 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:55:25.867  6406  6406 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:55:26.934  6406  6406 D AndroidRuntime: Shutting down VM
-09-25 10:55:31.093  6434  6434 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:55:31.098  6434  6434 I AndroidRuntime: Using default boot image
-09-25 10:55:31.098  6434  6434 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:55:31.208  6434  6434 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:55:32.299  6434  6434 D AndroidRuntime: Shutting down VM
-09-25 10:55:36.678  6463  6463 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:55:36.687  6463  6463 I AndroidRuntime: Using default boot image
-09-25 10:55:36.687  6463  6463 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:55:36.825  6463  6463 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:55:38.639  6463  6463 D AndroidRuntime: Shutting down VM
-09-25 10:55:42.887  6491  6491 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:55:42.892  6491  6491 I AndroidRuntime: Using default boot image
-09-25 10:55:42.892  6491  6491 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:55:43.003  6491  6491 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:55:44.067  6491  6491 D AndroidRuntime: Shutting down VM
-09-25 10:55:48.223  6519  6519 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:55:48.228  6519  6519 I AndroidRuntime: Using default boot image
-09-25 10:55:48.228  6519  6519 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:55:48.331  6519  6519 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:55:49.395  6519  6519 D AndroidRuntime: Shutting down VM
-09-25 10:55:53.584  6567  6567 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:55:53.589  6567  6567 I AndroidRuntime: Using default boot image
-09-25 10:55:53.589  6567  6567 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:55:53.695  6567  6567 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:55:54.785  6567  6567 D AndroidRuntime: Shutting down VM
-09-25 10:55:58.781  6601  6601 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
-09-25 10:55:58.787  6601  6601 I AndroidRuntime: Using default boot image
-09-25 10:55:58.787  6601  6601 I AndroidRuntime: Leaving lock profiling enabled
-09-25 10:55:58.899  6601  6601 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
-09-25 10:56:00.016  6601  6601 D AndroidRuntime: Shutting down VM
-09-25 10:56:05.539   523   540 V WindowManager:     info={id=11 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{b7c2b95 Task{bf8618b #1 type=home}}} m=TO_FRONT f=SHOW_WALLPAPER|MOVE_TO_TOP leash=Surface(name=Task=1)/@0xfe541d1 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{RemoteToken{72adc9e Task{4970fc5 #8 type=standard A=10192:com.lukas.jarvis.debug}}} m=TO_BACK f=NONE leash=Surface(name=Task=8)/@0xd483573 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{null m=TO_FRONT f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{b1dfb33 token=android.os.Binder@6be92a2})/@0xfe46cfa sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
-09-25 10:56:08.141   523   596 I ActivityTaskManager: START u0 {act=com.lukas.jarvis.TALK flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=2
-09-25 10:56:08.142   844   875 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
-09-25 10:56:08.149   844   875 V WindowManagerShell: Transition requested: android.os.BinderProxy@558e0fc TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity } baseActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} topActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} origActivity=null realActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} numActivities=1 lastActiveTime=257905 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@a4cc385} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{41ff5da com.lukas.jarvis.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=true isVisible=false isVisibleRequested=false isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
-09-25 10:56:08.236   523   540 W system_server: Failed to determine oat file name for dex location /data/app/~~xxEQQDRtKSmREX7uE8gVCQ==/com.lukas.jarvis.debug-7-URASNrhiD1HpgimiwcOw==/base.apk: Dalvik cache directory does not exist
-09-25 10:56:08.236   523   540 W ziparchive: Unable to open '/data/app/~~xxEQQDRtKSmREX7uE8gVCQ==/com.lukas.jarvis.debug-7-URASNrhiD1HpgimiwcOw==/base.dm': No such file or directory
-09-25 10:56:08.239   523   540 V WindowManager: Sent Transition #12 createdAt=09-25 10:56:08.138 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity } baseActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} topActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} origActivity=null realActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} numActivities=1 lastActiveTime=257905 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{72adc9e Task{4970fc5 #8 type=standard A=10192:com.lukas.jarvis.debug}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{5239f4c com.lukas.jarvis.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=true isVisible=false isVisibleRequested=false isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
-09-25 10:56:08.239   523   540 V WindowManager:     info={id=12 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{72adc9e Task{4970fc5 #8 type=standard A=10192:com.lukas.jarvis.debug}}} m=TO_FRONT f=MOVE_TO_TOP leash=Surface(name=Task=8)/@0xd483573 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{RemoteToken{b7c2b95 Task{bf8618b #1 type=home}}} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xfe541d1 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
-09-25 10:56:08.416   523   925 I ImeTracker: com.lukas.jarvis.debug:5335894a: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_UNSPECIFIED_WINDOW
-09-25 10:56:08.416   523   925 I ImeTracker: com.lukas.jarvis.debug:5335894a: onCancelled at PHASE_SERVER_SHOULD_HIDE
-09-25 10:56:08.422  1496  1496 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, false)
-09-25 10:56:08.425  3320  3320 I RecognitionServiceInten: Trigger application overridden to com.lukas.jarvis.debug
-09-25 10:56:08.496  3487  3504 I as.jarvis.debug: Background young concurrent copying GC freed 21877(1128KB) AllocSpace objects, 8(264KB) LOS objects, 0% free, 17MB/17MB, paused 905us,495us total 259.556ms
-09-25 10:56:14.488   523  2328 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=3
-09-25 10:56:14.494   844   875 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
-09-25 10:56:29.558   523   925 I ActivityManager: Broadcasting: Intent { act=com.lukas.jarvis.debug.PLACE flg=0x400000 cmp=com.lukas.jarvis.debug/.TestHooks (has extras) }
-09-25 10:56:29.559   523   925 I ActivityManager: Enqueued broadcast Intent { act=com.lukas.jarvis.debug.PLACE flg=0x400000 cmp=com.lukas.jarvis.debug/.TestHooks (has extras) }: 0
-09-25 10:56:29.560  3487  3487 V ActivityThread: getPackageInfo() caused update to cached ApplicationInfo for package com.lukas.jarvis.debug
-09-25 10:59:45.164   523  1867 I ImeTracker: com.lukas.jarvis.debug:9737029a: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_SAME_WINDOW_FOCUSED_WITHOUT_EDITOR
-09-25 10:59:45.164   523  1867 I ImeTracker: com.lukas.jarvis.debug:9737029a: onCancelled at PHASE_SERVER_SHOULD_HIDE
-09-25 10:59:45.165  1496  1496 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, false)
-09-25 10:59:45.319  1496  1496 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, true)
-09-25 10:59:45.326   523  2576 D CoreBackPreview: Window{9bfff3d u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}: Setting back callback null
-09-25 10:59:45.338   523  2058 W InputManager-JNI: Input channel object '9bfff3d com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity (client)' was disposed without first being removed with the input manager!
-09-25 10:59:45.480   523  1867 D CoreBackPreview: Window{eb43429 u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@b5bc76b, mPriority=0, mIsAnimationCallback=false}
-09-25 10:59:45.613   523  1867 I WindowManager: finishDrawing of relaunch: Window{eb43429 u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} 330ms
-09-25 10:59:45.619   523   540 V WindowManager:     info={id=14 t=CHANGE f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{72adc9e Task{4970fc5 #8 type=standard A=10192:com.lukas.jarvis.debug}}} m=CHANGE f=NONE p=WCT{RemoteToken{1d709d DefaultTaskDisplayArea@59009360}} leash=Surface(name=Task=8)/@0xd483573 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 640, 320) d=0 r=0->1:0},{WCT{RemoteToken{1d709d DefaultTaskDisplayArea@59009360}} m=CHANGE f=NONE p=WCT{RemoteToken{b46f912 Display{#0 state=ON size=640x320 ROTATION_90}}} leash=Surface(name=DefaultTaskDisplayArea)/@0x35e78f8 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 640, 320) d=0 r=0->1:-1},{WCT{RemoteToken{b46f912 Display{#0 state=ON size=640x320 ROTATION_90}}} m=CHANGE f=IS_DISPLAY leash=Surface(name=WindowedMagnification:0:31)/@0x7828097 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 640, 320) d=0 r=0->1:-1}]}
-09-25 10:59:45.665   523  1867 I ImeTracker: com.lukas.jarvis.debug:e07febd1: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_UNSPECIFIED_WINDOW
-09-25 10:59:45.665   523  1867 I ImeTracker: com.lukas.jarvis.debug:e07febd1: onCancelled at PHASE_SERVER_SHOULD_HIDE
-09-25 10:59:45.668  1496  1496 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, false)
-09-25 10:59:50.502  1496  1496 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, true)
-09-25 10:59:50.548   523  2442 D CoreBackPreview: Window{eb43429 u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}: Setting back callback null
-09-25 10:59:50.550   523  2058 W InputManager-JNI: Input channel object 'eb43429 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity (client)' was disposed without first being removed with the input manager!
-09-25 10:59:50.659   523  2442 D CoreBackPreview: Window{b35ba70 u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@19b390f, mPriority=0, mIsAnimationCallback=false}
-09-25 10:59:50.752   523  2442 I WindowManager: finishDrawing of relaunch: Window{b35ba70 u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} 278ms
-09-25 10:59:50.758   523   540 V WindowManager:     info={id=15 t=CHANGE f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{72adc9e Task{4970fc5 #8 type=standard A=10192:com.lukas.jarvis.debug}}} m=CHANGE f=NONE p=WCT{RemoteToken{1d709d DefaultTaskDisplayArea@59009360}} leash=Surface(name=Task=8)/@0xd483573 sb=Rect(0, 0 - 640, 320) eb=Rect(0, 0 - 320, 640) d=0 r=1->0:0},{WCT{RemoteToken{1d709d DefaultTaskDisplayArea@59009360}} m=CHANGE f=NONE p=WCT{RemoteToken{b46f912 Display{#0 state=ON size=320x640 ROTATION_0}}} leash=Surface(name=DefaultTaskDisplayArea)/@0x35e78f8 sb=Rect(0, 0 - 640, 320) eb=Rect(0, 0 - 320, 640) d=0 r=1->0:-1},{WCT{RemoteToken{b46f912 Display{#0 state=ON size=320x640 ROTATION_0}}} m=CHANGE f=IS_DISPLAY leash=Surface(name=WindowedMagnification:0:31)/@0x7828097 sb=Rect(0, 0 - 640, 320) eb=Rect(0, 0 - 320, 640) d=0 r=1->0:-1}]}
-09-25 10:59:50.802   523  2442 I ImeTracker: com.lukas.jarvis.debug:de4b2f4: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_UNSPECIFIED_WINDOW
-09-25 10:59:50.802   523  2442 I ImeTracker: com.lukas.jarvis.debug:de4b2f4: onCancelled at PHASE_SERVER_SHOULD_HIDE
-09-25 10:59:50.804  1496  1496 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, false)
+09-25 11:07:38.093   520  2503 V SplashScreenExceptionList: SplashScreen checking exception for package com.lukas.jarvis.debug (target sdk:35) -> false
+09-25 11:07:38.096   520  2503 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
+09-25 11:07:38.102   839   870 V WindowManagerShell: Transition requested: android.os.BinderProxy@64f2018 TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity } baseActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} topActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} origActivity=null realActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} numActivities=1 lastActiveTime=46282 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@6082a71} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{2ceb056 com.lukas.jarvis.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
+09-25 11:07:38.160   520  2336 D CoreBackPreview: Window{5bce3d7 u0 Splash Screen com.lukas.jarvis.debug}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@b72dfad, mPriority=0, mIsAnimationCallback=false}
+09-25 11:07:38.200   520   539 V WindowManager: Sent Transition #6 createdAt=09-25 11:07:37.958 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity } baseActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} topActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} origActivity=null realActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} numActivities=1 lastActiveTime=46282 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{3990892 Task{fdb32d0 #8 type=standard A=10192:com.lukas.jarvis.debug}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{bb15263 com.lukas.jarvis.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
+09-25 11:07:38.202   520   539 V WindowManager:     info={id=6 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{3990892 Task{fdb32d0 #8 type=standard A=10192:com.lukas.jarvis.debug}}} m=OPEN f=NONE leash=Surface(name=Task=8)/@0x9c1d206 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{RemoteToken{d2c6e60 Task{1e5be95 #1 type=home}}} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0x1e93f67 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
+09-25 11:07:38.340   520   552 I ActivityManager: Start proc 3084:com.lukas.jarvis.debug/u0a192 for next-top-activity {com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
+09-25 11:07:38.381  3084  3084 I as.jarvis.debug: Late-enabling -Xcheck:jni
+09-25 11:07:38.446  3084  3084 I as.jarvis.debug: Using CollectorTypeCC GC.
+09-25 11:07:38.448  3084  3084 W as.jarvis.debug: Unexpected CPU variant for x86: x86_64.
+09-25 11:07:38.448  3084  3084 W as.jarvis.debug: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, tremont, kabylake, default
+09-25 11:07:38.694   520   811 I SdkSandboxManager: No SDKs used. Skipping SDK data reconcilation for CallingInfo{mUid=10192, mPackageName='com.lukas.jarvis.debug, mAppProcessToken='null'}
+09-25 11:07:39.106  3084  3084 W ziparchive: Unable to open '/data/app/~~isLY7y021Vl_DdqARPsU5g==/com.lukas.jarvis.debug-5LIihsZ1QOPEeJdB0CQZnQ==/base.dm': No such file or directory
+09-25 11:07:39.107  3084  3084 W ziparchive: Unable to open '/data/app/~~isLY7y021Vl_DdqARPsU5g==/com.lukas.jarvis.debug-5LIihsZ1QOPEeJdB0CQZnQ==/base.dm': No such file or directory
+09-25 11:07:39.365   840   840 I SafetyLabelChangedBroadcastReceiver: received broadcast packageName: com.lukas.jarvis.debug, current user: UserHandle{0}, packageChangeEvent: NEW_INSTALL, intent user: UserHandle{0}
+09-25 11:07:39.368   520   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
+09-25 11:07:39.989  3084  3084 D nativeloader: Configuring clns-6 for other apk /data/app/~~isLY7y021Vl_DdqARPsU5g==/com.lukas.jarvis.debug-5LIihsZ1QOPEeJdB0CQZnQ==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~isLY7y021Vl_DdqARPsU5g==/com.lukas.jarvis.debug-5LIihsZ1QOPEeJdB0CQZnQ==/lib/arm64:/data/app/~~isLY7y021Vl_DdqARPsU5g==/com.lukas.jarvis.debug-5LIihsZ1QOPEeJdB0CQZnQ==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.lukas.jarvis.debug
+09-25 11:07:40.013  1059  1059 D CarrierSvcBindHelper: onPackageAdded: com.lukas.jarvis.debug
+09-25 11:07:40.081  1059  1323 D ImsResolver: maybeAddedImsService, packageName: com.lukas.jarvis.debug
+09-25 11:07:40.212  3084  3084 V GraphicsEnvironment: ANGLE GameManagerService for com.lukas.jarvis.debug: false
+09-25 11:07:40.212  3084  3084 V GraphicsEnvironment: com.lukas.jarvis.debug is not listed in per-application setting
+09-25 11:07:40.688   520   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
+09-25 11:07:41.100  3084  3326 W as.jarvis.debug: Verification of android.database.Cursor androidx.sqlite.db.framework.FrameworkSQLiteDatabase.$r8$lambda$mxkMCHH54EI3Mb052ZTb9xnn0ow(androidx.sqlite.db.SupportSQLiteQuery, android.database.sqlite.SQLiteDatabase, android.database.sqlite.SQLiteCursorDriver, java.lang.String, android.database.sqlite.SQLiteQuery) took 157.539ms (31.74 bytecodes/s) (1488B approximate peak alloc)
+09-25 11:07:41.201  1059  1059 D CarrierSvcBindHelper: onPackageModified: com.lukas.jarvis.debug
+09-25 11:07:41.215  1059  1323 D ImsResolver: maybeAddedImsService, packageName: com.lukas.jarvis.debug
+09-25 11:07:41.322   520   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
+09-25 11:07:41.423   520   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
+09-25 11:07:42.040  3084  3084 W ActivityThread: getPackageInfo() called with an older ApplicationInfo than the cached version for package com.lukas.jarvis.debug
+09-25 11:07:42.155  3084  3500 W as.jarvis.debug: Verification of boolean kotlinx.coroutines.CancellableContinuationImpl.tryResume() took 106.959ms (617.05 bytecodes/s) (2712B approximate peak alloc)
+09-25 11:07:42.425   520   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
+09-25 11:07:42.738   520   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
+09-25 11:07:42.859   520   923 W InputManager-JNI: Input channel object '384846b com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity (client)' was disposed without first being removed with the input manager!
+09-25 11:07:43.205   520   550 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.surface.JarvisWidget} won't be persisted.
+09-25 11:07:43.223  1598  1598 I AiAiEcho: AppFetcherImplV2 updateApps package:[com.lukas.jarvis.debug], userId:[0], reason:[package is added.].
+09-25 11:07:43.679   520  2259 D ConnectivityService: requestNetwork for uid/pid:10192/3084 activeRequest: null callbackRequest: 86 [NetworkRequest [ REQUEST id=87, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: com.lukas.jarvis.debug UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647
+09-25 11:07:43.699   520   762 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=87, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: com.lukas.jarvis.debug UnderlyingNetworks: Null] ]
+09-25 11:07:43.699   520   762 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=87, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: com.lukas.jarvis.debug UnderlyingNetworks: Null] ]
+09-25 11:07:43.703  1598  1598 I AiAiEcho: AppFetcherImpl onPackageChanged com.lukas.jarvis.debug.
+09-25 11:07:43.704  1598  2724 I AiAiEcho: AppIndexer Package:[com.lukas.jarvis.debug] UserProfile:[0] Enabled:[true].
+09-25 11:07:43.704  1598  2724 I AiAiEcho: AppFetcherImplV2 updateApps package:[com.lukas.jarvis.debug], userId:[0], reason:[package is updated.].
+09-25 11:07:43.734   520   762 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=87, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: com.lukas.jarvis.debug UnderlyingNetworks: Null] ]
+09-25 11:07:43.743   520   762 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=87, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10192 RequestorUid: 10192 RequestorPkg: com.lukas.jarvis.debug UnderlyingNetworks: Null] ]
+09-25 11:07:43.813  3084  3084 W as.jarvis.debug: Method boolean androidx.compose.runtime.snapshots.SnapshotStateList.conditionalUpdate(boolean, kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+09-25 11:07:43.813  3084  3084 W as.jarvis.debug: Common causes for lock verification issues are non-optimized dex code
+09-25 11:07:43.813  3084  3084 W as.jarvis.debug: and incorrect proguard optimizations.
+09-25 11:07:43.814  3084  3084 W as.jarvis.debug: Method boolean androidx.compose.runtime.snapshots.SnapshotStateList.conditionalUpdate$default(androidx.compose.runtime.snapshots.SnapshotStateList, boolean, kotlin.jvm.functions.Function1, int, java.lang.Object) failed lock verification and will run slower.
+09-25 11:07:43.814  3084  3084 W as.jarvis.debug: Method java.lang.Object androidx.compose.runtime.snapshots.SnapshotStateList.mutate(kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+09-25 11:07:43.814  3084  3084 W as.jarvis.debug: Method void androidx.compose.runtime.snapshots.SnapshotStateList.update(boolean, kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+09-25 11:07:43.814  3084  3084 W as.jarvis.debug: Method void androidx.compose.runtime.snapshots.SnapshotStateList.update$default(androidx.compose.runtime.snapshots.SnapshotStateList, boolean, kotlin.jvm.functions.Function1, int, java.lang.Object) failed lock verification and will run slower.
+09-25 11:07:44.018   520  2565 D CoreBackPreview: Window{2c5132c u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@ad9ff40, mPriority=0, mIsAnimationCallback=false}
+09-25 11:07:45.296   520  2566 I WindowManager: finishDrawing of relaunch: Window{2c5132c u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} 6390ms
+09-25 11:07:45.327   520   539 W system_server: Failed to determine oat file name for dex location /data/app/~~isLY7y021Vl_DdqARPsU5g==/com.lukas.jarvis.debug-5LIihsZ1QOPEeJdB0CQZnQ==/base.apk: Dalvik cache directory does not exist
+09-25 11:07:45.327   520   539 W ziparchive: Unable to open '/data/app/~~isLY7y021Vl_DdqARPsU5g==/com.lukas.jarvis.debug-5LIihsZ1QOPEeJdB0CQZnQ==/base.dm': No such file or directory
+09-25 11:07:45.334   520   539 I ActivityTaskManager: Displayed com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity for user 0: +7s400ms
+09-25 11:07:45.450   520   575 I AppsFilter: interaction: PackageSetting{adb9778 com.lukas.jarvis.debug/10192} -> PackageSetting{6763e51 com.google.android.rkpdapp/10186} BLOCKED
+09-25 11:07:45.484   520  2505 W InputManager-JNI: Input channel object '5bce3d7 Splash Screen com.lukas.jarvis.debug (client)' was disposed without first being removed with the input manager!
+09-25 11:07:45.486   520   535 D CoreBackPreview: Window{5bce3d7 u0 Splash Screen com.lukas.jarvis.debug EXITING}: Setting back callback null
+09-25 11:07:46.111  1059  1059 D CarrierSvcBindHelper: onPackageModified: com.lukas.jarvis.debug
+09-25 11:07:46.168  1059  1323 D ImsResolver: maybeAddedImsService, packageName: com.lukas.jarvis.debug
+09-25 11:07:47.681  1598  1598 I AiAiEcho: AppFetcherImpl onPackageChanged com.lukas.jarvis.debug.
+09-25 11:07:47.684  1598  3364 I AiAiEcho: AppIndexer Package:[com.lukas.jarvis.debug] UserProfile:[0] Enabled:[true].
+09-25 11:07:47.684  1598  3364 I AiAiEcho: AppFetcherImplV2 updateApps package:[com.lukas.jarvis.debug], userId:[0], reason:[package is updated.].
+09-25 11:07:48.328   520  2336 I ImeTracker: com.lukas.jarvis.debug:6137f677: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_UNSPECIFIED_WINDOW
+09-25 11:07:48.328   520  2336 I ImeTracker: com.lukas.jarvis.debug:6137f677: onCancelled at PHASE_SERVER_SHOULD_HIDE
+09-25 11:07:48.379  1527  1527 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, false)
+09-25 11:07:48.508  3084  3155 W as.jarvis.debug: Cleared Reference was only reachable from finalizer (only reported once)
+09-25 11:07:48.599  3084  3930 D ProfileInstaller: Installing profile for com.lukas.jarvis.debug
+09-25 11:07:49.360  3084  3157 W SQLiteConnectionPool: A SQLiteConnection object for database '/data/user/0/com.lukas.jarvis.debug/databases/jarvis.db' was leaked!  Please fix your application to end transactions in progress properly and to close the database when it is no longer needed.
+09-25 11:07:50.944   520   933 I AppsFilter: interaction: PackageSetting{adb9778 com.lukas.jarvis.debug/10192} -> PackageSetting{1e8b722 com.google.android.settings.intelligence/10118} BLOCKED
+09-25 11:07:50.946   520   933 I AppsFilter: interaction: PackageSetting{adb9778 com.lukas.jarvis.debug/10192} -> PackageSetting{e2e85b3 com.google.android.settings.intelligence/10118} BLOCKED
+09-25 11:07:53.844  1456  3251 I BlockstoreStorage: Clearing Blockstore Data for package com.lukas.jarvis.debug [CONTEXT service_id=258 ]
+09-25 11:07:55.943   520   575 I AppsFilter: interaction: PackageSetting{adb9778 com.lukas.jarvis.debug/10192} -> PackageSetting{a28b558 com.google.android.devicelockcontroller/10189} BLOCKED
+09-25 11:07:55.943   520   575 I AppsFilter: interaction: PackageSetting{adb9778 com.lukas.jarvis.debug/10192} -> PackageSetting{d556796 com.google.android.rkpdapp/10186} BLOCKED
+09-25 11:07:55.943   520   575 I AppsFilter: interaction: PackageSetting{adb9778 com.lukas.jarvis.debug/10192} -> PackageSetting{6f0ff17 com.google.android.settings.intelligence/10118} BLOCKED
+09-25 11:07:58.594  4477  4477 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:07:58.630  4477  4477 I AndroidRuntime: Using default boot image
+09-25 11:07:58.630  4477  4477 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:07:59.092  4477  4477 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:08:00.515  4477  4477 D AndroidRuntime: Shutting down VM
+09-25 11:08:02.238  3084  3155 I as.jarvis.debug: Background concurrent copying GC freed 80184(3806KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5778KB/11MB, paused 1.198ms,1.356ms total 221.636ms
+09-25 11:08:05.503   520   602 I ActivityTaskManager: START u0 {act=com.lukas.jarvis.TODAY flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=3
+09-25 11:08:05.509   839   870 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
+09-25 11:08:06.562  3084  3155 I as.jarvis.debug: Background young concurrent copying GC freed 29885(1917KB) AllocSpace objects, 79(2076KB) LOS objects, 31% free, 7953KB/11MB, paused 31us,10us total 499.977ms
+09-25 11:08:15.913  3084  3154 I as.jarvis.debug: JIT allocated 58KB for compiled code of void com.lukas.jarvis.MainActivityKt.JarvisRoot(boolean, kotlin.jvm.functions.Function0, java.lang.String, kotlin.jvm.functions.Function0, com.lukas.jarvis.Launch, kotlin.jvm.functions.Function0, androidx.compose.runtime.Composer, int)
+09-25 11:08:15.913  3084  3154 I as.jarvis.debug: Compiler allocated 9055KB to compile void com.lukas.jarvis.MainActivityKt.JarvisRoot(boolean, kotlin.jvm.functions.Function0, java.lang.String, kotlin.jvm.functions.Function0, com.lukas.jarvis.Launch, kotlin.jvm.functions.Function0, androidx.compose.runtime.Composer, int)
+09-25 11:08:15.925   520  2277 I ActivityTaskManager: START u0 {act=com.lukas.jarvis.TYPE flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=3
+09-25 11:08:15.925   839   870 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
+09-25 11:08:16.447  3084  3155 I as.jarvis.debug: Background concurrent copying GC freed 67484(3377KB) AllocSpace objects, 63(1652KB) LOS objects, 49% free, 8194KB/16MB, paused 1.605ms,1.803ms total 200.432ms
+09-25 11:08:18.194  3084  3154 I as.jarvis.debug: JIT allocated 81KB for compiled code of void com.lukas.jarvis.MainActivityKt$JarvisRoot$17$1$5.invoke(androidx.compose.animation.AnimatedContentScope, com.lukas.jarvis.stage.Element, androidx.compose.runtime.Composer, int)
+09-25 11:08:18.195  3084  3154 I as.jarvis.debug: Compiler allocated 5755KB to compile void com.lukas.jarvis.MainActivityKt$JarvisRoot$17$1$5.invoke(androidx.compose.animation.AnimatedContentScope, com.lukas.jarvis.stage.Element, androidx.compose.runtime.Composer, int)
+09-25 11:08:18.693   520  2280 I AppsFilter: interaction: PackageSetting{adb9778 com.lukas.jarvis.debug/10192} -> PackageSetting{7a3532a com.google.android.settings.intelligence/10118} BLOCKED
+09-25 11:08:20.678   520  2250 I ActivityTaskManager: START u0 {act=android.intent.action.SEND typ=text/plain flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity (has extras)} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=3
+09-25 11:08:20.702   839   870 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
+09-25 11:08:24.879   520   520 V ActivityThread: getPackageInfo() caused update to cached ApplicationInfo for package com.lukas.jarvis.debug
+09-25 11:08:24.882   520   520 D nativeloader: Configuring clns-18 for other apk . target_sdk_version=35, uses_libraries=, library_path=/data/app/~~isLY7y021Vl_DdqARPsU5g==/com.lukas.jarvis.debug-5LIihsZ1QOPEeJdB0CQZnQ==/lib/arm64:/data/app/~~isLY7y021Vl_DdqARPsU5g==/com.lukas.jarvis.debug-5LIihsZ1QOPEeJdB0CQZnQ==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand
+09-25 11:08:24.888   839   839 V ActivityThread: getPackageInfo() caused update to cached ApplicationInfo for package com.lukas.jarvis.debug
+09-25 11:08:32.931   520   602 I ActivityTaskManager: START u0 {act=android.intent.action.SEND typ=text/plain flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity (has extras)} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=3
+09-25 11:08:32.938   839   870 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
+09-25 11:08:33.675  3084  3155 I as.jarvis.debug: Background young concurrent copying GC freed 129467(5991KB) AllocSpace objects, 40(904KB) LOS objects, 38% free, 10108KB/16MB, paused 45us,24us total 205.178ms
+09-25 11:09:13.241  5876  5876 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:09:13.251  5876  5876 I AndroidRuntime: Using default boot image
+09-25 11:09:13.251  5876  5876 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:09:13.443  5876  5876 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:09:14.540  5876  5876 D AndroidRuntime: Shutting down VM
+09-25 11:09:20.663  5929  5929 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:09:20.672  5929  5929 I AndroidRuntime: Using default boot image
+09-25 11:09:20.672  5929  5929 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:09:20.763  5929  5929 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:09:21.900  5929  5929 D AndroidRuntime: Shutting down VM
+09-25 11:09:27.998  5970  5970 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:09:28.002  5970  5970 I AndroidRuntime: Using default boot image
+09-25 11:09:28.002  5970  5970 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:09:28.082  5970  5970 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:09:29.138  5970  5970 D AndroidRuntime: Shutting down VM
+09-25 11:09:35.217  6017  6017 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:09:35.220  6017  6017 I AndroidRuntime: Using default boot image
+09-25 11:09:35.220  6017  6017 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:09:35.296  6017  6017 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:09:36.378  6017  6017 D AndroidRuntime: Shutting down VM
+09-25 11:09:42.473  6113  6113 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:09:42.477  6113  6113 I AndroidRuntime: Using default boot image
+09-25 11:09:42.477  6113  6113 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:09:42.556  6113  6113 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:09:43.668  6113  6113 D AndroidRuntime: Shutting down VM
+09-25 11:09:47.605  6142  6142 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:09:47.609  6142  6142 I AndroidRuntime: Using default boot image
+09-25 11:09:47.609  6142  6142 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:09:47.692  6142  6142 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:09:48.746  6142  6142 D AndroidRuntime: Shutting down VM
+09-25 11:09:52.827  6192  6192 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:09:52.831  6192  6192 I AndroidRuntime: Using default boot image
+09-25 11:09:52.831  6192  6192 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:09:52.908  6192  6192 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:09:53.973  6192  6192 D AndroidRuntime: Shutting down VM
+09-25 11:09:58.347  6227  6227 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:09:58.351  6227  6227 I AndroidRuntime: Using default boot image
+09-25 11:09:58.351  6227  6227 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:09:58.436  6227  6227 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:09:59.502  6227  6227 D AndroidRuntime: Shutting down VM
+09-25 11:10:03.568  6254  6254 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:10:03.572  6254  6254 I AndroidRuntime: Using default boot image
+09-25 11:10:03.572  6254  6254 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:10:03.653  6254  6254 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:10:04.723  6254  6254 D AndroidRuntime: Shutting down VM
+09-25 11:10:08.786  6281  6281 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:10:08.790  6281  6281 I AndroidRuntime: Using default boot image
+09-25 11:10:08.790  6281  6281 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:10:08.877  6281  6281 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:10:09.940  6281  6281 D AndroidRuntime: Shutting down VM
+09-25 11:10:13.879  6304  6304 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:10:13.883  6304  6304 I AndroidRuntime: Using default boot image
+09-25 11:10:13.883  6304  6304 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:10:13.962  6304  6304 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:10:15.033  6304  6304 D AndroidRuntime: Shutting down VM
+09-25 11:10:19.111  6332  6332 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:10:19.115  6332  6332 I AndroidRuntime: Using default boot image
+09-25 11:10:19.115  6332  6332 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:10:19.192  6332  6332 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:10:20.247  6332  6332 D AndroidRuntime: Shutting down VM
+09-25 11:10:24.317  6360  6360 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:10:24.321  6360  6360 I AndroidRuntime: Using default boot image
+09-25 11:10:24.321  6360  6360 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:10:24.401  6360  6360 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:10:25.477  6360  6360 D AndroidRuntime: Shutting down VM
+09-25 11:10:29.794  6395  6395 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:10:29.798  6395  6395 I AndroidRuntime: Using default boot image
+09-25 11:10:29.798  6395  6395 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:10:29.933  6395  6395 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:10:31.593  6395  6395 D AndroidRuntime: Shutting down VM
+09-25 11:10:35.732  6423  6423 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:10:35.736  6423  6423 I AndroidRuntime: Using default boot image
+09-25 11:10:35.736  6423  6423 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:10:35.815  6423  6423 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:10:36.869  6423  6423 D AndroidRuntime: Shutting down VM
+09-25 11:10:40.941  6453  6453 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:10:40.944  6453  6453 I AndroidRuntime: Using default boot image
+09-25 11:10:40.944  6453  6453 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:10:41.032  6453  6453 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:10:42.107  6453  6453 D AndroidRuntime: Shutting down VM
+09-25 11:10:46.178  6494  6494 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:10:46.182  6494  6494 I AndroidRuntime: Using default boot image
+09-25 11:10:46.182  6494  6494 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:10:46.261  6494  6494 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:10:47.316  6494  6494 D AndroidRuntime: Shutting down VM
+09-25 11:10:51.252  6517  6517 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:10:51.259  6517  6517 I AndroidRuntime: Using default boot image
+09-25 11:10:51.259  6517  6517 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:10:51.337  6517  6517 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:10:52.409  6517  6517 D AndroidRuntime: Shutting down VM
+09-25 11:10:58.690   520   539 V WindowManager:     info={id=11 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{d2c6e60 Task{1e5be95 #1 type=home}}} m=TO_FRONT f=SHOW_WALLPAPER|MOVE_TO_TOP leash=Surface(name=Task=1)/@0x1e93f67 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{RemoteToken{3990892 Task{fdb32d0 #8 type=standard A=10192:com.lukas.jarvis.debug}}} m=TO_BACK f=NONE leash=Surface(name=Task=8)/@0x9c1d206 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{null m=TO_FRONT f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{11a97d8 token=android.os.Binder@70d6bb})/@0x88370c6 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
+09-25 11:11:00.457   520  2259 I ActivityTaskManager: START u0 {act=com.lukas.jarvis.TALK flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=2
+09-25 11:11:00.457   839   870 V WindowManagerShell: Transition requested: android.os.BinderProxy@dc123d7 TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity } baseActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} topActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} origActivity=null realActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} numActivities=1 lastActiveTime=245623 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@371f4c4} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{3b11fad com.lukas.jarvis.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=true isVisible=false isVisibleRequested=false isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
+09-25 11:11:00.458   839   870 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
+09-25 11:11:00.579   520   539 W system_server: Failed to determine oat file name for dex location /data/app/~~isLY7y021Vl_DdqARPsU5g==/com.lukas.jarvis.debug-5LIihsZ1QOPEeJdB0CQZnQ==/base.apk: Dalvik cache directory does not exist
+09-25 11:11:00.580   520   539 W ziparchive: Unable to open '/data/app/~~isLY7y021Vl_DdqARPsU5g==/com.lukas.jarvis.debug-5LIihsZ1QOPEeJdB0CQZnQ==/base.dm': No such file or directory
+09-25 11:11:00.606   520   539 V WindowManager: Sent Transition #12 createdAt=09-25 11:11:00.455 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity } baseActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} topActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} origActivity=null realActivity=ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} numActivities=1 lastActiveTime=245623 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{3990892 Task{fdb32d0 #8 type=standard A=10192:com.lukas.jarvis.debug}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{bb15263 com.lukas.jarvis.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=true isVisible=false isVisibleRequested=false isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
+09-25 11:11:00.606   520   539 V WindowManager:     info={id=12 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{3990892 Task{fdb32d0 #8 type=standard A=10192:com.lukas.jarvis.debug}}} m=TO_FRONT f=MOVE_TO_TOP leash=Surface(name=Task=8)/@0x9c1d206 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0},{WCT{RemoteToken{d2c6e60 Task{1e5be95 #1 type=home}}} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0x1e93f67 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 320, 640) d=0}]}
+09-25 11:11:00.734  2773  2773 I RecognitionServiceInten: Trigger application overridden to com.lukas.jarvis.debug
+09-25 11:11:00.824   520  1398 I ImeTracker: com.lukas.jarvis.debug:aefca27a: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_UNSPECIFIED_WINDOW
+09-25 11:11:00.824   520  1398 I ImeTracker: com.lukas.jarvis.debug:aefca27a: onCancelled at PHASE_SERVER_SHOULD_HIDE
+09-25 11:11:00.834  1527  1527 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, false)
+09-25 11:11:00.847  3084  3155 I as.jarvis.debug: Background young concurrent copying GC freed 84730(3741KB) AllocSpace objects, 40(968KB) LOS objects, 20% free, 13MB/17MB, paused 54us,902us total 215.451ms
+09-25 11:11:06.739   520  2259 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=3
+09-25 11:11:06.740   839   870 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}
+09-25 11:11:09.882  6655  6655 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-25 11:11:09.886  6655  6655 I AndroidRuntime: Using default boot image
+09-25 11:11:09.886  6655  6655 I AndroidRuntime: Leaving lock profiling enabled
+09-25 11:11:09.970  6655  6655 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+09-25 11:11:11.063  6655  6655 D AndroidRuntime: Shutting down VM
+09-25 11:11:35.982   520   923 I ActivityManager: Broadcasting: Intent { act=com.lukas.jarvis.debug.PLACE flg=0x400000 cmp=com.lukas.jarvis.debug/.TestHooks (has extras) }
+09-25 11:11:35.982   520   923 I ActivityManager: Enqueued broadcast Intent { act=com.lukas.jarvis.debug.PLACE flg=0x400000 cmp=com.lukas.jarvis.debug/.TestHooks (has extras) }: 0
+09-25 11:11:55.353   520  1736 I ImeTracker: com.lukas.jarvis.debug:16ff1a74: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_SAME_WINDOW_FOCUSED_WITHOUT_EDITOR
+09-25 11:11:55.354   520  1736 I ImeTracker: com.lukas.jarvis.debug:16ff1a74: onCancelled at PHASE_SERVER_SHOULD_HIDE
+09-25 11:11:55.356  1527  1527 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, false)
+09-25 11:11:55.592  1527  1527 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, true)
+09-25 11:11:55.669   520   535 D CoreBackPreview: Window{2c5132c u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}: Setting back callback null
+09-25 11:11:55.698   520  2502 W InputManager-JNI: Input channel object '2c5132c com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity (client)' was disposed without first being removed with the input manager!
+09-25 11:11:55.956   520  1736 D CoreBackPreview: Window{559e382 u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@5be11a9, mPriority=0, mIsAnimationCallback=false}
+09-25 11:11:56.217   520  1736 I WindowManager: finishDrawing of relaunch: Window{559e382 u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} 676ms
+09-25 11:11:56.228   520   539 V WindowManager:     info={id=14 t=CHANGE f=0x0 trk=0 r=[0@Point(0, 0)] c=[{null m=CHANGE f=TRANSLUCENT|FLAG_IS_SYSTEM_WINDOW p=WCT{RemoteToken{fe4c633 Display{#0 state=ON size=640x320 ROTATION_90}}} leash=Surface(name=WindowToken{510e3a4 type=2040 android.os.BinderProxy@5310336})/@0xdfd496d sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 640, 320) d=0 r=0->1:-1},{WCT{RemoteToken{3990892 Task{fdb32d0 #8 type=standard A=10192:com.lukas.jarvis.debug}}} m=CHANGE f=NONE p=WCT{RemoteToken{73e1df0 DefaultTaskDisplayArea@174584914}} leash=Surface(name=Task=8)/@0x9c1d206 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 640, 320) d=0 r=0->1:0},{WCT{RemoteToken{73e1df0 DefaultTaskDisplayArea@174584914}} m=CHANGE f=NONE p=WCT{RemoteToken{fe4c633 Display{#0 state=ON size=640x320 ROTATION_90}}} leash=Surface(name=DefaultTaskDisplayArea)/@0xe203726 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 640, 320) d=0 r=0->1:-1},{WCT{RemoteToken{fe4c633 Display{#0 state=ON size=640x320 ROTATION_90}}} m=CHANGE f=IS_DISPLAY leash=Surface(name=WindowedMagnification:0:31)/@0x11da8c1 sb=Rect(0, 0 - 320, 640) eb=Rect(0, 0 - 640, 320) d=0 r=0->1:-1}]}
+09-25 11:11:56.276   520   535 I ImeTracker: com.lukas.jarvis.debug:c5c7d026: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_UNSPECIFIED_WINDOW
+09-25 11:11:56.276   520   535 I ImeTracker: com.lukas.jarvis.debug:c5c7d026: onCancelled at PHASE_SERVER_SHOULD_HIDE
+09-25 11:11:56.277  1527  1527 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, false)
+09-25 11:12:00.806  1527  1527 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, true)
+09-25 11:12:00.846   520  1736 D CoreBackPreview: Window{559e382 u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}: Setting back callback null
+09-25 11:12:00.849   520  1736 W InputManager-JNI: Input channel object '559e382 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity (client)' was disposed without first being removed with the input manager!
+09-25 11:12:00.962   520  2259 D CoreBackPreview: Window{892a581 u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@74318bd, mPriority=0, mIsAnimationCallback=false}
+09-25 11:12:01.037   520  1736 I WindowManager: finishDrawing of relaunch: Window{892a581 u0 com.lukas.jarvis.debug/com.lukas.jarvis.MainActivity} 278ms
+09-25 11:12:01.043   520   539 V WindowManager:     info={id=15 t=CHANGE f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{3990892 Task{fdb32d0 #8 type=standard A=10192:com.lukas.jarvis.debug}}} m=CHANGE f=NONE p=WCT{RemoteToken{73e1df0 DefaultTaskDisplayArea@174584914}} leash=Surface(name=Task=8)/@0x9c1d206 sb=Rect(0, 0 - 640, 320) eb=Rect(0, 0 - 320, 640) d=0 r=1->0:0},{WCT{RemoteToken{73e1df0 DefaultTaskDisplayArea@174584914}} m=CHANGE f=NONE p=WCT{RemoteToken{fe4c633 Display{#0 state=ON size=320x640 ROTATION_0}}} leash=Surface(name=DefaultTaskDisplayArea)/@0xe203726 sb=Rect(0, 0 - 640, 320) eb=Rect(0, 0 - 320, 640) d=0 r=1->0:-1},{WCT{RemoteToken{fe4c633 Display{#0 state=ON size=320x640 ROTATION_0}}} m=CHANGE f=IS_DISPLAY leash=Surface(name=WindowedMagnification:0:31)/@0x11da8c1 sb=Rect(0, 0 - 640, 320) eb=Rect(0, 0 - 320, 640) d=0 r=1->0:-1}]}
+09-25 11:12:01.066   520  1736 I ImeTracker: com.lukas.jarvis.debug:4875f1e7: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_UNSPECIFIED_WINDOW
+09-25 11:12:01.066   520  1736 I ImeTracker: com.lukas.jarvis.debug:4875f1e7: onCancelled at PHASE_SERVER_SHOULD_HIDE
+09-25 11:12:01.073  1527  1527 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=com.lukas.jarvis.debug fieldId=0 fieldName=null extras=null}, false)
