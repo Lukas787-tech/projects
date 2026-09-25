@@ -414,6 +414,18 @@ class Tools(
             listOf("text", "to", "from")
         ),
         tool(
+            "interpreter",
+            "Open live interpreter mode on screen: the user and someone who speaks another " +
+                "language talk through the phone, each tapping their side, and every line is " +
+                "translated and spoken aloud. Use for 'be my interpreter', 'help me talk to this " +
+                "person in Spanish', 'interpret for me'. Not for translating one phrase.",
+            props(
+                "language" to str("The other person's language, e.g. 'Spanish'."),
+                "action" to str("start (default) or stop.", listOf("start", "stop"))
+            ),
+            emptyList()
+        ),
+        tool(
             "define_word",
             "Dictionary definition of a word, in any language.",
             props("word" to str("The word.")),
@@ -1124,6 +1136,7 @@ class Tools(
                     args.optString("topic").takeIf { it.isNotBlank() },
                     args.optInt("limit", 5)
                 )
+                "interpreter" -> interpreter(args)
                 "translate" -> knowledge.translate(
                     args.optString("text"),
                     args.optString("from"),
@@ -1258,6 +1271,20 @@ class Tools(
         } catch (e: Exception) {
             "Tool '${call.name}' failed: ${e.message ?: e::class.java.simpleName}"
         }
+    }
+
+    private fun interpreter(args: JSONObject): String {
+        if (args.optString("action").trim().lowercase(Locale.ROOT) == "stop") {
+            stage.show(stage.current, StageStore.INTERPRETER_STOP)
+            return "Interpreter closed."
+        }
+        val wanted = args.optString("language").trim()
+        val code = knowledge.codeFor(wanted)
+            ?: return "Which language does the other person speak?"
+        stage.show(Element.Globe, StageStore.INTERPRETER_PREFIX + code)
+        return "The interpreter is open on screen for ${knowledge.nameOf(code)}. In one short line, tell " +
+            "the user to tap their own button to speak, or the other button for the other person; " +
+            "each line is translated and read aloud."
     }
 
     private fun readScreen(): String {

@@ -92,6 +92,10 @@ class StageStore {
     companion object {
         /** A note that opens the conversation history over the assistant's screen. */
         const val HISTORY = "history"
+
+        /** "interpreter:es" opens the interpreter with Spanish; [INTERPRETER_STOP] closes it. */
+        const val INTERPRETER_PREFIX = "interpreter:"
+        const val INTERPRETER_STOP = "interpreter:stop"
     }
 
     fun show(element: Element, note: String = "") {

@@ -191,7 +191,11 @@ class AssistantViewModel(
                     _ui.value = _ui.value.copy(stage = Stage.Idle, stageLabel = "")
                 }
                 if (lastTurnWasVoice && settingsStore.current.handsFree) {
-                    startListening()
+                    if (_interpreter.value != null) {
+                        interpretListen(com.lukas.jarvis.voice.InterpreterState.Side.Me)
+                    } else {
+                        startListening()
+                    }
                 }
             }
         }
@@ -774,12 +778,125 @@ class AssistantViewModel(
         runCatching { connectivity?.registerDefaultNetworkCallback(networkWatch) }
     }
 
+    // ------------------------------------------------------------- interpreter
+
+    private val _interpreter = MutableStateFlow<com.lukas.jarvis.voice.InterpreterState?>(null)
+
+    /** The interpreter, while two people are talking through the phone. */
+    val interpreter: StateFlow<com.lukas.jarvis.voice.InterpreterState?> = _interpreter.asStateFlow()
+
+    /** Opens the interpreter between the user's language and [language]; false when it is not one. */
+    fun startInterpreter(language: String): Boolean {
+        val knowledge = container.knowledge
+        val theirs = knowledge.codeFor(language) ?: return false
+        val mine = knowledge.codeFor(settingsStore.current.speechLanguage)
+            ?: java.util.Locale.getDefault().language
+        if (theirs == mine) return false
+        _interpreter.value = com.lukas.jarvis.voice.InterpreterState(
+            mine = mine,
+            theirs = theirs,
+            mineName = knowledge.nameOf(mine),
+            theirsName = knowledge.nativeNameOf(theirs)
+        )
+        return true
+    }
+
+    fun endInterpreter() {
+        if (_interpreter.value == null) return
+        _interpreter.value = null
+        speech.cancel()
+        speaker.stop()
+        speech.language = settingsStore.current.speechLanguage
+        _ui.update { it.copy(stage = Stage.Idle, stageLabel = "", partial = "") }
+    }
+
+    /** Listens to one side, in that side's language. */
+    fun interpretListen(side: com.lukas.jarvis.voice.InterpreterState.Side) {
+        val state = _interpreter.value ?: return
+        if (state.working) return
+        speaker.stop()
+        speech.cancel()
+        speech.language = if (side == com.lukas.jarvis.voice.InterpreterState.Side.Me) {
+            settingsStore.current.speechLanguage.ifBlank { state.mine }
+        } else {
+            state.theirs
+        }
+        _interpreter.value = state.copy(listening = side, note = null)
+        _ui.update { it.copy(stage = Stage.Listening, stageLabel = "listening", error = null) }
+        if (settingsStore.current.earcons) earcon.listening()
+        speech.start(
+            onResult = { text ->
+                speech.language = settingsStore.current.speechLanguage
+                interpret(text, side)
+            },
+            onFailure = { message ->
+                speech.language = settingsStore.current.speechLanguage
+                _interpreter.update { it?.copy(listening = null, note = message.takeIf { m -> m.isNotBlank() }) }
+                _ui.update { it.copy(stage = Stage.Idle, stageLabel = "", partial = "") }
+            }
+        )
+    }
+
+    /** Typed instead of said, for a loud room or a phone with no recognizer. */
+    fun interpretTyped(text: String, side: com.lukas.jarvis.voice.InterpreterState.Side) {
+        if (text.isBlank()) return
+        interpret(text.trim(), side)
+    }
+
+    private fun interpret(text: String, side: com.lukas.jarvis.voice.InterpreterState.Side) {
+        val state = _interpreter.value ?: return
+        val from = state.languageOf(side)
+        val to = state.languageOf(state.other(side))
+        _interpreter.value = state.copy(listening = null, working = true, note = null)
+        _ui.update { it.copy(stage = Stage.Thinking, stageLabel = "translating", partial = "") }
+        viewModelScope.launch {
+            val knowledge = container.knowledge
+            val translated = withContext(Dispatchers.IO) {
+                knowledge.translateText(text, from, to)
+                    ?: container.agent.translate(text, knowledge.nameOf(from), knowledge.nameOf(to), settingsStore.current)
+            }
+            val now = _interpreter.value ?: return@launch
+            if (translated == null) {
+                _interpreter.value = now.copy(working = false, note = "No translation came back. Try again.")
+                _ui.update { it.copy(stage = Stage.Idle, stageLabel = "") }
+                return@launch
+            }
+            _interpreter.value = now.heard(side, text, translated)
+            _ui.update { it.copy(stage = Stage.Speaking, stageLabel = "speaking") }
+            speaker.speakIn(translated, to) {
+                viewModelScope.launch {
+                    if (_ui.value.stage == Stage.Speaking) _ui.update { it.copy(stage = Stage.Idle, stageLabel = "") }
+                    // Hands-free, the answer is listened for straight away.
+                    val open = _interpreter.value
+                    if (open != null && settingsStore.current.handsFree && speech.available) {
+                        interpretListen(open.other(side))
+                    }
+                }
+            }
+        }
+    }
+
     /** The timers Jarvis is running, for the strip under the header. */
     val timers: StateFlow<List<com.lukas.jarvis.notify.RunningTimer>> = container.timers.all
 
     fun cancelTimer(id: Int) = container.timers.cancelId(id)
 
     init {
+        // The interpreter tool asks for the interpreter through the stage,
+        // the one channel a tool has to the screen.
+        viewModelScope.launch {
+            var seen = container.stage.state.value.revision
+            container.stage.state.collect { stage ->
+                if (stage.revision == seen) return@collect
+                seen = stage.revision
+                val note = stage.note
+                when {
+                    note == com.lukas.jarvis.stage.StageStore.INTERPRETER_STOP -> endInterpreter()
+                    note.startsWith(com.lukas.jarvis.stage.StageStore.INTERPRETER_PREFIX) ->
+                        startInterpreter(note.removePrefix(com.lukas.jarvis.stage.StageStore.INTERPRETER_PREFIX))
+                }
+            }
+        }
         // While a timer runs, a late alarm is caught here, on screen.
         viewModelScope.launch {
             container.timers.all.collectLatest { running ->

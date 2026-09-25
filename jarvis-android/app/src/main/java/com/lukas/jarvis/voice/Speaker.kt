@@ -207,7 +207,9 @@ class Speaker(context: Context) {
         return "Voice ${index + 1} · $region · $tier$online"
     }
 
-    fun speak(text: String, onDone: (() -> Unit)? = null) {
+    fun speak(text: String, onDone: (() -> Unit)? = null) = speakWith(text, onDone, homeLanguage = null)
+
+    private fun speakWith(text: String, onDone: (() -> Unit)?, homeLanguage: String?) {
         val clean = sanitize(text)
         currentDone = onDone
         if (clean.isBlank()) {
@@ -228,12 +230,29 @@ class Speaker(context: Context) {
         chunks.forEachIndexed { index, part ->
             val mode = if (index == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
             val result = runCatching {
-                say(part, mode, "jarvis_${stamp}_$index")
+                say(part, mode, "jarvis_${stamp}_$index", homeLanguage)
             }.getOrDefault(TextToSpeech.ERROR)
             if (result == TextToSpeech.ERROR) refused = true
         }
         // A refused sentence gets no callback at all, so end the turn here.
         if (refused) finish()
+    }
+
+    /**
+     * Says [text] in [language] — a translation for the person opposite —
+     * then goes back to the usual voice. When the phone has no voice for that
+     * language the usual one does its best.
+     */
+    fun speakIn(text: String, language: String, onDone: (() -> Unit)? = null) {
+        if (!_ready.value) {
+            speak(text, onDone)
+            return
+        }
+        val switched = switchTo(language)
+        // Queued in that language; say() leaves a switched voice alone when
+        // the text is all in one alphabet, and restores it otherwise.
+        speakWith(text, onDone, homeLanguage = language)
+        if (switched) applyVoice()
     }
 
     // --------------------------------------------------------- streamed speech
@@ -294,9 +313,10 @@ class Speaker(context: Context) {
      * that language when the phone has one. The last piece carries [id], so
      * the end of the whole text is still the end the callbacks wait for.
      */
-    private fun say(text: String, mode: Int, id: String): Int {
+    private fun say(text: String, mode: Int, id: String, homeLanguage: String? = null): Int {
         // Stretches in the language already being spoken keep the chosen voice.
-        val home = (languageTag.takeIf { it.isNotBlank() }?.let(Locale::forLanguageTag) ?: Locale.getDefault()).language
+        val home = homeLanguage
+            ?: (languageTag.takeIf { it.isNotBlank() }?.let(Locale::forLanguageTag) ?: Locale.getDefault()).language
         val pieces = Scripts.split(text).map { if (it.language == home) it.copy(language = null) else it }
         if (pieces.none { it.language != null }) return tts.speak(text, mode, Bundle(), id)
         var result = TextToSpeech.SUCCESS
@@ -304,9 +324,11 @@ class Speaker(context: Context) {
             val pieceId = if (index == pieces.lastIndex) id else "${id}_p$index"
             val switched = piece.language?.let { switchTo(it) } == true
             val queued = tts.speak(piece.text, if (index == 0) mode else TextToSpeech.QUEUE_ADD, Bundle(), pieceId)
-            // The language is taken when a piece is queued, so the usual voice
-            // can come straight back for the next one.
-            if (switched) applyVoice()
+            // The language is taken when a piece is queued, so the voice the
+            // text started in can come straight back for the next one.
+            if (switched) {
+                if (homeLanguage != null) switchTo(homeLanguage) else applyVoice()
+            }
             if (queued == TextToSpeech.ERROR) result = TextToSpeech.ERROR
         }
         return result

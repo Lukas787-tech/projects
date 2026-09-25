@@ -42,6 +42,10 @@ model was asked to add eggs to the shopping list and read it back, and did.
   need an umbrella": a quiet routine runs at its time with the app closed and
   sends the answer as a notification. Routines can keep to weekdays,
   weekends or any days you name.
+- **An interpreter** — "be my interpreter for Spanish" opens a two-sided
+  screen: each person taps their own button and speaks, and every line is
+  translated and read aloud in the other language (hands-free, it then
+  listens for the answer). Typing works too, for a loud room.
 - **Says foreign words in their own voice** — in "thank you in Japanese is
   ありがとう", the Japanese is read by a Japanese voice. Chinese, Korean,
   Russian, Greek, Arabic, Hebrew, Hindi, Thai and more work the same way, using
@@ -308,6 +312,14 @@ addresses all work; "here" is where you are. Android's own proximity alerts
 do the watching, so it costs no battery while nothing happens. For it to fire
 with Jarvis closed, location has to be allowed *all the time* — Jarvis asks
 the first time you set one.
+
+**Interprets a conversation.** "Be my interpreter for Italian" — or "help me
+talk to this person in Japanese" — opens a screen with a button for each of
+you. Tap yours and speak: it is translated and said aloud in Italian in an
+Italian voice, and the reply comes back in your language. With hands-free on,
+the phone listens for the answer by itself, so after the first tap you can
+just talk. Translation is MyMemory's free service with the free models as a
+fallback; no key.
 
 **Presses the phone's buttons.** With screen reading switched on, "lock the
 phone", "take a screenshot", "go back", "go home", "recent apps", "open

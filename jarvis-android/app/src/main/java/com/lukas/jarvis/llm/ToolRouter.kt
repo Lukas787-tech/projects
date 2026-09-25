@@ -129,6 +129,8 @@ object ToolRouter {
             "jeden sonntag", "jede woche"
         ),
         ToolGroup.Language to listOf(
+            "interpret", "dolmetsch", "talk to this person", "speak to this person",
+            "doesn't speak", "does not speak", "spricht kein",
             "translate", "translation", "in german", "in english", "in spanish", "in french",
             "in italian", "how do you say", "what does", "mean", "definition", "define",
             "synonym", "spell", "übersetz", "auf deutsch", "auf englisch", "was heißt",

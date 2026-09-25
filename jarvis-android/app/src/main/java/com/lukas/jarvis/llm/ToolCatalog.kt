@@ -83,6 +83,7 @@ object ToolCatalog {
         // the world, beyond a search box
         ToolInfo("news", ToolGroup.News, "reading the headlines", "News", readOnly = true),
         ToolInfo("translate", ToolGroup.Language, "translating", "Translate", readOnly = true),
+        ToolInfo("interpreter", ToolGroup.Language, "opening the interpreter", "Interpreter"),
         ToolInfo("define_word", ToolGroup.Language, "opening the dictionary", "Dictionary", readOnly = true),
         ToolInfo("market_price", ToolGroup.Markets, "checking the markets", "Markets", readOnly = true),
         ToolInfo("holidays", ToolGroup.Knowledge, "checking the holidays", "Holidays", readOnly = true),
@@ -236,6 +237,8 @@ object ToolCatalog {
         "lock_phone" to "system_action", "lock_screen" to "system_action",
         "take_screenshot" to "system_action", "screenshot" to "system_action",
         "go_back" to "system_action", "go_home" to "system_action", "global_action" to "system_action",
+        "interpret" to "interpreter", "interpreter_mode" to "interpreter", "live_translate" to "interpreter",
+        "conversation_mode" to "interpreter",
         "location_reminder" to "place_reminder", "geofence" to "place_reminder",
         "remind_at_place" to "place_reminder", "add_place_reminder" to "place_reminder",
         "send_location" to "share_location", "my_location" to "share_location",
@@ -512,8 +515,13 @@ object Abilities {
         Ability(
             ToolGroup.Language,
             "Languages",
-            "Translates between languages and looks words up in the dictionary.",
-            listOf("How do you say 'where is the station' in Spanish?", "What does 'serendipity' mean?"),
+            "Translates between languages, interprets a whole conversation out loud, and " +
+                "looks words up in the dictionary.",
+            listOf(
+                "How do you say 'where is the station' in Spanish?",
+                "Be my interpreter for Italian",
+                "What does 'serendipity' mean?"
+            ),
             AbilitySwitch.Web
         ),
         Ability(

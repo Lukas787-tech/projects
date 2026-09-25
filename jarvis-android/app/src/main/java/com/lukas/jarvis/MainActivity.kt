@@ -297,6 +297,7 @@ private fun JarvisRoot(
     val briefLoading by viewModel.briefLoading.collectAsStateWithLifecycle()
     val savedPlaces by viewModel.savedPlaces.collectAsStateWithLifecycle()
     val placeReminders by viewModel.placeReminders.collectAsStateWithLifecycle()
+    val interpreter by viewModel.interpreter.collectAsStateWithLifecycle()
     val hereLabel by viewModel.hereLabel.collectAsStateWithLifecycle()
     val routines by viewModel.routines.collectAsStateWithLifecycle()
     val levels by viewModel.levels.collectAsStateWithLifecycle()
@@ -356,6 +357,7 @@ private fun JarvisRoot(
     // The chat log is an overlay, so the system back gesture has to close it
     // rather than leave the app — it is not a destination of its own.
     BackHandler(enabled = showHistory) { showHistory = false }
+    BackHandler(enabled = interpreter != null && !showHistory) { viewModel.endInterpreter() }
     // "Show me our old conversations" arrives as a note on the stage, and
     // any other change of screen — the dock, the assistant — closes it, so the
     // history never sits on top of a screen that was asked for.
@@ -674,7 +676,11 @@ private fun JarvisRoot(
                     onCancelTimer = viewModel::cancelTimer,
                     online = online,
                     ringing = ringingTimers,
-                    onStopRinging = viewModel::stopTimerAlarm
+                    onStopRinging = viewModel::stopTimerAlarm,
+                    interpreter = interpreter,
+                    onInterpretListen = viewModel::interpretListen,
+                    onInterpretType = viewModel::interpretTyped,
+                    onEndInterpreter = viewModel::endInterpreter
                 )
 
                 // Notes, tasks and money are one element with three segments,

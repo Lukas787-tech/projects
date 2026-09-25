@@ -63,7 +63,7 @@ class AppContainer(context: Context) {
     private val web = WebTools()
     private val weather = Weather()
     private val currency = Currency()
-    private val knowledge = Knowledge()
+    val knowledge = Knowledge()
     val imagine = Imagine(context)
     val home = com.lukas.jarvis.web.Home()
     private val client = LlmClient()

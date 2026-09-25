@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -176,7 +177,12 @@ fun VoiceScreen(
     /** Whether the phone can reach the internet; offline, only the reflexes answer. */
     online: Boolean = true,
     ringing: List<RunningTimer> = emptyList(),
-    onStopRinging: (Int) -> Unit = {}
+    onStopRinging: (Int) -> Unit = {},
+    /** Two people talking through the phone; while open it takes the screen. */
+    interpreter: com.lukas.jarvis.voice.InterpreterState? = null,
+    onInterpretListen: (com.lukas.jarvis.voice.InterpreterState.Side) -> Unit = {},
+    onInterpretType: (String, com.lukas.jarvis.voice.InterpreterState.Side) -> Unit = { _, _ -> },
+    onEndInterpreter: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -200,60 +206,126 @@ fun VoiceScreen(
             TimerStrip(timers = timers, onCancel = onCancelTimer, ringing = ringing, onStop = onStopRinging)
         }
 
-        if (voiceMode) {
-            if (showHud) Hud(brief = brief)
-            VoiceBody(
+        if (interpreter != null) {
+            InterpreterPanel(
+                state = interpreter,
+                micAvailable = state.micAvailable,
+                onListen = onInterpretListen,
+                onType = onInterpretType,
+                onEnd = onEndInterpreter,
+                modifier = Modifier.weight(1f)
+            )
+            ErrorStrip(error = state.error, onDismiss = onDismissError)
+        } else {
+            ConversationBody(
                 state = state,
+                assistantName = assistantName,
                 configured = configured,
+                voiceMode = voiceMode,
                 map = map,
                 tiles = tiles,
-                mapStyle = mapStyle,
                 starters = starters,
-                address = address,
-                coreStyle = coreStyle,
                 onSend = onSend,
-                onOpenMap = onOpenMap,
-                onOpenSettings = onOpenSettings,
-                onClearMap = onClearMap,
-                modifier = Modifier.weight(1f)
-            )
-        } else {
-            TextBody(
-                state = state,
-                configured = configured,
-                starters = starters,
-                address = address,
-                actions = actions,
+                onDismissError = onDismissError,
+                onOpenHistory = onOpenHistory,
                 onOpenSettings = onOpenSettings,
                 onOpenSkills = onOpenSkills,
-                onSend = onSend,
-                onStop = onStop,
-                modifier = Modifier.weight(1f)
+                onOpenMap = onOpenMap,
+                onCamera = onCamera,
+                onGallery = onGallery,
+                mapStyle = mapStyle,
+                onClearMap = onClearMap,
+                coreStyle = coreStyle,
+                showHud = showHud,
+                brief = brief,
+                address = address,
+                actions = actions,
+                onStop = onStop
             )
         }
+    }
+}
 
-        ErrorStrip(error = state.error, onDismiss = onDismissError)
+/** The usual screen under the header: the core or the chat, and the way to talk to it. */
+@Composable
+private fun ColumnScope.ConversationBody(
+    state: AssistantUiState,
+    assistantName: String,
+    configured: Boolean,
+    voiceMode: Boolean,
+    map: MapState,
+    tiles: TileCache,
+    starters: List<Pair<ToolGroup, String>>,
+    onSend: (String) -> Unit,
+    onDismissError: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenSkills: () -> Unit,
+    onOpenMap: () -> Unit,
+    onCamera: () -> Unit,
+    onGallery: () -> Unit,
+    mapStyle: MapStyle,
+    onClearMap: () -> Unit,
+    coreStyle: CoreStyle,
+    showHud: Boolean,
+    brief: DayBrief?,
+    address: String,
+    actions: MessageActions,
+    onStop: () -> Unit
+) {
+    if (voiceMode) {
+        if (showHud) Hud(brief = brief)
+        VoiceBody(
+            state = state,
+            configured = configured,
+            map = map,
+            tiles = tiles,
+            mapStyle = mapStyle,
+            starters = starters,
+            address = address,
+            coreStyle = coreStyle,
+            onSend = onSend,
+            onOpenMap = onOpenMap,
+            onOpenSettings = onOpenSettings,
+            onClearMap = onClearMap,
+            modifier = Modifier.weight(1f)
+        )
+    } else {
+        TextBody(
+            state = state,
+            configured = configured,
+            starters = starters,
+            address = address,
+            actions = actions,
+            onOpenSettings = onOpenSettings,
+            onOpenSkills = onOpenSkills,
+            onSend = onSend,
+            onStop = onStop,
+            modifier = Modifier.weight(1f)
+        )
+    }
 
-        if (!voiceMode) {
-            Composer(
-                busy = state.stage == Stage.Thinking,
-                onSend = onSend,
-                onStop = onStop,
-                onOpenHistory = onOpenHistory,
-                onCamera = onCamera,
-                onGallery = onGallery
-            )
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = Space.snug),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RoundAction(Icons.Default.PhotoLibrary, "Pick a photo to show $assistantName", onGallery)
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    StatusLine(state = state, configured = configured, onStop = onStop)
-                }
-                RoundAction(Icons.Default.PhotoCamera, "Show $assistantName something", onCamera)
+    ErrorStrip(error = state.error, onDismiss = onDismissError)
+
+    if (!voiceMode) {
+        Composer(
+            busy = state.stage == Stage.Thinking,
+            onSend = onSend,
+            onStop = onStop,
+            onOpenHistory = onOpenHistory,
+            onCamera = onCamera,
+            onGallery = onGallery
+        )
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = Space.snug),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RoundAction(Icons.Default.PhotoLibrary, "Pick a photo to show $assistantName", onGallery)
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                StatusLine(state = state, configured = configured, onStop = onStop)
             }
+            RoundAction(Icons.Default.PhotoCamera, "Show $assistantName something", onCamera)
         }
     }
 }

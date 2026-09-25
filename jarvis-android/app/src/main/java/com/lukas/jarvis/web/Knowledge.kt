@@ -143,16 +143,50 @@ class Knowledge {
         val source = languageCode(from) ?: "en"
         val target = languageCode(to) ?: return@withContext "Which language should that go into?"
         if (source == target) return@withContext "That is already in ${languageName(target)}: $text"
-        val clipped = text.take(480)
-        val json = JSONObject(
-            get("https://api.mymemory.translated.net/get?q=${enc(clipped)}&langpair=$source|$target")
-        )
-        val translated = json.optJSONObject("responseData")?.optString("translatedText").orEmpty()
-        if (translated.isBlank() || translated.contains("INVALID LANGUAGE PAIR", true)) {
-            "The translation service could not do ${languageName(source)} to ${languageName(target)}."
-        } else {
-            "${languageName(target)}: ${text(translated)}"
-        }
+        val translated = translateText(text, source, target)
+            ?: return@withContext "The translation service could not do ${languageName(source)} to " +
+                "${languageName(target)} just now. Translate it yourself instead."
+        "${languageName(target)}: $translated"
+    }
+
+    /**
+     * The translation alone, or null when the service had none to give.
+     *
+     * MyMemory answers a spent daily allowance or a language pair it does not
+     * know with a 200 and the complaint where the translation should be, so
+     * both the status and the text are checked; otherwise the complaint would
+     * be read out as if it were Spanish.
+     */
+    suspend fun translateText(text: String, from: String, to: String): String? = withContext(Dispatchers.IO) {
+        val source = languageCode(from) ?: return@withContext null
+        val target = languageCode(to) ?: return@withContext null
+        if (source == target) return@withContext text
+        runCatching {
+            val json = JSONObject(
+                get("https://api.mymemory.translated.net/get?q=${enc(text.take(480))}&langpair=$source|$target")
+            )
+            val status = json.optString("responseStatus").toIntOrNull() ?: 200
+            val translated = json.optJSONObject("responseData")?.optString("translatedText").orEmpty()
+            translated.takeIf { status == 200 && it.isNotBlank() && !looksLikeServiceNotice(it) }?.let(::text)
+        }.getOrNull()
+    }
+
+    /** A language name or code, as a two-letter code; null when it is not one. */
+    fun codeFor(raw: String?): String? = raw?.let(::languageCode)
+
+    /** "Spanish" for "es". */
+    fun nameOf(code: String): String = languageName(code)
+
+    /** "Español" for "es": what the other person reads on their button. */
+    fun nativeNameOf(code: String): String =
+        Locale(code).let { it.getDisplayLanguage(it) }.ifBlank { languageName(code) }
+            .replaceFirstChar { it.titlecase(Locale(code)) }
+
+    private fun looksLikeServiceNotice(text: String): Boolean {
+        val upper = text.uppercase(Locale.ROOT)
+        return "MYMEMORY WARNING" in upper || "INVALID LANGUAGE PAIR" in upper ||
+            "QUERY LENGTH LIMIT" in upper || "PLEASE SELECT TWO DISTINCT LANGUAGES" in upper ||
+            "YOU USED ALL AVAILABLE FREE TRANSLATIONS" in upper
     }
 
     /** Wiktionary's definitions, which cover words from nearly every language in English. */

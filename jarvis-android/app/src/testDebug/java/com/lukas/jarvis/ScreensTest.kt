@@ -181,6 +181,16 @@ class ScreensTest {
             .onFailure { note("place turn", it) }
         live(seconds = 45)
         shot(activity, "03f-live-place")
+
+        // The interpreter, with one typed line translated live.
+        runCatching { vm.startInterpreter("Spanish") }.onFailure { note("interpreter", it) }
+        settle(600)
+        runCatching {
+            vm.interpretTyped("Where is the train station?", com.lukas.jarvis.voice.InterpreterState.Side.Me)
+        }.onFailure { note("interpreter line", it) }
+        live(seconds = 15)
+        shot(activity, "03g-interpreter")
+        runCatching { vm.endInterpreter() }
         listOf(
             Element.Today to "04-today",
             Element.Notes to "05-memory",

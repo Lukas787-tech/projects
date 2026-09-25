@@ -186,6 +186,25 @@ class Agent(
     }
 
     /**
+     * A translation and nothing else, for the interpreter when the free
+     * translation service has none: no tools, no persona, no remarks.
+     */
+    suspend fun translate(text: String, from: String, to: String, settings: Settings): String? {
+        val messages = listOf(
+            LlmMessage(
+                role = "system",
+                content = "You are an interpreter. Translate the user's words from $from into $to. " +
+                    "Reply with the translation only: no quotes, no notes, no romanisation."
+            ),
+            LlmMessage(role = "user", content = text)
+        )
+        return runCatching { client.chat(settings, messages).content }.getOrNull()
+            ?.let { ProviderNotices.strip(it) }
+            ?.trim()?.trim('"', '“', '”')
+            ?.takeIf { it.isNotBlank() }
+    }
+
+    /**
      * "What's my locker code?" with no model to ask: the memory is on the
      * phone, so a question whose words clearly match something stored is
      * answered from it. Only a close match is used — two of the question's
