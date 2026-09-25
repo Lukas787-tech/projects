@@ -1,87 +1,87 @@
-1790312508293 seeded; starting the activity
-1790312509360 created
-1790312509370 started
-1790312509406 resumed
-1790312509633 visible
-1790312509634 activity started
-1790312511497 settled in 1862 ms
-1790312511806 rendered 01-onboarding
-1790312512836 settled in 1029 ms
-1790312512980 rendered 01a-onboarding-names
-1790312513830 settled in 850 ms
-1790312513966 rendered 01b-onboarding-character
-1790312514821 settled in 854 ms
-1790312514982 rendered 01c-onboarding-colour
-1790312515807 settled in 825 ms
-1790312515902 rendered 01d-onboarding-mode
-1790312516879 settled in 973 ms
-1790312517059 rendered 02-voice
-1790312517893 settled in 823 ms
-1790312518040 rendered 02b-timer-ringing
-1790312518932 settled in 888 ms
-1790312519124 rendered 03-chat
-1790312519958 settled in 831 ms
-1790312570335 waited 50 s for a live turn
-1790312570454 rendered 03b-live-answer
-1790312620691 waited 50 s for a live turn
-1790312620815 rendered 03c-live-two-tools
-1790312621635 settled in 818 ms
-1790312681891 waited 60 s for a live turn
-1790312682003 rendered 03d-live-web
-1790312682820 settled in 814 ms
-1790312722985 waited 40 s for a live turn
-1790312763113 waited 40 s for a live turn
-1790312763227 rendered 03e-live-memory
-1790312764042 settled in 813 ms
-1790312809411 waited 45 s for a live turn
-1790312809510 rendered 03f-live-place
-1790312810387 settled in 826 ms
-1790312825633 waited 15 s for a live turn
-1790312825735 rendered 03g-interpreter
-1790312826570 settled in 834 ms
-1790312826780 rendered 04-today
-1790312827612 settled in 832 ms
-1790312827759 rendered 05-memory
-1790312828580 settled in 820 ms
-1790312828749 rendered 06-tasks
-1790312829568 settled in 819 ms
-1790312829692 rendered 07-trackers
-1790312830518 settled in 825 ms
-1790312830663 rendered 07b-lists
-1790312831484 settled in 821 ms
-1790312831634 rendered 08-skills
-1790312832511 settled in 876 ms
-1790312832647 rendered 10-devices
-1790312833477 settled in 830 ms
-1790312833580 rendered 11-music
-1790312834453 settled in 873 ms
-1790312834615 rendered 09-settings-0-you
-1790312835446 settled in 831 ms
-1790312835585 rendered 09-settings-1-voice
-1790312836426 settled in 841 ms
-1790312836584 rendered 09-settings-2-look
-1790312837403 settled in 819 ms
-1790312837515 rendered 09-settings-3-brain
-1790312838348 settled in 833 ms
-1790312838467 rendered 09-settings-4-powers
-1790312839283 settled in 816 ms
-1790312839370 rendered 09-settings-5-data
-1790312839485 tile probe: tile 512x512
-1790312840347 settled in 861 ms
-1790312840475 rendered 16-history
-1790312841359 settled in 884 ms
-1790312853376 waited 12 s for a live turn
-1790312853476 rendered 15-map
-1790312854309 settled in 830 ms
-1790312854451 rendered 12-voice-crimson-orb
-1790312855281 settled in 817 ms
-1790312855414 rendered 13-voice-stark-globe
-1790312856243 settled in 826 ms
-1790312856339 rendered 14-chat-emerald
-1790312857178 settled in 837 ms
-1790312857991 settled in 813 ms
-1790312858144 rendered 17a-large-text-today
-1790312858956 settled in 812 ms
-1790312859078 rendered 17b-large-text-tasks
-1790312859898 settled in 820 ms
-1790312860003 rendered 17c-large-text-chat
+1790313105956 seeded; starting the activity
+1790313106943 created
+1790313106951 started
+1790313106985 resumed
+1790313107204 visible
+1790313107205 activity started
+1790313109047 settled in 1842 ms
+1790313109334 rendered 01-onboarding
+1790313110362 settled in 1027 ms
+1790313110495 rendered 01a-onboarding-names
+1790313111349 settled in 854 ms
+1790313111497 rendered 01b-onboarding-character
+1790313112342 settled in 845 ms
+1790313112482 rendered 01c-onboarding-colour
+1790313113307 settled in 824 ms
+1790313113403 rendered 01d-onboarding-mode
+1790313114356 settled in 949 ms
+1790313114535 rendered 02-voice
+1790313115369 settled in 823 ms
+1790313115525 rendered 02b-timer-ringing
+1790313116413 settled in 885 ms
+1790313116636 rendered 03-chat
+1790313117472 settled in 833 ms
+1790313167789 waited 50 s for a live turn
+1790313167898 rendered 03b-live-answer
+1790313218140 waited 50 s for a live turn
+1790313218269 rendered 03c-live-two-tools
+1790313219088 settled in 817 ms
+1790313279336 waited 60 s for a live turn
+1790313279436 rendered 03d-live-web
+1790313280251 settled in 813 ms
+1790313320407 waited 40 s for a live turn
+1790313360540 waited 40 s for a live turn
+1790313360652 rendered 03e-live-memory
+1790313361465 settled in 811 ms
+1790313406841 waited 45 s for a live turn
+1790313406926 rendered 03f-live-place
+1790313407775 settled in 824 ms
+1790313423031 waited 15 s for a live turn
+1790313423134 rendered 03g-interpreter
+1790313423971 settled in 836 ms
+1790313424210 rendered 04-today
+1790313425044 settled in 834 ms
+1790313425187 rendered 05-memory
+1790313426008 settled in 821 ms
+1790313426183 rendered 06-tasks
+1790313427003 settled in 819 ms
+1790313427129 rendered 07-trackers
+1790313427953 settled in 824 ms
+1790313428086 rendered 07b-lists
+1790313428907 settled in 821 ms
+1790313429064 rendered 08-skills
+1790313429950 settled in 885 ms
+1790313430072 rendered 10-devices
+1790313430900 settled in 828 ms
+1790313431008 rendered 11-music
+1790313431882 settled in 873 ms
+1790313432069 rendered 09-settings-0-you
+1790313432895 settled in 826 ms
+1790313433026 rendered 09-settings-1-voice
+1790313433867 settled in 841 ms
+1790313434046 rendered 09-settings-2-look
+1790313434866 settled in 820 ms
+1790313434990 rendered 09-settings-3-brain
+1790313435830 settled in 840 ms
+1790313435957 rendered 09-settings-4-powers
+1790313436774 settled in 816 ms
+1790313436857 rendered 09-settings-5-data
+1790313436959 tile probe: tile 512x512
+1790313437824 settled in 865 ms
+1790313437945 rendered 16-history
+1790313438835 settled in 890 ms
+1790313450852 waited 12 s for a live turn
+1790313450949 rendered 15-map
+1790313451782 settled in 831 ms
+1790313451915 rendered 12-voice-crimson-orb
+1790313452733 settled in 815 ms
+1790313452870 rendered 13-voice-stark-globe
+1790313453696 settled in 824 ms
+1790313453783 rendered 14-chat-emerald
+1790313454615 settled in 830 ms
+1790313455428 settled in 812 ms
+1790313455594 rendered 17a-large-text-today
+1790313456407 settled in 813 ms
+1790313456537 rendered 17b-large-text-tasks
+1790313457359 settled in 820 ms
+1790313457457 rendered 17c-large-text-chat
