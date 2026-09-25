@@ -84,6 +84,24 @@ for tab in "Map" "Notes" "Settings" "Today"; do
   tap_text "$tab" && sleep 5
   shot "09-$(echo "$tab" | tr 'A-Z' 'a-z')"
 done
+# The map as a person uses it: hold a finger on it, then make the pin home.
+tap_text "Map" && sleep 5
+SIZE=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -n1)
+W=${SIZE%x*}; H=${SIZE#*x}
+adb shell input swipe $((W / 2)) $((H * 2 / 5)) $((W / 2)) $((H * 2 / 5)) 900
+sleep 6
+shot 09b-map-pin
+if tap_text "My home"; then
+  sleep 4
+  shot 09c-map-home
+  if adb shell run-as "$PKG" cat shared_prefs/jarvis_places.xml 2>/dev/null | grep -qi "home"; then
+    echo "MAP PIN: saved as home" >> "$REPORT"
+  else
+    echo "MAP PIN: tapped My home, nothing saved" >> "$REPORT"
+  fi
+else
+  echo "MAP PIN: no My home button after holding the map" >> "$REPORT"
+fi
 tap_text "Notes" && sleep 3
 for hub in "Trackers" "Tasks" "Lists" "Memory"; do
   tap_text "$hub" && sleep 3

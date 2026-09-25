@@ -87,7 +87,7 @@ class MapStore(context: Context) {
             revision = state.revision + 1,
             title = "Dropped pin",
             here = state.here,
-            places = listOf(Place(name = "Dropped pin", point = point, category = "pin")),
+            places = listOf(Place(name = "Dropped pin", point = point, category = "Dropped pin")),
             selected = 0,
             route = null,
             accuracy = state.accuracy,
@@ -99,7 +99,7 @@ class MapStore(context: Context) {
     /** The street a dropped pin turned out to be on, once it is known. */
     fun describePin(point: GeoPoint, address: String) {
         val state = _state.value
-        val index = state.places.indexOfFirst { it.category == "pin" && Geo.distance(it.point, point) < 1.0 }
+        val index = state.places.indexOfFirst { it.category == "Dropped pin" && Geo.distance(it.point, point) < 1.0 }
         if (index < 0) return
         val parts = address.split(",").map { it.trim() }.filter { it.isNotEmpty() }
         val name = parts.take(2).joinToString(" ").ifBlank { "Dropped pin" }
