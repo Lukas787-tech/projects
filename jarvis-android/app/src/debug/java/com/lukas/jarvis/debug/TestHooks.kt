@@ -33,7 +33,9 @@ class TestHooks : BroadcastReceiver() {
         if (intent.action != ACTION_PLACE) return
         val lat = intent.getStringExtra("lat")?.toDoubleOrNull() ?: return
         val lon = intent.getStringExtra("lon")?.toDoubleOrNull() ?: return
-        val text = intent.getStringExtra("text") ?: "test reminder"
+        val routine = intent.getStringExtra("routine")?.takeIf { it.isNotBlank() }
+        val text = intent.getStringExtra("text")?.takeIf { it.isNotBlank() }
+            ?: routine?.let { "run the $it routine" } ?: "test reminder"
         container.placeReminders.add(
             text = text,
             place = "the test spot",
@@ -41,7 +43,7 @@ class TestHooks : BroadcastReceiver() {
             leaving = intent.getBooleanExtra("leaving", false),
             every = false,
             here = container.locator.remembered(),
-            routine = intent.getStringExtra("routine")
+            routine = routine
         )
         resultData = "armed: ${container.placeReminders.canWatch}, closed: ${container.placeReminders.canWatchClosed}"
     }

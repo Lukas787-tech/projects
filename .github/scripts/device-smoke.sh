@@ -139,7 +139,11 @@ adb shell dumpsys notification --noredact 2>/dev/null | grep -A3 -i "device chec
 
 # A routine started by arriving somewhere: the place fires, the routine runs
 # in the background, and its answer is the notification.
-adb shell cmd notification cancel_all >/dev/null 2>&1 || adb shell service call notification 1 >/dev/null 2>&1 || true
+# A force-stop clears the app's notifications, so the check below cannot
+# mistake the earlier routine's answer for this one; the app re-arms its
+# place alerts when it starts again.
+adb shell am force-stop "$PKG"
+sleep 2
 start
 sleep 3
 tap_text "Map" && sleep 4
