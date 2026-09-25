@@ -95,7 +95,11 @@ shot 07-talk
 start
 sleep 3
 adb shell settings put secure location_mode 3 >/dev/null 2>&1 || true
-for i in 1 2 3; do adb emu geo fix 13.4050 52.5400 >/dev/null; sleep 4; done
+# The emulator's GPS only reports while something has it switched on, and
+# Android's fence checks rarely while the phone is far away; the map asks
+# for live GPS, so it is kept open while the phone "moves".
+tap_text "Map" && sleep 4
+for i in 1 2 3 4 5; do adb emu geo fix 13.4050 52.5400 >/dev/null; sleep 4; done
 adb shell am broadcast -n "$PKG/com.lukas.jarvis.debug.TestHooks" -a com.lukas.jarvis.debug.PLACE \
   --es text "'buy test milk'" --es lat 52.5200 --es lon 13.4050 >> "$REPORT" 2>&1
 for i in 1 2 3; do adb emu geo fix 13.4050 52.5400 >/dev/null; sleep 4; done
