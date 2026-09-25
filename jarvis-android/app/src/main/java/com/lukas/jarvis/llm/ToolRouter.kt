@@ -122,7 +122,11 @@ object ToolRouter {
         ),
         ToolGroup.Automation to listOf(
             "routine", "every morning", "every evening", "every day", "every night",
-            "morgenroutine", "jeden morgen", "jeden abend", "jeden tag"
+            "every weekday", "every monday", "every tuesday", "every wednesday", "every thursday",
+            "every friday", "every saturday", "every sunday", "each morning", "each evening",
+            "on weekdays", "each week", "every week",
+            "morgenroutine", "jeden morgen", "jeden abend", "jeden tag", "werktags", "jeden montag",
+            "jeden sonntag", "jede woche"
         ),
         ToolGroup.Language to listOf(
             "translate", "translation", "in german", "in english", "in spanish", "in french",

@@ -242,7 +242,8 @@ class Agent(
         routine: Routine,
         settings: Settings,
         onStage: (String) -> Unit = {},
-        onTool: (String) -> Unit = {}
+        onTool: (String) -> Unit = {},
+        onStepFailed: () -> Unit = {}
     ): String {
         val runner = tools.routineRunner
         tools.routineRunner = null
@@ -251,7 +252,11 @@ class Agent(
                 onStage("${routine.name}: step ${index + 1} of ${routine.steps.size}")
                 runCatching {
                     respond(step, settings, emptyList(), onStage = {}, onTool = onTool).reply
-                }.getOrElse { "\"$step\" did not work: ${it.message?.lineSequence()?.firstOrNull()}" }
+                }.getOrElse {
+                    if (it is kotlinx.coroutines.CancellationException) throw it
+                    onStepFailed()
+                    "\"$step\" did not work: ${it.message?.lineSequence()?.firstOrNull()}"
+                }
             }
             return replies.joinToString(" ")
         } finally {

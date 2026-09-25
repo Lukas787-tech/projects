@@ -98,6 +98,9 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
+    // Runs a quiet routine at its time with the app closed, and retries it
+    // when the network was down.
+    implementation(libs.androidx.work.runtime.ktx)
 
     // On-device eyes that need no key: reading text, naming things, QR codes.
     // The models are bundled, so they work offline from the first launch.

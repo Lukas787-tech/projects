@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.Calendar
 import java.util.Locale
 
 /**
@@ -30,8 +29,20 @@ data class Routine(
     val steps: List<String>,
     /** "07:00" for a daily nudge, or null to run only when asked. */
     val time: String? = null,
-    val lastRunAt: Long = 0L
+    val lastRunAt: Long = 0L,
+    /** Which days the time applies to; empty is every day. */
+    val days: Set<Int> = emptySet(),
+    /**
+     * Runs by itself at its time, with no tap, and the answer arrives as a
+     * notification: for the routines that are questions ("do I need an
+     * umbrella?") rather than things to do on screen.
+     */
+    val quiet: Boolean = false
 ) {
+    /** "on weekdays at 07:30", or empty when it has no time. */
+    val schedule: String
+        get() = time?.let { "${RoutineDays.describe(days)} at $it" }.orEmpty()
+
     val hour: Int? get() = time?.substringBefore(':')?.toIntOrNull()?.takeIf { it in 0..23 }
     val minute: Int? get() = time?.substringAfter(':', "")?.toIntOrNull()?.takeIf { it in 0..59 }
 }
@@ -100,23 +111,18 @@ class Routines(private val context: Context) {
     // ------------------------------------------------------------- scheduling
 
     /**
-     * A timed routine does not run by itself in the background: a turn needs
-     * the network, the microphone and often the screen, and Android gives a
-     * background app none of those reliably. What arrives at the time is a
-     * notification, and one tap runs the whole routine.
+     * By default a timed routine does not run by itself: steps like "play the
+     * radio" need the screen, which Android does not give an app in the
+     * background. What arrives at the time is a notification, and one tap
+     * runs the whole routine. A [Routine.quiet] one — questions only — runs
+     * in the background and sends its answer instead.
      */
     fun schedule(routine: Routine) {
         cancel(routine)
         val hour = routine.hour ?: return
         val minute = routine.minute ?: 0
         val manager = context.getSystemService(AlarmManager::class.java) ?: return
-        val next = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
-        }.timeInMillis
+        val next = RoutineDays.next(System.currentTimeMillis(), hour, minute, routine.days)
         runCatching {
             manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pending(routine.name))
         }
@@ -157,7 +163,9 @@ class Routines(private val context: Context) {
                 name = obj.optString("name"),
                 steps = (0 until steps.length()).map { steps.optString(it) }.filter { it.isNotBlank() },
                 time = obj.optString("time").takeIf { it.isNotBlank() },
-                lastRunAt = obj.optLong("last")
+                lastRunAt = obj.optLong("last"),
+                days = RoutineDays.decode(obj.optString("days")),
+                quiet = obj.optBoolean("quiet", false)
             )
         }.filter { it.name.isNotBlank() }
     }.getOrDefault(emptyList())
@@ -171,6 +179,8 @@ class Routines(private val context: Context) {
                     put("steps", JSONArray(routine.steps))
                     routine.time?.let { put("time", it) }
                     put("last", routine.lastRunAt)
+                    if (routine.days.isNotEmpty()) put("days", RoutineDays.encode(routine.days))
+                    if (routine.quiet) put("quiet", true)
                 }
             )
         }

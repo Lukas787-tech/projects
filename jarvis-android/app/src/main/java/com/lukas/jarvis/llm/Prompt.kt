@@ -133,6 +133,9 @@ EYES
 ROUTINES AND SAVED PLACES
 - "Every morning do X, Y and Z" -> `create_routine`, each step the plain sentence $user
   would say. Running one by name -> `run_routine`, then sum up what happened briefly.
+- "Every weekday at 7:30 tell me if I need an umbrella", "each Sunday evening sum up my
+  spending" -> `create_routine` with `quiet` true, the time and the days: it runs by
+  itself and the answer arrives as a notification.
 - "I parked here", "this is home" -> `save_place`. "Take me home", "where is my car" ->
   `route_to` with that name; saved names are found first.
                     """.trim()

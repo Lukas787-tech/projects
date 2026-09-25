@@ -1025,14 +1025,18 @@ class Tools(
     private fun routineTools(): List<JSONObject> = listOf(
         tool(
             "create_routine",
-            "Save a routine: several things done together under one name, optionally nudged " +
-                "every day at a time. Each step is one plain sentence exactly as the user would " +
-                "say it to you, e.g. 'How does my day look?', 'Play the radio'. Saving under an " +
-                "existing name replaces it.",
+            "Save a routine: several things done together under one name, optionally at a " +
+                "time. Each step is one plain sentence exactly as the user would say it to you, " +
+                "e.g. 'How does my day look?', 'Play the radio'. Saving under an existing name " +
+                "replaces it. With quiet true it runs by itself at its time and the answer " +
+                "arrives as a notification — right for questions and checks ('every weekday at " +
+                "7:30 tell me if I need an umbrella'), wrong for steps that play or open things.",
             props(
-                "name" to str("Short name, e.g. 'morning', 'leaving home', 'bedtime'."),
+                "name" to str("Short name, e.g. 'morning', 'leaving home', 'umbrella check'."),
                 "steps" to arr("The sentences to carry out, in order."),
-                "time" to str("Daily time as 'HH:MM' for a reminder to run it, or omit.")
+                "time" to str("Time as 'HH:MM', or omit to run only when asked."),
+                "days" to str("Which days: 'weekdays', 'weekends', or names like 'mon, wed, fri'. Omit for every day."),
+                "quiet" to bool("True to run by itself at the time and send the answer as a notification.")
             ),
             listOf("name", "steps")
         ),
@@ -2196,8 +2200,20 @@ class Tools(
         if (steps.isEmpty()) return "A routine needs at least one step."
         val rawTime = args.optString("time").trim()
         val time = Routines.normalizeTime(rawTime)
-        val saved = routines.save(Routine(name = name, steps = steps, time = time))
-        val whenLine = saved.time?.let { " I will offer it every day at $it." }.orEmpty()
+        val saved = routines.save(
+            Routine(
+                name = name,
+                steps = steps,
+                time = time,
+                days = com.lukas.jarvis.auto.RoutineDays.parse(args.optString("days")),
+                quiet = args.optBoolean("quiet", false)
+            )
+        )
+        val whenLine = when {
+            saved.time == null -> ""
+            saved.quiet -> " It runs by itself ${saved.schedule} and sends the answer as a notification."
+            else -> " I will offer it ${saved.schedule}."
+        }
         return "Saved the '${saved.name}' routine with ${saved.steps.size} step(s): " +
             saved.steps.joinToString("; ") + "." + whenLine
     }
@@ -2219,8 +2235,9 @@ class Tools(
         val all = routines.all.value
         if (all.isEmpty()) return "No routines saved yet."
         return all.joinToString("\n") { routine ->
-            "- ${routine.name}" + (routine.time?.let { " (daily at $it)" } ?: "") + ": " +
-                routine.steps.joinToString("; ")
+            "- ${routine.name}" +
+                (routine.time?.let { " (${routine.schedule}" + (if (routine.quiet) ", runs quietly)" else ")") } ?: "") +
+                ": " + routine.steps.joinToString("; ")
         }
     }
 

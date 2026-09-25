@@ -10,12 +10,22 @@ import com.lukas.jarvis.JarvisApp
 import com.lukas.jarvis.MainActivity
 import com.lukas.jarvis.R
 
-/** A routine's time: offer it with one tap, then set tomorrow's alarm. */
+/**
+ * A routine's time: a quiet one is started in the background and sends its
+ * answer; any other is offered with one tap. Then the next alarm is set.
+ */
 class RoutineReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Routines.ACTION_DUE) return
         val name = intent.getStringExtra(Routines.EXTRA_NAME) ?: return
+        val routines = (context.applicationContext as? JarvisApp)?.container?.routines
+        val routine = routines?.find(name)
+        if (routine?.quiet == true) {
+            RoutineWorker.enqueue(context, routine.name)
+            routines?.schedule(routine)
+            return
+        }
 
         val open = PendingIntent.getActivity(
             context,
@@ -35,8 +45,7 @@ class RoutineReceiver : BroadcastReceiver() {
         context.getSystemService(NotificationManager::class.java)
             ?.notify(("routine-$name").hashCode(), notification)
 
-        // Daily: the alarm is one-shot, so set the next one now.
-        val routines = (context.applicationContext as? JarvisApp)?.container?.routines ?: return
-        routines.find(name)?.let { routines.schedule(it) }
+        // The alarm is one-shot, so set the next one now.
+        if (routines != null && routine != null) routines.schedule(routine)
     }
 }

@@ -493,9 +493,11 @@ object Abilities {
         Ability(
             ToolGroup.Automation,
             "Routines",
-            "Several things under one name, run when you say it or nudged at a set time.",
+            "Several things under one name, run when you say it, nudged at a set time, or " +
+                "run quietly by themselves with the answer sent as a notification.",
             listOf(
                 "Make a morning routine: my day, the weather, then play music at 7",
+                "Every weekday at 7:30, tell me if I need an umbrella",
                 "Run my morning routine",
                 "What routines do I have?"
             )

@@ -61,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.auto.Routine
+import com.lukas.jarvis.auto.RoutineDays
 import com.lukas.jarvis.auto.Routines
 import com.lukas.jarvis.brief.DayBrief
 import com.lukas.jarvis.maps.SavedPlace
@@ -78,6 +79,7 @@ import com.lukas.jarvis.ui.components.ListRow
 import com.lukas.jarvis.ui.components.MeterBar
 import com.lukas.jarvis.ui.components.QuickAction
 import com.lukas.jarvis.ui.components.StatTile
+import com.lukas.jarvis.ui.components.ToggleRow
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.Caution
 import com.lukas.jarvis.ui.theme.Corner
@@ -654,7 +656,11 @@ private fun RoutineLine(routine: Routine, onRun: () -> Unit, onEdit: () -> Unit)
             )
             Text(
                 buildString {
-                    routine.time?.let { append("Daily $it · ") }
+                    if (routine.time != null) {
+                        append(routine.schedule.replaceFirstChar { it.uppercase() })
+                        if (routine.quiet) append(", quietly")
+                        append(" · ")
+                    }
                     append("${routine.steps.size} step")
                     if (routine.steps.size != 1) append("s")
                     routine.steps.firstOrNull()?.let { append(" · ").append(it) }
@@ -682,14 +688,27 @@ private fun RoutineDialog(
     var name by remember { mutableStateOf(initial.name) }
     var steps by remember { mutableStateOf(initial.steps.joinToString("\n")) }
     var time by remember { mutableStateOf(initial.time.orEmpty()) }
+    var days by remember {
+        mutableStateOf(if (initial.days.isEmpty()) "" else RoutineDays.describe(initial.days).removePrefix("on ").removePrefix("at "))
+    }
+    var quiet by remember { mutableStateOf(initial.quiet) }
     val stepList = steps.lines().map { it.trim() }.filter { it.isNotBlank() }
+    val parsedDays = RoutineDays.parse(days)
     GlassDialog(
         title = if (initial.name.isBlank()) "New routine" else "Edit routine",
         onDismiss = onDismiss,
         confirmLabel = "Save",
         confirmEnabled = name.isNotBlank() && stepList.isNotEmpty(),
         onConfirm = {
-            onSave(Routine(name = name.trim(), steps = stepList, time = Routines.normalizeTime(time)))
+            onSave(
+                Routine(
+                    name = name.trim(),
+                    steps = stepList,
+                    time = Routines.normalizeTime(time),
+                    days = parsedDays,
+                    quiet = quiet
+                )
+            )
         }
     ) {
         GlassField(value = name, onValueChange = { name = it }, label = "Name", placeholder = "Morning")
@@ -703,10 +722,29 @@ private fun RoutineDialog(
         GlassField(
             value = time,
             onValueChange = { time = it },
-            label = "Daily at (optional)",
+            label = "At (optional)",
             placeholder = "07:00",
-            supportingText = "A notification at this time runs it with one tap."
+            supportingText = if (quiet) {
+                "Runs by itself at this time and sends the answer."
+            } else {
+                "A notification at this time runs it with one tap."
+            }
         )
+        if (time.isNotBlank()) {
+            GlassField(
+                value = days,
+                onValueChange = { days = it },
+                label = "Days",
+                placeholder = "every day, weekdays, mon wed fri",
+                supportingText = RoutineDays.describe(parsedDays).replaceFirstChar { it.uppercase() }
+            )
+            ToggleRow(
+                title = "Run quietly",
+                subtitle = "For questions and checks: the answer arrives as a notification, no tap needed",
+                checked = quiet,
+                onChange = { quiet = it }
+            )
+        }
         if (onDelete != null) {
             ChipButton(label = "Delete routine", icon = Icons.Default.Delete, onClick = onDelete)
         }

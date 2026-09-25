@@ -38,6 +38,10 @@ model was asked to add eggs to the shopping list and read it back, and did.
 - **The phone's own buttons by voice** — "lock the phone", "take a
   screenshot", "go back", "open notifications", "quick settings", through the
   screen access you already switched on for reading.
+- **Routines that run themselves** — "every weekday at 7:30, tell me if I
+  need an umbrella": a quiet routine runs at its time with the app closed and
+  sends the answer as a notification. Routines can keep to weekdays,
+  weekends or any days you name.
 - **Remembers with no connection** — "remember that my locker code is 3917"
   is kept even when no model can be reached, and "what's my locker code?" is
   answered from memory the same way.
@@ -309,7 +313,11 @@ voice, including from the floating dot while another app is open.
 **Runs routines.** Several things under one name — "every morning at seven,
 tell me my day, the weather, and play the radio". Say its name, tap it on
 Today, or tap the notification that arrives at its time; each step runs as its
-own turn and one summary is spoken at the end.
+own turn and one summary is spoken at the end. A routine can keep to some
+days ("weekdays", "Mo–Fr", "mon, wed, fri"), and one made of questions can
+run *quietly*: "every weekday at 7:30, tell me if I need an umbrella" runs by
+itself with the app closed and the answer arrives as a notification (and in
+the conversation). With no network at that moment it waits and tries again.
 
 **Looks things up on Wikipedia** in the phone's language, for "tell me about…".
 
