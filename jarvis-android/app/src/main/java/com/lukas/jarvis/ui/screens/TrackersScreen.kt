@@ -176,10 +176,13 @@ private fun TrackerCard(
             Spacer(Modifier.height(10.dp))
 
             val headline = status.balance ?: status.budgetLeft ?: status.periodSpent
+            // Money is spent; sessions, glasses and kilometres are done.
+            val verb = if (tracker.kind == Tracker.KIND_MONEY) "spent" else "done"
+            val period = if (tracker.period == Tracker.PERIOD_NONE) "in all" else "this ${Tracker.periodWord(tracker.period)}"
             val headlineLabel = when {
                 status.balance != null -> "left"
                 status.budgetLeft != null -> "budget left"
-                else -> "used this ${Tracker.periodWord(tracker.period)}"
+                else -> "$verb $period"
             }
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
@@ -222,8 +225,8 @@ private fun TrackerCard(
 
             Spacer(Modifier.height(8.dp))
             Text(
-                "${format(status.periodSpent, tracker)} used this " +
-                    "${Tracker.periodWord(tracker.period)} · ${status.entryCount} entries",
+                "${format(status.periodSpent, tracker)} $verb $period · " +
+                    "${status.entryCount} ${if (status.entryCount == 1) "entry" else "entries"}",
                 style = MaterialTheme.typography.labelSmall,
                 color = TextFaint
             )
