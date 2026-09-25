@@ -76,6 +76,8 @@ data class AssistantUiState(
     val level: Float = 0f,
     val messages: List<ChatMessage> = emptyList(),
     val error: String? = null,
+    /** Something to know that is not a failure: "next up: …". */
+    val notice: String? = null,
     val micAvailable: Boolean = true,
     /**
      * The tools the turn in progress has reached for so far, in order. Drawn as
@@ -478,7 +480,7 @@ class AssistantViewModel(
             if (waiting.size < MAX_WAITING) {
                 waiting.addLast { turn(display, createdAt, rewriteDisplay, work) }
                 _ui.value = _ui.value.copy(
-                    error = "Next up: \u201C${display.take(60)}\u201D — right after this one."
+                    notice = "Next up: \u201C${display.take(60)}\u201D — right after this one."
                 )
             } else {
                 _ui.value = _ui.value.copy(error = "Still on the last one — tap the core to stop it.")
@@ -504,6 +506,7 @@ class AssistantViewModel(
             stageLabel = "thinking",
             partial = "",
             error = null,
+            notice = null,
             activity = emptyList(),
             draft = "",
             messages = _ui.value.messages + userMessage
@@ -695,7 +698,7 @@ class AssistantViewModel(
     }
 
     fun dismissError() {
-        _ui.value = _ui.value.copy(error = null)
+        _ui.value = _ui.value.copy(error = null, notice = null)
     }
 
     /**

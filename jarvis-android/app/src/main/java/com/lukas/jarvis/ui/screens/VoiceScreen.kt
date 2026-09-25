@@ -229,7 +229,7 @@ fun VoiceScreen(
                 onEnd = onEndInterpreter,
                 modifier = Modifier.weight(1f)
             )
-            ErrorStrip(error = state.error, onDismiss = onDismissError)
+            ErrorStrip(error = state.error, notice = state.notice, onDismiss = onDismissError)
         } else {
             ConversationBody(
                 state = state,
@@ -319,7 +319,7 @@ private fun ColumnScope.ConversationBody(
         )
     }
 
-    ErrorStrip(error = state.error, onDismiss = onDismissError)
+    ErrorStrip(error = state.error, notice = state.notice, onDismiss = onDismissError)
 
     if (!voiceMode) {
         Composer(
@@ -1180,10 +1180,14 @@ private fun Starters(
 
 /** The failure line, as glass with the faintest wash of red. */
 @Composable
-private fun ErrorStrip(error: String?, onDismiss: () -> Unit) {
+private fun ErrorStrip(error: String?, onDismiss: () -> Unit, notice: String? = null) {
     val shape = RoundedCornerShape(Corner.medium)
+    // A failure in red; a notice ("next up: …") in the accent, since nothing went wrong.
+    val calm = error == null
+    val shown = error ?: notice
+    val tone = if (calm) Accent else Negative
     AnimatedVisibility(
-        visible = error != null,
+        visible = shown != null,
         enter = fadeIn() + slideInVertically { it / 2 },
         exit = fadeOut()
     ) {
@@ -1192,19 +1196,19 @@ private fun ErrorStrip(error: String?, onDismiss: () -> Unit) {
                 .fillMaxWidth()
                 .padding(bottom = Space.snug)
                 .glass(shape)
-                .background(Negative.copy(alpha = 0.10f), shape)
+                .background(tone.copy(alpha = 0.10f), shape)
                 .padding(start = 14.dp, end = Space.hair, top = Space.hair, bottom = Space.hair),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Default.Warning,
+                if (calm) Icons.Default.History else Icons.Default.Warning,
                 contentDescription = null,
-                tint = Negative,
+                tint = tone,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(Modifier.width(Space.tight + 2.dp))
             Text(
-                text = error.orEmpty(),
+                text = shown.orEmpty(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextPrimary,
                 maxLines = 6,

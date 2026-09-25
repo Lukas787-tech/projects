@@ -60,13 +60,18 @@ shot 05-shared-timer
 
 # The stopwatch, through the model when it answers: its notification is the proof.
 start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "'start the stopwatch'"
-sleep 25
+# It waits behind the timer turn and the free models can be slow: up to a minute.
+SW=""
+for i in $(seq 1 12); do
+  sleep 5
+  # The channel is called "Stopwatch" too, so look for the posted notification itself.
+  if adb shell dumpsys notification --noredact 2>/dev/null | grep -q "android.title=String (Stopwatch)"; then SW=yes; break; fi
+done
 shot 05b-stopwatch
-# The channel is called "Stopwatch" too, so look for the posted notification itself.
-if adb shell dumpsys notification --noredact 2>/dev/null | grep -q "android.title=String (Stopwatch)"; then
+if [ -n "$SW" ]; then
   echo "STOPWATCH: running in the notification shade" >> "$REPORT"
 else
-  echo "STOPWATCH: no notification" >> "$REPORT"
+  echo "STOPWATCH: no notification within 60 s" >> "$REPORT"
 fi
 
 # A turn through the free models, when they answer.
