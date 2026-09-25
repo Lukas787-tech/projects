@@ -586,7 +586,7 @@ private fun MapButton(
 
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-private fun FloatingChip(icon: ImageVector, label: String, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
+private fun FloatingChip(icon: ImageVector, label: String, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(Corner.small))
