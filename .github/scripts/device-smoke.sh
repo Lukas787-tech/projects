@@ -84,7 +84,7 @@ start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT
 RED=""
 for i in $(seq 1 12); do
   sleep 5
-  if adb shell run-as "$PKG" cat shared_prefs/jarvis_settings.xml 2>/dev/null | grep -q '"crimson"'; then RED=yes; break; fi
+  if adb shell run-as "$PKG" cat shared_prefs/jarvis_settings.xml 2>/dev/null | grep -q '>crimson<'; then RED=yes; break; fi
 done
 shot 06b-setting-red
 if [ -n "$RED" ]; then echo "SETTING: colour changed to red by asking" >> "$REPORT"; else echo "SETTING: colour not changed within 60 s" >> "$REPORT"; fi
