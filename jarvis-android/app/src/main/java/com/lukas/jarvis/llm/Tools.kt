@@ -2125,7 +2125,7 @@ class Tools(
     }
 
     private fun profile(args: JSONObject, settings: Settings): String {
-        val name = args.optString("name").trim()
+        val name = com.lukas.jarvis.core.Profile.cleanName(args.optString("name"))
         val all = profiles.current
         return when (args.optString("action").trim().lowercase(Locale.ROOT)) {
             "save" -> {

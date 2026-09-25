@@ -45,4 +45,11 @@ class ProfileTest {
         assertEquals("Night", Profile.match(all, "Night-Modus")?.name)
         assertNull(Profile.match(all, "party"))
     }
+
+    @Test fun savedUnderItsPlainName() {
+        assertEquals("night", Profile.of("the night mode", night).name)
+        assertEquals("Arbeit", Profile.of("den Arbeit-Modus", night).name)
+        assertEquals("Mode", Profile.cleanName("Mode"))
+        assertEquals("Work", Profile.cleanName("\"Work profile\""))
+    }
 }

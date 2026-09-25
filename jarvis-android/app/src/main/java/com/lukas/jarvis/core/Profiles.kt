@@ -68,7 +68,7 @@ data class Profile(
 
         /** The current setup, to be kept under [name]. */
         fun of(name: String, settings: Settings) = Profile(
-            name = name.trim(),
+            name = cleanName(name),
             accent = settings.accent,
             backdrop = settings.backdrop,
             coreStyle = settings.coreStyle,
@@ -108,12 +108,21 @@ data class Profile(
             )
         }
 
+        /** "the night mode" -> "night"; "Work profile" -> "Work". A bare "Mode" stays. */
+        fun cleanName(raw: String): String {
+            var name = raw.trim().trim('"', '\'', '.')
+            for (prefix in listOf("the ", "my ", "den ", "das ", "die ", "mein ", "meinen ")) {
+                if (name.length > prefix.length && name.startsWith(prefix, ignoreCase = true)) name = name.substring(prefix.length)
+            }
+            for (suffix in listOf(" profile", " profil", " mode", " modus", "-modus", "-mode")) {
+                if (name.length > suffix.length && name.endsWith(suffix, ignoreCase = true)) name = name.dropLast(suffix.length)
+            }
+            return name.trim()
+        }
+
         /** "night mode", "the Night profile", "Nacht" -> the saved one it means. */
         fun match(all: List<Profile>, wanted: String): Profile? {
-            val key = wanted.trim().lowercase(Locale.ROOT)
-                .removePrefix("the ").removePrefix("my ")
-                .removeSuffix(" profile").removeSuffix(" mode").removeSuffix(" modus").removeSuffix("-modus")
-                .trim()
+            val key = cleanName(wanted).lowercase(Locale.ROOT)
             if (key.isBlank()) return null
             return all.firstOrNull { it.name.lowercase(Locale.ROOT) == key }
                 ?: all.filter { key.contains(it.name.lowercase(Locale.ROOT)) || it.name.lowercase(Locale.ROOT).contains(key) }
