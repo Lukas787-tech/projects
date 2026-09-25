@@ -264,8 +264,7 @@ class Agent(
         onTool: (String) -> Unit = {},
         onStepFailed: () -> Unit = {}
     ): String {
-        val runner = tools.routineRunner
-        tools.routineRunner = null
+        tools.routinesRunning.incrementAndGet()
         try {
             val replies = routine.steps.mapIndexed { index, step ->
                 onStage("${routine.name}: step ${index + 1} of ${routine.steps.size}")
@@ -279,7 +278,7 @@ class Agent(
             }
             return replies.joinToString(" ")
         } finally {
-            tools.routineRunner = runner
+            tools.routinesRunning.decrementAndGet()
         }
     }
 

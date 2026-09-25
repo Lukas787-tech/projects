@@ -138,11 +138,33 @@ object TimeUtil {
 
     fun nextOccurrence(from: Long, repeatRule: String): Long? {
         val base = Instant.ofEpochMilli(from).atZone(zone)
-        return when (repeatRule) {
+        val anchor = repeatRule.substringAfter('@', "").toIntOrNull()
+        return when (repeatLabel(repeatRule)) {
             "daily" -> base.plusDays(1)
             "weekly" -> base.plusWeeks(1)
-            "monthly" -> base.plusMonths(1)
+            "monthly" -> base.plusMonths(1).let { next ->
+                // The 31st through February and back: the day it was set for,
+                // as far as each month allows, not the 28th forever after.
+                if (anchor == null) next else next.withDayOfMonth(minOf(anchor, next.toLocalDate().lengthOfMonth()))
+            }
             else -> null
         }?.toInstant()?.toEpochMilli()
+    }
+
+    /** "monthly" for "monthly@31": the rule as it is shown and compared. */
+    fun repeatLabel(repeatRule: String): String = repeatRule.substringBefore('@')
+
+    /**
+     * The rule to store with a task due at [dueAt]. A monthly one on the
+     * 29th, 30th or 31st keeps its day ("monthly@31"), since a shorter month
+     * clamps it and the day would otherwise be lost. A rule whose kept day
+     * no longer fits the due date (the task was moved) is anchored afresh.
+     */
+    fun anchoredRule(repeatRule: String, dueAt: Long?): String {
+        if (repeatLabel(repeatRule) != "monthly" || dueAt == null) return repeatRule
+        val date = Instant.ofEpochMilli(dueAt).atZone(zone).toLocalDate()
+        val kept = repeatRule.substringAfter('@', "").toIntOrNull()
+        if (kept != null && date.dayOfMonth == minOf(kept, date.lengthOfMonth())) return repeatRule
+        return if (date.dayOfMonth >= 29) "monthly@${date.dayOfMonth}" else "monthly"
     }
 }

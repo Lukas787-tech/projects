@@ -150,6 +150,7 @@ class ModelPool(context: Context) {
     }
 
     /** Adds whichever built-in keyless endpoints are missing. Returns how many. */
+    @Synchronized
     fun restoreBuiltIns(): Int = add(
         Providers.BUILT_IN.map { (providerId, model) ->
             Endpoint(
@@ -172,6 +173,7 @@ class ModelPool(context: Context) {
         get() = _entries.value.any { it.endpoint.preset.tier != Tier.Keyless }
 
     /** Re-reads everything from storage, for when a restored backup replaced it. */
+    @Synchronized
     fun reload() {
         _entries.value = load()
         accountRests.clear()
@@ -181,6 +183,7 @@ class ModelPool(context: Context) {
 
     // ------------------------------------------------------------------ edits
 
+    @Synchronized
     fun add(endpoints: List<Endpoint>): Int {
         val existing = _entries.value
         // The same model on the same key twice would just split one quota in two.
@@ -194,11 +197,13 @@ class ModelPool(context: Context) {
         return fresh.size
     }
 
+    @Synchronized
     fun remove(id: String) {
         _entries.value = _entries.value.filterNot { it.endpoint.id == id }
         persist()
     }
 
+    @Synchronized
     fun setEnabled(id: String, enabled: Boolean) {
         _entries.value = _entries.value.map {
             if (it.endpoint.id == id) it.copy(endpoint = it.endpoint.copy(enabled = enabled)) else it
@@ -206,6 +211,7 @@ class ModelPool(context: Context) {
         persist()
     }
 
+    @Synchronized
     fun clear() {
         _entries.value = emptyList()
         accountRests.clear()
@@ -213,6 +219,7 @@ class ModelPool(context: Context) {
     }
 
     /** Clears cooldowns so a pool can be retried immediately after fixing keys. */
+    @Synchronized
     fun wakeAll() {
         accountRests.clear()
         _entries.value = _entries.value.map {
@@ -248,6 +255,7 @@ class ModelPool(context: Context) {
         val isEmpty: Boolean get() = endpoints.isEmpty()
     }
 
+    @Synchronized
     fun plan(
         settings: Settings,
         limit: Int = DEFAULT_FAILOVER_LIMIT,
@@ -341,11 +349,13 @@ class ModelPool(context: Context) {
      * quick succession would otherwise both see an empty window and both pick
      * the same endpoint.
      */
+    @Synchronized
     fun recordAttempt(endpoint: Endpoint) {
         val now = System.currentTimeMillis()
         update(endpoint.id) { it.copy(usage = it.usage.stamped(now), lastUsedAt = now) }
     }
 
+    @Synchronized
     fun recordSuccess(endpoint: Endpoint, reply: LlmReply) {
         _lastUsed.value = endpoint.label
         val now = System.currentTimeMillis()
@@ -375,6 +385,7 @@ class ModelPool(context: Context) {
         }
     }
 
+    @Synchronized
     fun recordFailure(endpoint: Endpoint, rawError: LlmException) {
         val now = System.currentTimeMillis()
         // There is no key to fix on a keyless endpoint, so a refusal there is
@@ -455,15 +466,18 @@ class ModelPool(context: Context) {
         else -> (previous * 3 + sample) / 4
     }
 
+    @Synchronized
     private fun rest(endpoint: Endpoint, until: Long) {
         update(endpoint.id) { it.copy(cooldownUntil = maxOf(it.cooldownUntil, until)) }
     }
 
+    @Synchronized
     private fun restAccount(account: String, until: Long) {
         accountRests[account] = maxOf(accountRests[account] ?: 0L, until)
         persistAccountRests()
     }
 
+    @Synchronized
     private fun markAccountBroken(account: String) {
         // One rejected key rejects every model behind it, so do not spend a
         // request per model discovering that.
@@ -479,6 +493,7 @@ class ModelPool(context: Context) {
 
     private fun entryFor(id: String) = _entries.value.firstOrNull { it.endpoint.id == id }
 
+    @Synchronized
     private fun update(id: String, transform: (Health) -> Health) {
         if (id == SETTINGS_ID) return
         var changed = false
@@ -498,6 +513,7 @@ class ModelPool(context: Context) {
     // --------------------------------------------------------------- summary
 
     /** One line for the settings screen: how much of the pool is actually usable. */
+    @Synchronized
     fun summary(now: Long = System.currentTimeMillis()): String {
         val all = _entries.value
         if (all.isEmpty()) return "Pool is empty."
@@ -516,6 +532,7 @@ class ModelPool(context: Context) {
 
     // ------------------------------------------------------------ persistence
 
+    @Synchronized
     private fun persist() {
         val array = JSONArray()
         _entries.value.forEach { entry ->
@@ -599,6 +616,7 @@ class ModelPool(context: Context) {
         }
     }
 
+    @Synchronized
     private fun persistAccountRests() {
         val obj = JSONObject()
         val now = System.currentTimeMillis()

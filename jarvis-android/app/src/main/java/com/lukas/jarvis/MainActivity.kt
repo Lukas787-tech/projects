@@ -127,10 +127,13 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         )
-        startListeningOnOpen = intent?.getBooleanExtra(EXTRA_START_LISTENING, false) == true
-        routineOnOpen = intent?.getStringExtra(EXTRA_RUN_ROUTINE)
-        // A recreation after rotation carries the same intent; it was handled.
-        if (savedInstanceState == null) launchOnOpen = Launch.from(intent)
+        // A recreation after rotation carries the same intent, already handled:
+        // reading it again ran a notification's routine a second time.
+        if (savedInstanceState == null) {
+            startListeningOnOpen = intent?.getBooleanExtra(EXTRA_START_LISTENING, false) == true
+            routineOnOpen = intent?.getStringExtra(EXTRA_RUN_ROUTINE)
+            launchOnOpen = Launch.from(intent)
+        }
         askForPermissions()
 
         // The saved look, before the first frame, so the app does not flash

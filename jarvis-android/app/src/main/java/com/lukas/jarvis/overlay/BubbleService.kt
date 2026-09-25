@@ -254,13 +254,21 @@ class BubbleService : Service() {
 
         fun start(context: Context) {
             if (!canDraw(context)) return
+            // A microphone service without the microphone permission is
+            // refused outright on Android 14; the dot cannot listen anyway.
+            if (androidx.core.content.ContextCompat.checkSelfPermission(
+                    context, android.Manifest.permission.RECORD_AUDIO
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) return
             val intent = Intent(context, BubbleService::class.java)
             runCatching { context.startForegroundService(intent) }
         }
 
         fun stop(context: Context) {
-            val intent = Intent(context, BubbleService::class.java).setAction(ACTION_STOP)
-            runCatching { context.startService(intent) }
+            // stopService, which does nothing when the dot is not running;
+            // starting the service only to stop it ran its teardown, which
+            // silenced a reply being spoken in the app.
+            runCatching { context.stopService(Intent(context, BubbleService::class.java)) }
         }
     }
 }

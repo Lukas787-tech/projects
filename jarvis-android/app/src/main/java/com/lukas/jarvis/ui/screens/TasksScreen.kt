@@ -149,7 +149,7 @@ private fun TaskRow(task: Task, onToggle: () -> Unit, onDelete: () -> Unit) {
                 task.dueAt?.let { due ->
                     Text(
                         TimeUtil.format(due) + " · " + TimeUtil.relative(due) +
-                            if (task.repeatRule != Task.REPEAT_NONE) " · ${task.repeatRule}" else "",
+                            if (task.repeatRule != Task.REPEAT_NONE) " · ${TimeUtil.repeatLabel(task.repeatRule)}" else "",
                         style = MaterialTheme.typography.labelSmall,
                         color = if (overdue) Negative else TextSecondary
                     )

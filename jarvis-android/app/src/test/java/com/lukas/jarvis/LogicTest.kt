@@ -28,6 +28,29 @@ class LogicTest {
     private fun groups(text: String, history: List<ChatMessage> = emptyList()) =
         ToolRouter.groupsFor(text, history)
 
+    @Test fun monthlyOnTheThirtyFirstComesBack() {
+        val zone = java.time.ZoneId.systemDefault()
+        fun at(y: Int, m: Int, d: Int) = java.time.LocalDate.of(y, m, d).atTime(9, 0).atZone(zone).toInstant().toEpochMilli()
+        fun day(ms: Long) = java.time.Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
+        val rule = TimeUtil.anchoredRule("monthly", at(2027, 1, 31))
+        assertEquals("monthly@31", rule)
+        assertEquals("monthly", TimeUtil.repeatLabel(rule))
+        val feb = TimeUtil.nextOccurrence(at(2027, 1, 31), rule)!!
+        assertEquals(java.time.LocalDate.of(2027, 2, 28), day(feb))
+        val mar = TimeUtil.nextOccurrence(feb, TimeUtil.anchoredRule(rule, feb))!!
+        assertEquals(java.time.LocalDate.of(2027, 3, 31), day(mar))
+        // An ordinary day needs no anchor, and a moved task is anchored afresh.
+        assertEquals("monthly", TimeUtil.anchoredRule("monthly", at(2027, 1, 15)))
+        assertEquals("monthly", TimeUtil.anchoredRule("monthly@31", at(2027, 3, 15)))
+    }
+
+    @Test fun bigResultsAreWritten() {
+        assertEquals("10000000000", com.lukas.jarvis.core.Calculator.format(100000.0 * 100000.0))
+        assertEquals("1234.5", com.lukas.jarvis.core.Calculator.format(1234.5))
+        assertEquals("0.333333", com.lukas.jarvis.core.Calculator.format(1.0 / 3))
+        assertEquals("-7", com.lukas.jarvis.core.Calculator.format(-7.0))
+    }
+
     @Test fun coreAlwaysPresent() {
         val g = groups("hello there")
         assertTrue(ToolGroup.Memory in g && ToolGroup.Thinking in g && ToolGroup.Screen in g)

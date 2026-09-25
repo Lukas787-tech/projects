@@ -246,7 +246,12 @@ class LlmClient {
                 // A server that does not stream says so with a rejected payload;
                 // anything else is a real failure and is passed on as one.
                 if (e.kind != FailureKind.PayloadRejected) throw e
-                noStream += streamKey
+                // This request is retried plainly either way, since some servers
+                // refuse a stream without saying so; but only a refusal that
+                // names streaming turns it off for good. Anything else would
+                // have ended streaming for the whole session over a payload
+                // problem that had nothing to do with it.
+                if (e.message.orEmpty().contains("stream", ignoreCase = true)) noStream += streamKey
                 stream.restart()
             }
         }
@@ -483,7 +488,12 @@ class LlmClient {
         val looksLikeKey = lower.contains("api key") || lower.contains("api_key") ||
             lower.contains("unauthorized") || lower.contains("invalid authentication") ||
             lower.contains("incorrect api key") || lower.contains("permission denied")
-        val looksLikeModel = lower.contains("model") &&
+        // "'max_tokens' is not supported with this model" names the model but
+        // is about a parameter: a payload to reshape, not a dead model to rest
+        // for hours.
+        val aboutParameter = lower.contains("max_tokens") || lower.contains("parameter") ||
+            lower.contains("temperature") || lower.contains("top_p") || lower.contains("tool_choice")
+        val looksLikeModel = !aboutParameter && lower.contains("model") &&
             (lower.contains("not found") || lower.contains("does not exist") ||
                 lower.contains("decommissioned") || lower.contains("deprecated") ||
                 lower.contains("unknown") || lower.contains("not supported"))

@@ -50,11 +50,14 @@ object Calculator {
 
     /** "1234.5" rather than "1234.50000000001", and no trailing ".0" on whole numbers. */
     fun format(value: Double): String {
-        val rounded = (value * 1e9).roundToLong() / 1e9
-        if (abs(rounded) < 1e15 && rounded == rounded.toLong().toDouble()) {
-            return rounded.toLong().toString()
-        }
-        return String.format(Locale.US, "%.6f", rounded).trimEnd('0').trimEnd('.')
+        if (value.isNaN() || value.isInfinite()) return value.toString()
+        // Decimal arithmetic rather than scaling by 1e9 into a Long, which
+        // overflowed for anything past nine billion: 100000 × 100000 came
+        // out as 9223372036.854776.
+        val exact = java.math.BigDecimal.valueOf(value)
+        val whole = exact.setScale(9, java.math.RoundingMode.HALF_UP).stripTrailingZeros()
+        if (whole.scale() <= 0) return whole.toBigInteger().toString()
+        return exact.setScale(6, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
     }
 
     /**

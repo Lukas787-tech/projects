@@ -47,7 +47,9 @@ class Conversation(private val container: AppContainer) {
     fun toggle(onProblem: (String) -> Unit) {
         when (_stage.value) {
             Stage.Listening -> {
-                container.speech.stop()
+                // Cancel, not stop: a stop still hands over what was heard,
+                // and a tap to abandon must not send half a sentence.
+                container.speech.cancel()
                 _stage.value = Stage.Idle
             }
             Stage.Speaking -> {

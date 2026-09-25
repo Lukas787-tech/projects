@@ -106,6 +106,14 @@ class Tools(
     @Volatile
     var routineRunner: (suspend (Routine, Settings) -> String)? = null
 
+    /**
+     * How many routines are running now. A routine may not start another
+     * from inside itself; counting, rather than clearing [routineRunner]
+     * while one runs, keeps two routines at once (the app and a quiet one in
+     * the background) from leaving the runner switched off for good.
+     */
+    val routinesRunning = java.util.concurrent.atomic.AtomicInteger(0)
+
     fun schemas(settings: Settings): List<JSONObject> = buildList {
         addAll(memoryTools())
         addAll(trackerTools(settings))
@@ -1701,7 +1709,7 @@ class Tools(
         effects.tasksChanged = true
         if (!done.done && done.dueAt != null) {
             reminders.schedule(done)
-            return "Done for this time: ${done.title}. It repeats ${done.repeatRule}; next " +
+            return "Done for this time: ${done.title}. It repeats ${TimeUtil.repeatLabel(done.repeatRule)}; next " +
                 "${TimeUtil.format(done.dueAt)}."
         }
         reminders.cancel(id)
@@ -2296,8 +2304,10 @@ class Tools(
                 "No routine by that name. There is: " +
                     routines.all.value.joinToString(", ") { it.name } + "."
             }
-        val runner = routineRunner
-            ?: return "A routine is already running, so this one was not started inside it."
+        if (routinesRunning.get() > 0) {
+            return "A routine is already running, so this one was not started inside it."
+        }
+        val runner = routineRunner ?: return "Routines are not ready yet."
         return runner(routine, settings)
     }
 

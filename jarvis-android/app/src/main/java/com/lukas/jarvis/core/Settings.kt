@@ -292,10 +292,20 @@ class SettingsStore(context: Context) {
             if (preset.needsKey) {
                 !prefs.getString(scoped(KEY_API_KEY, preset.id), null).isNullOrBlank()
             } else {
-                prefs.contains(scoped(KEY_BASE_URL, preset.id))
+                // Choosing a preset saves its default URL, so "saved" alone
+                // means nothing: a guessed LAN address counts only once edited.
+                val url = prefs.getString(scoped(KEY_BASE_URL, preset.id), null)
+                url != null && (url.trim() != preset.baseUrl.trim() || !isLocal(preset.baseUrl))
             }
         }
         .map { saved(it.id) }
+
+    private fun isLocal(url: String): Boolean {
+        val host = url.substringAfter("://").substringBefore('/').substringBefore(':').lowercase()
+        return host == "localhost" || host.startsWith("127.") || host.startsWith("10.") ||
+            host.startsWith("192.168.") || host.endsWith(".local") ||
+            Regex("^172\\.(1[6-9]|2\\d|3[01])\\.").containsMatchIn(host)
+    }
 
     /** Switching provider pulls that provider's own saved URL/key/model back in. */
     fun switchProvider(providerId: String) {
