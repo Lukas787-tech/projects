@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -473,7 +474,11 @@ private fun HeroCard(brief: DayBrief?, loading: Boolean, address: String) {
 /** Battery, network and what is next, in three tiles. */
 @Composable
 private fun Vitals(brief: DayBrief) {
-    Row(horizontalArrangement = Arrangement.spacedBy(Space.snug)) {
+    // One height for all three, whichever caption runs to two lines.
+    Row(
+        modifier = Modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(Space.snug)
+    ) {
         // Read defensively: a phone that cannot report its level must show a
         // dash, not take the whole screen down with a number that overflows.
         val batteryPercent = Regex("(\\d{1,3})%").find(brief.battery)?.groupValues?.get(1)
@@ -488,7 +493,7 @@ private fun Vitals(brief: DayBrief) {
                 batteryPercent <= 35 -> Caution
                 else -> TextPrimary
             },
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f).fillMaxHeight()
         )
         StatTile(
             value = "${brief.dueToday.size + brief.overdue.size}",
@@ -499,7 +504,7 @@ private fun Vitals(brief: DayBrief) {
                 else -> "${brief.overdue.size} overdue · ${brief.dueToday.size} today"
             },
             tint = if (brief.overdue.isEmpty()) TextPrimary else Negative,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f).fillMaxHeight()
         )
         StatTile(
             value = brief.appointments.firstOrNull()
@@ -507,7 +512,7 @@ private fun Vitals(brief: DayBrief) {
                 ?: if (brief.calendarOn) "Clear" else "—",
             label = "Next",
             caption = brief.appointments.firstOrNull()?.title ?: if (brief.calendarOn) null else "Calendar off",
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f).fillMaxHeight()
         )
     }
 }
