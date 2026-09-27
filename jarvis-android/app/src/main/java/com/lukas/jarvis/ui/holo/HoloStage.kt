@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
@@ -305,7 +306,13 @@ fun HoloStage(
                 onTouch = actions.onTouch,
                 onExpand = { actions.onExpand(projection.holo) },
                 fill = projection.holo == Holo.Map,
-                modifier = if (projection.holo == Holo.Map) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
+                // The stage hands down its full height as a minimum; a panel that
+                // is not a map lets go of it and hugs what it shows.
+                modifier = if (projection.holo == Holo.Map) {
+                    Modifier.fillMaxSize()
+                } else {
+                    Modifier.fillMaxWidth().wrapContentHeight(Alignment.Top)
+                }
             ) {
                 HoloBody(projection, data, actions)
             }
