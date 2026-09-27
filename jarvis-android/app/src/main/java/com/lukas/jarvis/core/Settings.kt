@@ -75,6 +75,15 @@ data class Settings(
     val speechLanguage: String = "",
     /** Hear and read each language in its own voice, whatever the language above. */
     val autoLanguage: Boolean = true,
+    /** "device" for the phone's own voices, "fish" for Fish Audio's S2.1 with the key below. */
+    val voiceEngine: String = "device",
+    /** The user's own Fish Audio API key. */
+    val fishKey: String = "",
+    /** A Fish Audio voice id; blank lets Fish choose. */
+    val fishVoiceId: String = "",
+    /** That voice's title, to show without asking Fish again. */
+    val fishVoiceName: String = "",
+    val fishModel: String = "s2.1-pro",
     /** A short tone when the microphone opens and closes. */
     val earcons: Boolean = true,
     /** A tick under the finger on the main controls. */
@@ -177,6 +186,11 @@ class SettingsStore(context: Context) {
             voiceName = prefs.getString(KEY_VOICE_NAME, "").orEmpty(),
             speechLanguage = prefs.getString(KEY_SPEECH_LANGUAGE, "").orEmpty(),
             autoLanguage = prefs.getBoolean(KEY_AUTO_LANGUAGE, true),
+            voiceEngine = prefs.getString(KEY_VOICE_ENGINE, "device") ?: "device",
+            fishKey = prefs.getString(KEY_FISH_KEY, "").orEmpty(),
+            fishVoiceId = prefs.getString(KEY_FISH_VOICE, "").orEmpty(),
+            fishVoiceName = prefs.getString(KEY_FISH_VOICE_NAME, "").orEmpty(),
+            fishModel = prefs.getString(KEY_FISH_MODEL, "s2.1-pro") ?: "s2.1-pro",
             earcons = prefs.getBoolean(KEY_EARCONS, true),
             haptics = prefs.getBoolean(KEY_HAPTICS, true),
             morningBrief = prefs.getBoolean(KEY_MORNING_BRIEF, true),
@@ -247,6 +261,11 @@ class SettingsStore(context: Context) {
             .putString(KEY_VOICE_NAME, next.voiceName)
             .putString(KEY_SPEECH_LANGUAGE, next.speechLanguage)
             .putBoolean(KEY_AUTO_LANGUAGE, next.autoLanguage)
+            .putString(KEY_VOICE_ENGINE, next.voiceEngine)
+            .putString(KEY_FISH_KEY, next.fishKey)
+            .putString(KEY_FISH_VOICE, next.fishVoiceId)
+            .putString(KEY_FISH_VOICE_NAME, next.fishVoiceName)
+            .putString(KEY_FISH_MODEL, next.fishModel)
             .putBoolean(KEY_EARCONS, next.earcons)
             .putBoolean(KEY_HAPTICS, next.haptics)
             .putBoolean(KEY_MORNING_BRIEF, next.morningBrief)
@@ -387,6 +406,11 @@ class SettingsStore(context: Context) {
         const val KEY_VOICE_NAME = "voice_name"
         const val KEY_SPEECH_LANGUAGE = "speech_language"
         const val KEY_AUTO_LANGUAGE = "auto_language"
+        const val KEY_VOICE_ENGINE = "voice_engine"
+        const val KEY_FISH_KEY = "fish_key"
+        const val KEY_FISH_VOICE = "fish_voice"
+        const val KEY_FISH_VOICE_NAME = "fish_voice_name"
+        const val KEY_FISH_MODEL = "fish_model"
         const val KEY_EARCONS = "earcons"
         const val KEY_HAPTICS = "haptics"
         const val KEY_MORNING_BRIEF = "morning_brief"

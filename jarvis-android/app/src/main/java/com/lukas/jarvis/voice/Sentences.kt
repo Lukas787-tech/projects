@@ -11,6 +11,30 @@ package com.lukas.jarvis.voice
 object Sentences {
 
     /**
+     * A whole reply cut for a cloud voice that is fetched a piece at a time:
+     * the first sentence alone, so the voice starts quickly, then sentences
+     * grouped up to [limit] characters, so it does not sound clipped.
+     */
+    fun forCloud(text: String, limit: Int = 280): List<String> {
+        val sentences = text.split(Regex("(?<=[.!?…])\\s+")).map { it.trim() }.filter { it.isNotEmpty() }
+        val out = mutableListOf<String>()
+        val current = StringBuilder()
+        sentences.forEach { sentence ->
+            sentence.chunked(limit).forEach { piece ->
+                val firstIsDone = out.isEmpty() && current.isNotEmpty()
+                if (current.isNotEmpty() && (firstIsDone || current.length + piece.length + 1 > limit)) {
+                    out += current.toString()
+                    current.setLength(0)
+                }
+                if (current.isNotEmpty()) current.append(' ')
+                current.append(piece)
+            }
+        }
+        if (current.isNotEmpty()) out += current.toString()
+        return out.ifEmpty { listOf(text.trim()) }.filter { it.isNotBlank() }
+    }
+
+    /**
      * The end of the last whole sentence in [text] after [from], or [from]
      * itself when no sentence has finished yet.
      */

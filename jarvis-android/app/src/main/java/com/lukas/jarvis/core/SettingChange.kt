@@ -23,15 +23,18 @@ object SettingChange {
         "assistant_name", "user_name", "call_me", "personality", "reply_length", "wit", "emoji",
         "accent", "backdrop", "core_style", "reduce_motion", "text_size", "show_hud",
         "speak_replies", "speech_rate", "speech_pitch", "speech_language", "auto_language", "reply_language",
-        "map_style", "travel_mode", "search_radius", "currency", "proactive",
+        "voice_engine", "map_style", "travel_mode", "search_radius", "currency", "proactive",
         "morning_brief", "brief_time", "evening_time", "haptics", "sounds", "wake_word", "wake_phrase",
         "about_me", "instructions"
     )
 
     fun apply(settings: Settings, rawKey: String, rawValue: String): Result {
-        val key = ALIASES[norm(rawKey)] ?: norm(rawKey)
         val value = rawValue.trim()
         val v = value.lowercase(Locale.ROOT)
+        // "voice: fish audio" is about which voice, not whether to speak.
+        val key = (ALIASES[norm(rawKey)] ?: norm(rawKey)).let {
+            if (it == "speak_replies" && ENGINE_WORDS.any { word -> v.contains(word) }) "voice_engine" else it
+        }
         fun changed(s: Settings, said: String) = Result.Changed(s, said)
         fun flag(set: (Boolean) -> Settings, what: String): Result {
             val on = bool(v) ?: return Result.Refused("Should $what be on or off?")
@@ -93,6 +96,17 @@ object SettingChange {
                 settings.copy(speechLanguage = if (v in CLEAR) "" else language(value), voiceName = ""),
                 if (v in CLEAR) "Listening and speaking in the phone's language." else "Main language: ${language(value)}."
             )
+            "voice_engine" -> when {
+                listOf("fish", "cloud", "natural", "s2").any { v.contains(it) } ->
+                    if (settings.fishKey.isBlank()) {
+                        Result.Refused("The Fish Audio voice needs a key first: paste it under Personalize → Voice.")
+                    } else {
+                        changed(settings.copy(voiceEngine = "fish"), "Speaking with the Fish Audio voice.")
+                    }
+                listOf("device", "phone", "android", "offline", "handy", "google", "default").any { v.contains(it) } ->
+                    changed(settings.copy(voiceEngine = "device"), "Speaking with the phone's own voice.")
+                else -> ask("The Fish Audio voice or the phone's own?")
+            }
             "auto_language" -> flag({ settings.copy(autoLanguage = it) }, "recognising each language by itself")
             "reply_language" -> changed(
                 settings.copy(replyLanguage = if (v in CLEAR) "" else value.take(30)),
@@ -252,6 +266,11 @@ object SettingChange {
         "answer_language" to "reply_language", "map" to "map_style", "karte" to "map_style",
         "travel" to "travel_mode", "radius" to "search_radius", "earcons" to "sounds",
         "vibration" to "haptics", "brief" to "morning_brief", "wake" to "wake_word",
-        "custom_instructions" to "instructions", "rules" to "instructions"
+        "custom_instructions" to "instructions", "rules" to "instructions",
+        "engine" to "voice_engine", "tts" to "voice_engine", "fish" to "voice_engine",
+        "fish_audio" to "voice_engine", "cloud_voice" to "voice_engine", "voice_model" to "voice_engine",
+        "tts_engine" to "voice_engine", "stimme" to "voice_engine"
     )
+
+    private val ENGINE_WORDS = listOf("fish", "cloud", "device", "phone voice", "android voice")
 }

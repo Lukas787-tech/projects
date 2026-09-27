@@ -192,13 +192,16 @@ class AssistantViewModel(
     private var turnJob: Job? = null
 
     private fun configureVoice(settings: Settings = settingsStore.current) {
-        speaker.configure(settings.speechRate, settings.speechPitch, settings.voiceName, settings.speechLanguage, settings.autoLanguage)
+        speaker.configure(settings.speechRate, settings.speechPitch, settings.voiceName, settings.speechLanguage, settings.autoLanguage, com.lukas.jarvis.voice.FishConfig.from(settings))
         speech.language = settings.speechLanguage
         speech.autoDetect = settings.autoLanguage
     }
 
     init {
         configureVoice()
+        // A voice changed by the assistant itself ("use the Fish voice",
+        // "speak faster") takes effect at once, not on the next restart.
+        viewModelScope.launch { settingsStore.state.collect { configureVoice(it) } }
         speaker.onFinished = {
             // This fires on a binder thread. SpeechRecognizer may only be touched
             // from the main thread, so hop back before restarting the mic.
@@ -1483,6 +1486,17 @@ class AssistantViewModel(
 
     /** The voices the phone's speech engine offers in the current language. */
     fun voices(): List<com.lukas.jarvis.voice.VoiceOption> = speaker.voices()
+
+    /** Why the Fish Audio voice last fell back to the phone's own, if it did. */
+    val voiceProblem: StateFlow<String?> = speaker.cloudError
+
+    /** Voices from Fish Audio's library with the saved key: by name, by language, or the account's own. */
+    suspend fun fishVoices(query: String, language: String, mine: Boolean): Result<List<com.lukas.jarvis.voice.FishVoiceOption>> =
+        withContext(Dispatchers.IO) {
+            val key = settingsStore.current.fishKey
+            if (key.isBlank()) Result.failure(IllegalStateException("Paste your Fish Audio key first."))
+            else runCatching { speaker.cloudVoices(key, query, language, mine) }
+        }
 
     /** Puts the free keyless endpoints back in the pool. */
     fun restoreFreeBrain() {

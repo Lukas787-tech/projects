@@ -46,6 +46,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.core.Settings
+import com.lukas.jarvis.voice.FishVoice
+import com.lukas.jarvis.voice.FishVoiceOption
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import com.lukas.jarvis.llm.Persona
 import com.lukas.jarvis.llm.Personas
 import com.lukas.jarvis.ui.components.ChipButton
@@ -297,7 +304,9 @@ fun VoiceSection(
     settings: Settings,
     onUpdate: ((Settings) -> Settings) -> Unit,
     voices: () -> List<VoiceOption>,
-    onPreview: () -> Unit
+    onPreview: () -> Unit,
+    fishVoices: suspend (String, String, Boolean) -> Result<List<FishVoiceOption>> = { _, _, _ -> Result.success(emptyList()) },
+    voiceProblem: String? = null
 ) {
     Panel(title = "Speaking") {
         ToggleRow(
@@ -399,10 +408,18 @@ fun VoiceSection(
         )
     }
 
+    FishPanel(settings, onUpdate, onPreview, fishVoices, voiceProblem)
+
     Panel(
-        title = "Voice",
-        subtitle = "The voices installed on this phone for the language it speaks. More can be " +
-            "downloaded in Android's text-to-speech settings — free."
+        title = if (settings.voiceEngine == FishVoice.ENGINE) "Phone voice" else "Voice",
+        subtitle = if (settings.voiceEngine == FishVoice.ENGINE) {
+            "Stands in whenever Fish Audio cannot be reached — offline, or the key refused."
+        } else {
+            "The voices installed on this phone for the language it speaks. More can be " +
+                "downloaded in Android's text-to-speech settings — free."
+        },
+        collapsible = settings.voiceEngine == FishVoice.ENGINE,
+        initiallyExpanded = settings.voiceEngine != FishVoice.ENGINE
     ) {
         var list by remember { mutableStateOf<List<VoiceOption>>(emptyList()) }
         LaunchedEffect(settings.speechLanguage) {
@@ -483,6 +500,176 @@ fun VoiceSection(
                 onValueChange = { value -> onUpdate { it.copy(wakePhrase = value.lowercase()) } },
                 label = "Wake phrase",
                 modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+/**
+ * The cloud voice: Fish Audio's S2.1 with the user's own key, a model, and a
+ * voice from their library — searched by name or language, or one of the
+ * user's own clones, or any id pasted from a fish.audio link.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FishPanel(
+    settings: Settings,
+    onUpdate: ((Settings) -> Settings) -> Unit,
+    onPreview: () -> Unit,
+    fishVoices: suspend (String, String, Boolean) -> Result<List<FishVoiceOption>>,
+    voiceProblem: String?
+) {
+    val on = settings.voiceEngine == FishVoice.ENGINE
+    Panel(
+        title = "Voice engine",
+        subtitle = "The phone's own voices work offline. Fish Audio S2.1 sounds close to a person, " +
+            "in every language, with your own key from fish.audio."
+    ) {
+        ChoiceChips(
+            options = listOf(FishVoice.DEVICE, FishVoice.ENGINE),
+            selected = settings.voiceEngine,
+            display = { if (it == FishVoice.ENGINE) "Fish Audio S2.1" else "Phone" },
+            onSelect = { value -> onUpdate { it.copy(voiceEngine = value) } }
+        )
+        if (!on) return@Panel
+        Spacer(Modifier.height(Space.snug))
+        var showKey by remember { mutableStateOf(false) }
+        GlassField(
+            value = settings.fishKey,
+            onValueChange = { value -> onUpdate { it.copy(fishKey = value.trim()) } },
+            label = "Fish Audio API key",
+            placeholder = "sk-…",
+            singleLine = true,
+            isError = settings.fishKey.isBlank(),
+            supportingText = if (settings.fishKey.isBlank()) "Needed — until then the phone's voice speaks." else null,
+            visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+            trailing = {
+                Text(
+                    text = if (showKey) "HIDE" else "SHOW",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Accent,
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .clickable { showKey = !showKey }
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(Space.snug))
+        Text("Model", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+        Text(
+            "S2.1 Pro is the best. If the account has no credit for it, the free S2.1 tier is used by itself.",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary
+        )
+        Spacer(Modifier.height(Space.tight))
+        ChoiceChips(
+            options = (FishVoice.MODELS + settings.fishModel).distinct(),
+            selected = settings.fishModel,
+            display = {
+                when (it) {
+                    "s2.1-pro" -> "S2.1 Pro"
+                    "s2.1-pro-free" -> "S2.1 free"
+                    "s2-pro" -> "S2 Pro"
+                    "s1" -> "S1"
+                    else -> it
+                }
+            },
+            onSelect = { value -> onUpdate { it.copy(fishModel = value) } }
+        )
+
+        Spacer(Modifier.height(Space.snug))
+        Text("Voice", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+        Text(
+            if (settings.fishVoiceId.isBlank()) "Fish's default voice" else
+                "${settings.fishVoiceName.ifBlank { "Custom voice" }} · ${settings.fishVoiceId.take(8)}…",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary
+        )
+        Spacer(Modifier.height(Space.tight))
+        var query by remember { mutableStateOf("") }
+        var language by remember { mutableStateOf("") }
+        var mine by remember { mutableStateOf(false) }
+        var found by remember { mutableStateOf<List<FishVoiceOption>>(emptyList()) }
+        var status by remember { mutableStateOf<String?>(null) }
+        var searching by remember { mutableStateOf(0) }
+        LaunchedEffect(searching) {
+            if (searching == 0) return@LaunchedEffect
+            status = "Looking…"
+            fishVoices(query, language, mine)
+                .onSuccess {
+                    found = it
+                    status = if (it.isEmpty()) "Nothing found." else null
+                }
+                .onFailure { status = it.message ?: "Fish Audio could not be reached." }
+        }
+        GlassField(
+            value = query,
+            onValueChange = { query = it },
+            label = "Search voices, or paste a voice id / link",
+            placeholder = "e.g. narrator, deep, 802e3bc2…",
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = {
+                val pasted = FishVoice.voiceIdOf(query)
+                if (Regex("[0-9a-f]{32}").matches(pasted)) {
+                    onUpdate { it.copy(fishVoiceId = pasted, fishVoiceName = "") }
+                    onPreview()
+                } else {
+                    mine = false
+                    searching++
+                }
+            }),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(Space.tight))
+        ChoiceChips(
+            options = listOf("", "de", "en", "fr", "es", "it", "ja"),
+            selected = language,
+            display = { if (it.isBlank()) "Any language" else it.uppercase() },
+            onSelect = { language = it; mine = false; searching++ }
+        )
+        Spacer(Modifier.height(Space.tight))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ChipButton(label = "Search", onClick = {
+                val pasted = FishVoice.voiceIdOf(query)
+                if (Regex("[0-9a-f]{32}").matches(pasted)) {
+                    onUpdate { it.copy(fishVoiceId = pasted, fishVoiceName = "") }
+                    onPreview()
+                } else {
+                    mine = false
+                    searching++
+                }
+            })
+            ChipButton(label = "My voices", onClick = { mine = true; searching++ })
+            ChipButton(label = "Default", onClick = {
+                onUpdate { it.copy(fishVoiceId = "", fishVoiceName = "") }
+                onPreview()
+            })
+        }
+        status?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = TextFaint, modifier = Modifier.padding(vertical = 6.dp))
+        }
+        found.take(20).forEach { voice ->
+            VoiceRow(
+                label = voice.title,
+                detail = listOfNotNull(
+                    voice.languages.take(4).joinToString(" ").uppercase().takeIf { it.isNotBlank() },
+                    voice.uses.takeIf { it > 0 }?.let { "%,d uses".format(it) }
+                ).joinToString(" · "),
+                selected = voice.id == settings.fishVoiceId,
+                onClick = {
+                    onUpdate { it.copy(fishVoiceId = voice.id, fishVoiceName = voice.title) }
+                    onPreview()
+                }
+            )
+        }
+        voiceProblem?.let {
+            Spacer(Modifier.height(Space.tight))
+            Text(
+                "Last problem: $it. The phone's voice filled in.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
             )
         }
     }

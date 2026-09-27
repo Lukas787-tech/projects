@@ -123,6 +123,9 @@ fun SettingsScreen(
     onOpenSkills: () -> Unit,
     modifier: Modifier = Modifier,
     voices: () -> List<VoiceOption> = { emptyList() },
+    fishVoices: suspend (String, String, Boolean) -> Result<List<com.lukas.jarvis.voice.FishVoiceOption>> =
+        { _, _, _ -> Result.success(emptyList()) },
+    voiceProblem: String? = null,
     hasFreeBrain: Boolean = true,
     onRestoreFreeBrain: () -> Unit = {},
     onReplayIntro: () -> Unit = {},
@@ -166,7 +169,7 @@ fun SettingsScreen(
 
         when (tab) {
         0 -> AssistantSection(settings, onUpdate)
-        1 -> VoiceSection(settings, onUpdate, voices, onPreviewVoice)
+        1 -> VoiceSection(settings, onUpdate, voices, onPreviewVoice, fishVoices, voiceProblem)
         2 -> {
             ProfilesPanel(settings, profiles, onSaveProfile, onApplyProfile, onDeleteProfile, onScheduleProfile)
             LookSection(settings, onUpdate)

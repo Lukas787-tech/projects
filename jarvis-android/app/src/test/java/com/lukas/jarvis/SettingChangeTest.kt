@@ -52,4 +52,15 @@ class SettingChangeTest {
         assertTrue(SettingChange.apply(base, "api_key", "abc") is SettingChange.Result.Refused)
         assertTrue(SettingChange.apply(base, "emoji", "maybe") is SettingChange.Result.Refused)
     }
+
+    @Test fun whichVoice() {
+        val keyed = base.copy(fishKey = "sk-1")
+        assertEquals("fish", changed("voice_engine", "Fish Audio", keyed).voiceEngine)
+        assertEquals("fish", changed("voice", "the fish audio voice", keyed).voiceEngine)
+        assertEquals("device", changed("tts", "phone", keyed.copy(voiceEngine = "fish")).voiceEngine)
+        // No key yet: say so rather than switching to a voice that cannot speak.
+        assertTrue(SettingChange.apply(base, "voice_engine", "fish") is SettingChange.Result.Refused)
+        // "voice off" is still about speaking at all.
+        assertEquals(false, changed("voice", "off").speakReplies)
+    }
 }

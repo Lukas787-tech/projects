@@ -1,6 +1,8 @@
 package com.lukas.jarvis.voice
 
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
@@ -8,7 +10,13 @@ import android.speech.tts.Voice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 import java.util.Locale
+import java.util.concurrent.Callable
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
@@ -32,6 +40,11 @@ data class VoiceOption(
  * sentence the engine refuses outright still ends the "speaking" state — before
  * that, one refused sentence left the assistant showing "speaking" forever and
  * never handed the microphone back.
+ *
+ * With a Fish Audio key it speaks through S2.1 instead: each sentence is
+ * fetched while the one before it plays, in whatever language it is written.
+ * Any sentence the cloud cannot deliver — no network, a refused key — is read
+ * by the phone's own voice in its place, so a reply is never lost to it.
  */
 class Speaker(context: Context) {
 
@@ -104,20 +117,27 @@ class Speaker(context: Context) {
             }
 
             override fun onDone(utteranceId: String?) {
+                release(utteranceId)
                 // Only the final chunk of a reply counts as "finished".
                 if (utteranceId != null && utteranceId == lastUtteranceId) finish()
             }
 
             @Deprecated("Deprecated in Java")
             override fun onError(utteranceId: String?) {
+                release(utteranceId)
                 if (utteranceId == null || utteranceId == lastUtteranceId) finish()
             }
 
             override fun onError(utteranceId: String?, errorCode: Int) {
+                release(utteranceId)
                 if (utteranceId == null || utteranceId == lastUtteranceId) finish()
             }
 
             override fun onStop(utteranceId: String?, interrupted: Boolean) {
+                release(utteranceId)
+                // A stopped phone voice standing in for the cloud one is not
+                // the end of the reply; the cloud queue says when that is.
+                if (cloudActive) return
                 _speaking.value = false
                 _level.value = 0f
             }
@@ -158,7 +178,20 @@ class Speaker(context: Context) {
         }
     }
 
-    fun configure(rate: Float, pitch: Float, voiceName: String = "", language: String = "", autoLanguage: Boolean = true) {
+    fun configure(
+        rate: Float,
+        pitch: Float,
+        voiceName: String = "",
+        language: String = "",
+        autoLanguage: Boolean = true,
+        cloud: FishConfig? = null
+    ) {
+        if (cloud != this.cloud) {
+            // A new key or voice deserves a fresh try, whatever the old one did.
+            cloudDownUntil = 0L
+            _cloudError.value = null
+        }
+        this.cloud = cloud
         this.rate = rate
         this.pitch = pitch
         this.voiceName = voiceName
@@ -231,6 +264,16 @@ class Speaker(context: Context) {
             finish()
             return
         }
+        if (useCloud()) {
+            val pieces = cloudPieces(clean)
+            val stamp = System.currentTimeMillis()
+            lastUtteranceId = "jarvis_${stamp}_${pieces.lastIndex}"
+            _speaking.value = true
+            pieces.forEachIndexed { index, part -> cloudSay(part, "jarvis_${stamp}_$index", flush = index == 0, homeLanguage) }
+            return
+        }
+        // A cloud reply still playing gives way to this one.
+        if (cloudActive) cloudStop()
         if (!_ready.value) {
             // The engine is still starting; say it the moment it can.
             pending = clean
@@ -259,6 +302,11 @@ class Speaker(context: Context) {
      * language the usual one does its best.
      */
     fun speakIn(text: String, language: String, onDone: (() -> Unit)? = null) {
+        if (useCloud()) {
+            // The cloud voice reads every language itself, in the same voice.
+            speakWith(text, onDone, homeLanguage = language)
+            return
+        }
         if (!_ready.value) {
             speak(text, onDone)
             return
@@ -285,11 +333,19 @@ class Speaker(context: Context) {
     /** Queues one finished sentence of a reply still being written. */
     fun feed(sentence: String) {
         val clean = sanitize(sentence)
-        if (clean.isBlank() || !_ready.value) return
+        val cloudy = useCloud()
+        if (clean.isBlank() || (!_ready.value && !cloudy)) return
         val first = !streaming
         streaming = true
         _speaking.value = true
         val id = "jarvis_stream_${System.currentTimeMillis()}_${streamCounter++}"
+        if (cloudy || (cloudActive && !first)) {
+            // Once a reply has started in the cloud voice it stays in that
+            // queue, so its sentences keep their order even if one falls back.
+            cloudSay(clean, id, flush = first)
+            return
+        }
+        if (first && cloudActive) cloudStop()
         runCatching {
             say(clean, if (first) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, id)
         }
@@ -313,6 +369,14 @@ class Speaker(context: Context) {
         val id = "jarvis_stream_end_${System.currentTimeMillis()}"
         lastUtteranceId = id
         val clean = sanitize(rest)
+        if (cloudActive) {
+            if (clean.isBlank()) cloudEnd(id) else cloudPieces(clean).let { pieces ->
+                pieces.forEachIndexed { index, part ->
+                    cloudSay(part, if (index == pieces.lastIndex) id else "${id}_$index", flush = false)
+                }
+            }
+            return
+        }
         val result = runCatching {
             if (clean.isBlank()) {
                 tts.playSilentUtterance(1, TextToSpeech.QUEUE_ADD, id)
@@ -380,7 +444,11 @@ class Speaker(context: Context) {
      */
     fun announce(text: String) {
         val clean = sanitize(text)
-        if (clean.isBlank() || !_ready.value) return
+        if (clean.isBlank() || (!_ready.value && !useCloud())) return
+        if (_speaking.value && cloudActive) {
+            cloudSay(clean, "jarvis_announce_${System.currentTimeMillis()}", flush = false)
+            return
+        }
         if (_speaking.value) {
             runCatching { tts.speak(clean, TextToSpeech.QUEUE_ADD, Bundle(), "jarvis_announce_${System.currentTimeMillis()}") }
         } else {
@@ -397,17 +465,218 @@ class Speaker(context: Context) {
         streaming = false
         pending = null
         currentDone = null
+        cloudStop()
         runCatching { tts.stop() }
         _speaking.value = false
         _level.value = 0f
     }
 
     fun shutdown() {
+        cloudStop()
         runCatching {
             tts.stop()
             tts.shutdown()
         }
+        cloudPlayer.shutdownNow()
+        cloudFetch.shutdownNow()
     }
+
+    // ------------------------------------------------------------ cloud voice
+
+    private val fish = FishVoice(context.applicationContext.cacheDir)
+
+    @Volatile
+    private var cloud: FishConfig? = null
+
+    /** After a failure the phone's voice takes over for a while, rather than every sentence waiting to fail. */
+    @Volatile
+    private var cloudDownUntil = 0L
+
+    /** True while the reply now playing is going through the cloud queue. */
+    @Volatile
+    private var cloudActive = false
+
+    /** Bumped by every stop and every new reply; queued work from before it is dropped. */
+    @Volatile
+    private var generation = 0
+
+    private val _cloudError = MutableStateFlow<String?>(null)
+    /** Why the cloud voice last fell back to the phone's own, for the settings screen. */
+    val cloudError: StateFlow<String?> = _cloudError.asStateFlow()
+
+    /** Plays one sentence after another, in order. */
+    private val cloudPlayer = Executors.newSingleThreadExecutor { Thread(it, "jarvis-voice").apply { isDaemon = true } }
+    /** Fetches ahead of the player, so the next sentence is ready when this one ends. */
+    private val cloudFetch = Executors.newFixedThreadPool(2) { Thread(it, "jarvis-voice-fetch").apply { isDaemon = true } }
+
+    private val lock = Any()
+    private var player: MediaPlayer? = null
+    private var playing: CountDownLatch? = null
+
+    /** Phone-voice sentences standing in for cloud ones, waited on so the order holds. */
+    private val waiters = ConcurrentHashMap<String, CountDownLatch>()
+
+    private fun release(utteranceId: String?) {
+        utteranceId?.let { waiters.remove(it)?.countDown() }
+    }
+
+    private fun useCloud(): Boolean = cloud != null && System.currentTimeMillis() >= cloudDownUntil
+
+    /** Voices from Fish Audio's library, for the picker. Throws when the key or the network fails. */
+    fun cloudVoices(key: String, query: String, language: String, mine: Boolean): List<FishVoiceOption> =
+        fish.voices(key, query, language, mine)
+
+    private fun cloudSay(text: String, id: String, flush: Boolean, homeLanguage: String? = null) {
+        val config = cloud
+        if (flush) cloudStop()
+        cloudActive = true
+        // Whatever the phone's voice was still saying gives way to the new reply.
+        if (flush) runCatching { tts.stop() }
+        _speaking.value = true
+        val gen = generation
+        val audio = if (config != null && useCloud()) {
+            runCatching { cloudFetch.submit(Callable { fish.synthesize(text, config) }) }.getOrNull()
+        } else {
+            null
+        }
+        runCatching {
+            cloudPlayer.execute {
+                if (gen != generation) return@execute
+                val file = audio?.let { future ->
+                    runCatching { future.get(35, TimeUnit.SECONDS) }
+                        .onFailure { cloudFailed(it) }
+                        .getOrNull()
+                }
+                if (gen != generation) return@execute
+                if (file != null) {
+                    _cloudError.value = null
+                    play(file, gen)
+                } else {
+                    sayOnPhone(text, id, homeLanguage)
+                }
+                if (gen == generation && id == lastUtteranceId) {
+                    cloudActive = false
+                    finish()
+                }
+            }
+        }
+    }
+
+    /** The end of a streamed reply whose sentences have all been queued already. */
+    private fun cloudEnd(id: String) {
+        val gen = generation
+        runCatching {
+            cloudPlayer.execute {
+                if (gen == generation && id == lastUtteranceId) {
+                    cloudActive = false
+                    finish()
+                }
+            }
+        }
+    }
+
+    private fun cloudFailed(error: Throwable) {
+        val cause = (error as? java.util.concurrent.ExecutionException)?.cause ?: error
+        val code = (cause as? FishVoice.FishError)?.code
+        _cloudError.value = cause.message ?: "the cloud voice failed"
+        // A refused key will not start working in a minute; a dropped network may.
+        val pause = if (code == 401 || code == 402) 10 * 60_000L else 60_000L
+        cloudDownUntil = System.currentTimeMillis() + pause
+    }
+
+    /** One sentence in the phone's voice, waited on so the next cloud one does not talk over it. */
+    private fun sayOnPhone(text: String, id: String, homeLanguage: String?) {
+        if (!_ready.value) return
+        val waitId = "${id}_phone"
+        val latch = CountDownLatch(1)
+        waiters[waitId] = latch
+        val queued = runCatching { say(text, TextToSpeech.QUEUE_ADD, waitId, homeLanguage) }
+            .getOrDefault(TextToSpeech.ERROR)
+        if (queued == TextToSpeech.ERROR) {
+            waiters.remove(waitId)
+            return
+        }
+        // Long enough for a long sentence; a stop releases it at once.
+        latch.await(20L + text.length / 8, TimeUnit.SECONDS)
+        waiters.remove(waitId)
+    }
+
+    private fun play(file: File, gen: Int) {
+        val done = CountDownLatch(1)
+        val mp = MediaPlayer()
+        try {
+            mp.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+            )
+            mp.setDataSource(file.absolutePath)
+            mp.setOnCompletionListener { done.countDown() }
+            mp.setOnErrorListener { _, _, _ -> done.countDown(); true }
+            mp.prepare()
+            synchronized(lock) {
+                if (gen != generation) return
+                player = mp
+                playing = done
+            }
+            mp.start()
+            pulse(gen)
+            done.await(mp.duration.coerceAtLeast(1_000).toLong() + 5_000, TimeUnit.MILLISECONDS)
+        } catch (e: Exception) {
+            // A file that will not play is a bad download: forget it.
+            file.delete()
+        } finally {
+            synchronized(lock) {
+                if (player === mp) {
+                    player = null
+                    playing = null
+                }
+            }
+            runCatching { mp.release() }
+        }
+    }
+
+    /** Stops the cloud voice mid-sentence and drops everything queued behind it. */
+    private fun cloudStop() {
+        generation++
+        cloudActive = false
+        synchronized(lock) {
+            runCatching { player?.pause() }
+            playing?.countDown()
+        }
+        waiters.values.forEach { it.countDown() }
+        waiters.clear()
+    }
+
+    private var pulseThread: Thread? = null
+
+    /**
+     * The reactor's envelope while the cloud voice plays. The player reports
+     * no loudness either, so it breathes with the syllables' rough rhythm.
+     */
+    private fun pulse(gen: Int) {
+        if (pulseThread?.isAlive == true) return
+        pulseThread = Thread {
+            var t = 0f
+            while (gen == generation && synchronized(lock) { player != null }) {
+                t += 0.21f
+                val beat = abs(sin(t * 2.3f)) * (0.6f + 0.4f * abs(sin(t * 0.7f)))
+                _level.value = (0.2f + 0.8f * beat).coerceIn(0f, 1f)
+                Thread.sleep(55)
+            }
+            _level.value = 0f
+        }.apply {
+            isDaemon = true
+            start()
+        }
+    }
+
+    /**
+     * Sentences for the cloud voice: the first one short, so the voice starts
+     * quickly, the later ones grouped so it does not sound clipped.
+     */
+    private fun cloudPieces(text: String): List<String> = Sentences.forCloud(text)
 
     /** Markdown and emoji sound terrible read aloud, so strip them first. */
     private fun sanitize(text: String): String = text

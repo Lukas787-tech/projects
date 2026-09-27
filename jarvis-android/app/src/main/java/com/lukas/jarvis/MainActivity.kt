@@ -293,6 +293,7 @@ private fun JarvisRoot(
     val modelsState by viewModel.modelsState.collectAsStateWithLifecycle()
     val testState by viewModel.testState.collectAsStateWithLifecycle()
     val poolEntries by viewModel.poolEntries.collectAsStateWithLifecycle()
+    val voiceProblem by viewModel.voiceProblem.collectAsStateWithLifecycle()
     val poolBusy by viewModel.poolBusy.collectAsStateWithLifecycle()
     val poolMessage by viewModel.poolMessage.collectAsStateWithLifecycle()
     val lastUsedEndpoint by viewModel.lastUsedEndpoint.collectAsStateWithLifecycle()
@@ -889,6 +890,8 @@ private fun JarvisRoot(
                     onRestoreBackup = viewModel::restoreBackup,
                     onOpenSkills = { viewModel.showElement(Element.Skills) },
                     voices = viewModel::voices,
+                    fishVoices = viewModel::fishVoices,
+                    voiceProblem = voiceProblem,
                     hasFreeBrain = poolEntries.any { it.endpoint.preset.tier == Tier.Keyless },
                     onRestoreFreeBrain = viewModel::restoreFreeBrain,
                     onReplayIntro = { viewModel.updateSettings { it.copy(onboarded = false) } },
