@@ -308,6 +308,8 @@ fun VoiceSection(
     fishVoices: suspend (String, String, Boolean) -> Result<List<FishVoiceOption>> = { _, _, _ -> Result.success(emptyList()) },
     voiceProblem: String? = null
 ) {
+    FishPanel(settings, onUpdate, onPreview, fishVoices, voiceProblem)
+
     Panel(title = "Speaking") {
         ToggleRow(
             title = "Speak replies",
@@ -407,8 +409,6 @@ fun VoiceSection(
             modifier = Modifier.fillMaxWidth()
         )
     }
-
-    FishPanel(settings, onUpdate, onPreview, fishVoices, voiceProblem)
 
     Panel(
         title = if (settings.voiceEngine == FishVoice.ENGINE) "Phone voice" else "Voice",

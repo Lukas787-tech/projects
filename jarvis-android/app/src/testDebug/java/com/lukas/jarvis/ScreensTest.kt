@@ -224,6 +224,14 @@ class ScreensTest {
             shot(activity, "09-settings-$index-${tab.lowercase()}")
         }
 
+        // The cloud voice chosen, with a key and a voice: the engine panel opens up.
+        vm.updateSettings { it.copy(voiceEngine = "fish", fishKey = "sk-screenshot", fishVoiceId = "802e3bc2b27e49c2995d23ef70e6ac89", fishVoiceName = "Deep Narrator") }
+        runCatching { vm.showElement(Element.Settings, "settings:tab:1") }
+        settle()
+        shot(activity, "09b-settings-voice-fish")
+        vm.updateSettings { it.copy(voiceEngine = "device", fishKey = "", fishVoiceId = "", fishVoiceName = "") }
+        settle()
+
         // One Berlin tile fetched straight through the cache, so a blank map
         // in the picture can be told apart from a cache that cannot load.
         val probe = Thread {
