@@ -38,7 +38,14 @@ data class FishConfig(
 }
 
 /** One voice from fish.audio's library, as the picker lists it. */
-data class FishVoiceOption(val id: String, val title: String, val languages: List<String>, val uses: Int)
+data class FishVoiceOption(
+    val id: String,
+    val title: String,
+    val languages: List<String>,
+    val uses: Int,
+    val tags: List<String> = emptyList(),
+    val description: String = ""
+)
 
 /**
  * Fish Audio's text-to-speech (S2.1): a far more natural voice than the
@@ -196,7 +203,11 @@ class FishVoice(cacheRoot: File, private val base: String = BASE) {
                     id = id,
                     title = item.optString("title").ifBlank { "Voice ${id.take(6)}" }.trim(),
                     languages = languages,
-                    uses = item.optInt("task_count")
+                    uses = item.optInt("task_count"),
+                    tags = item.optJSONArray("tags")?.let { array ->
+                        (0 until array.length()).map { array.optString(it) }.filter { it.isNotBlank() }
+                    }.orEmpty(),
+                    description = item.optString("description").take(300)
                 )
             }
         }

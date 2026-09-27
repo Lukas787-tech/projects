@@ -25,6 +25,7 @@ object Reflexes {
             return call("system_action", JSONObject().put("action", action.id))
         }
         setting(text)?.let { return it }
+        voice(text)?.let { return it }
         profile(text)?.let { return it }
         stopwatch(text)?.let { return it }
         timerQuestion(text)?.let { return it }
@@ -171,6 +172,25 @@ object Reflexes {
         MAP_STYLE.matchEntire(text)?.let { m -> return change("map_style", m.groupValues.drop(1).first { it.isNotBlank() }) }
         OWN_NAME.matchEntire(text)?.let { m -> return change("assistant_name", m.groupValues[1].replaceFirstChar { it.titlecase(Locale.ROOT) }) }
         return null
+    }
+
+    /**
+     * "Speak like Morgan Freeman", "sprich mit einer tiefen Männerstimme",
+     * "another voice": a voice to look for. "The Fish voice" or "the phone
+     * voice" is which engine, a setting of its own.
+     */
+    private fun voice(text: String): ToolCall? {
+        if (ANOTHER_VOICE.matches(text)) return call("change_voice", JSONObject().put("description", "another"))
+        val wanted = VOICE_LIKE.firstNotNullOfOrNull { it.matchEntire(text) }
+            ?.groupValues?.drop(1)?.firstOrNull { it.isNotBlank() }?.trim()
+            ?: return null
+        if (VOICE_ENGINES.containsMatchIn(wanted)) {
+            val engine = if (Regex("fish|cloud").containsMatchIn(wanted)) "fish" else "device"
+            return call("change_setting", JSONObject().put("setting", "voice_engine").put("value", engine))
+        }
+        // "Speak in French" is a language, not a voice.
+        if (wanted.split(' ').size == 1 && LANGUAGE_ONLY.matches(wanted)) return null
+        return call("change_voice", JSONObject().put("description", wanted))
     }
 
     /** "Switch to night mode", "Arbeitsprofil laden", "wechsle zum Nacht-Modus". */
@@ -402,6 +422,26 @@ object Reflexes {
             "^(?:wechsle|wechsel|schalte?) (?:zu[mr]?|auf|in) (?:den |das |die )?(.+?)(?:-| )?(?:modus|profil)$|" +
             "^(?:lade|aktiviere) (?:den |das |mein |meinen )?(.+?)(?:-| )?(?:modus|profil)$"
     )
+    private val VOICE_LIKE = listOf(
+        // English
+        Regex("(?:please )?(?:speak|talk)(?: to me)?(?: now)?(?: please)? (?:in|with|using) (?:a |an |the )?(.+?)(?:'s)? voice(?: please| now| from now on)?"),
+        Regex("(?:please )?(?:sound|speak|talk)(?: now)? like (.+?)(?: please| now| from now on)?"),
+        Regex("(?:please )?(?:use|take|switch to|change to|try|pick|find me|find|search for|give me|get me) (?:a |an |the )?(.+?)(?:'s)? voice(?: please| now| instead)?"),
+        Regex("(?:change|switch|set) (?:your |the )?voice to (?:a |an |the )?(.+)"),
+        // German
+        Regex("(?:bitte )?(?:sprich|rede|sprech)(?: bitte)?(?: ab)?(?: jetzt| mal)?(?: bitte)? ((?:mit|in) .*stimme.*|wie .+)"),
+        Regex("(?:bitte )?(?:nimm|benutze?|verwende|wähle|such|suche|finde?)(?: mir)?(?: bitte)?(?: mal)? ((?:die|eine|einen|deine) .*stimme.*)"),
+        Regex("(?:ändere?|wechsle|wechsel|stell|setz)(?: bitte)? (?:deine |die )?stimme (?:zu|auf|in|nach) (.+)")
+    )
+    private val ANOTHER_VOICE = Regex(
+        "(?:(?:try |use |take |give me )?(?:an?other|a different|the next) voice(?: please)?|" +
+            "(?:nimm |probier |bitte )?(?:eine )?andere stimme(?: bitte)?|(?:die )?nächste stimme(?: bitte)?)"
+    )
+    private val VOICE_ENGINES = Regex("\\b(fish|cloud|phone|handy|android|google|device|offline)\\b")
+    private val LANGUAGE_ONLY = Regex(
+        "(?:english|german|french|spanish|italian|englisch|deutsch|französisch|spanisch|italienisch|türkisch|turkish)"
+    )
+
     private val COLOUR = Regex(
         "^(?:make|change|set|turn|switch)(?: your| the| its)? (?:colou?r|accent|theme)(?: to| into)? (\\p{L}+)(?: please)?$|" +
             "^(?:mach|ändere|stell|setz)e?(?: die| deine)? farbe(?: auf| zu| in)? (\\p{L}+)(?: bitte)?$|" +

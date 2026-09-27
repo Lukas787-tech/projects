@@ -206,4 +206,32 @@ class ReflexTest {
         assertEquals("map_style" to "satellite", setting("satellite map"))
         assertEquals("assistant_name" to "Friday", setting("your name is friday"))
     }
+
+    @Test fun voicesByDescription() {
+        fun voice(text: String) = parsed(text)?.let { (name, args) ->
+            assertEquals(text, "change_voice", name)
+            args.getString("description")
+        }
+        assertEquals("morgan freeman", voice("Speak like Morgan Freeman"))
+        assertEquals("deep male narrator", voice("Use a deep male narrator voice"))
+        assertEquals("morgan freeman", voice("Talk in Morgan Freeman's voice please"))
+        assertEquals("british butler", voice("Change your voice to a British butler"))
+        assertEquals("mit der stimme von morgan freeman", voice("Sprich jetzt mit der Stimme von Morgan Freeman"))
+        assertEquals("mit einer tiefen männlichen stimme", voice("Sprich bitte mit einer tiefen männlichen Stimme."))
+        assertEquals("wie ein roboter", voice("Rede wie ein Roboter"))
+        assertEquals("eine ruhige deutsche frauenstimme", voice("Such mir eine ruhige deutsche Frauenstimme"))
+        assertEquals("einen erzähler", voice("Ändere deine Stimme zu einen Erzähler"))
+        assertEquals("another", voice("Another voice please"))
+        assertEquals("another", voice("Nimm eine andere Stimme"))
+        // Which engine, not which voice.
+        val (name, args) = parsed("Use the Fish voice")!!
+        assertEquals("change_setting", name)
+        assertEquals("fish", args.getString("value"))
+        assertEquals("device", parsed("Nimm die Handy Stimme")!!.second.getString("value"))
+        // Not voices at all.
+        assertNull(Reflexes.parse("Speak in French"))
+        assertNull(Reflexes.parse("Sprich in Französisch"))
+        assertNull(Reflexes.parse("Rede mit mir"))
+        assertEquals("speech_rate", parsed("Speak slower")?.second?.getString("setting"))
+    }
 }

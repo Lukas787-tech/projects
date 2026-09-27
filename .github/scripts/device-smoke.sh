@@ -99,6 +99,21 @@ done
 shot 06c-setting-satellite
 if [ -n "$SAT" ]; then echo "SETTING (model): map switched to satellite" >> "$REPORT"; else echo "SETTING (model): map style not changed within 60 s" >> "$REPORT"; fi
 
+# A voice by description with no Fish Audio key: it must say what is needed,
+# not claim a voice it cannot have, and nothing may crash.
+start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "'Speak like Morgan Freeman.'"
+VOICE=""
+for i in $(seq 1 12); do
+  sleep 5
+  adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
+  if adb shell cat /sdcard/ui.xml 2>/dev/null | grep -qi 'fish audio'; then VOICE=yes; break; fi
+done
+shot 06d-voice-no-key
+if [ -n "$VOICE" ]; then echo "VOICE: asked for a Fish Audio key" >> "$REPORT"; else echo "VOICE: no mention of the Fish Audio key within 60 s" >> "$REPORT"; fi
+if adb shell run-as "$PKG" cat shared_prefs/jarvis_settings.xml 2>/dev/null | grep -q 'name="voice_engine">fish<'; then
+  echo "VOICE: switched to Fish without a key (wrong)" >> "$REPORT"
+fi
+
 # Every main screen, through the bar at the bottom as a person would.
 for tab in "Map" "Notes" "Settings" "Today"; do
   tap_text "$tab" && sleep 5

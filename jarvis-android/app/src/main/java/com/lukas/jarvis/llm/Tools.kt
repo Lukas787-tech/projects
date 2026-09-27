@@ -99,7 +99,9 @@ class Tools(
     private val placeReminders: com.lukas.jarvis.notify.PlaceReminders,
     private val profiles: com.lukas.jarvis.core.ProfileStore,
     private val countdowns: com.lukas.jarvis.core.CountdownStore,
-    private val settingsStore: com.lukas.jarvis.core.SettingsStore
+    private val settingsStore: com.lukas.jarvis.core.SettingsStore,
+    /** For searching Fish Audio's voice library; null where nothing speaks. */
+    private val speaker: com.lukas.jarvis.voice.Speaker? = null
 ) {
 
     /**
@@ -836,6 +838,19 @@ class Tools(
             listOf("setting", "value")
         ),
         tool(
+            "change_voice",
+            "Change the voice Jarvis speaks with, by describing it: 'speak like Morgan Freeman', 'a deep " +
+                "male narrator', 'sprich mit einer ruhigen deutschen Frauenstimme', 'a British butler', 'my own " +
+                "cloned voice'. Searches Fish Audio's voice library, switches to the best match at once and " +
+                "names a few others. 'another one' tries the next match; 'your normal voice' goes back.",
+            props(
+                "description" to str("The voice as the user described it, in their words: a name, a character, " +
+                    "gender, age, accent, mood. 'another' for the next match, 'default' to go back."),
+                "language" to str("Two-letter language the voice should speak, if they said one: de, en, fr…")
+            ),
+            listOf("description")
+        ),
+        tool(
             "stopwatch",
             "Jarvis's stopwatch, counting up: 'start the stopwatch', 'lap', 'how long has it been " +
                 "running', 'pause it', 'stop and reset'. It shows in the notification shade.",
@@ -1303,6 +1318,7 @@ class Tools(
                 "timers" -> timerAction(args)
                 "stopwatch" -> stopwatchAction(args)
                 "change_setting" -> changeSetting(args, settings)
+                "change_voice" -> changeVoice(args)
                 "show_alarms" -> launcher.showAlarms()
                 "device_status" -> deviceStatus(args)
                 "torch" -> device.torch(args.optBoolean("on", true))
@@ -2245,6 +2261,68 @@ class Tools(
         }
     }
 
+    /** The last voice search's results, best first, for "another one". */
+    @Volatile
+    private var voiceChoices: List<com.lukas.jarvis.voice.FishVoiceOption> = emptyList()
+    @Volatile
+    private var voiceChoice = 0
+
+    private suspend fun changeVoice(args: JSONObject): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val match = com.lukas.jarvis.voice.VoiceMatch
+        val description = args.optString("description").trim()
+        val current = settingsStore.current
+        if (description.isNotBlank() && match.wantsDefault(description)) {
+            settingsStore.update { it.copy(fishVoiceId = "", fishVoiceName = "", voiceName = "") }
+            return@withContext "Back to the default voice."
+        }
+        if (current.fishKey.isBlank()) {
+            return@withContext "Choosing a voice by description needs Fish Audio's voice library, and there is no " +
+                "Fish Audio key yet. Tell the user to paste one under Settings → Voice (fish.audio has a free tier). " +
+                "Until then only the phone's own voices can be picked there."
+        }
+        val voices = speaker ?: return@withContext "No voice to change here."
+        val choices = voiceChoices
+        if (match.wantsAnother(description) && choices.size > 1) {
+            voiceChoice = (voiceChoice + 1) % choices.size
+            return@withContext useVoice(choices[voiceChoice], choices)
+        }
+        val mine = MY_VOICE.containsMatchIn(description.lowercase(Locale.ROOT))
+        val plan = match.plan(if (mine) "" else description, args.optString("language").takeIf { it.isNotBlank() })
+        val found = mutableListOf<com.lukas.jarvis.voice.FishVoiceOption>()
+        var failure: Throwable? = null
+        fun search(query: String, language: String) {
+            runCatching { voices.cloudVoices(current.fishKey, query, language, mine) }
+                .onSuccess { found += it }
+                .onFailure { failure = it }
+        }
+        for (query in plan.queries) {
+            search(query, plan.language.orEmpty())
+            if (found.size >= 8 || failure != null) break
+        }
+        // A name the library only has in another language is still worth having.
+        if (found.isEmpty() && failure == null && plan.language != null) search(plan.queries.first(), "")
+        if (found.isEmpty()) {
+            return@withContext failure?.let { "I couldn't search Fish Audio's voices: ${it.message}." }
+                ?: if (mine) "There are no voices of your own on the Fish Audio account yet — they are made at fish.audio."
+                else "Fish Audio's library has nothing that matches '$description'. Other words may find one, like 'deep male narrator'."
+        }
+        val ranked = match.rank(found, plan).take(6)
+        voiceChoices = ranked
+        voiceChoice = 0
+        useVoice(ranked.first(), ranked)
+    }
+
+    private fun useVoice(
+        voice: com.lukas.jarvis.voice.FishVoiceOption,
+        choices: List<com.lukas.jarvis.voice.FishVoiceOption>
+    ): String {
+        settingsStore.update { it.copy(voiceEngine = "fish", fishVoiceId = voice.id, fishVoiceName = voice.title) }
+        val languages = voice.languages.takeIf { it.isNotEmpty() }?.joinToString("/", " (", ")").orEmpty()
+        val others = choices.filter { it.id != voice.id }.take(3).joinToString { "'${it.title}'" }
+        return "Now speaking as '${voice.title}'$languages from Fish Audio; this reply is already in that voice." +
+            if (others.isNotEmpty()) " Other matches, if they want another: $others." else ""
+    }
+
     private fun stopwatchAction(args: JSONObject): String {
         // Said, not shown: "1 minute 23 seconds" reads aloud better than "1:23.4".
         val clock = { ms: Long -> com.lukas.jarvis.notify.Timers.spoken((ms / 1000) * 1000) }
@@ -2694,6 +2772,9 @@ class Tools(
     private fun optDoubleOrNull(args: JSONObject, key: String): Double? = number(args, key)
 
     private companion object {
+        /** "My own voice", "meine eigene Stimme": the account's own clones. */
+        val MY_VOICE = Regex("\\b(my own|my clone|my cloned|my voice|meine eigene|meiner eigenen|meine stimme|meiner stimme|mein klon)")
+
         /** Timer names that are no name at all. */
         val GENERIC_TIMER_LABELS = setOf("timer", "countdown", "count down", "alarm", "wecker", "kurzzeitwecker")
 

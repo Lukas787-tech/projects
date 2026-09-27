@@ -135,7 +135,8 @@ class AppContainer(context: Context) {
         placeReminders = placeReminders,
         profiles = profiles,
         countdowns = countdowns,
-        settingsStore = settings
+        settingsStore = settings,
+        speaker = speaker
     )
 
     val models = ModelCatalog()
