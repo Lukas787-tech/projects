@@ -2276,9 +2276,8 @@ class Tools(
             return@withContext "Back to the default voice."
         }
         if (current.fishKey.isBlank()) {
-            return@withContext "Choosing a voice by description needs Fish Audio's voice library, and there is no " +
-                "Fish Audio key yet. Tell the user to paste one under Settings → Voice (fish.audio has a free tier). " +
-                "Until then only the phone's own voices can be picked there."
+            return@withContext "For that I need Fish Audio's voice library: paste a Fish Audio key under " +
+                "Settings → Voice (fish.audio has a free tier). Until then only the phone's own voices can be picked there."
         }
         val voices = speaker ?: return@withContext "No voice to change here."
         val choices = voiceChoices
@@ -2319,8 +2318,8 @@ class Tools(
         settingsStore.update { it.copy(voiceEngine = "fish", fishVoiceId = voice.id, fishVoiceName = voice.title) }
         val languages = voice.languages.takeIf { it.isNotEmpty() }?.joinToString("/", " (", ")").orEmpty()
         val others = choices.filter { it.id != voice.id }.take(3).joinToString { "'${it.title}'" }
-        return "Now speaking as '${voice.title}'$languages from Fish Audio; this reply is already in that voice." +
-            if (others.isNotEmpty()) " Other matches, if they want another: $others." else ""
+        return "Now speaking as '${voice.title}'$languages from Fish Audio." +
+            if (others.isNotEmpty()) " Also found: $others — say 'another voice' for the next." else ""
     }
 
     private fun stopwatchAction(args: JSONObject): String {
