@@ -91,6 +91,9 @@ class StageStore {
 
     val current: Element get() = _state.value.element
 
+    /** What is projected on the assistant's own screen, over the core. */
+    val scene = SceneStore()
+
     companion object {
         /** A note that opens the conversation history over the assistant's screen. */
         const val HISTORY = "history"

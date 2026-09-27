@@ -320,6 +320,7 @@ private fun JarvisRoot(
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val canSeeMedia by viewModel.canSeeMedia.collectAsStateWithLifecycle()
     val cameraRequest by viewModel.cameraRequests.collectAsStateWithLifecycle()
+    val scene by viewModel.scene.collectAsStateWithLifecycle()
     val mapStyle = MapStyle.of(settings.mapStyle)
     val scope = rememberCoroutineScope()
 
@@ -330,6 +331,31 @@ private fun JarvisRoot(
     }
 
     val coreStyle = CoreStyle.of(settings.coreStyle)
+    val holoActions = remember(viewModel) {
+        com.lukas.jarvis.ui.holo.HoloActions(
+            onDismiss = viewModel::dismissHolo,
+            onTouch = viewModel::touchHolo,
+            onExpand = { holo ->
+                viewModel.recedeHolo()
+                viewModel.showElement(holo.element)
+            },
+            onPromote = viewModel::promoteHolo,
+            onExpire = viewModel::expireHolos,
+            onRefreshBrief = viewModel::refreshBrief,
+            onSelectPlace = viewModel::selectPlace,
+            onRoute = viewModel::routeToPlace,
+            onNavigate = viewModel::navigateToPlace,
+            onFollow = viewModel::followLocation,
+            onToggleTask = viewModel::toggleTask,
+            onCheckItem = viewModel::checkListItem,
+            onPlay = viewModel::playMusic,
+            onPause = viewModel::pauseMusic,
+            onNext = viewModel::nextTrack,
+            onPrevious = viewModel::previousTrack,
+            onRefreshMusic = viewModel::refreshNowPlaying,
+            onGrantMedia = viewModel::openNotificationAccess
+        )
+    }
     val messageActions = remember(viewModel) {
         MessageActions(
             onSpeak = viewModel::speakMessage,
@@ -521,11 +547,16 @@ private fun JarvisRoot(
     LaunchedEffect(map.revision) {
         if (map.revision == seenMapRevision) return@LaunchedEffect
         seenMapRevision = map.revision
+        // A pin dropped by hand on the full map is already where the eye is.
+        if (map.quiet) return@LaunchedEffect
         showHistory = false
-        // Voice mode shows the result on its own stage — the globe is mid-flight
-        // towards it — so jumping tabs would interrupt the thing being watched.
-        // Text mode has nowhere to put a map, so it goes to the map tab.
-        if (!settings.voiceMode) viewModel.showElement(Element.Map)
+        // Voice mode projects the map over the core, where the answer is being
+        // spoken; text mode has nowhere to put a map, so it goes to the map tab.
+        if (settings.voiceMode) {
+            if (element == Element.Globe) viewModel.raiseHolo(com.lukas.jarvis.stage.Holo.Map)
+        } else {
+            viewModel.showElement(Element.Map)
+        }
     }
 
     // Only one thing may hold the microphone. The wake-word service listens
@@ -702,7 +733,23 @@ private fun JarvisRoot(
                     interpreter = interpreter,
                     onInterpretListen = viewModel::interpretListen,
                     onInterpretType = viewModel::interpretTyped,
-                    onEndInterpreter = viewModel::endInterpreter
+                    onEndInterpreter = viewModel::endInterpreter,
+                    scene = scene,
+                    holoData = com.lukas.jarvis.ui.holo.HoloData(
+                        map = map,
+                        tiles = viewModel.tiles,
+                        mapStyle = mapStyle,
+                        saved = savedPlaces,
+                        hereLabel = hereLabel,
+                        routing = routing,
+                        brief = brief,
+                        tasks = tasks,
+                        trackers = trackers,
+                        lists = lists,
+                        nowPlaying = nowPlaying,
+                        canSeeMedia = canSeeMedia
+                    ),
+                    holoActions = holoActions
                 )
 
                 // Notes, tasks and money are one element with three segments,

@@ -103,8 +103,11 @@ class Navigator(
 
     suspend fun whereAmI(): String {
         val here = locator.current() ?: return noLocation()
-        store.setHere(here)
+        // Framed at once, named when the street comes back: the map is up
+        // before the answer is.
+        store.showHere(here, "You are here")
         val description = places.describe(here)
+        description?.let { store.nameHere(it.split(",").take(2).joinToString(",").trim()) }
         return description?.let { "You are around $it." }
             ?: String.format(
                 Locale.US,
@@ -112,6 +115,15 @@ class Navigator(
                 here.lat,
                 here.lon
             )
+    }
+
+    /** Nothing found and no route: a map of nothing, which "show the map" should turn into a map of here. */
+    fun mapIsEmpty(): Boolean = store.current.places.isEmpty() && store.current.route == null
+
+    /** The map framed on the phone, for "show me the map" with nothing else on it. */
+    suspend fun showHere() {
+        val here = locator.current() ?: locator.remembered() ?: return
+        store.showHere(here, "You are here")
     }
 
     suspend fun startNavigation(destination: String?, mode: String?, settings: Settings): String {
