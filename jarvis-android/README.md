@@ -48,6 +48,10 @@ you never have to go somewhere else to look at an answer.
   steps back to a glance along the top; tap a glance to bring it back. An
   appointment coming up, overdue tasks and music playing appear there too.
   Flick a panel's title bar to put it away, or tap ⤢ for the full screen.
+- **No dock, no tabs.** The HUD is the whole screen and the core is the
+  button. Today, Notes, the full map and Settings open when Jarvis opens them
+  ("show my notes", "open the settings") or from a panel's ⤢, scan in like
+  the panels, and switch off again with the back gesture or a tap on the core.
 - **Calm motion** keeps it all but trades the scan lines and beam pulses for
   simple fades.
 
@@ -196,7 +200,8 @@ web source Jarvis uses answers without a key.
 
 ## Ways in
 
-- **The core** in the dock: one tap talks from any screen; a long press types.
+- **The core**: tap it to talk, long-press to type. Over a screen Jarvis has
+  opened it floats small at the bottom, and a tap sends the screen away.
 - **The wake word**: "Jarvis, what's the weather?" — answered out loud even
   while the app is closed (optional, uses more battery).
 - **The floating dot** over other apps.

@@ -13,6 +13,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -104,6 +107,8 @@ class HoloData(
 
 /** What the panels and the glances can do. */
 class HoloActions(
+    val onCoreTap: () -> Unit = {},
+    val onCoreLongPress: () -> Unit = {},
     val onDismiss: () -> Unit = {},
     val onTouch: () -> Unit = {},
     val onExpand: (Holo) -> Unit = {},
@@ -137,6 +142,7 @@ private const val EXIT_MS = 380
  * into being where the beam lands. Put away, or left alone long enough, the
  * panel switches off and the core comes back down.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HoloStage(
     scene: Scene,
@@ -225,12 +231,28 @@ fun HoloStage(
                     val cy = heightPx / 2f + (smallCenterY - heightPx / 2f) * l
                     IntOffset(((widthPx - side) / 2f).roundToInt(), (cy - side / 2f).roundToInt())
                 }
+                .then(
+                    // The globe hears its own taps, between drags; the reactor is one big button.
+                    if (coreStyle == CoreStyle.Globe) {
+                        Modifier
+                    } else {
+                        Modifier.combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClickLabel = "Talk",
+                            onLongClickLabel = "Type instead",
+                            onLongClick = actions.onCoreLongPress,
+                            onClick = actions.onCoreTap
+                        )
+                    }
+                )
         ) {
             if (coreStyle == CoreStyle.Globe) {
                 Globe(
                     mood = mood,
                     level = level,
                     here = data.map.here,
+                    onTap = actions.onCoreTap,
                     modifier = Modifier.fillMaxSize()
                 )
             } else {

@@ -20,7 +20,6 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -35,26 +34,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Checklist
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -65,7 +49,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -93,11 +76,15 @@ import com.lukas.jarvis.llm.Abilities
 import com.lukas.jarvis.llm.AbilitySwitch
 import com.lukas.jarvis.llm.Personas
 import com.lukas.jarvis.ui.components.CoreStyle
+import com.lukas.jarvis.ui.components.CoreButton
+import com.lukas.jarvis.ui.holo.materialize
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.graphics.graphicsLayer
 import com.lukas.jarvis.ui.components.MessageActions
 import com.lukas.jarvis.stage.Element
-import com.lukas.jarvis.ui.components.JarvisDock
 import com.lukas.jarvis.vm.Stage
-import com.lukas.jarvis.ui.components.NavEntry
 import com.lukas.jarvis.ui.theme.Ink
 import com.lukas.jarvis.ui.theme.JarvisTheme
 import com.lukas.jarvis.ui.theme.PageBackground
@@ -193,28 +180,6 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_START_LISTENING = "start_listening"
         const val EXTRA_RUN_ROUTINE = "run_routine"
     }
-}
-
-/**
- * The icon for each element in the bar along the bottom.
- *
- * The bar is no longer a set of destinations the user navigates between: the
- * assistant puts elements up too, through its `show` tool, and both write the
- * same state. So this is a lookup from element to icon rather than a navigation
- * model of its own.
- */
-private fun iconFor(element: Element): ImageVector = when (element) {
-    Element.Today -> Icons.Default.Today
-    Element.Globe -> Icons.Default.Public
-    Element.Map -> Icons.Default.Map
-    Element.Notes -> Icons.Default.Psychology
-    Element.Tasks -> Icons.Default.CheckCircle
-    Element.Money -> Icons.Default.AccountBalanceWallet
-    Element.Lists -> Icons.Default.Checklist
-    Element.Music -> Icons.Default.MusicNote
-    Element.Devices -> Icons.Default.Bluetooth
-    Element.Skills -> Icons.Default.AutoAwesome
-    Element.Settings -> Icons.Default.Settings
 }
 
 /** Why the app was opened, when it was for something in particular. */
@@ -331,8 +296,28 @@ private fun JarvisRoot(
     }
 
     val coreStyle = CoreStyle.of(settings.coreStyle)
+    var showHistory by remember { mutableStateOf(false) }
+
+    // The core is the only control that is always there: a tap talks (and
+    // sends away whatever screen was opened over the HUD), a long press types.
+    fun talk() {
+        showHistory = false
+        if (viewModel.ui.value.stage != Stage.Idle) {
+            viewModel.toggleListening()
+        } else {
+            if (viewModel.element.value.element != Element.Globe) viewModel.showElement(Element.Globe)
+            viewModel.startListening()
+        }
+    }
+    fun type() {
+        showHistory = false
+        viewModel.showElement(Element.Globe)
+        viewModel.updateSettings { it.copy(voiceMode = false) }
+    }
     val holoActions = remember(viewModel) {
         com.lukas.jarvis.ui.holo.HoloActions(
+            onCoreTap = ::talk,
+            onCoreLongPress = ::type,
             onDismiss = viewModel::dismissHolo,
             onTouch = viewModel::touchHolo,
             onExpand = { holo ->
@@ -375,7 +360,6 @@ private fun JarvisRoot(
 
     val stage by viewModel.element.collectAsStateWithLifecycle()
     val element = stage.element
-    var showHistory by remember { mutableStateOf(false) }
 
     // Calendar and contacts are asked for the moment they are switched on, not
     // at first launch: a permission prompt for a feature the user has not chosen
@@ -400,6 +384,12 @@ private fun JarvisRoot(
     // rather than leave the app — it is not a destination of its own.
     BackHandler(enabled = showHistory) { showHistory = false }
     BackHandler(enabled = interpreter != null && !showHistory) { viewModel.endInterpreter() }
+    BackHandler(enabled = !showHistory && interpreter == null && element != Element.Globe) {
+        viewModel.showElement(Element.Globe)
+    }
+    BackHandler(enabled = !showHistory && interpreter == null && element == Element.Globe && scene.focus != null) {
+        viewModel.dismissHolo()
+    }
     // "Show me our old conversations" arrives as a note on the stage, and
     // any other change of screen — the dock, the assistant — closes it, so the
     // history never sits on top of a screen that was asked for.
@@ -619,7 +609,8 @@ private fun JarvisRoot(
         return
     }
 
-    Column(
+    val onHud = element == Element.Globe && !showHistory
+    Box(
         modifier = Modifier
             .fillMaxSize()
             // One background for the whole app, defined with the rest of the
@@ -632,8 +623,9 @@ private fun JarvisRoot(
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+                .fillMaxSize()
+                // Room under a screen for the floating core, so it covers nothing.
+                .padding(bottom = if (onHud) 0.dp else CORE_ROOM)
         ) {
             if (showHistory) {
                 val everything by viewModel.history.collectAsStateWithLifecycle()
@@ -650,13 +642,35 @@ private fun JarvisRoot(
                     if (flightPair) {
                         fadeIn(tween(1)) togetherWith fadeOut(tween(Motion.standard))
                     } else {
-                        (fadeIn(tween(Motion.standard, delayMillis = 60)) +
-                            scaleIn(tween(Motion.standard), initialScale = 0.97f)) togetherWith
-                            fadeOut(tween(Motion.quick))
+                        // Held just short of the ends so the scan below has time to run.
+                        fadeIn(tween(SCREEN_IN_MS), initialAlpha = 0.99f) togetherWith
+                            fadeOut(tween(SCREEN_OUT_MS), targetAlpha = 0.99f)
                     }
                 },
                 label = "element"
-            ) { shown -> when (shown) {
+            ) { shown ->
+                val calm = ThemeState.reduceMotion
+                val scan = transition.animateFloat(
+                    transitionSpec = {
+                        if (targetState == EnterExitState.Visible) {
+                            tween(if (calm) 220 else SCREEN_IN_MS, easing = LinearEasing)
+                        } else {
+                            tween(if (calm) 160 else SCREEN_OUT_MS, easing = LinearEasing)
+                        }
+                    },
+                    label = "scan"
+                ) { if (it == EnterExitState.Visible) 1f else 0f }
+                // A screen the assistant opens is projected like a panel; the HUD
+                // itself, and the map the globe flies into, simply appear.
+                val projected = shown != Element.Globe && !(coreStyle == CoreStyle.Globe && shown == Element.Map)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (projected) Modifier.materialize { scan.value }
+                            else Modifier.graphicsLayer { alpha = scan.value }
+                        )
+                ) { when (shown) {
                 Element.Today -> TodayScreen(
                     address = Personas.address(settings),
                     brief = brief,
@@ -749,7 +763,8 @@ private fun JarvisRoot(
                         nowPlaying = nowPlaying,
                         canSeeMedia = canSeeMedia
                     ),
-                    holoActions = holoActions
+                    holoActions = holoActions,
+                    onTalk = ::talk
                 )
 
                 // Notes, tasks and money are one element with three segments,
@@ -944,7 +959,7 @@ private fun JarvisRoot(
                     onReplayIntro = { viewModel.updateSettings { it.copy(onboarded = false) } },
                     onCheckHome = viewModel::checkHome
                 )
-            } }
+            } } }
 
             // Decided in the same frame as the switch, so the destination never
             // shows for a frame before the flight covers it.
@@ -974,50 +989,24 @@ private fun JarvisRoot(
             }
         }
 
-        // The dock: two destinations either side of the core. The core talks
-        // from anywhere and brings the assistant forward to show the answer;
-        // a long press opens the assistant ready to type.
-        val selected = barSelection(element)
-        JarvisDock(
-            compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480,
-            left = remember { listOf(Element.Today, Element.Notes).map { NavEntry(it.name, it.title, iconFor(it)) } },
-            right = remember { listOf(Element.Map, Element.Settings).map { NavEntry(it.name, it.title, iconFor(it)) } },
-            selectedId = if (showHistory) null else selected.name,
-            onSelect = { id ->
-                showHistory = false
-                Element.entries.firstOrNull { it.name == id }?.let(viewModel::showElement)
-            },
-            stage = ui.stage,
-            level = ui.level,
-            coreStyle = coreStyle,
-            coreSelected = selected == Element.Globe && !showHistory,
-            onCoreTap = {
-                showHistory = false
-                if (ui.stage != Stage.Idle) {
-                    viewModel.toggleListening()
-                } else {
-                    if (element != Element.Globe) viewModel.showElement(Element.Globe)
-                    viewModel.startListening()
-                }
-            },
-            onCoreLongPress = {
-                showHistory = false
-                viewModel.showElement(Element.Globe)
-                viewModel.updateSettings { it.copy(voiceMode = false) }
-            },
-            haptics = settings.haptics
-        )
+        // No dock: the HUD's own core is the control there. Over a screen the
+        // assistant opened, the core floats small at the bottom and is the way back.
+        if (!onHud) {
+            CoreButton(
+                stage = ui.stage,
+                level = ui.level,
+                coreStyle = coreStyle,
+                onTap = ::talk,
+                onLongPress = ::type,
+                haptics = settings.haptics,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 6.dp)
+            )
+        }
     }
 }
 
-/**
- * Which bar item lights up for the element on screen.
- *
- * Not every element has a slot — devices and music are reached by asking, and
- * the three list screens share one — so the bar shows the family an element
- * belongs to rather than going blank whenever the assistant raises something
- * that has no icon of its own.
- */
 /** The note that opens Settings on its Powers tab. */
 private const val SETTINGS_POWERS = "settings:powers"
 
@@ -1028,8 +1017,9 @@ private val HUB = setOf(Element.Notes, Element.Tasks, Element.Money, Element.Lis
 private const val FLIGHT_IN_MS = 1_750
 private const val FLIGHT_OUT_MS = 1_250
 
-private fun barSelection(element: Element): Element = when (element) {
-    Element.Tasks, Element.Money, Element.Lists -> Element.Notes
-    Element.Music, Element.Devices, Element.Skills -> Element.Today
-    else -> element
-}
+/** A screen scanning in over the HUD, and switching off again. */
+private const val SCREEN_IN_MS = 720
+private const val SCREEN_OUT_MS = 320
+
+/** Kept clear under an opened screen for the floating core. */
+private val CORE_ROOM = 76.dp

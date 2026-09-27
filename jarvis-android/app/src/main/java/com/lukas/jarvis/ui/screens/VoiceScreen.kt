@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.BatteryStd
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -195,7 +196,9 @@ fun VoiceScreen(
     /** What the assistant has projected over its core, and what the panels draw from. */
     scene: Scene = Scene(),
     holoData: HoloData = HoloData(),
-    holoActions: HoloActions = HoloActions()
+    holoActions: HoloActions = HoloActions(),
+    /** Listening from text mode, where the send button doubles as the microphone. */
+    onTalk: () -> Unit = {}
 ) {
     val rail = if (voiceMode && interpreter == null) glances(scene, holoData) else emptyList()
     Column(
@@ -267,7 +270,8 @@ fun VoiceScreen(
                 onStop = onStop,
                 scene = scene,
                 holoData = holoData,
-                holoActions = holoActions
+                holoActions = holoActions,
+                onTalk = onTalk
             )
         }
     }
@@ -301,7 +305,8 @@ private fun ColumnScope.ConversationBody(
     onStop: () -> Unit,
     scene: Scene,
     holoData: HoloData,
-    holoActions: HoloActions
+    holoActions: HoloActions,
+    onTalk: () -> Unit
 ) {
     if (voiceMode) {
         // A panel up takes the room the clock had; the clock comes back with the core.
@@ -349,18 +354,16 @@ private fun ColumnScope.ConversationBody(
             onStop = onStop,
             onOpenHistory = onOpenHistory,
             onCamera = onCamera,
-            onGallery = onGallery
+            onGallery = onGallery,
+            onTalk = onTalk
         )
     } else {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = Space.snug),
-            verticalAlignment = Alignment.CenterVertically
+        // Nothing but a readout under the stage: the camera is asked for, not reached for.
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(bottom = Space.step),
+            contentAlignment = Alignment.Center
         ) {
-            RoundAction(Icons.Default.PhotoLibrary, "Pick a photo to show $assistantName", onGallery)
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                StatusLine(state = state, configured = configured, onStop = onStop)
-            }
-            RoundAction(Icons.Default.PhotoCamera, "Show $assistantName something", onCamera)
+            StatusLine(state = state, configured = configured, onStop = onStop)
         }
     }
 }
@@ -933,7 +936,7 @@ private fun Readout(
                     )
                     Spacer(Modifier.height(Space.hair))
                     Text(
-                        text = "Tap the core below and talk — or try one of these.",
+                        text = "Tap the core and talk — or try one of these.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextFaint,
                         textAlign = TextAlign.Center
@@ -1239,20 +1242,6 @@ private fun StatusLine(state: AssistantUiState, configured: Boolean, onStop: () 
     }
 }
 
-/** A round glass button beside the status line, sized for a thumb. */
-@Composable
-private fun RoundAction(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(44.dp)
-            .glass(CircleShape)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, contentDescription = label, tint = TextSecondary, modifier = Modifier.size(20.dp))
-    }
-}
-
 @Composable
 private fun Composer(
     busy: Boolean,
@@ -1260,7 +1249,8 @@ private fun Composer(
     onStop: () -> Unit,
     onOpenHistory: () -> Unit,
     onCamera: () -> Unit,
-    onGallery: () -> Unit
+    onGallery: () -> Unit,
+    onTalk: () -> Unit
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
     val shape = RoundedCornerShape(26.dp)
@@ -1338,13 +1328,15 @@ private fun Composer(
             keyboardActions = KeyboardActions(onSend = { send() })
         )
         val ready = draft.isNotBlank() && !busy
+        // Empty, the button talks instead: the way to speak once there is no dock.
+        val talk = draft.isBlank() && !busy
         IconButton(
-            onClick = { if (busy) onStop() else send() },
+            onClick = { if (busy) onStop() else if (talk) onTalk() else send() },
             modifier = Modifier
                 .size(52.dp)
                 .clip(CircleShape)
                 .background(
-                    if (ready || busy) {
+                    if (ready || busy || talk) {
                         Brush.linearGradient(listOf(AccentBright, Accent))
                     } else {
                         Brush.linearGradient(listOf(Film.resting, Film.resting))
@@ -1352,9 +1344,17 @@ private fun Composer(
                 )
         ) {
             Icon(
-                if (busy) Icons.Default.Stop else Icons.AutoMirrored.Filled.Send,
-                contentDescription = if (busy) "Stop" else "Send",
-                tint = if (ready || busy) OnAccent else TextFaint
+                when {
+                    busy -> Icons.Default.Stop
+                    talk -> Icons.Default.Mic
+                    else -> Icons.AutoMirrored.Filled.Send
+                },
+                contentDescription = when {
+                    busy -> "Stop"
+                    talk -> "Talk"
+                    else -> "Send"
+                },
+                tint = OnAccent
             )
         }
     }
