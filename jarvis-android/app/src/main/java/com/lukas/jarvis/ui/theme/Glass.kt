@@ -6,10 +6,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.Dp
@@ -127,6 +130,42 @@ fun Modifier.hudFrame(
     line(w - i, i, w - i - a, i); line(w - i, i, w - i, i + a)
     line(i, h - i, i + a, h - i); line(i, h - i, i, h - i - a)
     line(w - i, h - i, w - i - a, h - i); line(w - i, h - i, w - i, h - i - a)
+}
+
+/**
+ * The field behind the whole display: a faint grid of crosshair marks, the
+ * reference lines a heads-up display is measured against, darkening towards
+ * the edges. Built once per size and colour, then drawn as one path.
+ */
+fun Modifier.hudBackdrop(): Modifier = drawWithCache {
+    val step = 44.dp.toPx()
+    val arm = 3.dp.toPx()
+    val marks = Path().apply {
+        var y = step / 2
+        while (y < size.height) {
+            var x = step / 2
+            while (x < size.width) {
+                moveTo(x - arm, y)
+                lineTo(x + arm, y)
+                moveTo(x, y - arm)
+                lineTo(x, y + arm)
+                x += step
+            }
+            y += step
+        }
+    }
+    val tone = Accent.copy(alpha = 0.10f)
+    val vignette = Brush.radialGradient(
+        0.45f to Color.Transparent,
+        1f to Color.Black.copy(alpha = 0.55f),
+        center = Offset(size.width / 2f, size.height * 0.42f),
+        radius = size.maxDimension * 0.75f
+    )
+    val stroke = Stroke(1.dp.toPx())
+    onDrawBehind {
+        drawPath(marks, tone, style = stroke)
+        drawRect(vignette)
+    }
 }
 
 /** Raises a translucent colour towards opaque without changing its hue. */

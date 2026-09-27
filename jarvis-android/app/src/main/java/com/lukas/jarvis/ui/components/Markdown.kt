@@ -6,7 +6,6 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -39,7 +38,7 @@ object Markdown {
                 return@forEachIndexed
             }
             if (inFence) {
-                withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = codeBackground)) {
+                withStyle(SpanStyle(fontFamily = com.lukas.jarvis.ui.theme.HudType.mono, background = codeBackground)) {
                     append(line)
                 }
             } else {
@@ -107,7 +106,7 @@ object Markdown {
                 rest.startsWith("`") && rest.indexOf('`', 1) > 1 -> {
                     flush()
                     val end = rest.indexOf('`', 1)
-                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = codeBackground)) {
+                    withStyle(SpanStyle(fontFamily = com.lukas.jarvis.ui.theme.HudType.mono, background = codeBackground)) {
                         append(rest.substring(1, end))
                     }
                     i += end + 1

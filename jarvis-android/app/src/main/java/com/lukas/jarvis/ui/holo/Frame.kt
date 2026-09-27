@@ -166,7 +166,11 @@ fun HoloFrame(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         title.uppercase(),
-                        style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 2.2.sp),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontFamily = com.lukas.jarvis.ui.theme.HudType.wide,
+                            fontSize = 10.sp,
+                            letterSpacing = 1.8.sp
+                        ),
                         color = accent,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis

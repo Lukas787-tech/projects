@@ -88,6 +88,7 @@ import com.lukas.jarvis.vm.Stage
 import com.lukas.jarvis.ui.theme.Ink
 import com.lukas.jarvis.ui.theme.JarvisTheme
 import com.lukas.jarvis.ui.theme.PageBackground
+import com.lukas.jarvis.ui.theme.hudBackdrop
 import com.lukas.jarvis.ui.theme.ThemeState
 import androidx.compose.runtime.SideEffect
 import com.lukas.jarvis.voice.WakeWordService
@@ -590,6 +591,7 @@ private fun JarvisRoot(
             modifier = Modifier
                 .fillMaxSize()
                 .background(PageBackground)
+            .hudBackdrop()
                 .windowInsetsPadding(WindowInsets.systemBars)
                 .imePadding()
         ) {
@@ -616,6 +618,7 @@ private fun JarvisRoot(
             // One background for the whole app, defined with the rest of the
             // palette rather than inline here.
             .background(PageBackground)
+            .hudBackdrop()
             .windowInsetsPadding(WindowInsets.systemBars)
             // Without this the soft keyboard sits on top of the text field it
             // was opened for, which makes typing to Jarvis a guessing game.

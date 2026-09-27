@@ -571,14 +571,19 @@ private fun Header(
                 // controls, the plain name rather than "J.A.R" cut off.
                 BoxWithConstraints(modifier = Modifier.weight(1f)) {
                     val dotted = name.uppercase().toCharArray().joinToString(".")
-                    val roomy = maxWidth >= (dotted.length * 9).dp
+                    val roomy = maxWidth >= (dotted.length * 12).dp
                     // Plain, it shrinks to fit rather than lose letters: about
                     // 0.75 of the font size per letter at this spacing.
                     val base = MaterialTheme.typography.labelMedium
                     val fitted = (maxWidth.value / (name.length.coerceAtLeast(1) * 0.78f)).coerceIn(8f, base.fontSize.value)
                     Text(
                         text = if (roomy) dotted else name.uppercase(),
-                        style = if (roomy) base.copy(letterSpacing = 2.sp) else base.copy(letterSpacing = 0.5.sp, fontSize = fitted.sp),
+                        // The wide face is the machine's own name, and nothing else.
+                        style = if (roomy) {
+                            base.copy(fontFamily = com.lukas.jarvis.ui.theme.HudType.wide, fontSize = 11.sp, letterSpacing = 1.6.sp)
+                        } else {
+                            base.copy(letterSpacing = 0.5.sp, fontSize = fitted.sp)
+                        },
                         color = Accent,
                         maxLines = 1,
                         softWrap = false,

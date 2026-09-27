@@ -60,7 +60,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.BuildConfig
 import com.lukas.jarvis.core.Settings
@@ -1151,7 +1150,7 @@ private fun DiagnosticsBlock(diagnostics: String, clipboard: ClipboardManager) {
         diagnostics,
         style = MaterialTheme.typography.labelSmall,
         color = TextFaint,
-        fontFamily = FontFamily.Monospace
+        fontFamily = com.lukas.jarvis.ui.theme.HudType.mono
     )
     Spacer(Modifier.height(8.dp))
     ChipButton(

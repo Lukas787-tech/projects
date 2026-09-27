@@ -16,7 +16,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import com.lukas.jarvis.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -58,7 +60,7 @@ data class Backdrop(
 object Palettes {
 
     val accents: List<AccentTone> = listOf(
-        AccentTone("arc", "Arc reactor", Color(0xFF4FD8FF), Color(0xFFB5F0FF), Color(0xFF0A7FB0)),
+        AccentTone("arc", "Arc reactor", Color(0xFF2EE6FF), Color(0xFFC4F9FF), Color(0xFF007FA6)),
         AccentTone("stark", "Stark gold", Color(0xFFFFC24B), Color(0xFFFFE6A8), Color(0xFFB0711A)),
         AccentTone("crimson", "Mark III red", Color(0xFFFF4D5E), Color(0xFFFFB0B8), Color(0xFFA3162A)),
         AccentTone("emerald", "Emerald", Color(0xFF3DDC97), Color(0xFFB3F5D8), Color(0xFF16875A)),
@@ -71,8 +73,8 @@ object Palettes {
     val backdrops: List<Backdrop> = listOf(
         Backdrop(
             "space", "Deep space",
-            top = Color(0xFF0B1422), middle = Color(0xFF05080F), bottom = Color(0xFF000000),
-            raised = Color(0xFF070B12), card = Color(0xFF0F1622), dialog = Color(0xFF111925)
+            top = Color(0xFF071624), middle = Color(0xFF030A12), bottom = Color(0xFF000205),
+            raised = Color(0xFF040C15), card = Color(0xFF0A1622), dialog = Color(0xFF0D1B28)
         ),
         Backdrop(
             "oled", "Pure black",
@@ -222,13 +224,15 @@ val AccentGlow: Color get() = ThemeState.accent.main.copy(alpha = 0.22f)
 
 // The places where colour earns its keep beyond the accent, kept at restrained
 // dark-appearance values rather than at full saturation.
-val Positive: Color get() = Color(0xFF30D158)
-val Caution: Color get() = Color(0xFFFFD60A)
-val Negative: Color get() = Color(0xFFFF453A)
+val Positive: Color get() = Color(0xFF2EF2A6)
+val Caution: Color get() = Color(0xFFFFB02E)
+val Negative: Color get() = Color(0xFFFF3D55)
 
-val TextPrimary: Color get() = Color(0xFFF2F5F9)
-val TextSecondary: Color get() = Color(0xFFA3AAB5)
-val TextFaint: Color get() = Color(0xFF6B7280)
+// Text is lit by the reactor too: every grey carries a trace of the accent, so
+// words read as light on glass rather than ink on paper.
+val TextPrimary: Color get() = lerp(Color(0xFFF1FAFF), ThemeState.accent.bright, 0.14f)
+val TextSecondary: Color get() = lerp(Color(0xFF93A8B6), ThemeState.accent.main, 0.20f)
+val TextFaint: Color get() = lerp(Color(0xFF55697A), ThemeState.accent.main, 0.16f)
 
 /**
  * The spacing scale. A handful of values used everywhere, instead of whatever
@@ -322,94 +326,111 @@ private fun colors() = darkColorScheme(
     surfaceContainerHighest = lerp(DialogPane, Color.White, 0.06f)
 )
 
-// Sized and tracked the way a system typeface is: large text set tight and with
-// weight, small text set loose.
+/**
+ * The faces of the display. Rajdhani, squared and condensed, carries the
+ * words and the big numbers; Share Tech Mono every readout and label; the wide
+ * Michroma only the few words that are the machine naming itself. All three
+ * are under the SIL Open Font License, bundled with their licences.
+ */
+object HudType {
+    val sans = FontFamily(
+        Font(R.font.rajdhani_light, FontWeight.Light),
+        Font(R.font.rajdhani_regular, FontWeight.Normal),
+        Font(R.font.rajdhani_medium, FontWeight.Medium),
+        Font(R.font.rajdhani_semibold, FontWeight.SemiBold),
+        Font(R.font.rajdhani_bold, FontWeight.Bold)
+    )
+    val mono = FontFamily(Font(R.font.share_tech_mono, FontWeight.Normal))
+    val wide = FontFamily(Font(R.font.michroma, FontWeight.Normal))
+}
+
+// Rajdhani is narrow with a small x-height, so it is set a size up from a
+// system face and never lighter than medium for reading; the numbers go light
+// and large, the way an instrument shows them.
 private val JarvisType = Typography(
     displayLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = HudType.sans,
         fontWeight = FontWeight.Light,
-        fontSize = 52.sp,
-        lineHeight = 56.sp,
-        letterSpacing = (-1.6).sp
+        fontSize = 58.sp,
+        lineHeight = 60.sp,
+        letterSpacing = (-0.5).sp
     ),
     displayMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = HudType.sans,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 34.sp,
+        fontSize = 36.sp,
         lineHeight = 40.sp,
-        letterSpacing = (-0.9).sp
-    ),
-    headlineLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Medium,
-        fontSize = 27.sp,
-        lineHeight = 34.sp,
-        letterSpacing = (-0.6).sp
-    ),
-    headlineMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Normal,
-        fontSize = 22.sp,
-        lineHeight = 29.sp,
-        letterSpacing = (-0.4).sp
-    ),
-    titleLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 19.sp,
-        lineHeight = 24.sp,
-        letterSpacing = (-0.3).sp
-    ),
-    titleMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 21.sp,
-        letterSpacing = (-0.2).sp
-    ),
-    bodyLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Normal,
-        fontSize = 17.sp,
-        lineHeight = 24.sp,
-        letterSpacing = (-0.3).sp
-    ),
-    bodyMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Normal,
-        fontSize = 15.sp,
-        lineHeight = 21.sp,
-        letterSpacing = (-0.1).sp
-    ),
-    bodySmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Normal,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
         letterSpacing = 0.sp
     ),
-    labelLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+    headlineLarge = TextStyle(
+        fontFamily = HudType.sans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 30.sp,
+        lineHeight = 34.sp,
+        letterSpacing = 0.sp
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = HudType.sans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 25.sp,
+        lineHeight = 30.sp,
+        letterSpacing = 0.1.sp
+    ),
+    titleLarge = TextStyle(
+        fontFamily = HudType.sans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 21.sp,
+        lineHeight = 25.sp,
+        letterSpacing = 0.2.sp
+    ),
+    titleMedium = TextStyle(
+        fontFamily = HudType.sans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 18.sp,
+        lineHeight = 22.sp,
+        letterSpacing = 0.2.sp
+    ),
+    bodyLarge = TextStyle(
+        fontFamily = HudType.sans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 18.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.1.sp
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = HudType.sans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp,
+        lineHeight = 21.sp,
+        letterSpacing = 0.1.sp
+    ),
+    bodySmall = TextStyle(
+        fontFamily = HudType.sans,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 18.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.2.sp
+    ),
+    labelLarge = TextStyle(
+        fontFamily = HudType.sans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 15.sp,
+        lineHeight = 18.sp,
+        letterSpacing = 0.6.sp
     ),
     labelMedium = TextStyle(
-        fontFamily = FontFamily.Monospace,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
+        fontFamily = HudType.mono,
+        fontWeight = FontWeight.Normal,
+        fontSize = 11.5.sp,
         lineHeight = 14.sp,
-        letterSpacing = 1.4.sp
+        letterSpacing = 1.2.sp
     ),
     labelSmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
+        fontFamily = HudType.sans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 12.sp,
         lineHeight = 15.sp,
-        // Enough tracking to keep small caps legible, not so much that it turns
-        // into a science-fiction title card.
-        letterSpacing = 1.1.sp
+        letterSpacing = 1.2.sp
     )
 )
 
