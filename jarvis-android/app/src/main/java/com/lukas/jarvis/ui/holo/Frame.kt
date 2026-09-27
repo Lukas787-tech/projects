@@ -82,6 +82,8 @@ fun HoloFrame(
     code: String? = null,
     live: Boolean = false,
     onExpand: (() -> Unit)? = null,
+    /** Take all the height given, as a map does; otherwise hug the content. */
+    fill: Boolean = true,
     content: @Composable BoxScope.() -> Unit
 ) {
     val calm = ThemeState.reduceMotion
@@ -139,7 +141,7 @@ fun HoloFrame(
                 drawHoloTrim(accent, bright, cut)
             }
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -200,7 +202,10 @@ fun HoloFrame(
                         Brush.horizontalGradient(listOf(accent.copy(alpha = 0.5f), Hairline, Color.Transparent))
                     )
             )
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), content = content)
+            Box(
+                modifier = if (fill) Modifier.weight(1f).fillMaxWidth() else Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                content = content
+            )
         }
     }
 }

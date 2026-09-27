@@ -113,7 +113,6 @@ internal fun MapHolo(
     tiles: TileCache,
     style: MapStyle,
     saved: List<SavedPlace>,
-    hereLabel: String?,
     routing: Boolean,
     onSelect: (Int) -> Unit,
     onRoute: (Int) -> Unit,
@@ -165,36 +164,21 @@ internal fun MapHolo(
             if (nothingFound) drawReticle(dive.value)
         }
 
-        // What and where, in the top corner.
+        // The title bar names the place; the map adds only what a route says.
         val here = map.here
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(12.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(InkCard.copy(alpha = 0.78f))
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        ) {
-            val headline = when {
-                map.route != null -> map.title
-                map.places.isNotEmpty() -> map.title.ifBlank { "Found nearby" }
-                else -> hereLabel ?: map.title.ifBlank { "You are here" }
-            }
+        map.route?.let { route ->
             Text(
-                headline,
+                "${Geo.formatDistance(route.distanceMeters)} · ${Geo.formatDuration(route.durationSeconds)} " +
+                    Geo.modeVerb(route.mode),
                 style = MaterialTheme.typography.titleMedium,
-                color = TextPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                color = Accent,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(12.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(InkCard.copy(alpha = 0.78f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
             )
-            map.route?.let { route ->
-                Text(
-                    "${Geo.formatDistance(route.distanceMeters)} · ${Geo.formatDuration(route.durationSeconds)} " +
-                        Geo.modeVerb(route.mode),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Accent
-                )
-            }
         }
 
         if (here != null) {
@@ -318,7 +302,7 @@ internal fun WeatherHolo(forecast: Forecast?, place: String) {
     val now = forecast.now
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 14.dp)
     ) {
@@ -466,7 +450,7 @@ internal fun DayHolo(brief: DayBrief?, tasks: List<Task>, trackers: List<Tracker
     val now = System.currentTimeMillis()
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 14.dp)
     ) {
@@ -557,7 +541,7 @@ internal fun TasksHolo(tasks: List<Task>, onToggle: (Task) -> Unit) {
     val overdue = open.count { (it.dueAt ?: Long.MAX_VALUE) < now }
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
@@ -614,7 +598,7 @@ internal fun MoneyHolo(trackers: List<TrackerStatus>) {
     }
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -653,6 +637,13 @@ private fun BudgetMeter(status: TrackerStatus) {
                 color = if (left != null && left < 0) Negative else TextPrimary
             )
         }
+        if (fraction == null && left == null && balance == null) {
+            Text(
+                "this ${Tracker.periodWord(t.period)} · ${status.entryCount} ${if (status.entryCount == 1) "entry" else "entries"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextFaint
+            )
+        }
         if (fraction != null) {
             Spacer(Modifier.height(6.dp))
             val track = Film.lifted
@@ -685,7 +676,11 @@ private fun amount(value: Double, tracker: Tracker): String {
     } else {
         value.toLong().toString()
     }
-    return if (tracker.unit.isBlank()) number else "$number ${tracker.unit}"
+    // "1 session", not "1 sessions".
+    val unit = tracker.unit.let {
+        if (value == 1.0 && tracker.kind != Tracker.KIND_MONEY && it.length > 3 && it.endsWith("s") && !it.endsWith("ss")) it.dropLast(1) else it
+    }
+    return if (unit.isBlank()) number else "$number $unit"
 }
 
 // ---------------------------------------------------------------------- lists
@@ -699,7 +694,7 @@ internal fun ListHolo(book: ListBook, name: String, onCheck: (String, String, Bo
     }
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
@@ -755,9 +750,8 @@ internal fun MusicHolo(
     }
     val playing = nowPlaying?.playing == true
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Equalizer(playing, Modifier.fillMaxWidth().height(56.dp))
         Spacer(Modifier.height(14.dp))
@@ -882,7 +876,7 @@ private fun Label(text: String, modifier: Modifier = Modifier) {
 
 @Composable
 private fun Waiting(text: String) {
-    Box(modifier = Modifier.fillMaxSize().padding(20.dp), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 40.dp), contentAlignment = Alignment.Center) {
         Text(text, style = MaterialTheme.typography.titleMedium, color = TextSecondary)
     }
 }
