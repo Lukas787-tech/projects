@@ -109,28 +109,6 @@ class MapStore(context: Context) {
         )
     }
 
-    /**
-     * The map framed on the phone alone — "where am I". A new revision, so
-     * whatever is watching the map brings it forward.
-     */
-    fun showHere(point: GeoPoint, title: String) {
-        val state = _state.value
-        _state.value = MapState(
-            revision = state.revision + 1,
-            title = title,
-            here = point,
-            accuracy = state.accuracy,
-            bearing = state.bearing
-        )
-    }
-
-    /** The street the "you are here" map turned out to be on. */
-    fun nameHere(label: String) {
-        val state = _state.value
-        if (state.places.isNotEmpty() || state.route != null || label.isBlank()) return
-        _state.value = state.copy(title = label)
-    }
-
     fun setHere(point: GeoPoint?) {
         if (point == null) return
         _state.value = _state.value.copy(here = point)

@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import com.lukas.jarvis.notify.RunningTimer
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,7 +48,6 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.BatteryStd
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -75,6 +76,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -94,12 +96,16 @@ import com.lukas.jarvis.ui.components.ImageViewer
 import com.lukas.jarvis.ui.components.MessageActions
 import com.lukas.jarvis.ui.components.MessageBubble
 import com.lukas.jarvis.ui.components.ModeSwitch
+import com.lukas.jarvis.ui.components.Reactor
 import com.lukas.jarvis.ui.components.SayChip
 import com.lukas.jarvis.ui.components.StoredImage
 import com.lukas.jarvis.ui.components.ToolTrail
 import com.lukas.jarvis.ui.components.TypingDots
 import com.lukas.jarvis.ui.components.icon
+import com.lukas.jarvis.ui.globe.Globe
 import com.lukas.jarvis.ui.globe.GlobeMood
+import com.lukas.jarvis.ui.map.MapCanvas
+import com.lukas.jarvis.ui.map.zoomForWorldWidth
 import com.lukas.jarvis.ui.theme.Accent
 import com.lukas.jarvis.ui.theme.AccentBright
 import com.lukas.jarvis.ui.theme.Caution
@@ -118,16 +124,6 @@ import com.lukas.jarvis.ui.theme.hudFrame
 import com.lukas.jarvis.ui.theme.sheen
 import com.lukas.jarvis.vm.AssistantUiState
 import com.lukas.jarvis.vm.Stage
-import com.lukas.jarvis.stage.Holo
-import com.lukas.jarvis.stage.Scene
-import com.lukas.jarvis.ui.holo.Glance
-import com.lukas.jarvis.ui.holo.GlanceChip
-import com.lukas.jarvis.ui.holo.HoloActions
-import com.lukas.jarvis.ui.holo.HoloData
-import com.lukas.jarvis.ui.holo.HoloStage
-import com.lukas.jarvis.ui.holo.glances
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -192,15 +188,8 @@ fun VoiceScreen(
     interpreter: com.lukas.jarvis.voice.InterpreterState? = null,
     onInterpretListen: (com.lukas.jarvis.voice.InterpreterState.Side) -> Unit = {},
     onInterpretType: (String, com.lukas.jarvis.voice.InterpreterState.Side) -> Unit = { _, _ -> },
-    onEndInterpreter: () -> Unit = {},
-    /** What the assistant has projected over its core, and what the panels draw from. */
-    scene: Scene = Scene(),
-    holoData: HoloData = HoloData(),
-    holoActions: HoloActions = HoloActions(),
-    /** Listening from text mode, where the send button doubles as the microphone. */
-    onTalk: () -> Unit = {}
+    onEndInterpreter: () -> Unit = {}
 ) {
-    val rail = if (voiceMode && interpreter == null) glances(scene, holoData) else emptyList()
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -219,7 +208,7 @@ fun VoiceScreen(
             online = online
         )
 
-        if (timers.isNotEmpty() || ringing.isNotEmpty() || !stopwatch.idle || rail.isNotEmpty()) {
+        if (timers.isNotEmpty() || ringing.isNotEmpty() || !stopwatch.idle) {
             TimerStrip(
                 timers = timers,
                 onCancel = onCancelTimer,
@@ -227,9 +216,7 @@ fun VoiceScreen(
                 onStop = onStopRinging,
                 stopwatch = stopwatch,
                 onStopwatchToggle = onStopwatchToggle,
-                onStopwatchReset = onStopwatchReset,
-                glances = rail,
-                onGlance = holoActions.onPromote
+                onStopwatchReset = onStopwatchReset
             )
         }
 
@@ -267,11 +254,7 @@ fun VoiceScreen(
                 brief = brief,
                 address = address,
                 actions = actions,
-                onStop = onStop,
-                scene = scene,
-                holoData = holoData,
-                holoActions = holoActions,
-                onTalk = onTalk
+                onStop = onStop
             )
         }
     }
@@ -302,32 +285,23 @@ private fun ColumnScope.ConversationBody(
     brief: DayBrief?,
     address: String,
     actions: MessageActions,
-    onStop: () -> Unit,
-    scene: Scene,
-    holoData: HoloData,
-    holoActions: HoloActions,
-    onTalk: () -> Unit
+    onStop: () -> Unit
 ) {
     if (voiceMode) {
-        // A panel up takes the room the clock had; the clock comes back with the core.
-        AnimatedVisibility(
-            visible = showHud && scene.focus == null,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Hud(brief = brief)
-        }
+        if (showHud) Hud(brief = brief)
         VoiceBody(
             state = state,
             configured = configured,
+            map = map,
+            tiles = tiles,
+            mapStyle = mapStyle,
             starters = starters,
             address = address,
             coreStyle = coreStyle,
             onSend = onSend,
+            onOpenMap = onOpenMap,
             onOpenSettings = onOpenSettings,
-            scene = scene,
-            holoData = holoData,
-            holoActions = holoActions,
+            onClearMap = onClearMap,
             modifier = Modifier.weight(1f)
         )
     } else {
@@ -354,16 +328,18 @@ private fun ColumnScope.ConversationBody(
             onStop = onStop,
             onOpenHistory = onOpenHistory,
             onCamera = onCamera,
-            onGallery = onGallery,
-            onTalk = onTalk
+            onGallery = onGallery
         )
     } else {
-        // Nothing but a readout under the stage: the camera is asked for, not reached for.
-        Box(
-            modifier = Modifier.fillMaxWidth().padding(bottom = Space.step),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = Space.snug),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            StatusLine(state = state, configured = configured, onStop = onStop)
+            RoundAction(Icons.Default.PhotoLibrary, "Pick a photo to show $assistantName", onGallery)
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                StatusLine(state = state, configured = configured, onStop = onStop)
+            }
+            RoundAction(Icons.Default.PhotoCamera, "Show $assistantName something", onCamera)
         }
     }
 }
@@ -383,9 +359,7 @@ private fun TimerStrip(
     onStop: (Int) -> Unit = {},
     stopwatch: com.lukas.jarvis.notify.StopwatchState = com.lukas.jarvis.notify.StopwatchState(),
     onStopwatchToggle: () -> Unit = {},
-    onStopwatchReset: () -> Unit = {},
-    glances: List<Glance> = emptyList(),
-    onGlance: (Holo) -> Unit = {}
+    onStopwatchReset: () -> Unit = {}
 ) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(timers, stopwatch) {
@@ -469,7 +443,6 @@ private fun TimerStrip(
                 }
             }
         }
-        glances.forEach { glance -> GlanceChip(glance) { onGlance(glance.holo) } }
         timers.sortedBy { it.endsAt }.forEach { timer ->
             val left = timer.leftMs(now)
             val fraction = if (timer.lengthMs > 0) (left.toFloat() / timer.lengthMs).coerceIn(0f, 1f) else 0f
@@ -578,7 +551,6 @@ private fun Header(
                     val fitted = (maxWidth.value / (name.length.coerceAtLeast(1) * 0.78f)).coerceIn(8f, base.fontSize.value)
                     Text(
                         text = if (roomy) dotted else name.uppercase(),
-                        // The wide face is the machine's own name, and nothing else.
                         style = if (roomy) {
                             base.copy(fontFamily = com.lukas.jarvis.ui.theme.HudType.wide, fontSize = 11.sp, letterSpacing = 1.6.sp)
                         } else {
@@ -703,26 +675,40 @@ private fun Hud(brief: DayBrief?) {
 // --------------------------------------------------------------------- voice
 
 /**
- * The core and what it projects, and one line about what it found.
+ * The core, and one line about what it found.
  *
- * With a panel up the answer shrinks to a subtitle under it, the way a film
- * captions what is said over the picture; with none, the core has the stage
- * and the answer sits in its card beneath.
+ * For the reactor and the orb, an answer with places in it opens the centre
+ * and the map shows inside the rings. The globe keeps its own flight: it
+ * turns the place to the front and closes in, and the map fades up underneath.
  */
 @Composable
 private fun VoiceBody(
     state: AssistantUiState,
     configured: Boolean,
+    map: MapState,
+    tiles: TileCache,
+    mapStyle: MapStyle,
     starters: List<Pair<ToolGroup, String>>,
     address: String,
     coreStyle: CoreStyle,
     onSend: (String) -> Unit,
+    onOpenMap: () -> Unit,
     onOpenSettings: () -> Unit,
-    scene: Scene,
-    holoData: HoloData,
-    holoActions: HoloActions,
+    onClearMap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Only an answer with places or a route opens the core. focusPoints falls
+    // back to the phone's own position, which alone left the centre open —
+    // an empty map inside the rings — whenever the location was known.
+    val hasResult = map.route != null || map.places.isNotEmpty()
+    val target = if (hasResult) map.focusPoints.firstOrNull() else null
+
+    val approach by animateFloatAsState(
+        targetValue = if (hasResult) 1f else 0f,
+        animationSpec = tween(durationMillis = if (hasResult) 1500 else 700),
+        label = "approach"
+    )
+
     val mood = when (state.stage) {
         Stage.Idle -> GlobeMood.Resting
         Stage.Listening -> GlobeMood.Listening
@@ -731,66 +717,90 @@ private fun VoiceBody(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        HoloStage(
-            scene = scene,
-            mood = mood,
-            level = state.level,
-            busy = state.stage != Stage.Idle,
-            coreStyle = coreStyle,
-            data = holoData,
-            actions = holoActions,
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .padding(top = Space.tight)
-        )
+                .weight(1f),
+            contentAlignment = Alignment.Center
+        ) {
+            val density = LocalDensity.current.density
+            val side = minOf(constraints.maxWidth, constraints.maxHeight).toFloat()
 
-        if (scene.focus != null) {
-            Subtitle(state)
-        } else {
-            Readout(
-                state = state,
-                configured = configured,
-                map = MapState(),
-                starters = starters,
-                address = address,
-                onSend = onSend,
-                onOpenSettings = onOpenSettings,
-                onClearMap = {}
-            )
+            if (coreStyle == CoreStyle.Globe) {
+                val globeZoom = zoomForWorldWidth(
+                    (2 * Math.PI * side / 2f * 0.86f * 6.5f).toFloat(),
+                    density
+                )
+                Globe(
+                    mood = mood,
+                    level = state.level,
+                    here = map.here,
+                    marks = map.places.map { it.point },
+                    focus = target,
+                    approach = approach,
+                    modifier = Modifier.fillMaxSize()
+                )
+                if (approach > 0.55f) {
+                    val reveal = ((approach - 0.55f) / 0.45f).coerceIn(0f, 1f)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .alpha(reveal)
+                            .clip(CircleShape)
+                            .clickable { onOpenMap() }
+                    ) {
+                        MapCanvas(
+                            state = map,
+                            tiles = tiles,
+                            style = mapStyle,
+                            intro = reveal,
+                            introFromZoom = globeZoom,
+                            interactive = false
+                        )
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Reactor(
+                        mood = mood,
+                        level = state.level,
+                        aperture = approach,
+                        style = coreStyle,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    if (approach > 0.05f) {
+                        // The map inside the rings, growing as the centre opens.
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize(0.52f * approach.coerceAtLeast(0.2f))
+                                .alpha(approach)
+                                .clip(CircleShape)
+                                .clickable { onOpenMap() }
+                        ) {
+                            MapCanvas(
+                                state = map,
+                                tiles = tiles,
+                                style = mapStyle,
+                                interactive = false
+                            )
+                        }
+                    }
+                }
+            }
         }
-    }
-}
 
-/**
- * The answer as a caption under a panel: two lines at most, what was heard
- * while listening, what is being done while working.
- */
-@Composable
-private fun Subtitle(state: AssistantUiState) {
-    val lastAssistant = state.messages.lastOrNull { it.role == ChatMessage.ROLE_ASSISTANT }
-    val (text, tone, italic) = when {
-        state.partial.isNotBlank() -> Triple("“${state.partial}”", AccentBright, true)
-        state.stage == Stage.Thinking && state.draft.isNotBlank() ->
-            Triple(com.lukas.jarvis.ui.components.Markdown.plain(state.draft), TextPrimary, false)
-        state.stage == Stage.Thinking -> Triple(doingLine(state.stageLabel), TextSecondary, false)
-        lastAssistant != null -> Triple(com.lukas.jarvis.ui.components.Markdown.plain(lastAssistant.content), TextPrimary, false)
-        else -> Triple("", TextPrimary, false)
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .padding(vertical = Space.tight),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge.copy(fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal),
-            color = tone,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
+        Readout(
+            state = state,
+            configured = configured,
+            map = map,
+            starters = starters,
+            address = address,
+            onSend = onSend,
+            onOpenSettings = onOpenSettings,
+            onClearMap = onClearMap
         )
     }
 }
@@ -941,7 +951,7 @@ private fun Readout(
                     )
                     Spacer(Modifier.height(Space.hair))
                     Text(
-                        text = "Tap the core and talk — or try one of these.",
+                        text = "Tap the core below and talk — or try one of these.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextFaint,
                         textAlign = TextAlign.Center
@@ -1247,6 +1257,20 @@ private fun StatusLine(state: AssistantUiState, configured: Boolean, onStop: () 
     }
 }
 
+/** A round glass button beside the status line, sized for a thumb. */
+@Composable
+private fun RoundAction(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .glass(CircleShape)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = label, tint = TextSecondary, modifier = Modifier.size(20.dp))
+    }
+}
+
 @Composable
 private fun Composer(
     busy: Boolean,
@@ -1254,8 +1278,7 @@ private fun Composer(
     onStop: () -> Unit,
     onOpenHistory: () -> Unit,
     onCamera: () -> Unit,
-    onGallery: () -> Unit,
-    onTalk: () -> Unit
+    onGallery: () -> Unit
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
     val shape = RoundedCornerShape(26.dp)
@@ -1333,15 +1356,13 @@ private fun Composer(
             keyboardActions = KeyboardActions(onSend = { send() })
         )
         val ready = draft.isNotBlank() && !busy
-        // Empty, the button talks instead: the way to speak once there is no dock.
-        val talk = draft.isBlank() && !busy
         IconButton(
-            onClick = { if (busy) onStop() else if (talk) onTalk() else send() },
+            onClick = { if (busy) onStop() else send() },
             modifier = Modifier
                 .size(52.dp)
                 .clip(CircleShape)
                 .background(
-                    if (ready || busy || talk) {
+                    if (ready || busy) {
                         Brush.linearGradient(listOf(AccentBright, Accent))
                     } else {
                         Brush.linearGradient(listOf(Film.resting, Film.resting))
@@ -1349,17 +1370,9 @@ private fun Composer(
                 )
         ) {
             Icon(
-                when {
-                    busy -> Icons.Default.Stop
-                    talk -> Icons.Default.Mic
-                    else -> Icons.AutoMirrored.Filled.Send
-                },
-                contentDescription = when {
-                    busy -> "Stop"
-                    talk -> "Talk"
-                    else -> "Send"
-                },
-                tint = OnAccent
+                if (busy) Icons.Default.Stop else Icons.AutoMirrored.Filled.Send,
+                contentDescription = if (busy) "Stop" else "Send",
+                tint = if (ready || busy) OnAccent else TextFaint
             )
         }
     }

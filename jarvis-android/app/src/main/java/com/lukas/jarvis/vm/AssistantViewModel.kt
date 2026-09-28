@@ -1552,16 +1552,6 @@ class AssistantViewModel(
         container.stage.show(element, note)
     }
 
-    /** What is projected over the core on the assistant's screen. */
-    val scene: StateFlow<com.lukas.jarvis.stage.Scene> = container.stage.scene.state
-
-    fun raiseHolo(holo: com.lukas.jarvis.stage.Holo, note: String = "") = container.stage.scene.raise(holo, note)
-    fun promoteHolo(holo: com.lukas.jarvis.stage.Holo) = container.stage.scene.promote(holo)
-    fun dismissHolo() = container.stage.scene.dismiss()
-    fun recedeHolo() = container.stage.scene.recede()
-    fun touchHolo() = container.stage.scene.touch()
-    fun expireHolos(busy: Boolean) = container.stage.scene.expire(busy)
-
     /**
      * A sentence tapped on the Skills screen: sent as if typed, and answered on
      * the assistant's own screen, where the reply and its tools can be seen.

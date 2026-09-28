@@ -28,33 +28,6 @@ workflow (any commit whose message contains `[screens]`); all of them are in
 [`docs/screens`](../docs/screens). The second is a live turn: the free, keyless
 model was asked to add eggs to the shopping list and read it back, and did.
 
-## What's new: the HUD
-
-The assistant's screen is now a heads-up display Jarvis projects onto, so
-you never have to go somewhere else to look at an answer.
-
-- **The core never leaves.** When an answer is better seen than heard, the
-  core lifts and shrinks into a small projector at the top — still breathing,
-  still listening — a pulse of light runs down a beam from it, and a panel
-  scans into being where the beam lands.
-- **"Show me where I am"** — the map dives in from continent height to your
-  street while the answer is still being spoken, with your coordinates, the
-  street name and a live dot. "What's around here" and routes land in the
-  same panel, with the places along the bottom to pick and route to.
-- **Panels for what you just asked about** — the forecast, your tasks, the
-  list you just added to, your budgets, the day, what's playing. Each is
-  live: tick things off right there.
-- **Only what matters stays up.** Left alone, a panel switches off and
-  steps back to a glance along the top; tap a glance to bring it back. An
-  appointment coming up, overdue tasks and music playing appear there too.
-  Flick a panel's title bar to put it away, or tap ⤢ for the full screen.
-- **No dock, no tabs.** The HUD is the whole screen and the core is the
-  button. Today, Notes, the full map and Settings open when Jarvis opens them
-  ("show my notes", "open the settings") or from a panel's ⤢, scan in like
-  the panels, and switch off again with the back gesture or a tap on the core.
-- **Calm motion** keeps it all but trades the scan lines and beam pulses for
-  simple fades.
-
 ## What's new in 5.5
 
 - **Reminders at a place** — "remind me to buy milk when I get home", "when
@@ -200,8 +173,7 @@ web source Jarvis uses answers without a key.
 
 ## Ways in
 
-- **The core**: tap it to talk, long-press to type. Over a screen Jarvis has
-  opened it floats small at the bottom, and a tap sends the screen away.
+- **The core** in the dock: one tap talks from any screen; a long press types.
 - **The wake word**: "Jarvis, what's the weather?" — answered out loud even
   while the app is closed (optional, uses more battery).
 - **The floating dot** over other apps.

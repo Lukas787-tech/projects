@@ -1186,29 +1186,6 @@ class Tools(
 
     suspend fun execute(call: ToolCall, settings: Settings, effects: ToolEffects): String {
         val args = runCatching { JSONObject(call.argumentsJson) }.getOrDefault(JSONObject())
-        val result = dispatch(call, args, settings, effects)
-        project(call.name, args, result)
-        return result
-    }
-
-    /**
-     * What a finished call is worth putting up on the assistant's screen: the
-     * list that was just changed, the budget that was just spent from. Raised
-     * while the answer is still being written, so the panel is there as the
-     * words arrive. A call that failed shows nothing.
-     */
-    private fun project(name: String, args: JSONObject, result: String) {
-        val holo = com.lukas.jarvis.stage.Holo.forTool(name) ?: return
-        if (result.startsWith("Tool '") || result.startsWith("Unknown tool")) return
-        val note = if (holo == com.lukas.jarvis.stage.Holo.Lists) {
-            com.lukas.jarvis.data.ListBook.canonical(args.optString("list").trim())
-        } else {
-            ""
-        }
-        stage.scene.raise(holo, note)
-    }
-
-    private suspend fun dispatch(call: ToolCall, args: JSONObject, settings: Settings, effects: ToolEffects): String {
         return try {
             when (call.name) {
                 // memory
@@ -1390,7 +1367,7 @@ class Tools(
                 "control_playback" -> playback(args)
                 "now_playing" -> phone.describeNowPlaying()
                 "bluetooth" -> bluetooth(args)
-                "show" -> show(args, settings)
+                "show" -> show(args)
 
                 // eyes
                 "take_photo" -> takePhoto(args)
@@ -1970,7 +1947,6 @@ class Tools(
         val day = number(args, "day")?.toInt()?.coerceIn(0, 6) ?: 0
         val forecast = weather.at(point, label, maxOf(days, day + 1))
             ?: return "The weather service did not answer just now."
-        stage.scene.raise(com.lukas.jarvis.stage.Holo.Weather, label, forecast)
         if (day >= 1) {
             val one = forecast.days.getOrNull(day)
                 ?: return "The forecast does not reach that far for $label."
@@ -2523,7 +2499,7 @@ class Tools(
 
     // ------------------------------------------------------------- the screen
 
-    private suspend fun show(args: JSONObject, settings: Settings): String {
+    private fun show(args: JSONObject): String {
         // The history is not an element of its own but an overlay on the
         // assistant's screen; asked for by name, it opens there.
         val raw = args.optString("element").trim().lowercase(Locale.ROOT)
@@ -2543,17 +2519,7 @@ class Tools(
                 return "Showing the settings."
             }
         }
-        val note = args.optString("note").trim()
-        val holo = com.lukas.jarvis.stage.Holo.of(wanted)
-        if (settings.voiceMode && holo != null) {
-            // Spoken to, the assistant puts it up over the core rather than
-            // sending the user somewhere else to look at it.
-            if (holo == com.lukas.jarvis.stage.Holo.Map && navigator.mapIsEmpty()) navigator.showHere()
-            if (stage.current != Element.Globe) stage.show(Element.Globe)
-            stage.scene.raise(holo, note)
-            return "It is up on the screen now: the ${holo.title.lowercase(Locale.ROOT)}."
-        }
-        stage.show(wanted, note)
+        stage.show(wanted, args.optString("note").trim())
         return "Showing the ${wanted.title.lowercase(Locale.ROOT)}."
     }
 

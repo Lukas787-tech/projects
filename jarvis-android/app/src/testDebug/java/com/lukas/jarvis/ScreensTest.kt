@@ -130,8 +130,6 @@ class ScreensTest {
         shot(activity, "02b-timer-ringing")
         container.timers.ringing.value.forEach { container.timers.silence(it.id) }
 
-        runCatching { hud(container, activity) }.onFailure { note("hud", it) }
-
         container.settings.update { it.copy(voiceMode = false) }
         settle()
         shot(activity, "03-chat")
@@ -309,64 +307,6 @@ class ScreensTest {
         }.onFailure { note("large text", it) }
 
         File(dir, "report.txt").writeText(report.ifEmpty { "Every screen rendered." }.toString())
-    }
-
-    /**
-     * The heads-up display projecting: the map diving in for "where am I",
-     * a panel caught halfway through scanning in, the others in turn, and
-     * the glances left along the top once the core has the stage back.
-     */
-    private fun hud(container: AppContainer, activity: Activity) {
-        val scene = container.stage.scene
-        container.mapStore.showHere(com.lukas.jarvis.maps.GeoPoint(52.5200, 13.4050), "You are here")
-        container.mapStore.nameHere("Alexanderplatz, Mitte")
-        scene.raise(com.lukas.jarvis.stage.Holo.Map)
-        settle(3600)
-        live(seconds = 10)
-        shot(activity, "18a-hud-where-am-i")
-
-        val forecast = com.lukas.jarvis.web.Forecast(
-            now = com.lukas.jarvis.web.WeatherNow(
-                place = "Berlin", temperature = 14.2, feelsLike = 12.8, description = "Partly cloudy",
-                windKph = 14.0, humidity = 68, precipitationChance = 55, isDay = true, uvIndex = 3.1
-            ),
-            days = (0 until 5).map { i ->
-                com.lukas.jarvis.web.WeatherDay(
-                    label = java.time.LocalDate.now().plusDays(i.toLong()).toString(),
-                    high = listOf(16.0, 18.5, 13.0, 11.5, 15.0)[i],
-                    low = listOf(9.0, 10.5, 8.0, 6.5, 7.0)[i],
-                    description = "Showers",
-                    precipitationChance = listOf(55, 20, 80, 60, 10)[i],
-                    sunrise = "07:02",
-                    sunset = "18:54"
-                )
-            },
-            rainFrom = "15:00"
-        )
-        scene.raise(com.lukas.jarvis.stage.Holo.Weather, "Berlin", forecast)
-        settle(700)
-        shot(activity, "18b-hud-materializing")
-        settle(2400)
-        shot(activity, "18c-hud-weather")
-
-        scene.raise(com.lukas.jarvis.stage.Holo.Tasks)
-        settle(2600)
-        shot(activity, "18d-hud-tasks")
-
-        scene.raise(com.lukas.jarvis.stage.Holo.Lists, "shopping")
-        settle(2600)
-        shot(activity, "18e-hud-list")
-
-        scene.raise(com.lukas.jarvis.stage.Holo.Money)
-        settle(2600)
-        shot(activity, "18f-hud-money")
-
-        scene.recede()
-        settle(2000)
-        shot(activity, "18g-hud-glances")
-
-        com.lukas.jarvis.stage.Holo.entries.forEach { scene.forget(it) }
-        settle()
     }
 
     private fun seed(container: AppContainer) {
