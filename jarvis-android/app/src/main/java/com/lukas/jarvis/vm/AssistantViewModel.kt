@@ -49,27 +49,6 @@ import kotlinx.coroutines.withContext
 
 enum class Stage { Idle, Listening, Thinking, Speaking }
 
-/** State of "ask the provider which models it really has". */
-sealed interface ModelsState {
-    data object Idle : ModelsState
-    data object Loading : ModelsState
-    data class Loaded(val count: Int) : ModelsState
-    data class Failed(val message: String) : ModelsState
-}
-
-sealed interface TestState {
-    data object Idle : TestState
-    data object Running : TestState
-    data class Passed(
-        val reply: String,
-        val toolsWork: Boolean,
-        val diagnostics: String
-    ) : TestState
-
-    /** [diagnostics] is the raw exchange, so a failure can be reported verbatim. */
-    data class Failed(val message: String, val diagnostics: String) : TestState
-}
-
 data class AssistantUiState(
     val stage: Stage = Stage.Idle,
     val stageLabel: String = "",
@@ -1929,6 +1908,10 @@ class AssistantViewModel(
         _poolMessage.value = message
     }
 
+    /** What Mochi asked before doing, newest first, for "What Mochi did for you". */
+    suspend fun actionLog(limit: Int = 50): List<com.lukas.jarvis.data.ActionRecord> =
+        withContext(Dispatchers.IO) { brain.actionLog(limit) }
+
     // --------------------------------------------------------------- backup
 
     /** The backup file's contents, for the caller to write wherever it likes. */
@@ -1943,17 +1926,17 @@ class AssistantViewModel(
      * appear to do nothing until the next launch — and ring for things that
      * no longer exist.
      */
-    suspend fun restoreBackup(text: String, passphrase: String? = null): String {
+    suspend fun restoreBackup(text: String, passphrase: String? = null): RestoreOutcome {
         if (busy) cancelTurn()
         val before = withContext(Dispatchers.IO) { brain.pendingReminders() }
         val result = withContext(Dispatchers.IO) { Vault.import(container.app, text, brain, passphrase) }
         return when (result) {
-            is Vault.Result.Failed -> result.reason
-            is Vault.Result.Locked -> if (result.wrongPassphrase) {
-                "That passphrase doesn't open this backup. Try again?"
-            } else {
-                "This backup is locked with a passphrase. Enter it to restore."
-            }
+            is Vault.Result.Failed -> RestoreOutcome(result.reason)
+            is Vault.Result.Locked -> RestoreOutcome(
+                if (result.wrongPassphrase) "That passphrase doesn't open this backup. Try again?"
+                else "This backup is locked with a passphrase. Enter it to restore.",
+                needsPassphrase = true
+            )
             is Vault.Result.Restored -> {
                 withContext(Dispatchers.IO) {
                     before.forEach { container.reminders.cancel(it.id) }
@@ -1979,11 +1962,13 @@ class AssistantViewModel(
                 _ui.update { it.copy(messages = messages, error = null, draft = "") }
                 _history.value = emptyList()
                 refreshAll()
-                buildString {
-                    append("Restored ${result.keys} settings")
-                    if (result.rows > 0) append(" and ${result.rows} memories, tasks, entries and messages")
-                    append(".")
-                }
+                RestoreOutcome(
+                    buildString {
+                        append("Restored ${result.keys} settings")
+                        if (result.rows > 0) append(" and ${result.rows} memories, tasks, entries and messages")
+                        append(".")
+                    }
+                )
             }
         }
     }

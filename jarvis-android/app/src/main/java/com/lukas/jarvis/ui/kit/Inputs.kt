@@ -18,6 +18,12 @@ import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.foundation.border
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -61,9 +67,17 @@ fun CafeTextField(
     singleLine: Boolean = true,
     minLines: Int = 1,
     imeAction: ImeAction = ImeAction.Done,
-    onDone: (() -> Unit)? = null
+    onDone: (() -> Unit)? = null,
+    /** A key or a token: hidden until asked, never capitalised, never suggested. */
+    secret: Boolean = false,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    /** A line under the field: what it is for, or what is wrong with it. */
+    supporting: String? = null,
+    isError: Boolean = false
 ) {
     val colors = Cafe.colors
+    var shown by remember { mutableStateOf(false) }
+    val plain = secret || keyboardType != KeyboardType.Text
     Column(modifier) {
         if (label != null) {
             Text(label, style = Cafe.type.labelSmall, color = colors.cocoa, modifier = Modifier.padding(start = Cafe.space.xs, bottom = Cafe.space.xs))
@@ -75,28 +89,54 @@ fun CafeTextField(
             minLines = if (singleLine) 1 else minLines,
             textStyle = Cafe.type.body.copy(color = colors.espresso),
             cursorBrush = SolidColor(colors.accentText),
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = imeAction),
-            keyboardActions = KeyboardActions(onDone = { onDone?.invoke() }, onSend = { onDone?.invoke() }, onGo = { onDone?.invoke() }),
+            visualTransformation = if (secret && !shown) PasswordVisualTransformation() else VisualTransformation.None,
+            keyboardOptions = KeyboardOptions(
+                capitalization = if (plain) KeyboardCapitalization.None else KeyboardCapitalization.Sentences,
+                autoCorrectEnabled = !plain,
+                keyboardType = if (secret) KeyboardType.Password else keyboardType,
+                imeAction = imeAction
+            ),
+            keyboardActions = KeyboardActions(onDone = { onDone?.invoke() }, onSend = { onDone?.invoke() }, onGo = { onDone?.invoke() }, onSearch = { onDone?.invoke() }),
             modifier = Modifier
                 .fillMaxWidth()
                 .semantics { if (label != null) contentDescription = label },
             decorationBox = { inner ->
-                Box(
+                Row(
                     Modifier
                         .fillMaxWidth()
                         .defaultMinSize(minHeight = Cafe.space.touch)
                         .clip(Cafe.shape.medium)
                         .background(colors.latte)
-                        .padding(horizontal = Cafe.space.l, vertical = Cafe.space.m),
-                    contentAlignment = Alignment.CenterStart
+                        .then(if (isError) Modifier.border(1.5.dp, colors.berry, Cafe.shape.medium) else Modifier)
+                        .padding(start = Cafe.space.l, end = if (secret) Cafe.space.xs else Cafe.space.l, top = Cafe.space.xs, bottom = Cafe.space.xs),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (value.isEmpty() && placeholder.isNotEmpty()) {
-                        Text(placeholder, style = Cafe.type.body, color = colors.cocoa)
+                    Box(Modifier.weight(1f).padding(vertical = Cafe.space.s), contentAlignment = Alignment.CenterStart) {
+                        if (value.isEmpty() && placeholder.isNotEmpty()) {
+                            Text(placeholder, style = Cafe.type.body, color = colors.cocoa)
+                        }
+                        inner()
                     }
-                    inner()
+                    if (secret) {
+                        IconCircle(
+                            if (shown) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                            if (shown) "Hide ${label ?: "it"}" else "Show ${label ?: "it"}",
+                            { shown = !shown },
+                            size = 40.dp,
+                            tint = colors.cocoa
+                        )
+                    }
                 }
             }
         )
+        if (supporting != null) {
+            Text(
+                supporting,
+                style = Cafe.type.caption,
+                color = if (isError) colors.berryText else colors.cocoa,
+                modifier = Modifier.padding(start = Cafe.space.xs, top = Cafe.space.xs)
+            )
+        }
     }
 }
 

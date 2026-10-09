@@ -21,15 +21,6 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
 
-/** One voice the engine offers, as the settings screen lists it. */
-data class VoiceOption(
-    val name: String,
-    val label: String,
-    val language: String,
-    val network: Boolean,
-    val quality: Int
-)
-
 /**
  * Android's built-in TTS. Free, offline on most devices, and good enough that
  * paying for a cloud voice would be hard to justify for an assistant that

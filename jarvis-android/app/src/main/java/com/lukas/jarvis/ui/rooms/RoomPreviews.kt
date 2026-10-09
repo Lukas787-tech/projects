@@ -143,3 +143,30 @@ private fun TodayPreview() = MochiTheme(themeMode = "light") { TodaySample() }
 @Preview(name = "Library: memory", widthDp = 411, heightDp = 891)
 @Composable
 private fun LibraryPreview() = MochiTheme(themeMode = "light") { LibrarySample(Shelf.Memory) }
+
+/** A You room with a pool, a profile and a short history of things done. */
+fun youSampleState(settings: com.lukas.jarvis.core.Settings = com.lukas.jarvis.core.Settings(userName = "Lukas")): YouState = YouState(
+    settings = settings,
+    version = "Mochi 6.0 · build 260",
+    pool = listOf(
+        com.lukas.jarvis.llm.PoolEntry(
+            com.lukas.jarvis.llm.Endpoint(id = "a", providerId = com.lukas.jarvis.llm.Providers.LLM7, baseUrl = "", apiKey = "", model = "default"),
+            com.lukas.jarvis.llm.Health(successes = 42, latencyMs = 1300)
+        ),
+        com.lukas.jarvis.llm.PoolEntry(
+            com.lukas.jarvis.llm.Endpoint(id = "b", providerId = com.lukas.jarvis.llm.Providers.GROQ, baseUrl = "", apiKey = "k", model = "llama-3.3-70b-versatile"),
+            com.lukas.jarvis.llm.Health(successes = 7, latencyMs = 600)
+        )
+    ),
+    poolSummary = "2 models, 2 ready",
+    lastUsedEndpoint = "LLM7 · default",
+    profiles = listOf(com.lukas.jarvis.core.Profile.of("Night", settings).copy(autoAt = "22:00")),
+    access = SystemAccess(canText = true, canCall = true),
+    actionLog = listOf(
+        com.lukas.jarvis.data.ActionRecord(1, "send_message", "Text Anna", "Running ten minutes late", "Outward", "Sent", "tap", 1_760_000_000_000L),
+        com.lukas.jarvis.data.ActionRecord(2, "delete_task", "Delete \"Water the plants\"", "", "Sensitive", "Cancelled", "cancelled", 1_759_990_000_000L)
+    )
+)
+
+@Composable
+fun YouSample(tab: YouTab) = YouRoom(youSampleState(), tab, YouActions(onBack = {}, onTab = {}, onUpdate = {}))

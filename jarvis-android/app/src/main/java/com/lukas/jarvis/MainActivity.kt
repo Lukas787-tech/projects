@@ -77,7 +77,6 @@ import com.lukas.jarvis.ui.screens.HistoryScreen
 import com.lukas.jarvis.ui.screens.DevicesScreen
 import com.lukas.jarvis.ui.screens.MusicScreen
 import com.lukas.jarvis.ui.screens.MapScreen
-import com.lukas.jarvis.ui.screens.SettingsScreen
 import com.lukas.jarvis.ui.screens.SkillsScreen
 import com.lukas.jarvis.ui.screens.Onboarding
 import com.lukas.jarvis.llm.Tier
@@ -99,6 +98,8 @@ import com.lukas.jarvis.ui.rooms.LibraryRoom
 import com.lukas.jarvis.ui.rooms.Shelf
 import com.lukas.jarvis.ui.rooms.TodayActions
 import com.lukas.jarvis.ui.rooms.TodayRoom
+import com.lukas.jarvis.ui.rooms.YouRoute
+import com.lukas.jarvis.ui.rooms.YouTab
 import com.lukas.jarvis.ui.kit.RoomBar
 import com.lukas.jarvis.ui.kit.RoomItem
 import androidx.compose.material.icons.rounded.ChatBubbleOutline
@@ -688,6 +689,15 @@ private fun JarvisRoot(
                     actions = libraryActions,
                     defaultCurrency = settings.defaultCurrency
                 )
+                Element.Settings -> YouRoute(
+                    viewModel = viewModel,
+                    tab = when {
+                        stage.note == SETTINGS_POWERS -> YouTab.Powers
+                        // "settings:tab:2" opens a shelf by number, for links and the screenshots.
+                        stage.note.startsWith("settings:tab:") -> YouTab.at(stage.note.substringAfterLast(':').toIntOrNull() ?: 0)
+                        else -> YouTab.You
+                    }
+                )
                 else -> Legacy { when (shown) {
                 Element.Map -> MapScreen(
                     state = map,
@@ -765,53 +775,6 @@ private fun JarvisRoot(
                     onTry = viewModel::trySkill
                 )
 
-                Element.Settings -> SettingsScreen(
-                    profiles = profiles,
-                    onSaveProfile = viewModel::saveProfile,
-                    onApplyProfile = viewModel::applyProfile,
-                    onDeleteProfile = viewModel::deleteProfile,
-                    onScheduleProfile = viewModel::scheduleProfile,
-                    initialTab = when {
-                        stage.note == SETTINGS_POWERS -> 4
-                        // "settings:tab:2" opens a tab by number, for links and the screenshots.
-                        stage.note?.startsWith("settings:tab:") == true ->
-                            stage.note?.substringAfterLast(':')?.toIntOrNull() ?: 0
-                        else -> 0
-                    },
-                    settings = settings,
-                    availableModels = availableModels,
-                    modelsState = modelsState,
-                    testState = testState,
-                    poolEntries = poolEntries,
-                    poolBusy = poolBusy,
-                    poolMessage = poolMessage,
-                    // Recomputed whenever the pool changes, which is exactly
-                    // what poolEntries already tracks.
-                    poolSummary = remember(poolEntries) { viewModel.poolSummary() },
-                    lastUsedEndpoint = lastUsedEndpoint,
-                    onUpdate = viewModel::updateSettings,
-                    onSwitchProvider = viewModel::switchProvider,
-                    onRefreshModels = viewModel::refreshModels,
-                    onTestConnection = viewModel::testConnection,
-                    onAddToPool = viewModel::addCurrentProviderToPool,
-                    onAddEveryProvider = viewModel::addEverySavedProviderToPool,
-                    onRemoveFromPool = viewModel::removeFromPool,
-                    onTogglePoolEntry = viewModel::setPoolEntryEnabled,
-                    onWakePool = viewModel::wakePool,
-                    onClearPool = viewModel::clearPool,
-                    onPreviewVoice = viewModel::previewVoice,
-                    onClearConversation = viewModel::clearConversation,
-                    onExportBackup = { viewModel.exportBackup() },
-                    onRestoreBackup = { text -> viewModel.restoreBackup(text) },
-                    onOpenSkills = { viewModel.showElement(Element.Skills) },
-                    voices = viewModel::voices,
-                    fishVoices = viewModel::fishVoices,
-                    voiceProblem = voiceProblem,
-                    hasFreeBrain = poolEntries.any { it.endpoint.preset.tier == Tier.Keyless },
-                    onRestoreFreeBrain = viewModel::restoreFreeBrain,
-                    onReplayIntro = { viewModel.updateSettings { it.copy(onboarded = false) } },
-                    onCheckHome = viewModel::checkHome
-                )
                 else -> Unit
             } } } }
 
