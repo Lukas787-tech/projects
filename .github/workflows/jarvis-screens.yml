@@ -1,22 +1,23 @@
-name: Jarvis screenshots
+name: Mochi screenshots
 
-# Renders the real app on the JVM (Robolectric) and commits the pictures to
-# docs/screens, so the design can be looked at without a phone. It runs only
-# for a push whose commit message contains [screens]; everything else about
-# the build is the other workflow's job. Its test source set is debug-only,
-# so nothing here can break the release APK.
+# Renders the real app on the JVM (Robolectric) and keeps the pictures as a
+# workflow artifact, so the design can be looked at without a phone. It runs
+# for a push whose commit message contains [screens], or by hand; everything
+# else about the build is the other workflow's job. Its test source set is
+# debug-only, so nothing here can break the release APK.
 on:
   push:
     paths:
       - 'jarvis-android/**'
       - '.github/workflows/jarvis-screens.yml'
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   screens:
-    if: contains(github.event.head_commit.message, '[screens]')
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[screens]')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -56,25 +57,25 @@ jobs:
           grep -E "^(e: |error: |ERROR:)|FAILURE: |What went wrong|FAILED$|Exception|Caused by" screens.log | head -n 80 || true
           find app/build/test-results -name '*.xml' -exec grep -l "<failure" {} \; | xargs -r sed -n '1,160p'
 
-      - name: Commit the pictures
+      # The pictures are kept with the run, not committed: a redesign means
+      # hundreds of renders, and each one used to add a hundred PNGs to the
+      # repository's history for good.
+      - name: Gather the pictures
         if: always()
         run: |
-          set -u
-          mkdir -p ../docs/screens
-          cp app/build/screens/*.png ../docs/screens/ 2>/dev/null || true
-          cp app/build/screens/report.txt ../docs/screens/ 2>/dev/null || true
-          cp app/build/screens/progress.txt ../docs/screens/ 2>/dev/null || true
-          cp app/build/screens/stall-*.txt ../docs/screens/ 2>/dev/null || true
-          # A failure before any picture still leaves its reason where it can be read.
-          if [ ! -f ../docs/screens/report.txt ] || [ -z "$(ls app/build/screens/*.png 2>/dev/null)" ]; then
-            { echo "Run ${GITHUB_RUN_ID}: no pictures."; grep -E "Exception|Caused by|What went wrong|^e: " screens.log | head -n 60; } > ../docs/screens/report.txt || true
+          mkdir -p out
+          cp app/build/screens/*.png out/ 2>/dev/null || true
+          cp app/build/screens/*.txt out/ 2>/dev/null || true
+          if [ -z "$(ls out/*.png 2>/dev/null)" ]; then
+            { echo "Run ${GITHUB_RUN_ID}: no pictures."; grep -E "Exception|Caused by|What went wrong|^e: " screens.log | head -n 60; } > out/report.txt || true
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ../docs/screens
-          git commit -m "Update Jarvis screenshots" || exit 0
-          for attempt in 1 2 3 4; do
-            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
-            sleep $((attempt * 5))
-          done
-          exit 1
+          ls out | head -n 300
+
+      - name: Upload the pictures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mochi-screens
+          path: jarvis-android/out/
+          if-no-files-found: warn
+          retention-days: 30

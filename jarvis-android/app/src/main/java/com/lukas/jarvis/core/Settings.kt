@@ -13,7 +13,7 @@ data class Settings(
     val apiKey: String = "",
     val model: String = "",
     val userName: String = "",
-    val assistantName: String = "Jarvis",
+    val assistantName: String = "Mochi",
     val temperature: Float = 0.6f,
     val maxTokens: Int = 1024,
     val speakReplies: Boolean = true,
@@ -21,7 +21,7 @@ data class Settings(
     val speechPitch: Float = 1.0f,
     val handsFree: Boolean = true,
     val wakeWordEnabled: Boolean = false,
-    val wakePhrase: String = "jarvis",
+    val wakePhrase: String = "hey mochi",
     val webSearchEnabled: Boolean = true,
     val autoCapture: Boolean = true,
     val defaultCurrency: String = "EUR",
@@ -41,13 +41,13 @@ data class Settings(
     /** The dot that floats over other apps. Off until asked for: it needs a
      *  permission Android only grants from its own settings page. */
     val floatingDot: Boolean = false,
-    /** Which tiles the map is drawn with: dark, light or satellite. */
-    val mapStyle: String = "dark",
+    /** Which tiles the map is drawn with: auto (follows the theme), light, dark or satellite. */
+    val mapStyle: String = "auto",
 
     // ------------------------------------------------------------- who it is
 
-    /** A [com.lukas.jarvis.llm.Persona] id: how Jarvis carries itself. */
-    val personality: String = "jarvis",
+    /** A [com.lukas.jarvis.llm.Persona] id: how the assistant carries itself. */
+    val personality: String = "mochi",
     /** How to address the user — "sir", "boss", a nickname. Blank uses their name. */
     val honorific: String = "",
     /** short, balanced or detailed. */
@@ -97,8 +97,8 @@ data class Settings(
 
     // ------------------------------------------------------------ its looks
 
-    /** A [com.lukas.jarvis.ui.theme.AccentTone] id. */
-    val accent: String = "arc",
+    /** An accent id from the café presets, or "custom:<hue>". */
+    val accent: String = "caramel",
     /** A [com.lukas.jarvis.ui.theme.Backdrop] id. */
     val backdrop: String = "space",
     val textScale: Float = 1f,
@@ -107,6 +107,19 @@ data class Settings(
     val coreStyle: String = "reactor",
     /** The clock, weather and status readouts around the assistant. */
     val showHud: Boolean = true,
+
+    /** "system", "light" (the latte café) or "dark" (the night café). */
+    val themeMode: String = "system",
+    /** Mochi's idle moments — a stretch, a sip — when nothing else is going on. */
+    val characterIdle: Boolean = true,
+    /** Small, rare celebrations: a finished timer, a kept streak. */
+    val characterDelights: Boolean = true,
+    /**
+     * Local only: memories, contacts, the calendar and where you are are never
+     * sent to the free keyless models. Off by default; the app says what leaves
+     * the phone either way.
+     */
+    val localOnly: Boolean = false,
 
     /** False until the first-run introduction has been completed or skipped. */
     val onboarded: Boolean = false,
@@ -137,6 +150,23 @@ class SettingsStore(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences("jarvis_settings", Context.MODE_PRIVATE)
 
+    init {
+        // Settings saved by 5.5 come up to date before anything reads them.
+        val changes = runCatching { SettingsMigration.changes(prefs.all) }.getOrDefault(emptyMap())
+        if (changes.isNotEmpty()) {
+            prefs.edit().apply {
+                changes.forEach { (key, value) ->
+                    when (value) {
+                        is Int -> putInt(key, value)
+                        is Boolean -> putBoolean(key, value)
+                        is String -> putString(key, value)
+                        null -> remove(key)
+                    }
+                }
+            }.commit()
+        }
+    }
+
     private val _state = MutableStateFlow(read())
     val state: StateFlow<Settings> = _state.asStateFlow()
 
@@ -148,10 +178,10 @@ class SettingsStore(context: Context) {
         return Settings(
             providerId = providerId,
             baseUrl = prefs.getString(scoped(KEY_BASE_URL, providerId), null) ?: preset.baseUrl,
-            apiKey = prefs.getString(scoped(KEY_API_KEY, providerId), null).orEmpty(),
+            apiKey = Secrets.box().open(prefs.getString(scoped(KEY_API_KEY, providerId), null)),
             model = prefs.getString(scoped(KEY_MODEL, providerId), null) ?: preset.defaultModel,
             userName = prefs.getString(KEY_USER_NAME, "").orEmpty(),
-            assistantName = prefs.getString(KEY_ASSISTANT_NAME, "Jarvis") ?: "Jarvis",
+            assistantName = prefs.getString(KEY_ASSISTANT_NAME, "Mochi") ?: "Mochi",
             temperature = prefs.getFloat(KEY_TEMPERATURE, 0.6f),
             maxTokens = prefs.getInt(KEY_MAX_TOKENS, 1024),
             speakReplies = prefs.getBoolean(KEY_SPEAK, true),
@@ -159,7 +189,7 @@ class SettingsStore(context: Context) {
             speechPitch = prefs.getFloat(KEY_PITCH, 1.0f),
             handsFree = prefs.getBoolean(KEY_HANDS_FREE, true),
             wakeWordEnabled = prefs.getBoolean(KEY_WAKE_ENABLED, false),
-            wakePhrase = prefs.getString(KEY_WAKE_PHRASE, "jarvis") ?: "jarvis",
+            wakePhrase = prefs.getString(KEY_WAKE_PHRASE, "hey mochi") ?: "hey mochi",
             webSearchEnabled = prefs.getBoolean(KEY_WEB_SEARCH, true),
             autoCapture = prefs.getBoolean(KEY_AUTO_CAPTURE, true),
             defaultCurrency = prefs.getString(KEY_CURRENCY, "EUR") ?: "EUR",
@@ -172,8 +202,8 @@ class SettingsStore(context: Context) {
             searchRadiusMeters = prefs.getInt(KEY_SEARCH_RADIUS, 1_500),
             voiceMode = prefs.getBoolean(KEY_VOICE_MODE, true),
             floatingDot = prefs.getBoolean(KEY_FLOATING_DOT, false),
-            mapStyle = prefs.getString(KEY_MAP_STYLE, "dark") ?: "dark",
-            personality = prefs.getString(KEY_PERSONALITY, "jarvis") ?: "jarvis",
+            mapStyle = prefs.getString(KEY_MAP_STYLE, "auto") ?: "auto",
+            personality = prefs.getString(KEY_PERSONALITY, "mochi") ?: "mochi",
             honorific = prefs.getString(KEY_HONORIFIC, "").orEmpty(),
             replyLength = prefs.getString(KEY_REPLY_LENGTH, "short") ?: "short",
             wit = prefs.getInt(KEY_WIT, 1),
@@ -187,7 +217,7 @@ class SettingsStore(context: Context) {
             speechLanguage = prefs.getString(KEY_SPEECH_LANGUAGE, "").orEmpty(),
             autoLanguage = prefs.getBoolean(KEY_AUTO_LANGUAGE, true),
             voiceEngine = prefs.getString(KEY_VOICE_ENGINE, "device") ?: "device",
-            fishKey = prefs.getString(KEY_FISH_KEY, "").orEmpty(),
+            fishKey = Secrets.box().open(prefs.getString(KEY_FISH_KEY, "")),
             fishVoiceId = prefs.getString(KEY_FISH_VOICE, "").orEmpty(),
             fishVoiceName = prefs.getString(KEY_FISH_VOICE_NAME, "").orEmpty(),
             fishModel = prefs.getString(KEY_FISH_MODEL, "s2.1-pro") ?: "s2.1-pro",
@@ -196,15 +226,19 @@ class SettingsStore(context: Context) {
             morningBrief = prefs.getBoolean(KEY_MORNING_BRIEF, true),
             briefTime = prefs.getString(KEY_BRIEF_TIME, "") ?: "",
             eveningTime = prefs.getString(KEY_EVENING_TIME, "") ?: "",
-            accent = prefs.getString(KEY_ACCENT, "arc") ?: "arc",
+            accent = prefs.getString(KEY_ACCENT, "caramel") ?: "caramel",
             backdrop = prefs.getString(KEY_BACKDROP, "space") ?: "space",
             textScale = prefs.getFloat(KEY_TEXT_SCALE, 1f),
             reduceMotion = prefs.getBoolean(KEY_REDUCE_MOTION, false),
             coreStyle = prefs.getString(KEY_CORE_STYLE, "reactor") ?: "reactor",
             showHud = prefs.getBoolean(KEY_SHOW_HUD, true),
+            themeMode = prefs.getString(KEY_THEME_MODE, "system") ?: "system",
+            characterIdle = prefs.getBoolean(KEY_CHARACTER_IDLE, true),
+            characterDelights = prefs.getBoolean(KEY_CHARACTER_DELIGHTS, true),
+            localOnly = prefs.getBoolean(KEY_LOCAL_ONLY, false),
             onboarded = prefs.getBoolean(KEY_ONBOARDED, false),
             homeUrl = prefs.getString(KEY_HOME_URL, "").orEmpty(),
-            homeToken = prefs.getString(KEY_HOME_TOKEN, "").orEmpty(),
+            homeToken = Secrets.box().open(prefs.getString(KEY_HOME_TOKEN, "")),
             homeEnabled = prefs.getBoolean(KEY_HOME_ENABLED, true)
         )
     }
@@ -223,7 +257,7 @@ class SettingsStore(context: Context) {
         prefs.edit()
             .putString(KEY_PROVIDER, providerId)
             .putString(scoped(KEY_BASE_URL, providerId), next.baseUrl)
-            .putString(scoped(KEY_API_KEY, providerId), next.apiKey)
+            .putString(scoped(KEY_API_KEY, providerId), Secrets.box().seal(next.apiKey))
             .putString(scoped(KEY_MODEL, providerId), next.model)
             .putString(KEY_USER_NAME, next.userName)
             .putString(KEY_ASSISTANT_NAME, next.assistantName)
@@ -262,7 +296,7 @@ class SettingsStore(context: Context) {
             .putString(KEY_SPEECH_LANGUAGE, next.speechLanguage)
             .putBoolean(KEY_AUTO_LANGUAGE, next.autoLanguage)
             .putString(KEY_VOICE_ENGINE, next.voiceEngine)
-            .putString(KEY_FISH_KEY, next.fishKey)
+            .putString(KEY_FISH_KEY, Secrets.box().seal(next.fishKey))
             .putString(KEY_FISH_VOICE, next.fishVoiceId)
             .putString(KEY_FISH_VOICE_NAME, next.fishVoiceName)
             .putString(KEY_FISH_MODEL, next.fishModel)
@@ -277,9 +311,13 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_REDUCE_MOTION, next.reduceMotion)
             .putString(KEY_CORE_STYLE, next.coreStyle)
             .putBoolean(KEY_SHOW_HUD, next.showHud)
+            .putString(KEY_THEME_MODE, next.themeMode)
+            .putBoolean(KEY_CHARACTER_IDLE, next.characterIdle)
+            .putBoolean(KEY_CHARACTER_DELIGHTS, next.characterDelights)
+            .putBoolean(KEY_LOCAL_ONLY, next.localOnly)
             .putBoolean(KEY_ONBOARDED, next.onboarded)
             .putString(KEY_HOME_URL, next.homeUrl)
-            .putString(KEY_HOME_TOKEN, next.homeToken)
+            .putString(KEY_HOME_TOKEN, Secrets.box().seal(next.homeToken))
             .putBoolean(KEY_HOME_ENABLED, next.homeEnabled)
             .apply()
         _state.value = next
@@ -297,7 +335,7 @@ class SettingsStore(context: Context) {
         return _state.value.copy(
             providerId = providerId,
             baseUrl = prefs.getString(scoped(KEY_BASE_URL, providerId), null) ?: preset.baseUrl,
-            apiKey = prefs.getString(scoped(KEY_API_KEY, providerId), null).orEmpty(),
+            apiKey = Secrets.box().open(prefs.getString(scoped(KEY_API_KEY, providerId), null)),
             model = prefs.getString(scoped(KEY_MODEL, providerId), null) ?: preset.defaultModel
         )
     }
@@ -336,7 +374,7 @@ class SettingsStore(context: Context) {
         val next = _state.value.copy(
             providerId = providerId,
             baseUrl = prefs.getString(scoped(KEY_BASE_URL, providerId), null) ?: preset.baseUrl,
-            apiKey = prefs.getString(scoped(KEY_API_KEY, providerId), null).orEmpty(),
+            apiKey = Secrets.box().open(prefs.getString(scoped(KEY_API_KEY, providerId), null)),
             model = prefs.getString(scoped(KEY_MODEL, providerId), null) ?: preset.defaultModel
         )
         update { next }
@@ -425,6 +463,10 @@ class SettingsStore(context: Context) {
         const val KEY_CORE_STYLE = "core_style"
         const val KEY_SHOW_HUD = "show_hud"
         const val KEY_ONBOARDED = "onboarded"
+        const val KEY_THEME_MODE = "theme_mode"
+        const val KEY_CHARACTER_IDLE = "character_idle"
+        const val KEY_CHARACTER_DELIGHTS = "character_delights"
+        const val KEY_LOCAL_ONLY = "local_only"
         const val KEY_HOME_URL = "home_url"
         const val KEY_HOME_TOKEN = "home_token"
         const val KEY_HOME_ENABLED = "home_enabled"

@@ -50,6 +50,11 @@ class AppContainer(context: Context) {
     /** Kept for the things that need a Context after construction, like backups. */
     val app: Context = context.applicationContext
 
+    init {
+        // A 5.5 phone's API keys move into the key store before anything reads them.
+        runCatching { com.lukas.jarvis.core.Secrets.sealAll(context) }
+    }
+
     val settings = SettingsStore(context)
     val brain = Brain(context)
     val reminders = Reminders(context)

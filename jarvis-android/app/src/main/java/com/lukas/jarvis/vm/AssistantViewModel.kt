@@ -1749,8 +1749,8 @@ class AssistantViewModel(
     // --------------------------------------------------------------- backup
 
     /** The backup file's contents, for the caller to write wherever it likes. */
-    suspend fun exportBackup(): String =
-        withContext(Dispatchers.IO) { Vault.export(container.app, brain) }
+    suspend fun exportBackup(passphrase: String? = null): String =
+        withContext(Dispatchers.IO) { Vault.export(container.app, brain, passphrase) }
 
     /**
      * Puts a backup back, then rebuilds everything that had read the old values.
@@ -1760,12 +1760,17 @@ class AssistantViewModel(
      * appear to do nothing until the next launch — and ring for things that
      * no longer exist.
      */
-    suspend fun restoreBackup(text: String): String {
+    suspend fun restoreBackup(text: String, passphrase: String? = null): String {
         if (busy) cancelTurn()
         val before = withContext(Dispatchers.IO) { brain.pendingReminders() }
-        val result = withContext(Dispatchers.IO) { Vault.import(container.app, text, brain) }
+        val result = withContext(Dispatchers.IO) { Vault.import(container.app, text, brain, passphrase) }
         return when (result) {
             is Vault.Result.Failed -> result.reason
+            is Vault.Result.Locked -> if (result.wrongPassphrase) {
+                "That passphrase doesn't open this backup. Try again?"
+            } else {
+                "This backup is locked with a passphrase. Enter it to restore."
+            }
             is Vault.Result.Restored -> {
                 withContext(Dispatchers.IO) {
                     before.forEach { container.reminders.cancel(it.id) }

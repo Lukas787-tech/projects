@@ -144,7 +144,9 @@ class ModelPool(context: Context) {
      * them has them stay removed; [restoreBuiltIns] puts them back on request.
      */
     private fun ensureBuiltIns() {
-        if (prefs.getBoolean(KEY_BUILT_INS, false)) return
+        // A pool sealed on another phone cannot be opened here; the free models
+        // come back so the assistant still answers while the keys are restored.
+        if (prefs.getBoolean(KEY_BUILT_INS, false) && !lostInRestore) return
         restoreBuiltIns()
         prefs.edit().putBoolean(KEY_BUILT_INS, true).apply()
     }
@@ -565,11 +567,19 @@ class ModelPool(context: Context) {
                 }
             )
         }
-        prefs.edit().putString(KEY_POOL, array.toString()).apply()
+        prefs.edit().putString(KEY_POOL, com.lukas.jarvis.core.Secrets.box().seal(array.toString())).apply()
     }
 
+    /** True when the stored pool was sealed on another phone and could not be read. */
+    private var lostInRestore = false
+
     private fun load(): List<PoolEntry> {
-        val raw = prefs.getString(KEY_POOL, null) ?: return emptyList()
+        val stored = prefs.getString(KEY_POOL, null) ?: return emptyList()
+        val raw = com.lukas.jarvis.core.Secrets.box().open(stored)
+        if (raw.isEmpty()) {
+            lostInRestore = com.lukas.jarvis.core.Secrets.isSealed(stored)
+            return emptyList()
+        }
         val array = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
         return (0 until array.length()).mapNotNull { i ->
             val obj = array.optJSONObject(i) ?: return@mapNotNull null

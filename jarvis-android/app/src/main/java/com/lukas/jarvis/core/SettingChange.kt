@@ -21,7 +21,7 @@ object SettingChange {
     /** The names accepted, for the tool's description. */
     val KEYS = listOf(
         "assistant_name", "user_name", "call_me", "personality", "reply_length", "wit", "emoji",
-        "accent", "backdrop", "core_style", "reduce_motion", "text_size", "show_hud",
+        "accent", "theme_mode", "reduce_motion", "text_size", "character_idle", "local_only",
         "speak_replies", "speech_rate", "speech_pitch", "speech_language", "auto_language", "reply_language",
         "voice_engine", "map_style", "travel_mode", "search_radius", "currency", "proactive",
         "morning_brief", "brief_time", "evening_time", "haptics", "sounds", "wake_word", "wake_phrase",
@@ -33,7 +33,12 @@ object SettingChange {
         val v = value.lowercase(Locale.ROOT)
         // "voice: fish audio" is about which voice, not whether to speak.
         val key = (ALIASES[norm(rawKey)] ?: norm(rawKey)).let {
-            if (it == "speak_replies" && ENGINE_WORDS.any { word -> v.contains(word) }) "voice_engine" else it
+            when {
+                it == "speak_replies" && ENGINE_WORDS.any { word -> v.contains(word) } -> "voice_engine"
+                // "Make the theme dark" is about the café, "make the theme red" about the colour.
+                it == "accent" && accent(v) == null && themeMode(v) != null -> "theme_mode"
+                else -> it
+            }
         }
         fun changed(s: Settings, said: String) = Result.Changed(s, said)
         fun flag(set: (Boolean) -> Settings, what: String): Result {
@@ -69,22 +74,23 @@ object SettingChange {
                 ?: ask("How witty, from 0 (dry) to 3 (playful)?")
             "emoji" -> flag({ settings.copy(emoji = it) }, "emoji")
             "accent" -> accent(v)?.let { changed(settings.copy(accent = it.first), "Colour: ${it.second}.") }
-                ?: ask("Which colour? For example blue, gold, red, green, violet, orange, pink, silver, or any colour name.")
-            "backdrop" -> BACKDROPS.entries.firstOrNull { (id, words) -> v == id || words.any { v.contains(it) } }
-                ?.let { changed(settings.copy(backdrop = it.key), "Background: ${it.key}.") }
-                ?: ask("Which background? ${BACKDROPS.keys.joinToString()}.")
-            "core_style" -> when {
-                v.contains("orb") || v.contains("kugel") -> "orb"
-                v.contains("globe") || v.contains("earth") || v.contains("erde") || v.contains("planet") -> "globe"
-                v.contains("reactor") || v.contains("reaktor") || v.contains("arc") -> "reactor"
-                else -> null
-            }?.let { changed(settings.copy(coreStyle = it), "The core is now the $it.") }
-                ?: ask("Reactor, orb or globe?")
+                ?: ask("Which colour? For example caramel, honey, berry, sage, sky, lavender, rose, or any colour name.")
+            "theme_mode" -> themeMode(v)?.let { mode ->
+                changed(
+                    settings.copy(themeMode = mode),
+                    when (mode) {
+                        "dark" -> "Night café it is."
+                        "light" -> "Back to the latte café."
+                        else -> "Following the phone's light and dark."
+                    }
+                )
+            } ?: ask("Light, dark, or follow the phone?")
+            "character_idle" -> flag({ settings.copy(characterIdle = it) }, "my idle moments")
+            "local_only" -> flag({ settings.copy(localOnly = it) }, "local only")
             "reduce_motion" -> flag({ settings.copy(reduceMotion = it) }, "calm motion")
             "text_size" -> scaled(v, settings.textScale, 0.1f, 0.8f, 1.6f)
                 ?.let { changed(settings.copy(textScale = it), "Text size ${(it * 100).toInt()}%.") }
                 ?: ask("Bigger, smaller, or a size like 120%?")
-            "show_hud" -> flag({ settings.copy(showHud = it) }, "the clock and weather display")
             "speak_replies" -> flag({ settings.copy(speakReplies = it) }, "speaking answers aloud")
             "speech_rate" -> scaled(v, settings.speechRate, 0.15f, 0.5f, 2f)
                 ?.let { changed(settings.copy(speechRate = it), "Speaking at ${"%.2f".format(Locale.US, it)}×.") }
@@ -218,30 +224,29 @@ object SettingChange {
     }
 
     private val PRESETS = linkedMapOf(
-        "arc" to listOf("blue", "blau", "arc", "cyan"),
-        "stark" to listOf("gold", "yellow", "gelb"),
-        "crimson" to listOf("red", "rot", "crimson", "mark iii"),
-        "emerald" to listOf("green", "grün", "gruen", "emerald"),
-        "violet" to listOf("violet", "purple", "lila", "violett"),
-        "solar" to listOf("orange", "solar"),
+        "caramel" to listOf("caramel", "karamell", "brown", "braun", "coffee", "kaffee", "latte"),
+        "honey" to listOf("honey", "honig", "gold", "yellow", "gelb"),
+        "apricot" to listOf("apricot", "aprikose", "orange", "peach"),
+        "berry" to listOf("berry", "beere", "red", "rot", "crimson", "cherry"),
         "rose" to listOf("pink", "rosa", "rose"),
-        "silver" to listOf("silver", "silber", "white", "weiß", "grey", "gray", "grau")
+        "sage" to listOf("sage", "salbei", "green", "grün", "gruen", "emerald"),
+        "matcha" to listOf("matcha", "olive", "oliv"),
+        "lavender" to listOf("lavender", "lavendel", "violet", "purple", "lila", "violett"),
+        "sky" to listOf("sky", "himmel", "blue", "blau", "cyan"),
+        "stone" to listOf("stone", "stein", "silver", "silber", "grey", "gray", "grau")
     )
+
+    /** "dark", "light" or "system" from however it was put, or null. */
+    private fun themeMode(v: String): String? = when {
+        listOf("dark", "dunkel", "night", "nacht", "black", "schwarz", "oled").any { v.contains(it) } -> "dark"
+        listOf("light", "hell", "day", "tag", "white", "weiß").any { v.contains(it) } -> "light"
+        listOf("auto", "system", "phone", "follow").any { v.contains(it) } -> "system"
+        else -> null
+    }
 
     private val HUES = linkedMapOf(
         "teal" to 175, "türkis" to 175, "turquoise" to 175, "mint" to 150, "lime" to 90,
         "magenta" to 300, "navy" to 225, "indigo" to 250, "coral" to 10, "amber" to 40
-    )
-
-    private val BACKDROPS = linkedMapOf(
-        "space" to listOf("space", "weltall", "deep"),
-        "oled" to listOf("black", "schwarz", "oled"),
-        "graphite" to listOf("graphite", "grey", "gray", "grau"),
-        "midnight" to listOf("midnight", "mitternacht", "navy"),
-        "nebula" to listOf("nebula", "nebel", "purple"),
-        "aurora" to listOf("aurora", "polarlicht", "green"),
-        "ember" to listOf("ember", "glut", "warm", "red"),
-        "abyss" to listOf("abyss", "ocean", "sea", "meer", "blue")
     )
 
     private val LANGUAGES = mapOf(
@@ -258,9 +263,12 @@ object SettingChange {
         "persona" to "personality", "character" to "personality", "length" to "reply_length",
         "answer_length" to "reply_length", "humor" to "wit", "humour" to "wit", "funny" to "wit",
         "color" to "accent", "colour" to "accent", "theme" to "accent", "farbe" to "accent",
-        "background" to "backdrop", "hintergrund" to "backdrop", "core" to "core_style",
+        "background" to "theme_mode", "hintergrund" to "theme_mode", "backdrop" to "theme_mode",
+        "dark_mode" to "theme_mode", "night_mode" to "theme_mode", "appearance" to "theme_mode",
+        "idle" to "character_idle", "idle_animations" to "character_idle", "privacy" to "local_only",
+        "privacy_mode" to "local_only",
         "animations" to "reduce_motion", "font_size" to "text_size", "text_scale" to "text_size",
-        "hud" to "show_hud", "voice" to "speak_replies", "speak" to "speak_replies",
+        "voice" to "speak_replies", "speak" to "speak_replies",
         "speed" to "speech_rate", "rate" to "speech_rate", "pitch" to "speech_pitch",
         "language" to "speech_language", "sprache" to "speech_language", "detect_language" to "auto_language",
         "answer_language" to "reply_language", "map" to "map_style", "karte" to "map_style",

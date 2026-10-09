@@ -1,4 +1,4 @@
-name: Build Jarvis APK
+name: Build Mochi APK
 
 on:
   push:
@@ -66,7 +66,7 @@ jobs:
           # Fixed name so the release download URL is stable build to build.
           cp app/build/outputs/apk/release/app-release.apk out/jarvis.apk
           # The same numbers the build gave itself from the run number.
-          echo "APP_VERSION=5.5.${GITHUB_RUN_NUMBER} (build $((23 + GITHUB_RUN_NUMBER)))" >> "$GITHUB_ENV"
+          echo "APP_VERSION=6.0.${GITHUB_RUN_NUMBER} (build $((23 + GITHUB_RUN_NUMBER)))" >> "$GITHUB_ENV"
           echo "BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
           ls -la out
 
@@ -96,10 +96,10 @@ jobs:
         with:
           tag_name: jarvis-latest
           target_commitish: ${{ github.sha }}
-          name: Jarvis (latest build)
+          name: Mochi (latest build)
           make_latest: true
           body: |
-            Always the newest Jarvis build — this link never changes.
+            Always the newest Mochi build — this link never changes.
 
             Open it on your phone, tap the `.apk`, allow "install unknown apps".
             Then check Settings shows the version below; if it does not, the
@@ -120,10 +120,10 @@ jobs:
         with:
           tag_name: jarvis-latest
           target_commitish: ${{ github.sha }}
-          name: Jarvis (latest build)
+          name: Mochi (latest build)
           make_latest: true
           body: |
-            Always the newest Jarvis build — this link never changes.
+            Always the newest Mochi build — this link never changes.
 
             Open it on your phone, tap the `.apk`, allow "install unknown apps".
             Then check Settings shows the version below; if it does not, the

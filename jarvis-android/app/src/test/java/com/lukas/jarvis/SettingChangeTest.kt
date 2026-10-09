@@ -17,11 +17,15 @@ class SettingChangeTest {
     }
 
     @Test fun lookInWords() {
-        assertEquals("crimson", changed("accent", "red").accent)
-        assertEquals("stark", changed("colour", "Gold").accent)
+        // 6.0: colour words land on the café's accents, and dark or light is the theme.
+        assertEquals("berry", changed("accent", "red").accent)
+        assertEquals("honey", changed("colour", "Gold").accent)
         assertEquals("custom:175", changed("accent", "teal").accent)
-        assertEquals("oled", changed("background", "pure black").backdrop)
-        assertEquals("orb", changed("core_style", "the orb").coreStyle)
+        assertEquals("dark", changed("background", "pure black").themeMode)
+        assertEquals("dark", changed("theme", "night").themeMode)
+        assertEquals("light", changed("dark_mode", "off, light please").themeMode)
+        // A colour word wins: "light blue" is a colour, not the light theme.
+        assertEquals("sky", changed("colour", "light blue").accent)
         assertEquals(1.1f, changed("text_size", "bigger").textScale, 0.001f)
         assertEquals(1.2f, changed("text_size", "120%").textScale, 0.001f)
     }

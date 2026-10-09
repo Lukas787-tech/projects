@@ -1,4 +1,4 @@
-name: Jarvis on a device
+name: Mochi on a device
 
 # Runs the app on a real Android system image (an emulator) and checks it
 # does not crash. Triggered by "[device]" in a commit message, or by hand.
@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   device:
@@ -61,16 +61,12 @@ jobs:
           working-directory: jarvis-android
           script: bash ../.github/scripts/device-smoke.sh
 
-      - name: Commit the device pictures
+      # Kept with the run rather than committed, like the screenshots.
+      - name: Upload the device run
         if: always()
-        working-directory: .
-        run: |
-          [ -d docs/device ] || exit 0
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/device
-          git commit -m "Update Jarvis device run" || exit 0
-          for i in 1 2 3; do
-            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
-            sleep 5
-          done
+        uses: actions/upload-artifact@v4
+        with:
+          name: mochi-device-run
+          path: docs/device/
+          if-no-files-found: warn
+          retention-days: 30

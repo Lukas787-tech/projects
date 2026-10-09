@@ -13,10 +13,11 @@ android {
         minSdk = 26
         targetSdk = 35
         // Every CI build gets its own number, so Settings and the release page
-        // say which one is installed; a local build stays plain 5.5.
+        // say which one is installed; a local build stays plain 6.0. The code
+        // keeps counting from 5.5's, so 6.0 installs over it in place.
         val ciRun = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 0
         versionCode = 23 + ciRun
-        versionName = if (ciRun > 0) "5.5.$ciRun" else "5.5"
+        versionName = if (ciRun > 0) "6.0.$ciRun" else "6.0"
         vectorDrawables { useSupportLibrary = true }
 
         // Phones only. The on-device vision models ship native code for every

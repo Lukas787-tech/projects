@@ -35,7 +35,7 @@ object Vault {
     private val STORES = listOf("jarvis_settings", "jarvis_pool", "jarvis_places", "jarvis_routines", "jarvis_lists", "jarvis_place_reminders", "jarvis_profiles", "jarvis_countdowns")
 
     /** The current state of every store, as text to write to a file. */
-    fun export(context: Context, brain: com.lukas.jarvis.data.Brain? = null): String {
+    fun export(context: Context, brain: com.lukas.jarvis.data.Brain? = null, passphrase: String? = null): String {
         val root = JSONObject()
         root.put("version", VERSION)
         root.put("exportedAt", System.currentTimeMillis())
@@ -45,18 +45,27 @@ object Vault {
         STORES.forEach { name ->
             val prefs = context.applicationContext.getSharedPreferences(name, Context.MODE_PRIVATE)
             val entries = JSONObject()
-            prefs.all.forEach { (key, value) -> entries.put(key, encode(value)) }
+            // Keys go into the file opened, so it restores on any phone; the
+            // file itself is plain unless a passphrase seals it.
+            prefs.all.forEach { (key, value) ->
+                val plain = if (value is String && Secrets.isSecret(name, key)) Secrets.box().open(value) else value
+                entries.put(key, encode(plain))
+            }
             stores.put(name, entries)
         }
         root.put("stores", stores)
         brain?.let { root.put("tables", it.exportTables()) }
-        return root.toString(2)
+        val plain = root.toString(2)
+        return passphrase?.takeIf { it.isNotBlank() }?.let { VaultSeal.lock(plain, it) } ?: plain
     }
 
     /** How much came back, or why nothing did. */
     sealed interface Result {
         data class Restored(val keys: Int, val rows: Int, val exportedAt: Long) : Result
         data class Failed(val reason: String) : Result
+
+        /** The file is locked and the passphrase was missing or wrong. */
+        data class Locked(val wrongPassphrase: Boolean) : Result
     }
 
     /**
@@ -66,14 +75,25 @@ object Vault {
      * of provider keys, some from the backup and some from whatever was typed
      * since, is a state nobody asked for and nobody can reason about.
      */
-    fun import(context: Context, text: String, brain: com.lukas.jarvis.data.Brain? = null): Result {
+    fun import(
+        context: Context,
+        sealed: String,
+        brain: com.lukas.jarvis.data.Brain? = null,
+        passphrase: String? = null
+    ): Result {
+        val text = if (VaultSeal.isLocked(sealed)) {
+            if (passphrase.isNullOrBlank()) return Result.Locked(wrongPassphrase = false)
+            VaultSeal.unlock(sealed, passphrase) ?: return Result.Locked(wrongPassphrase = true)
+        } else {
+            sealed
+        }
         val root = runCatching { JSONObject(text) }.getOrNull()
-            ?: return Result.Failed("That file is not a Jarvis backup.")
+            ?: return Result.Failed("That file is not a Mochi backup.")
         if (root.optString("app") != "jarvis") {
-            return Result.Failed("That file is not a Jarvis backup.")
+            return Result.Failed("That file is not a Mochi backup.")
         }
         if (root.optInt("version") > VERSION) {
-            return Result.Failed("That backup was written by a newer version of Jarvis.")
+            return Result.Failed("That backup was written by a newer version of Mochi.")
         }
         val stores = root.optJSONObject("stores")
             ?: return Result.Failed("That backup has nothing in it.")
@@ -102,6 +122,9 @@ object Vault {
             editor.apply()
         }
 
+        // Keys came back in plain text from the file; seal them on this phone.
+        runCatching { Secrets.sealAll(context) }
+
         if (restored == 0 && rows == 0) return Result.Failed("That backup has nothing in it.")
         return Result.Restored(restored, rows, root.optLong("exportedAt"))
     }
@@ -110,7 +133,7 @@ object Vault {
     fun fileName(): String {
         val day = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
             .format(java.util.Date())
-        return "jarvis-backup-$day.json"
+        return "mochi-backup-$day.json"
     }
 
     // Preferences are typed, and a round trip through JSON loses that unless the
