@@ -53,12 +53,20 @@ jobs:
           set -o pipefail
           ./gradlew assembleRelease testReleaseUnitTest --no-daemon 2>&1 | tee build.log
 
+      # Zero dead ends, on the real canvas: every moment is composed and its
+      # primary step is found on screen and tapped. A dead end fails the build.
+      - name: Walk every moment
+        run: |
+          set -o pipefail
+          ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.MomentWalkTest' --no-daemon 2>&1 | tee walk.log
+
       - name: What failed
         if: failure()
         run: |
           echo "--- Kotlin and resource errors ---"
-          grep -E "^(e: |error: |ERROR:)|FAILURE: |What went wrong|FAILED$|AssertionError|expected:<" build.log | head -n 80 \
+          grep -E "^(e: |error: |ERROR:)|FAILURE: |What went wrong|FAILED$|AssertionError|expected:<" build.log walk.log 2>/dev/null | head -n 80 \
             || echo "No compiler error lines in the log; see the step above."
+          find app/build/test-results -name '*.xml' -exec grep -l "<failure" {} \; 2>/dev/null | xargs -r grep -h -A12 "<failure" | head -n 120
 
       - name: Stage APK
         run: |

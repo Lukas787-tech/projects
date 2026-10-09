@@ -509,6 +509,8 @@ class AssistantViewModel(
             is com.lukas.jarvis.moment.ActionIntent.AddMinute -> addMinute(intent.id)
             is com.lukas.jarvis.moment.ActionIntent.ReadAloud -> speaker.speak(intent.text)
             is com.lukas.jarvis.moment.ActionIntent.CheckItem -> checkListItem(intent.list, intent.item, intent.done)
+            com.lukas.jarvis.moment.ActionIntent.StopwatchToggle -> toggleStopwatch()
+            com.lukas.jarvis.moment.ActionIntent.StopwatchReset -> resetStopwatch()
             // The keyboard and permissions belong to the screen; it handles these itself.
             is com.lukas.jarvis.moment.ActionIntent.Type, is com.lukas.jarvis.moment.ActionIntent.Grant -> Unit
         }

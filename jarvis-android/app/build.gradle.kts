@@ -127,4 +127,9 @@ dependencies {
     // the release build and its tests never compile or download any of it, so
     // the screenshot job cannot break the APK.
     testDebugImplementation(libs.robolectric)
+    // The canvas walked as a person would see it: every moment composed, its
+    // primary step found on screen and tapped. Debug-only, like the screenshots.
+    testDebugImplementation(platform(libs.androidx.compose.bom))
+    testDebugImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

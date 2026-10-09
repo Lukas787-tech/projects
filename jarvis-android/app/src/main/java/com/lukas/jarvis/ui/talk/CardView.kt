@@ -70,6 +70,7 @@ class CardContext(
     val timers: List<RunningTimer> = emptyList(),
     val ringing: List<RunningTimer> = emptyList(),
     val photos: Map<Long, Bitmap> = emptyMap(),
+    val stopwatch: com.lukas.jarvis.notify.StopwatchState? = null,
     val now: Long = System.currentTimeMillis()
 )
 
@@ -119,7 +120,7 @@ fun CanvasCardView(
 
     // A ringing timer is shown live, with its own two buttons.
     val timerId = card.actions.firstNotNullOfOrNull { (it.intent as? ActionIntent.StopTimer)?.id }
-    if (timerId != null) {
+    if (timerId != null && card.id.startsWith("alert:")) {
         TimerTile(
             label = card.title,
             remaining = "0:00",
@@ -150,6 +151,7 @@ fun CanvasCardView(
             CardKind.Picture -> PictureBody(card)
             CardKind.Photo -> PhotoBody(card, context)
             CardKind.Timer -> TimersBody(card, context, onAction)
+            CardKind.Stopwatch -> StopwatchBody(context)
             else -> TextBody(card)
         }
         CardActions(card, onAction)
@@ -283,13 +285,41 @@ private fun PhotoBody(card: CanvasCard, context: CardContext) {
     TextBody(card)
 }
 
+/** A clock that ticks every second, only while the card that needs it is on screen. */
+@Composable
+private fun ticking(): Long {
+    val now by androidx.compose.runtime.produceState(System.currentTimeMillis()) {
+        while (true) {
+            kotlinx.coroutines.delay(1000)
+            value = System.currentTimeMillis()
+        }
+    }
+    return now
+}
+
+@Composable
+private fun StopwatchBody(context: CardContext) {
+    val watch = context.stopwatch ?: return
+    val now = if (watch.running) ticking() else context.now
+    VSpace(Cafe.space.xs)
+    Text(clock(watch.elapsed(now)), style = Cafe.type.pixelLarge, color = Cafe.colors.espresso)
+    if (watch.laps.isNotEmpty()) {
+        Text(
+            watch.laps.takeLast(3).mapIndexed { i, lap -> "Lap ${watch.laps.size - minOf(3, watch.laps.size) + i + 1}: ${clock(lap)}" }.joinToString("  \u00B7  "),
+            style = Cafe.type.bodySmall,
+            color = Cafe.colors.cocoa
+        )
+    }
+}
+
 @Composable
 private fun TimersBody(card: CanvasCard, context: CardContext, onAction: (ActionIntent) -> Unit) {
     if (context.timers.isEmpty()) return TextBody(card)
+    val now = ticking()
     VSpace(Cafe.space.s)
     Column(verticalArrangement = Arrangement.spacedBy(Cafe.space.s)) {
         context.timers.forEach { timer ->
-            val left = timer.leftMs(context.now)
+            val left = timer.leftMs(now)
             TimerTile(
                 label = timer.label,
                 remaining = clock(left),

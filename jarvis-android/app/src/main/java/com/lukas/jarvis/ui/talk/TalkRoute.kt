@@ -16,7 +16,12 @@ import com.lukas.jarvis.llm.Personas
 import com.lukas.jarvis.maps.MapStyle
 import com.lukas.jarvis.moment.Alert
 import com.lukas.jarvis.moment.AlertKind
+import com.lukas.jarvis.moment.ActionIntent
 import com.lukas.jarvis.moment.Backdrop
+import com.lukas.jarvis.moment.CanvasCard
+import com.lukas.jarvis.moment.CardAction
+import com.lukas.jarvis.moment.CardKind
+import com.lukas.jarvis.moment.CardStatus
 import com.lukas.jarvis.moment.Composer
 import com.lukas.jarvis.moment.FollowUp
 import com.lukas.jarvis.moment.Moment
@@ -52,6 +57,22 @@ fun TalkRoute(
     val map by viewModel.map.collectAsStateWithLifecycle()
     val lists by viewModel.lists.collectAsStateWithLifecycle()
     val levelState: State<Float> = viewModel.voiceLevel.collectAsStateWithLifecycle()
+    val stopwatch by viewModel.stopwatch.collectAsStateWithLifecycle()
+    val interpreter by viewModel.interpreter.collectAsStateWithLifecycle()
+
+    // The interpreter takes the whole canvas while it is open; closing it
+    // brings the canvas straight back.
+    interpreter?.let { open ->
+        InterpreterCanvas(
+            state = open,
+            micAvailable = ui.micAvailable,
+            onListen = viewModel::interpretListen,
+            onType = viewModel::interpretTyped,
+            onEnd = viewModel::endInterpreter,
+            modifier = modifier
+        )
+        return
+    }
 
     // Time moves Mochi on by itself only in two ways: a win wears off after a
     // moment, and a long quiet makes it sleepy. Nothing else needs a clock.
@@ -68,6 +89,40 @@ fun TalkRoute(
     }
     val hour = Calendar.getInstance().apply { timeInMillis = now }.get(Calendar.HOUR_OF_DAY)
 
+    // Running timers and the stopwatch stay up as live tiles while they run.
+    val live = buildList {
+        if (timers.isNotEmpty()) {
+            val first = timers.first()
+            add(
+                CanvasCard(
+                    id = "live:timers",
+                    kind = CardKind.Timer,
+                    title = if (timers.size == 1) first.label.ifBlank { "Timer" } else "${timers.size} timers",
+                    actions = listOf(
+                        CardAction("Add a minute", ActionIntent.AddMinute(first.id), primary = true),
+                        CardAction("Stop", ActionIntent.StopTimer(first.id))
+                    ),
+                    status = CardStatus.Working
+                )
+            )
+        }
+        if (!stopwatch.idle) {
+            add(
+                CanvasCard(
+                    id = "live:stopwatch",
+                    kind = CardKind.Stopwatch,
+                    title = "Stopwatch",
+                    actions = listOf(
+                        CardAction(if (stopwatch.running) "Pause" else "Carry on", ActionIntent.StopwatchToggle, primary = true),
+                        CardAction("Reset", ActionIntent.StopwatchReset)
+                    ),
+                    status = CardStatus.Working
+                )
+            )
+        }
+    }
+    val own = settings.quickCommands.lines().map { it.trim() }.filter { it.isNotEmpty() }.map { FollowUp(it, it) }
+
     val inputs = MomentInputs(
         listening = ui.stage == Stage.Listening,
         thinking = ui.stage == Stage.Thinking,
@@ -78,12 +133,12 @@ fun TalkRoute(
         alerts = ringing.map { Alert("timer:${it.id}", AlertKind.Timer, it.label.ifBlank { "Timer" }, "Time's up", timerId = it.id) },
         problem = canvas.problem,
         fresh = canvas.fresh,
-        pinned = canvas.pinned,
+        pinned = live + canvas.pinned,
         shelf = canvas.shelf,
         navigating = canvas.navigating,
         online = online,
         micAvailable = ui.micAvailable,
-        suggestions = suggestions(hour)
+        suggestions = (own + suggestions(hour)).take(3)
     )
     val layout = remember(inputs) { Composer.compose(inputs) }
     val name = settings.assistantName.ifBlank { "Mochi" }
@@ -112,6 +167,7 @@ fun TalkRoute(
         name = name,
         greeting = greeting(Personas.address(settings), hour),
         status = when {
+            ui.notice != null -> ui.notice
             !online -> "Offline — timers, lists, sums and memory still work"
             Secrets.unreadable -> "Your saved keys need restoring — the free models answer meanwhile"
             else -> null
@@ -137,7 +193,7 @@ fun TalkRoute(
     )
     TalkScreen(
         state = state,
-        cards = CardContext(lists = lists, timers = timers, ringing = ringing, photos = ui.photos, now = now),
+        cards = CardContext(lists = lists, timers = timers, ringing = ringing, photos = ui.photos, stopwatch = stopwatch, now = now),
         map = map,
         tiles = viewModel.tiles,
         mapStyle = MapStyle.of(settings.mapStyle, Cafe.colors.isDark),

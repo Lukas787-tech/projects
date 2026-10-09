@@ -151,15 +151,19 @@ fun Globe(
         }
     }
 
-    val sweep by rememberInfiniteTransition(label = "globe").animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "sweep"
-    )
+    // The ring round where you are keeps opening — unless motion is reduced.
+    val sweep = if (still) 0f else {
+        val ring by rememberInfiniteTransition(label = "globe").animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(2600, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "sweep"
+        )
+        ring
+    }
 
     val glow by animateFloatAsState(
         targetValue = when (mood) {

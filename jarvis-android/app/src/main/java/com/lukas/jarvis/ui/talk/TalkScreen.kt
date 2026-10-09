@@ -252,6 +252,7 @@ private fun Middle(
                 Spacer(Modifier.size(Cafe.space.m))
                 Column(Modifier.weight(1f)) {
                     Speech(state, small = true, act = act)
+                    PrimaryStep(layout, act)
                 }
             }
             VSpace(Cafe.space.s)
@@ -279,19 +280,26 @@ private fun CharacterBlock(
     )
     VSpace(Cafe.space.s)
     Speech(state, small = false, act = act, centered = true)
-    // The moment's own step forward, when no card carries it and the mic is not it.
-    val primary = layout.primary
-    val onCard = layout.cards.any { card -> card.actions.any { it.intent == primary.intent } }
-    if (!onCard && primary.intent != ActionIntent.Listen) {
-        VSpace(Cafe.space.s)
-        CafeButton(primary.label, { act(primary.intent) }, kind = if (primary.intent == ActionIntent.Stop) ButtonKind.Secondary else ButtonKind.Primary)
-    }
+    PrimaryStep(layout, act)
     if (layout.prompts.isNotEmpty() && layout.cards.isEmpty()) {
         VSpace(Cafe.space.m)
         Wrap(Modifier.widthIn(max = 520.dp)) {
             layout.prompts.forEach { prompt -> FollowChip(prompt.label, { act(com.lukas.jarvis.moment.Cards.intentFor(prompt)) }) }
         }
     }
+}
+
+/**
+ * The moment's own step forward, drawn whenever no card already carries it —
+ * except at rest, where it is the microphone in the composer.
+ */
+@Composable
+private fun PrimaryStep(layout: Layout, act: (ActionIntent) -> Unit) {
+    val primary = layout.primary
+    val onCard = layout.cards.any { card -> card.actions.any { it.intent == primary.intent } }
+    if (onCard || layout.moment == com.lukas.jarvis.moment.Moment.Resting) return
+    VSpace(Cafe.space.s)
+    CafeButton(primary.label, { act(primary.intent) }, kind = if (primary.intent == ActionIntent.Stop) ButtonKind.Secondary else ButtonKind.Primary)
 }
 
 /** What Mochi is saying, in its own serif voice, with the tools it reached for underneath. */

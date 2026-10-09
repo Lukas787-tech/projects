@@ -40,6 +40,8 @@ sealed interface ActionIntent {
     data class CheckItem(val list: String, val item: String, val done: Boolean) : ActionIntent
     /** Takes a card off the history strip and back onto the canvas. */
     data class BringBack(val cardId: String) : ActionIntent
+    data object StopwatchToggle : ActionIntent
+    data object StopwatchReset : ActionIntent
 }
 
 /** One button on a card. [primary] is the card's own next step. */
