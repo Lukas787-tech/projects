@@ -45,7 +45,9 @@ data class DayBrief(
     /** Whether the calendar is read at all; off, an empty day is unknown, not clear. */
     val calendarOn: Boolean = true,
     /** The days being counted down to, soonest first. */
-    val countdowns: List<com.lukas.jarvis.core.Countdown> = emptyList()
+    val countdowns: List<com.lukas.jarvis.core.Countdown> = emptyList(),
+    /** On Mondays, last week's habits: "Water on 6 of 7 days". */
+    val weekInHabits: List<String> = emptyList()
 ) {
 
     /** The version that gets read out. Prose, no lists, no headings. */
@@ -105,6 +107,10 @@ data class DayBrief(
             append(" ").append(it.describe(today)).append(".")
         }
 
+        if (weekInHabits.isNotEmpty()) {
+            append(" Last week: ").append(weekInHabits.take(3).joinToString(", ")).append(".")
+        }
+
         headlines.firstOrNull()?.let { top ->
             append(" In the news: ${top.title}.")
         }
@@ -161,6 +167,20 @@ class Briefer(
     var lastPlace: String? = null
         private set
 
+    /** The weekly review, on Mondays only: each habit's days out of the seven just gone. */
+    private fun weekInHabits(trackers: List<com.lukas.jarvis.data.TrackerStatus>, now: Long): List<String> {
+        val today = java.time.LocalDate.now()
+        if (today.dayOfWeek != java.time.DayOfWeek.MONDAY) return emptyList()
+        return trackers.filter { com.lukas.jarvis.data.Streaks.isHabit(it.tracker) }.mapNotNull { status ->
+            val days = runCatching {
+                com.lukas.jarvis.data.Streaks.days(brain.entriesBetween(now - 8L * 86_400_000L, now, status.tracker.id))
+            }.getOrDefault(emptySet())
+            // The week just gone: last Monday to yesterday.
+            val count = (1..7).count { today.minusDays(it.toLong()) in days }
+            if (count == 0) null else "${status.tracker.label} on $count of 7 days"
+        }
+    }
+
     suspend fun build(settings: Settings): DayBrief = coroutineScope {
         val now = System.currentTimeMillis()
 
@@ -208,7 +228,8 @@ class Briefer(
             calendarOn = settings.calendarEnabled,
             countdowns = countdowns?.let {
                 com.lukas.jarvis.core.Countdown.upcoming(it.current, java.time.LocalDate.now()).take(5)
-            }.orEmpty()
+            }.orEmpty(),
+            weekInHabits = weekInHabits(trackers, now)
         )
     }
 

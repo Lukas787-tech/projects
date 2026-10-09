@@ -69,6 +69,7 @@ class FlowTest {
                 "route_to" -> "Café Mitte: 200 m, 3 minutes on foot."
                 "add_task" -> "Reminder set: Call mum, tomorrow 18:00 (id 12)"
                 "delete_task" -> "Removed."
+                "make_plan" -> "Plan: Saturday\n- 10:00 Market\n- 12:30 Lunch with Anna\n- 15:00 Bike to the lake\nIn one short line, say what the plan is."
                 else -> "Done."
             }
         }
@@ -87,7 +88,8 @@ class FlowTest {
                 "coffee" to (ToolCall("1", "find_places", """{"query":"Café Mitte"}""") to "Café Mitte is closest."),
                 "how do i get" to (ToolCall("2", "route_to", """{"destination":"Café Mitte"}""") to "Three minutes on foot."),
                 "remind me" to (ToolCall("3", "add_task", """{"title":"Call mum"}""") to "I'll remind you tomorrow at six."),
-                "text anna" to (ToolCall("4", "send_message", """{"number":"+4912345","text":"Running late"}""") to "Ready to send — say yes.")
+                "text anna" to (ToolCall("4", "send_message", """{"number":"+4912345","text":"Running late"}""") to "Ready to send — say yes."),
+                "plan my" to (ToolCall("5", "make_plan", """{"title":"Saturday","steps":["10:00 Market","12:30 Lunch with Anna","15:00 Bike to the lake"]}""") to "A slow Saturday: market, lunch, the lake.")
             )
         ),
         tools, NoMemory, gate
@@ -126,6 +128,19 @@ class FlowTest {
         assertEquals(listOf("find_places", "route_to"), tools.ran)
         // The first answer is not lost: it is on the shelf.
         assertTrue(layout.shelf.any { it.tool == "find_places" })
+    }
+
+    @Test fun aPlanArrivesAsOneCardAndWaitsForGo() {
+        val canvas = turn(CanvasState(), "Plan my Saturday").first
+        val layout = Composer.compose(inputs(canvas))
+        assertEquals(Moment.Creating(CreateKind.Plan), layout.moment)
+        val card = layout.cards.first()
+        assertEquals("Saturday", card.title)
+        assertEquals(listOf("10:00 Market", "12:30 Lunch with Anna", "15:00 Bike to the lake"), card.lines)
+        // Laying it out did nothing else; going ahead is the person's step.
+        assertEquals(listOf("make_plan"), tools.ran)
+        assertEquals("Do it", layout.primary.label)
+        assertEquals(ActionIntent.Say("Go ahead with that plan"), layout.primary.intent)
     }
 
     @Test fun madeSomethingThenUndoIt() {

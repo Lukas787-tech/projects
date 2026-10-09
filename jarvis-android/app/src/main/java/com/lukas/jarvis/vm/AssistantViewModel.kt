@@ -99,6 +99,10 @@ class AssistantViewModel(
     private val _entries = MutableStateFlow<List<Entry>>(emptyList())
     val entries: StateFlow<List<Entry>> = _entries.asStateFlow()
 
+    /** Each habit's run, by tracker id: the days in a row, the best, and this week. */
+    private val _streaks = MutableStateFlow<Map<Long, com.lukas.jarvis.data.Streak>>(emptyMap())
+    val streaks: StateFlow<Map<Long, com.lukas.jarvis.data.Streak>> = _streaks.asStateFlow()
+
     private val _availableModels = MutableStateFlow<List<String>>(emptyList())
     val availableModels: StateFlow<List<String>> = _availableModels.asStateFlow()
 
@@ -1015,17 +1019,25 @@ class AssistantViewModel(
         if (_brief.value != null) refreshBrief()
         viewModelScope.launch {
             val snapshot = withContext(Dispatchers.IO) {
+                val trackers = brain.allTrackerStatus()
+                val now = System.currentTimeMillis()
+                val today = java.time.LocalDate.now()
                 Snapshot(
                     memories = brain.recentMemories(200),
-                    trackers = brain.allTrackerStatus(),
+                    trackers = trackers,
                     tasks = brain.tasks(includeDone = true, limit = 200),
-                    entries = brain.recentEntries(null, 100)
+                    entries = brain.recentEntries(null, 100),
+                    streaks = trackers.filter { com.lukas.jarvis.data.Streaks.isHabit(it.tracker) }.associate { status ->
+                        val days = com.lukas.jarvis.data.Streaks.days(brain.entriesBetween(now - 400L * 86_400_000L, now, status.tracker.id))
+                        status.tracker.id to com.lukas.jarvis.data.Streaks.of(days, today)
+                    }
                 )
             }
             _memories.value = snapshot.memories
             _trackers.value = snapshot.trackers
             _tasks.value = snapshot.tasks
             _entries.value = snapshot.entries
+            _streaks.value = snapshot.streaks
         }
     }
 
@@ -1033,8 +1045,12 @@ class AssistantViewModel(
         val memories: List<Memory>,
         val trackers: List<TrackerStatus>,
         val tasks: List<Task>,
-        val entries: List<Entry>
+        val entries: List<Entry>,
+        val streaks: Map<Long, com.lukas.jarvis.data.Streak>
     )
+
+    /** One tap on a habit: done for today. */
+    fun didHabit(trackerId: Long) = addEntry(trackerId, 1.0, Entry.DIR_OUT, null)
 
     fun addMemory(content: String, kind: String, tags: List<String>, importance: Int) {
         if (content.isBlank()) return

@@ -258,6 +258,17 @@ class Tools(
 
     private fun taskTools(): List<JSONObject> = listOf(
         tool(
+            "make_plan",
+            "Lay out a plan as one card: 'plan my Saturday', 'what should I do this afternoon', " +
+                "'plan the trip to Leipzig'. Look up what it needs first (calendar, weather, places, " +
+                "routes), then call this once. Nothing in it happens until the user says to.",
+            props(
+                "title" to str("A short name for it: 'Saturday', 'This afternoon', 'Leipzig trip'."),
+                "steps" to arr("3 to 8 steps in order, each one short line, starting with a time when there is one: '10:00 Market on Boxhagener Platz'.")
+            ),
+            listOf("title", "steps")
+        ),
+        tool(
             "countdown",
             "Days worth counting down to, kept and shown on Today: a holiday, an exam, a wedding, " +
                 "and birthdays and anniversaries that come every year. 'My holiday starts on 12 October', " +
@@ -1202,6 +1213,7 @@ class Tools(
                 "convert_units" -> convert(args)
                 "date_calc" -> dateCalc(args)
                 "countdown" -> countdown(args)
+                "make_plan" -> makePlan(args)
                 "briefing" -> if (args.optBoolean("evening", false)) {
                     briefer.evening(settings).let { (title, text) -> "$title. $text" }
                 } else {
@@ -1556,7 +1568,14 @@ class Tools(
 
         val status = brain.trackerStatus(brain.findTracker(name) ?: tracker)
         val verb = if (direction == Entry.DIR_OUT) "Logged" else "Added"
-        return "$verb ${money(abs(amount), tracker)} on ${tracker.label}. ${summaryLine(status)}"
+        // A habit's run is the news: "That's 5 days in a row."
+        val streak = if (com.lukas.jarvis.data.Streaks.isHabit(tracker)) {
+            val now = System.currentTimeMillis()
+            val days = com.lukas.jarvis.data.Streaks.days(brain.entriesBetween(now - 400L * 86_400_000L, now, tracker.id))
+            com.lukas.jarvis.data.Streaks.describe(com.lukas.jarvis.data.Streaks.of(days, java.time.LocalDate.now()))
+                .takeIf { it.isNotEmpty() }?.let { " That's $it." }.orEmpty()
+        } else ""
+        return "$verb ${money(abs(amount), tracker)} on ${tracker.label}.$streak ${summaryLine(status)}"
     }
 
     private fun trackerStatus(args: JSONObject): String {
@@ -2343,6 +2362,20 @@ class Tools(
                 }
             }
         }
+    }
+
+    /** A plan is only laid out here; its steps are done when the user says so. */
+    private fun makePlan(args: JSONObject): String {
+        val title = args.optString("title").trim().ifBlank { "Plan" }
+        val raw = args.opt("steps")
+        val steps = when (raw) {
+            is org.json.JSONArray -> (0 until raw.length()).map { raw.optString(it) }
+            is String -> raw.split('\n', ';')
+            else -> emptyList()
+        }.map { it.trim().removePrefix("-").trim() }.filter { it.isNotEmpty() }.take(12)
+        if (steps.isEmpty()) return "A plan needs its steps: give them as a list, one short line each."
+        return "Plan: $title\n" + steps.joinToString("\n") { "- $it" } +
+            "\nIn one short line, say what the plan is; the card shows the steps. Nothing is done until they say go."
     }
 
     private fun countdown(args: JSONObject): String {

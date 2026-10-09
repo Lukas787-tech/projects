@@ -106,6 +106,8 @@ object CanvasRules {
         val done = outputs.filter { !it.failed && it.waiting == null }
         return when {
             done.any { it.tool == "complete_task" } -> Win.Delight
+            // A habit kept another day is worth a little hop.
+            done.any { it.tool == "log_entry" && it.result.contains("days in a row") } -> Win.Delight
             done.any { it.tool == "remember" } -> Win.Noted
             done.any { ToolCatalog.risk(it.tool) != Risk.Read && !ToolCatalog.isReadOnly(it.tool) } -> Win.Done
             else -> null

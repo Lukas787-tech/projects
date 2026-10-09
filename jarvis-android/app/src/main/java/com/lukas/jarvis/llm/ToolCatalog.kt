@@ -104,6 +104,12 @@ object ToolCatalog {
         // tasks
         ToolInfo("add_task", ToolGroup.Tasks, "adding a reminder", "Reminder", view = CardKind.Task,
             next = listOf(f("Move it to tomorrow", "Move {title} to tomorrow at the same time"), f("What's still open?", "What's still open?"))),
+        ToolInfo("make_plan", ToolGroup.Tasks, "making a plan", "Plan", view = CardKind.Plan,
+            next = listOf(
+                f("Do it", "Go ahead with that plan"),
+                f("Put it in my calendar", "Put that plan in my calendar"),
+                f("Remind me for each step", "Set a reminder for each step of that plan")
+            )),
         ToolInfo("countdown", ToolGroup.Tasks, "counting the days", "Countdown", view = CardKind.Task,
             next = listOf(f("All my countdowns", "What are my countdowns?"))),
         ToolInfo("list", ToolGroup.Tasks, "the list", "List", view = CardKind.List,

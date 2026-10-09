@@ -89,7 +89,9 @@ class LibraryActions(
     val addTask: (title: String, dueAt: Long?, repeat: String, notes: String?) -> Unit,
     val toggleTask: (Task) -> Unit,
     val deleteTask: (Long) -> Unit,
-    val cancelPlaceReminder: (Long) -> Unit
+    val cancelPlaceReminder: (Long) -> Unit,
+    /** One tap on a habit: done for today. */
+    val didHabit: (Long) -> Unit = {}
 )
 
 /** Something just removed, and how to put it back. */
@@ -112,7 +114,8 @@ fun LibraryRoom(
     placeReminders: List<PlaceWatch>,
     actions: LibraryActions,
     modifier: Modifier = Modifier,
-    defaultCurrency: String = "EUR"
+    defaultCurrency: String = "EUR",
+    streaks: Map<Long, com.lukas.jarvis.data.Streak> = emptyMap()
 ) {
     var undo by remember { mutableStateOf<Undoable?>(null) }
     LaunchedEffect(undo) {
@@ -143,7 +146,7 @@ fun LibraryRoom(
                 Shelf.Memory -> memoryShelf(memories.filter { it.kind != Memory.KIND_NOTE && it.kind != Memory.KIND_JOURNAL }, actions, removed)
                 Shelf.Notes -> notesShelf(memories.filter { it.kind == Memory.KIND_NOTE || it.kind == Memory.KIND_JOURNAL }, actions, removed)
                 Shelf.Lists -> listShelf(lists, actions, removed)
-                Shelf.Money -> moneyShelf(trackers, entries, actions, removed, defaultCurrency)
+                Shelf.Money -> moneyShelf(trackers, entries, actions, removed, defaultCurrency, streaks)
                 Shelf.Tasks -> taskShelf(tasks, placeReminders, actions, removed)
             }
         }
@@ -357,7 +360,7 @@ private fun LazyListScope.listShelf(book: ListBook, actions: LibraryActions, rem
 
 // ------------------------------------------------------------------- money
 
-private fun LazyListScope.moneyShelf(trackers: List<TrackerStatus>, entries: List<Entry>, actions: LibraryActions, removed: (Undoable) -> Unit, currency: String) {
+private fun LazyListScope.moneyShelf(trackers: List<TrackerStatus>, entries: List<Entry>, actions: LibraryActions, removed: (Undoable) -> Unit, currency: String, streaks: Map<Long, com.lukas.jarvis.data.Streak>) {
     item(key = "money-new") {
         var creating by remember { mutableStateOf(false) }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -382,20 +385,24 @@ private fun LazyListScope.moneyShelf(trackers: List<TrackerStatus>, entries: Lis
         }
         return
     }
-    items(trackers, key = { "tracker:${it.tracker.id}" }) { status -> TrackerCard(status, entries.filter { it.trackerId == status.tracker.id }, actions, removed) }
+    items(trackers, key = { "tracker:${it.tracker.id}" }) { status -> TrackerCard(status, entries.filter { it.trackerId == status.tracker.id }, actions, removed, streaks[status.tracker.id]) }
 }
 
 @Composable
-private fun TrackerCard(status: TrackerStatus, entries: List<Entry>, actions: LibraryActions, removed: (Undoable) -> Unit) {
+private fun TrackerCard(status: TrackerStatus, entries: List<Entry>, actions: LibraryActions, removed: (Undoable) -> Unit, streak: com.lukas.jarvis.data.Streak? = null) {
     val t = status.tracker
     var amount by rememberSaveable(t.id) { mutableStateOf("") }
     var note by rememberSaveable(t.id) { mutableStateOf("") }
     var editing by rememberSaveable(t.id) { mutableStateOf(false) }
     PaperCard(Modifier.fillMaxWidth()) {
         SectionHeader(t.label, action = "Budget", onAction = { editing = true })
-        status.budgetLeft?.let { ValueRow("Left this ${Tracker.periodWord(t.period)}", "${fmt(it)} ${t.unit}", emphasise = true) }
+        if (com.lukas.jarvis.data.Streaks.isHabit(t)) {
+            HabitLine("Today", streak, { actions.didHabit(t.id) })
+            VSpace(Cafe.space.xs)
+        }
+        status.budgetLeft?.let { ValueRow("Left ${Tracker.thisPeriod(t.period)}", "${fmt(it)} ${t.unit}", emphasise = true) }
         status.balance?.let { ValueRow("Balance", "${fmt(it)} ${t.unit}", emphasise = status.budgetLeft == null) }
-        ValueRow("Used this ${Tracker.periodWord(t.period)}", "${fmt(status.periodSpent)} ${t.unit}")
+        ValueRow("Used ${Tracker.thisPeriod(t.period)}", "${fmt(status.periodSpent)} ${t.unit}")
         t.budget?.takeIf { it > 0 }?.let { budget ->
             val used = (status.periodSpent / budget).toFloat().coerceIn(0f, 1f)
             Box(Modifier.fillMaxWidth().height(8.dp).clip(Cafe.shape.pill).background(Cafe.colors.latte)) {

@@ -37,7 +37,14 @@ object RoomSamples {
 
     val trackers = listOf(
         TrackerStatus(Tracker(id = 1, name = "groceries", label = "Groceries", budget = 300.0), 182.40, 0.0, NOW - 9 * 24 * HOUR, 14, 1200.0, 0.0),
-        TrackerStatus(Tracker(id = 2, name = "wallet", label = "Wallet", startingBalance = 120.0), 0.0, 0.0, NOW, 3, 43.5, 0.0)
+        TrackerStatus(Tracker(id = 2, name = "wallet", label = "Wallet", startingBalance = 120.0), 0.0, 0.0, NOW, 3, 43.5, 0.0),
+        TrackerStatus(Tracker(id = 3, name = "water", label = "Water", kind = Tracker.KIND_COUNT, unit = "glasses", period = Tracker.PERIOD_DAILY), 5.0, 0.0, NOW, 40, 180.0, 0.0),
+        TrackerStatus(Tracker(id = 4, name = "run", label = "Run", kind = Tracker.KIND_COUNT, unit = "runs", period = Tracker.PERIOD_WEEKLY), 1.0, 0.0, NOW, 12, 12.0, 0.0)
+    )
+
+    val streaks = mapOf(
+        3L to com.lukas.jarvis.data.Streak(current = 6, best = 6, today = true, week = listOf(false, true, true, true, true, true, true)),
+        4L to com.lukas.jarvis.data.Streak(current = 0, best = 3, today = false, week = listOf(true, false, false, true, false, false, false))
     )
 
     val brief = DayBrief(
@@ -121,7 +128,8 @@ fun TodaySample(loading: Boolean = false) = TodayRoom(
     routines = RoomSamples.routines,
     savedPlaces = RoomSamples.places,
     countdowns = RoomSamples.countdowns,
-    actions = RoomSamples.todayActions
+    actions = RoomSamples.todayActions,
+    streaks = RoomSamples.streaks
 )
 
 @Composable
@@ -133,7 +141,8 @@ fun LibrarySample(shelf: Shelf) = LibraryRoom(
     entries = RoomSamples.entries,
     tasks = RoomSamples.tasks,
     placeReminders = emptyList(),
-    actions = RoomSamples.libraryActions
+    actions = RoomSamples.libraryActions,
+    streaks = RoomSamples.streaks
 )
 
 @Preview(name = "Today", widthDp = 411, heightDp = 1400)

@@ -239,7 +239,7 @@ object Cards {
     private fun title(kind: CardKind, tool: String, slots: Map<String, String>): String =
         slots["list"]?.let { "${it.replaceFirstChar { c -> c.titlecase() }} list" }
             ?: slots["place"]?.takeIf { kind == CardKind.Route || kind == CardKind.Place }
-            ?: slots["title"]?.takeIf { kind == CardKind.Task || kind == CardKind.Event }
+            ?: slots["title"]?.takeIf { kind == CardKind.Task || kind == CardKind.Event || kind == CardKind.Plan }
             ?: ToolCatalog.info(tool)?.chip?.takeIf { kind == CardKind.Answer }
             ?: kind.label
 
@@ -259,7 +259,7 @@ object Cards {
 
     private val ID = Regex("\\s*\\(id (\\d+)\\)")
     private val PLACE_TOOLS = setOf("find_places", "route_to", "start_navigation", "save_place", "show_on_map", "rename_place", "place_reminder", "wikipedia")
-    private val TASK_TOOLS = setOf("add_task", "update_task", "complete_task", "add_calendar_event", "change_calendar_event", "countdown")
+    private val TASK_TOOLS = setOf("add_task", "update_task", "complete_task", "add_calendar_event", "change_calendar_event", "countdown", "make_plan")
     private val MONEY_TOOLS = setOf("log_entry", "tracker_status", "configure_tracker", "list_entries", "spending_report")
     private val ROUTINE_TOOLS = setOf("create_routine", "run_routine", "delete_routine")
 

@@ -284,6 +284,7 @@ private fun JarvisRoot(
     val trackers by viewModel.trackers.collectAsStateWithLifecycle()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val entries by viewModel.entries.collectAsStateWithLifecycle()
+    val streaks by viewModel.streaks.collectAsStateWithLifecycle()
     val availableModels by viewModel.availableModels.collectAsStateWithLifecycle()
     val modelsState by viewModel.modelsState.collectAsStateWithLifecycle()
     val testState by viewModel.testState.collectAsStateWithLifecycle()
@@ -547,7 +548,8 @@ private fun JarvisRoot(
             onTurnOnCalendar = { viewModel.updateSettings { it.copy(calendarEnabled = true) } },
             onSaveRoutine = viewModel::saveRoutine,
             onDeleteRoutine = viewModel::deleteRoutine,
-            onForgetCountdown = { id -> viewModel.forgetCountdown(id) }
+            onForgetCountdown = { id -> viewModel.forgetCountdown(id) },
+            onDidHabit = viewModel::didHabit
         )
     }
     val libraryActions = remember(viewModel) {
@@ -580,7 +582,8 @@ private fun JarvisRoot(
             addTask = viewModel::addTask,
             toggleTask = viewModel::toggleTask,
             deleteTask = viewModel::deleteTask,
-            cancelPlaceReminder = viewModel::cancelPlaceReminder
+            cancelPlaceReminder = viewModel::cancelPlaceReminder,
+            didHabit = viewModel::didHabit
         )
     }
 
@@ -647,7 +650,8 @@ private fun JarvisRoot(
                     routines = routines,
                     savedPlaces = savedPlaces,
                     countdowns = countdowns,
-                    actions = todayActions
+                    actions = todayActions,
+                    streaks = streaks
                 )
                 // Memory, notes, lists, money and tasks are one Library with
                 // shelves, so each stays one tap from the others while Mochi can
@@ -666,7 +670,8 @@ private fun JarvisRoot(
                     tasks = tasks,
                     placeReminders = placeReminders,
                     actions = libraryActions,
-                    defaultCurrency = settings.defaultCurrency
+                    defaultCurrency = settings.defaultCurrency,
+                    streaks = streaks
                 )
                 Element.Skills -> PowersRoom(
                     settings = settings,

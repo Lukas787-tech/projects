@@ -83,7 +83,8 @@ class TodayActions(
     val onTurnOnCalendar: () -> Unit,
     val onSaveRoutine: (Routine) -> Unit = {},
     val onDeleteRoutine: (String) -> Unit = {},
-    val onForgetCountdown: (Long) -> Unit = {}
+    val onForgetCountdown: (Long) -> Unit = {},
+    val onDidHabit: (Long) -> Unit = {}
 )
 
 /**
@@ -101,7 +102,8 @@ fun TodayRoom(
     savedPlaces: List<SavedPlace>,
     countdowns: List<Countdown>,
     actions: TodayActions,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    streaks: Map<Long, com.lukas.jarvis.data.Streak> = emptyMap()
 ) {
     val today = LocalDate.now()
     // If the launch gathering failed or never ran, the room asks again on opening.
@@ -116,6 +118,13 @@ fun TodayRoom(
     ) {
         item(key = "weather") { WeatherCard(brief, loading, actions) }
         item(key = "due") { DueCard(brief, loading, actions) }
+        val habits = trackers.filter { com.lukas.jarvis.data.Streaks.isHabit(it.tracker) }
+        if (habits.isNotEmpty()) item(key = "habits") {
+            PaperCard(Modifier.fillMaxWidth()) {
+                SectionHeader("Habits", action = "All", onAction = actions.onOpenMoney)
+                habits.take(5).forEach { status -> HabitLine(status.tracker.label, streaks[status.tracker.id], { actions.onDidHabit(status.tracker.id) }) }
+            }
+        }
         item(key = "calendar") { CalendarCard(brief, brief == null, actions) }
         item(key = "money") { MoneyCard(trackers, actions) }
         val coming = Countdown.upcoming(countdowns, today)
@@ -259,7 +268,7 @@ private fun MoneyCard(trackers: List<TrackerStatus>, actions: TodayActions) {
             val left = status.budgetLeft
             ValueRow(
                 t.label,
-                left?.let { "${money(it)} ${t.unit} left" } ?: status.balance?.let { "${money(it)} ${t.unit}" } ?: "${money(status.periodSpent)} ${t.unit} this ${com.lukas.jarvis.data.Tracker.periodWord(t.period)}"
+                left?.let { "${money(it)} ${t.unit} left" } ?: status.balance?.let { "${money(it)} ${t.unit}" } ?: "${money(status.periodSpent)} ${t.unit} ${com.lukas.jarvis.data.Tracker.thisPeriod(t.period)}"
             )
             val budget = t.budget
             if (budget != null && budget > 0) {

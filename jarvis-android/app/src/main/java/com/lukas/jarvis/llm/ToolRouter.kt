@@ -181,6 +181,8 @@ object ToolRouter {
      * [all] is every switched-on schema; the result is a subset of it, never a
      * tool the user has switched off.
      */
+    private val PLANNING = Regex("\\b(plan|planning|schedule my|organi[sz]e my|what should i do|plane|planen|tagesplan)\\b")
+
     fun select(
         all: List<JSONObject>,
         utterance: String,
@@ -203,6 +205,14 @@ object ToolRouter {
 
         CUES.forEach { (group, cues) ->
             if (cues.any { text.contains(it) }) groups += group
+        }
+
+        // A plan needs what the day holds: the calendar, the sky, places and the way between them.
+        if (PLANNING.containsMatchIn(text)) {
+            groups += ToolGroup.Tasks
+            groups += ToolGroup.Calendar
+            groups += ToolGroup.Weather
+            groups += ToolGroup.Places
         }
 
         // A number and a unit of money is spending even without a verb.
