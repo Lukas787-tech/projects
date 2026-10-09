@@ -77,7 +77,9 @@ class CafeShotsTest {
         }
     }
 
+    /** Lets a change be seen, then gives it the frames to be drawn. */
     private fun settle() {
+        rule.waitForIdle()
         rule.mainClock.advanceTimeBy(900)
         rule.waitForIdle()
     }
@@ -99,6 +101,7 @@ class CafeLandscapeShotsTest {
         rule.setContent { MochiTheme(themeMode = "light", reduceMotion = true) { MomentPreview(moment) } }
         SELECTED.forEach { m ->
             moment = m
+            rule.waitForIdle()
             rule.mainClock.advanceTimeBy(900)
             rule.waitForIdle()
             rule.activity.shoot("moment-land-${fileName(m)}")

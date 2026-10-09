@@ -81,6 +81,9 @@ fun CanvasBackdrop(
                         label = "globe-fade"
                     )
                     val side = minOf(maxWidth, maxHeight * 0.62f) * 0.92f * scale
+                    // Leading or receding, the globe sits up top in the middle; behind
+                    // cards it slips into the corner, out of the words' way.
+                    val corner = !leads && backdrop != Backdrop.GlobeRecedes
                     Globe(
                         mood = mood,
                         level = level,
@@ -90,8 +93,8 @@ fun CanvasBackdrop(
                         approach = if (focus != null && backdrop == Backdrop.GlobeLeads) 0.55f else 0f,
                         onTap = onGlobeTap,
                         modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .offset(y = if (leads) maxHeight * 0.09f else 8.dp)
+                            .align(if (corner) Alignment.TopEnd else Alignment.TopCenter)
+                            .offset(x = if (corner) side * 0.38f else 0.dp, y = if (leads) maxHeight * 0.09f else if (corner) -side * 0.18f else 8.dp)
                             .size(side)
                             .alpha(fade)
                     )

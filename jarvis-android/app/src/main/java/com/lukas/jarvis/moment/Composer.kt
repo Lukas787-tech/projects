@@ -113,8 +113,9 @@ object Composer {
     }
 
     private fun characterFor(moment: Moment): CharacterSize = when (moment) {
-        Moment.Resting, Moment.Listening, Moment.Thinking, is Moment.Alerting -> CharacterSize.Hero
-        is Moment.Working, is Moment.Recovering, is Moment.Asking, is Moment.Showing, is Moment.Creating -> CharacterSize.Companion
+        // Mochi does the work in plain sight: big, holding the tool's prop.
+        Moment.Resting, Moment.Listening, Moment.Thinking, is Moment.Working, is Moment.Alerting -> CharacterSize.Hero
+        is Moment.Recovering, is Moment.Asking, is Moment.Showing, is Moment.Creating -> CharacterSize.Companion
         Moment.Navigating -> CharacterSize.Corner
     }
 
@@ -142,13 +143,11 @@ object Composer {
         )
         return when (moment) {
             Moment.Resting -> rooms
-            Moment.Listening -> listOf(Control("Stop", ActionIntent.Stop, ControlIcon.Stop), type)
-            Moment.Thinking, is Moment.Working -> listOf(Control("Stop", ActionIntent.Stop, ControlIcon.Stop))
-            is Moment.Recovering -> listOf(
-                Control("Try again", ActionIntent.Retry, ControlIcon.Retry),
-                if (moment.offline) talk else Control("Free models", ActionIntent.UseFreeModels, ControlIcon.Retry),
-                type
-            )
+            // Stopping is already the moment's own step and the composer's button.
+            Moment.Listening -> listOf(type)
+            Moment.Thinking, is Moment.Working -> emptyList()
+            // Trying again and the other way round are on the problem card itself.
+            is Moment.Recovering -> listOf(type, Control("History", ActionIntent.Open(Room.History), ControlIcon.History))
             is Moment.Alerting -> i.alerts.firstOrNull()?.timerId?.let {
                 listOf(Control("Stop", ActionIntent.StopTimer(it), ControlIcon.Alarm), Control("+1 min", ActionIntent.AddMinute(it), ControlIcon.Alarm))
             } ?: listOf(talk, type)

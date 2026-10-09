@@ -59,6 +59,7 @@ fun TalkRoute(
     val levelState: State<Float> = viewModel.voiceLevel.collectAsStateWithLifecycle()
     val stopwatch by viewModel.stopwatch.collectAsStateWithLifecycle()
     val interpreter by viewModel.interpreter.collectAsStateWithLifecycle()
+    val prefill by viewModel.prefill.collectAsStateWithLifecycle()
 
     // The interpreter takes the whole canvas while it is open; closing it
     // brings the canvas straight back.
@@ -202,7 +203,9 @@ fun TalkRoute(
         onSend = viewModel::sendTyped,
         onCamera = onCamera,
         onCharacter = viewModel::toggleListening,
-        modifier = modifier
+        modifier = modifier,
+        prefill = prefill,
+        onPrefillTaken = viewModel::prefillTaken
     )
 }
 

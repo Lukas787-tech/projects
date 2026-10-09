@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -128,7 +129,19 @@ fun Mochi(
         }
         val tag = shown.tag
         if (showTag && tag != null) {
-            PixelTag(tag, Modifier.align(Alignment.TopEnd).padding(top = size * 0.08f))
+            // Just off the top of Mochi's head, wherever the whole-pixel scale
+            // left the sprite inside the box.
+            val density = LocalDensity.current
+            val px = with(density) { size.roundToPx() }
+            val big = (px / Sprites.W).coerceAtLeast(1)
+            val spriteW = with(density) { (Sprites.W * big).toDp() }
+            val spriteH = with(density) { (Sprites.H * big).toDp() }
+            PixelTag(
+                tag,
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = (size - spriteH - 6.dp).coerceAtLeast(0.dp), end = ((size - spriteW) / 2).coerceAtLeast(0.dp))
+            )
         }
     }
 }

@@ -24,6 +24,14 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -109,9 +117,14 @@ fun ComposerBar(
     modifier: Modifier = Modifier,
     mic: MicState = MicState.Ready,
     placeholder: String = "Ask Mochi anything",
-    partial: String = ""
+    partial: String = "",
+    focus: FocusRequester? = null
 ) {
     val colors = Cafe.colors
+    // Text handed in from outside ("Remind me to ") arrives with the cursor at
+    // its end, ready to be finished; the person's own edits keep their place.
+    var field by remember { mutableStateOf(TextFieldValue(text, TextRange(text.length))) }
+    val shown = if (field.text == text) field else TextFieldValue(text, TextRange(text.length))
     Row(
         modifier
             .paper(Elevation.Lifted, Cafe.shape.xlarge, colors)
@@ -122,8 +135,11 @@ fun ComposerBar(
         horizontalArrangement = Arrangement.spacedBy(Cafe.space.xs)
     ) {
         BasicTextField(
-            value = text,
-            onValueChange = onTextChange,
+            value = shown,
+            onValueChange = {
+                field = it
+                if (it.text != text) onTextChange(it.text)
+            },
             textStyle = Cafe.type.body.copy(color = colors.espresso),
             cursorBrush = SolidColor(colors.accentText),
             maxLines = 4,
@@ -132,6 +148,7 @@ fun ComposerBar(
             modifier = Modifier
                 .weight(1f)
                 .heightIn(min = Cafe.space.touch)
+                .then(if (focus != null) Modifier.focusRequester(focus) else Modifier)
                 .semantics { contentDescription = "Message to Mochi" },
             decorationBox = { inner ->
                 Box(Modifier.heightIn(min = Cafe.space.touch), contentAlignment = Alignment.CenterStart) {

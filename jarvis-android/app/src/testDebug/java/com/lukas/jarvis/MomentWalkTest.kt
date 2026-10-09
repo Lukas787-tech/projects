@@ -48,7 +48,10 @@ class MomentWalkTest {
         }
         val missing = mutableListOf<String>()
         Moment.ALL.forEach { next ->
+            // The change has to be seen before the clock moves, or the frame
+            // that draws it never comes and the screen is one moment behind.
             moment = next
+            rule.waitForIdle()
             rule.mainClock.advanceTimeBy(800)
             rule.waitForIdle()
             val primary = Composer.compose(Samples.inputsFor(next)).primary
@@ -61,6 +64,7 @@ class MomentWalkTest {
             tapped.clear()
             rule.onAllNodes(matcher)[0].performClick()
             rule.mainClock.advanceTimeBy(100)
+            rule.waitForIdle()
             if (primary.intent !is ActionIntent.Type && primary.intent !in tapped) {
                 missing += "$next: tapping '${primary.label}' did ${tapped.joinToString()} instead of ${primary.intent}"
             }

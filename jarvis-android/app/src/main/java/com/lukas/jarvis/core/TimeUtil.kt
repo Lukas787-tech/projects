@@ -107,19 +107,15 @@ object TimeUtil {
         val delta = timestamp - now
         val future = delta > 0
         val seconds = kotlin.math.abs(delta) / 1000
-        val text = when {
-            seconds < 60 -> "just now"
+        val span = when {
+            seconds < 60 -> return "just now"
             seconds < 3600 -> "${seconds / 60} min"
             seconds < 86_400 -> "${seconds / 3600} h"
             seconds < 2_592_000 -> "${seconds / 86_400} d"
-            else -> formatDate(timestamp)
+            // Further off it is a date, which takes no "ago": "9 Oct 2025 ago" read as a typo.
+            else -> return formatDate(timestamp)
         }
-        return when {
-            text == "just now" -> text
-            text.first().isDigit() && future -> "in $text"
-            text.first().isDigit() -> "$text ago"
-            else -> text
-        }
+        return if (future) "in $span" else "$span ago"
     }
 
     /**

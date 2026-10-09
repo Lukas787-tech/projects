@@ -73,18 +73,12 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.lukas.jarvis.ui.screens.BrainScreen
 import com.lukas.jarvis.ui.screens.HistoryScreen
 import com.lukas.jarvis.ui.screens.DevicesScreen
-import com.lukas.jarvis.ui.screens.HubScreen
 import com.lukas.jarvis.ui.screens.MusicScreen
 import com.lukas.jarvis.ui.screens.MapScreen
 import com.lukas.jarvis.ui.screens.SettingsScreen
 import com.lukas.jarvis.ui.screens.SkillsScreen
-import com.lukas.jarvis.ui.screens.ListsScreen
-import com.lukas.jarvis.ui.screens.TasksScreen
-import com.lukas.jarvis.ui.screens.TodayScreen
-import com.lukas.jarvis.ui.screens.TrackersScreen
 import com.lukas.jarvis.ui.screens.Onboarding
 import com.lukas.jarvis.llm.Tier
 import com.lukas.jarvis.llm.Abilities
@@ -100,6 +94,11 @@ import com.lukas.jarvis.ui.theme.JarvisTheme
 import com.lukas.jarvis.ui.theme.MochiTheme
 import com.lukas.jarvis.ui.theme.Cafe
 import com.lukas.jarvis.ui.talk.TalkRoute
+import com.lukas.jarvis.ui.rooms.LibraryActions
+import com.lukas.jarvis.ui.rooms.LibraryRoom
+import com.lukas.jarvis.ui.rooms.Shelf
+import com.lukas.jarvis.ui.rooms.TodayActions
+import com.lukas.jarvis.ui.rooms.TodayRoom
 import com.lukas.jarvis.ui.kit.RoomBar
 import com.lukas.jarvis.ui.kit.RoomItem
 import androidx.compose.material.icons.rounded.ChatBubbleOutline
@@ -540,6 +539,71 @@ private fun JarvisRoot(
         if (!settings.wakeWordEnabled) WakeWordService.stop(context)
     }
 
+    val todayActions = remember(viewModel) {
+        TodayActions(
+            onBack = { viewModel.showElement(Element.Globe) },
+            onRefresh = viewModel::refreshBrief,
+            onAsk = { sentence ->
+                viewModel.showElement(Element.Globe)
+                viewModel.sendTyped(sentence)
+            },
+            onType = viewModel::typeOnCanvas,
+            onCompleteTask = viewModel::toggleTask,
+            onRunRoutine = viewModel::runRoutine,
+            onGo = { name ->
+                viewModel.showElement(Element.Map)
+                viewModel.routeToSaved(name)
+            },
+            onPark = { viewModel.saveHere("car") },
+            onCamera = { viewModel.askCamera("What is this?") },
+            onScanReceipt = {
+                viewModel.askCamera(
+                    "This is a receipt. Log the total as spending on the right tracker " +
+                        "and tell me the new balance."
+                )
+            },
+            onOpenMoney = { viewModel.showElement(Element.Money) },
+            onOpenTasks = { viewModel.showElement(Element.Tasks) },
+            onTurnOnCalendar = { viewModel.updateSettings { it.copy(calendarEnabled = true) } },
+            onSaveRoutine = viewModel::saveRoutine,
+            onDeleteRoutine = viewModel::deleteRoutine,
+            onForgetCountdown = { id -> viewModel.forgetCountdown(id) }
+        )
+    }
+    val libraryActions = remember(viewModel) {
+        LibraryActions(
+            onBack = { viewModel.showElement(Element.Globe) },
+            onShelf = { shelf ->
+                when (shelf) {
+                    Shelf.Money -> viewModel.showElement(Element.Money)
+                    Shelf.Tasks -> viewModel.showElement(Element.Tasks)
+                    Shelf.Lists -> viewModel.showElement(Element.Lists)
+                    Shelf.Memory -> viewModel.showElement(Element.Notes)
+                    // Notes share the memory element; the stage's note picks the shelf.
+                    Shelf.Notes -> viewModel.showElement(Element.Notes, note = LIBRARY_NOTES)
+                }
+            },
+            onType = viewModel::typeOnCanvas,
+            addMemory = { content, kind -> viewModel.addMemory(content, kind, emptyList(), 3) },
+            updateMemory = viewModel::updateMemory,
+            deleteMemory = viewModel::deleteMemory,
+            togglePin = viewModel::togglePin,
+            addToList = viewModel::addToList,
+            checkItem = viewModel::checkListItem,
+            removeItem = viewModel::removeListItem,
+            clearDone = viewModel::clearDoneItems,
+            deleteList = viewModel::deleteList,
+            saveTracker = viewModel::saveTracker,
+            deleteTracker = viewModel::deleteTracker,
+            addEntry = viewModel::addEntry,
+            deleteEntry = viewModel::deleteEntry,
+            addTask = viewModel::addTask,
+            toggleTask = viewModel::toggleTask,
+            deleteTask = viewModel::deleteTask,
+            cancelPlaceReminder = viewModel::cancelPlaceReminder
+        )
+    }
+
     // The first launch belongs to the introduction; everything else waits.
     if (!settings.onboarded) {
         Legacy(Modifier.windowInsetsPadding(WindowInsets.systemBars).imePadding()) {
@@ -589,118 +653,42 @@ private fun JarvisRoot(
                     fadeIn(tween(Motion.standard, delayMillis = 60)) togetherWith fadeOut(tween(Motion.quick))
                 },
                 label = "element"
-            ) { shown -> if (shown == Element.Globe) {
-                TalkRoute(
+            ) { shown -> when (shown) {
+                Element.Globe -> TalkRoute(
                     viewModel = viewModel,
                     settings = settings,
                     onCamera = { viewModel.askCamera("What is this?") }
                 )
-            } else Legacy { when (shown) {
-                Element.Today -> TodayScreen(
-                    address = Personas.address(settings),
+                Element.Today -> TodayRoom(
+                    name = settings.assistantName.ifBlank { "Mochi" },
                     brief = brief,
                     loading = briefLoading,
                     trackers = trackers,
-                    onRefresh = viewModel::refreshBrief,
-                    onOpen = viewModel::showElement,
-                    onCompleteTask = viewModel::toggleTask,
-                    onPlayMusic = { viewModel.showElement(Element.Music) },
-                    onCamera = { viewModel.askCamera("What is this?") },
-                    onScanReceipt = {
-                        viewModel.askCamera(
-                            "This is a receipt. Log the total as spending on the right tracker " +
-                                "and tell me the new balance."
-                        )
-                    },
-                    onPark = { viewModel.saveHere("car") },
-                    onGo = { name ->
-                        viewModel.showElement(Element.Map)
-                        viewModel.routeToSaved(name)
-                    },
-                    savedPlaces = savedPlaces,
                     routines = routines,
-                    onRunRoutine = viewModel::runRoutine,
-                    onSaveRoutine = viewModel::saveRoutine,
-                    onDeleteRoutine = viewModel::deleteRoutine,
-                    onAsk = { sentence ->
-                        viewModel.showElement(Element.Globe)
-                        viewModel.sendTyped(sentence)
-                    },
+                    savedPlaces = savedPlaces,
                     countdowns = countdowns,
-                    onForgetCountdown = viewModel::forgetCountdown
+                    actions = todayActions
                 )
-
-                Element.Globe -> Unit
-
-                // Notes, tasks and money are one element with three segments,
-                // so each stays one tap from the others while the assistant can
-                // still name any of them directly.
-                Element.Notes, Element.Tasks, Element.Money, Element.Lists -> HubScreen(
-                    selected = when (shown) {
-                        Element.Money -> 1
-                        Element.Tasks -> 2
-                        Element.Lists -> 3
-                        else -> 0
+                // Memory, notes, lists, money and tasks are one Library with
+                // shelves, so each stays one tap from the others while Mochi can
+                // still open any of them by name.
+                Element.Notes, Element.Tasks, Element.Money, Element.Lists -> LibraryRoom(
+                    shelf = when (shown) {
+                        Element.Money -> Shelf.Money
+                        Element.Tasks -> Shelf.Tasks
+                        Element.Lists -> Shelf.Lists
+                        else -> if (stage.note == LIBRARY_NOTES) Shelf.Notes else Shelf.Memory
                     },
-                    onSelect = { index ->
-                        viewModel.showElement(
-                            when (index) {
-                                1 -> Element.Money
-                                2 -> Element.Tasks
-                                3 -> Element.Lists
-                                else -> Element.Notes
-                            }
-                        )
-                    },
-                    memoryCount = memories.size,
-                    trackerCount = trackers.size,
-                    openTaskCount = tasks.count { !it.done },
-                    openListCount = lists.lists.sumOf { it.open.size },
-                    lists = {
-                        ListsScreen(
-                            book = lists,
-                            onAdd = viewModel::addToList,
-                            onCheck = viewModel::checkListItem,
-                            onRemove = viewModel::removeListItem,
-                            onClearDone = viewModel::clearDoneItems,
-                            onDeleteList = viewModel::deleteList
-                        )
-                    },
-                    memory = {
-                        BrainScreen(
-                            memories = memories,
-                            onAdd = viewModel::addMemory,
-                            onDelete = viewModel::deleteMemory,
-                            onTogglePin = viewModel::togglePin,
-                            onEdit = viewModel::updateMemory,
-                            embedded = true
-                        )
-                    },
-                    trackers = {
-                        TrackersScreen(
-                            trackers = trackers,
-                            entries = entries,
-                            defaultCurrency = settings.defaultCurrency,
-                            onSaveTracker = viewModel::saveTracker,
-                            onDeleteTracker = viewModel::deleteTracker,
-                            onAddEntry = viewModel::addEntry,
-                            onDeleteEntry = viewModel::deleteEntry,
-                            embedded = true
-                        )
-                    },
-                    tasks = {
-                        TasksScreen(
-                            tasks = tasks,
-                            onAdd = viewModel::addTask,
-                            onToggle = viewModel::toggleTask,
-                            onDelete = viewModel::deleteTask,
-                            placeReminders = placeReminders,
-                            onCancelPlace = viewModel::cancelPlaceReminder,
-                            embedded = true
-                        )
-                    }
+                    memories = memories,
+                    lists = lists,
+                    trackers = trackers,
+                    entries = entries,
+                    tasks = tasks,
+                    placeReminders = placeReminders,
+                    actions = libraryActions,
+                    defaultCurrency = settings.defaultCurrency
                 )
-
+                else -> Legacy { when (shown) {
                 Element.Map -> MapScreen(
                     state = map,
                     tiles = viewModel.tiles,
@@ -824,7 +812,8 @@ private fun JarvisRoot(
                     onReplayIntro = { viewModel.updateSettings { it.copy(onboarded = false) } },
                     onCheckHome = viewModel::checkHome
                 )
-            } } }
+                else -> Unit
+            } } } }
 
         }
 
@@ -875,6 +864,8 @@ private fun Legacy(modifier: Modifier = Modifier, content: @Composable () -> Uni
 private const val SETTINGS_POWERS = "settings:powers"
 
 /** The three list screens, which share one element with tabs. */
+private const val LIBRARY_NOTES = "library:notes"
+
 private val HUB = setOf(Element.Notes, Element.Tasks, Element.Money, Element.Lists)
 
 

@@ -40,7 +40,9 @@ import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -48,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -125,14 +128,31 @@ fun TalkScreen(
     onSend: (String) -> Unit,
     onCamera: () -> Unit,
     onCharacter: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    prefill: String? = null,
+    onPrefillTaken: () -> Unit = {}
 ) {
     var text by rememberSaveable { mutableStateOf("") }
+    val focus = remember { FocusRequester() }
+    var typing by remember { mutableIntStateOf(0) }
+    // Typing is a real step: the words go in and the keyboard comes up.
     val act: (ActionIntent) -> Unit = { intent ->
         when (intent) {
-            is ActionIntent.Type -> text = intent.prefill
+            is ActionIntent.Type -> {
+                text = intent.prefill
+                typing++
+            }
             else -> onAction(intent)
         }
+    }
+    LaunchedEffect(prefill) {
+        if (prefill != null) {
+            act(ActionIntent.Type(prefill))
+            onPrefillTaken()
+        }
+    }
+    LaunchedEffect(typing) {
+        if (typing > 0) runCatching { focus.requestFocus() }
     }
     val layout = state.layout
 
@@ -177,6 +197,7 @@ fun TalkScreen(
                 mic = state.mic,
                 partial = state.partial,
                 placeholder = "Ask ${state.name} anything",
+                focus = focus,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = Cafe.space.m, vertical = Cafe.space.s)
@@ -204,7 +225,7 @@ private fun TopBar(state: TalkState, act: (ActionIntent) -> Unit) {
                 state.greeting,
                 style = Cafe.type.headline,
                 color = Cafe.colors.espresso,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )

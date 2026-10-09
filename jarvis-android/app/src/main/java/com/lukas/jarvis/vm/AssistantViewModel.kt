@@ -448,6 +448,23 @@ class AssistantViewModel(
     /** The cards on the canvas: this turn's, the pinned ones, and the shelf of earlier ones. */
     val canvas: StateFlow<com.lukas.jarvis.moment.CanvasState> = _canvas.asStateFlow()
 
+    /**
+     * The start of a sentence a room handed over ("Remind me to "), waiting
+     * in the canvas's composer for the person to finish it.
+     */
+    private val _prefill = MutableStateFlow<String?>(null)
+    val prefill: StateFlow<String?> = _prefill.asStateFlow()
+
+    /** Brings the canvas forward with [start] typed into the composer. */
+    fun typeOnCanvas(start: String) {
+        _prefill.value = start
+        showElement(Element.Globe)
+    }
+
+    fun prefillTaken() {
+        _prefill.value = null
+    }
+
     private var cardIndex = 0
 
     /** A tool just finished (or is waiting on a yes): its card goes up at once. */

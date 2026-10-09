@@ -74,11 +74,11 @@ object Palette {
     fun accentSet(color: Int, dark: Boolean): AccentSet = if (dark) {
         val text = towards(color, WHITE, MOCHA)
         val fill = towards(color, WHITE, ROAST)
-        AccentSet(main = color, text = text, fill = fill, onFill = ROAST, soft = mix(color, MOCHA, 0.78f))
+        AccentSet(main = color, text = text, fill = fill, onFill = ROAST, soft = mix(color, MOCHA, 0.26f))
     } else {
         val text = towards(color, BLACK, PAPER)
         val fill = towards(color, BLACK, WHITE)
-        AccentSet(main = color, text = text, fill = fill, onFill = WHITE, soft = mix(color, PAPER, 0.80f))
+        AccentSet(main = color, text = text, fill = fill, onFill = WHITE, soft = mix(color, PAPER, 0.22f))
     }
 
     /**
