@@ -21,6 +21,7 @@ import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -103,6 +104,8 @@ fun TodayRoom(
     modifier: Modifier = Modifier
 ) {
     val today = LocalDate.now()
+    // If the launch gathering failed or never ran, the room asks again on opening.
+    LaunchedEffect(Unit) { if (brief == null && !loading) actions.onRefresh() }
     RoomScaffold(
         title = brief?.greeting?.trimEnd('.') ?: "Today",
         subtitle = brief?.dateLine,

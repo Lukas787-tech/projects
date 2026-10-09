@@ -50,6 +50,7 @@ import com.lukas.jarvis.ui.kit.CheckRow
 import com.lukas.jarvis.ui.kit.ConfirmCard
 import com.lukas.jarvis.ui.kit.Eyebrow
 import com.lukas.jarvis.ui.kit.FollowChip
+import com.lukas.jarvis.ui.kit.LocalPicture
 import com.lukas.jarvis.ui.kit.IconCircle
 import com.lukas.jarvis.ui.kit.PaperCard
 import com.lukas.jarvis.ui.kit.ProblemCard
@@ -247,24 +248,13 @@ private fun ListBody(card: CanvasCard, context: CardContext, onAction: (ActionIn
 @Composable
 private fun PictureBody(card: CanvasCard) {
     val path = card.image ?: return TextBody(card)
-    var image by remember(path) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(path) {
-        image = withContext(Dispatchers.IO) {
-            runCatching { android.graphics.BitmapFactory.decodeFile(path)?.asImageBitmap() }.getOrNull()
-        }
-    }
     VSpace(Cafe.space.s)
-    image?.let {
-        Image(
-            bitmap = it,
-            contentDescription = card.body.ifBlank { "The picture Mochi drew" },
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 280.dp)
-                .clip(Cafe.shape.medium)
-        )
-    }
+    // A tap opens it full screen, to keep or to share.
+    LocalPicture.current.Show(
+        path,
+        card.body.ifBlank { "The picture Mochi drew" },
+        Modifier.fillMaxWidth().heightIn(max = 280.dp)
+    )
 }
 
 @Composable

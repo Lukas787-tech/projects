@@ -121,3 +121,75 @@ private val SELECTED = listOf(
 
 private fun fileName(moment: Moment): String =
     moment.toString().lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
+
+/** Every room, so a room's look is checked like the canvas's. */
+private val ROOMS: List<Pair<String, @androidx.compose.runtime.Composable () -> Unit>> = listOf(
+    "today" to { com.lukas.jarvis.ui.rooms.TodaySample() },
+    "library-memory" to { com.lukas.jarvis.ui.rooms.LibrarySample(com.lukas.jarvis.ui.rooms.Shelf.Memory) },
+    "library-lists" to { com.lukas.jarvis.ui.rooms.LibrarySample(com.lukas.jarvis.ui.rooms.Shelf.Lists) },
+    "library-money" to { com.lukas.jarvis.ui.rooms.LibrarySample(com.lukas.jarvis.ui.rooms.Shelf.Money) },
+    "library-tasks" to { com.lukas.jarvis.ui.rooms.LibrarySample(com.lukas.jarvis.ui.rooms.Shelf.Tasks) },
+    "you" to { com.lukas.jarvis.ui.rooms.YouSample(com.lukas.jarvis.ui.rooms.YouTab.You) },
+    "you-look" to { com.lukas.jarvis.ui.rooms.YouSample(com.lukas.jarvis.ui.rooms.YouTab.Look) },
+    "you-brain" to { com.lukas.jarvis.ui.rooms.YouSample(com.lukas.jarvis.ui.rooms.YouTab.Brain) },
+    "you-powers" to { com.lukas.jarvis.ui.rooms.YouSample(com.lukas.jarvis.ui.rooms.YouTab.Powers) },
+    "you-data" to { com.lukas.jarvis.ui.rooms.YouSample(com.lukas.jarvis.ui.rooms.YouTab.Data) },
+    "intro-hello" to { com.lukas.jarvis.ui.rooms.Intro(com.lukas.jarvis.core.Settings(userName = "Lukas"), {}, {}, {}) },
+    "intro-privacy" to { com.lukas.jarvis.ui.rooms.Intro(com.lukas.jarvis.core.Settings(userName = "Lukas"), {}, {}, {}, initialStep = 5) },
+    "powers" to { com.lukas.jarvis.ui.rooms.PowersRoom(com.lukas.jarvis.core.Settings(), {}, { _, _ -> }, {}) },
+    "music" to {
+        com.lukas.jarvis.ui.rooms.MusicRoom(com.lukas.jarvis.control.NowPlaying("Sonne", "Rammstein", "Spotify", true, 60_000, 270_000), true, 60, com.lukas.jarvis.ui.rooms.MusicActions(onBack = {}))
+    }
+)
+
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], qualifiers = "w411dp-h891dp-xhdpi")
+class CafeRoomShotsTest {
+
+    @get:Rule
+    val rule = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun rooms() {
+        var look by mutableStateOf(Look("light", "light"))
+        var index by mutableStateOf(0)
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            MochiTheme(themeMode = look.theme, textScale = look.text, reduceMotion = true) { ROOMS[index].second() }
+        }
+        listOf(Look("light", "light"), Look("dark", "dark"), Look("large", "light", 1.3f)).forEach { next ->
+            look = next
+            ROOMS.indices.forEach { i ->
+                index = i
+                rule.waitForIdle()
+                rule.mainClock.advanceTimeBy(900)
+                rule.waitForIdle()
+                rule.activity.shoot("room-${next.name}-${ROOMS[i].first}")
+            }
+        }
+    }
+}
+
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], qualifiers = "w891dp-h411dp-land-xhdpi")
+class CafeRoomLandscapeShotsTest {
+
+    @get:Rule
+    val rule = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun rooms() {
+        var index by mutableStateOf(0)
+        rule.mainClock.autoAdvance = false
+        rule.setContent { MochiTheme(themeMode = "light", reduceMotion = true) { ROOMS[index].second() } }
+        listOf(0, 1, 5, 10).forEach { i ->
+            index = i
+            rule.waitForIdle()
+            rule.mainClock.advanceTimeBy(900)
+            rule.waitForIdle()
+            rule.activity.shoot("room-land-${ROOMS[i].first}")
+        }
+    }
+}

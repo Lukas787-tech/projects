@@ -22,16 +22,6 @@ import androidx.core.content.ContextCompat
  * this opens the right settings page and says so, instead of pretending to have
  * done something and leaving the user to discover it did not happen.
  */
-/** What a music app says it is playing. */
-data class NowPlaying(
-    val title: String,
-    val artist: String?,
-    val app: String,
-    val playing: Boolean,
-    val positionMs: Long,
-    val durationMs: Long
-)
-
 class Phone(context: Context) {
 
     private val app = context.applicationContext

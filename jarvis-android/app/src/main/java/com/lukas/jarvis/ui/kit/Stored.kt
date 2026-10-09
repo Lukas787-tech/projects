@@ -1,4 +1,4 @@
-package com.lukas.jarvis.ui.components
+package com.lukas.jarvis.ui.kit
 
 import android.content.Context
 import androidx.compose.runtime.Composable
@@ -39,4 +39,5 @@ private class StoredFlag(
     override fun component2(): (Boolean) -> Unit = { value = it }
 }
 
+// The old name stays: the flags people already set live in this file.
 private const val FILE = "jarvis_ui"

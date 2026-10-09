@@ -1,4 +1,4 @@
-package com.lukas.jarvis.ui.components
+package com.lukas.jarvis.ui.kit
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
@@ -38,7 +38,7 @@ object Markdown {
                 return@forEachIndexed
             }
             if (inFence) {
-                withStyle(SpanStyle(fontFamily = com.lukas.jarvis.ui.theme.HudType.mono, background = codeBackground)) {
+                withStyle(SpanStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, background = codeBackground)) {
                     append(line)
                 }
             } else {
@@ -106,7 +106,7 @@ object Markdown {
                 rest.startsWith("`") && rest.indexOf('`', 1) > 1 -> {
                     flush()
                     val end = rest.indexOf('`', 1)
-                    withStyle(SpanStyle(fontFamily = com.lukas.jarvis.ui.theme.HudType.mono, background = codeBackground)) {
+                    withStyle(SpanStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, background = codeBackground)) {
                         append(rest.substring(1, end))
                     }
                     i += end + 1

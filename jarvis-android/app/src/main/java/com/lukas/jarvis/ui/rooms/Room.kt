@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Text
@@ -40,11 +42,13 @@ fun RoomScaffold(
     mochi: CharacterState? = null,
     onMochi: (() -> Unit)? = null,
     header: (@Composable () -> Unit)? = null,
+    state: LazyListState = rememberLazyListState(),
     content: LazyListScope.() -> Unit
 ) {
     Box(modifier.fillMaxSize().background(Cafe.colors.foam), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
             Modifier.widthIn(max = 720.dp).fillMaxSize(),
+            state = state,
             contentPadding = PaddingValues(start = Cafe.space.gutter, end = Cafe.space.gutter, top = Cafe.space.s, bottom = Cafe.space.xxl),
             verticalArrangement = Arrangement.spacedBy(Cafe.space.m)
         ) {

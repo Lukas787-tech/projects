@@ -27,7 +27,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.alpha
 import com.lukas.jarvis.maps.MapStyle
-import com.lukas.jarvis.ui.theme.Motion
 import com.lukas.jarvis.vision.Photos
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -73,25 +72,30 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.lukas.jarvis.ui.screens.HistoryScreen
-import com.lukas.jarvis.ui.screens.DevicesScreen
-import com.lukas.jarvis.ui.screens.MusicScreen
-import com.lukas.jarvis.ui.screens.MapScreen
-import com.lukas.jarvis.ui.screens.SkillsScreen
-import com.lukas.jarvis.ui.screens.Onboarding
+import com.lukas.jarvis.ui.rooms.HistoryActions
+import com.lukas.jarvis.ui.rooms.HistoryRoom
+import com.lukas.jarvis.ui.kit.ProvidePictures
+import com.lukas.jarvis.ui.kit.shareText
+import com.lukas.jarvis.ui.rooms.MusicActions
+import com.lukas.jarvis.ui.rooms.MusicRoom
+import com.lukas.jarvis.ui.rooms.DeviceActions
+import com.lukas.jarvis.ui.rooms.DevicesRoom
+import com.lukas.jarvis.ui.rooms.MapActions
+import com.lukas.jarvis.ui.rooms.MapRoom
+import com.lukas.jarvis.ui.kit.rememberStored
+import com.lukas.jarvis.maps.Compass
+import androidx.compose.runtime.produceState
+import com.lukas.jarvis.ui.rooms.PowersRoom
+import com.lukas.jarvis.ui.rooms.Intro
 import com.lukas.jarvis.llm.Tier
 import com.lukas.jarvis.llm.Abilities
 import com.lukas.jarvis.llm.AbilitySwitch
 import com.lukas.jarvis.llm.Personas
-import com.lukas.jarvis.ui.components.CoreStyle
-import com.lukas.jarvis.ui.components.MessageActions
 import com.lukas.jarvis.stage.Element
 import com.lukas.jarvis.vm.Stage
-import com.lukas.jarvis.ui.components.NavEntry
-import com.lukas.jarvis.ui.theme.Ink
-import com.lukas.jarvis.ui.theme.JarvisTheme
 import com.lukas.jarvis.ui.theme.MochiTheme
 import com.lukas.jarvis.ui.theme.Cafe
+import com.lukas.jarvis.ui.theme.CafeMotion
 import com.lukas.jarvis.ui.talk.TalkRoute
 import com.lukas.jarvis.ui.rooms.LibraryActions
 import com.lukas.jarvis.ui.rooms.LibraryRoom
@@ -107,9 +111,6 @@ import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
-import com.lukas.jarvis.ui.theme.PageBackground
-import com.lukas.jarvis.ui.theme.hudBackdrop
-import com.lukas.jarvis.ui.theme.ThemeState
 import androidx.compose.runtime.SideEffect
 import com.lukas.jarvis.voice.WakeWordService
 import com.lukas.jarvis.vm.AssistantViewModel
@@ -140,12 +141,6 @@ class MainActivity : ComponentActivity() {
         }
         askForPermissions()
 
-        // The saved look, before the first frame, so the app does not flash
-        // the default colours on its way to the user's own.
-        (application as JarvisApp).container.settings.current.let {
-            ThemeState.apply(it.accent, it.backdrop, it.textScale, it.reduceMotion)
-        }
-
         setContent {
             val look by (application as JarvisApp).container.settings.state.collectAsStateWithLifecycle()
             MochiTheme(
@@ -166,7 +161,7 @@ class MainActivity : ComponentActivity() {
                             else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
                     )
                 }
-                Surface(modifier = Modifier.fillMaxSize(), color = Cafe.colors.foam) {
+                Surface(modifier = Modifier.fillMaxSize(), color = Cafe.colors.foam) { ProvidePictures {
                     JarvisRoot(
                         autoStartListening = startListeningOnOpen,
                         onAutoStartHandled = { startListeningOnOpen = false },
@@ -175,7 +170,7 @@ class MainActivity : ComponentActivity() {
                         launch = launchOnOpen,
                         onLaunchHandled = { launchOnOpen = null }
                     )
-                }
+                } }
             }
         }
     }
@@ -215,28 +210,6 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_START_LISTENING = "start_listening"
         const val EXTRA_RUN_ROUTINE = "run_routine"
     }
-}
-
-/**
- * The icon for each element in the bar along the bottom.
- *
- * The bar is no longer a set of destinations the user navigates between: the
- * assistant puts elements up too, through its `show` tool, and both write the
- * same state. So this is a lookup from element to icon rather than a navigation
- * model of its own.
- */
-private fun iconFor(element: Element): ImageVector = when (element) {
-    Element.Today -> Icons.Default.Today
-    Element.Globe -> Icons.Default.Public
-    Element.Map -> Icons.Default.Map
-    Element.Notes -> Icons.Default.Psychology
-    Element.Tasks -> Icons.Default.CheckCircle
-    Element.Money -> Icons.Default.AccountBalanceWallet
-    Element.Lists -> Icons.Default.Checklist
-    Element.Music -> Icons.Default.MusicNote
-    Element.Devices -> Icons.Default.Bluetooth
-    Element.Skills -> Icons.Default.AutoAwesome
-    Element.Settings -> Icons.Default.Settings
 }
 
 /** Why the app was opened, when it was for something in particular. */
@@ -342,20 +315,26 @@ private fun JarvisRoot(
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val canSeeMedia by viewModel.canSeeMedia.collectAsStateWithLifecycle()
     val cameraRequest by viewModel.cameraRequests.collectAsStateWithLifecycle()
-    val mapStyle = MapStyle.of(settings.mapStyle)
+    val mapStyle = MapStyle.of(settings.mapStyle, Cafe.colors.isDark)
     val scope = rememberCoroutineScope()
 
-    // The look follows the settings live: pick a colour and the whole app
-    // changes under your finger.
-    SideEffect {
-        ThemeState.apply(settings.accent, settings.backdrop, settings.textScale, settings.reduceMotion)
-    }
-
-    val messageActions = remember(viewModel) {
-        MessageActions(
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    val reduce = Cafe.reduceMotion
+    val historyActions = remember(viewModel) {
+        HistoryActions(
+            onBack = { viewModel.showElement(Element.Globe) },
+            onNewConversation = {
+                viewModel.newConversation()
+                viewModel.showElement(Element.Globe)
+            },
+            onShare = { text -> shareText(context, text, "Share the conversation") },
+            onCopy = { text -> clipboard.setText(androidx.compose.ui.text.AnnotatedString(text)) },
             onSpeak = viewModel::speakMessage,
             onDelete = viewModel::deleteMessage,
-            onRetry = { viewModel.retryLast() },
+            onRetry = {
+                viewModel.retryLast()
+                viewModel.showElement(Element.Globe)
+            },
             onRemember = { message ->
                 viewModel.rememberMessage(message)
                 android.widget.Toast.makeText(context, "Kept in memory", android.widget.Toast.LENGTH_SHORT).show()
@@ -363,9 +342,9 @@ private fun JarvisRoot(
         )
     }
 
-    // The readouts along the top of the assistant need the day gathered once.
-    LaunchedEffect(settings.showHud) {
-        if (settings.showHud && brief == null) viewModel.refreshBrief()
+    // The day is gathered once at launch, so Today is ready the moment it opens.
+    LaunchedEffect(Unit) {
+        if (brief == null) viewModel.refreshBrief()
     }
 
     val stage by viewModel.element.collectAsStateWithLifecycle()
@@ -607,8 +586,8 @@ private fun JarvisRoot(
 
     // The first launch belongs to the introduction; everything else waits.
     if (!settings.onboarded) {
-        Legacy(Modifier.windowInsetsPadding(WindowInsets.systemBars).imePadding()) {
-            Onboarding(
+        Box(Modifier.fillMaxSize().background(Cafe.colors.foam).windowInsetsPadding(WindowInsets.systemBars).imePadding()) {
+            Intro(
                 settings = settings,
                 onUpdate = viewModel::updateSettings,
                 onPreviewVoice = viewModel::previewVoice,
@@ -644,14 +623,14 @@ private fun JarvisRoot(
             if (showHistory) {
                 val everything by viewModel.history.collectAsStateWithLifecycle()
                 LaunchedEffect(Unit) { viewModel.loadHistory() }
-                Legacy { HistoryScreen(messages = everything, onBack = { showHistory = false }, actions = messageActions) }
+                HistoryRoom(messages = everything, name = settings.assistantName.ifBlank { "Mochi" }, actions = historyActions)
             } else AnimatedContent(
                 targetState = element,
-                // The three list screens are one element with tabs; switching
-                // tabs is not a change of screen and should not fade the page.
-                contentKey = { if (it in HUB) "hub" else it.name },
+                // The Library's shelves are one room; moving between them is
+                // not a change of room and should not fade the page.
+                contentKey = { if (it in HUB) "library" else it.name },
                 transitionSpec = {
-                    fadeIn(tween(Motion.standard, delayMillis = 60)) togetherWith fadeOut(tween(Motion.quick))
+                    fadeIn(CafeMotion.fade(reduce, 220)) togetherWith fadeOut(CafeMotion.fade(reduce, 120))
                 },
                 label = "element"
             ) { shown -> when (shown) {
@@ -689,78 +668,9 @@ private fun JarvisRoot(
                     actions = libraryActions,
                     defaultCurrency = settings.defaultCurrency
                 )
-                Element.Settings -> YouRoute(
-                    viewModel = viewModel,
-                    tab = when {
-                        stage.note == SETTINGS_POWERS -> YouTab.Powers
-                        // "settings:tab:2" opens a shelf by number, for links and the screenshots.
-                        stage.note.startsWith("settings:tab:") -> YouTab.at(stage.note.substringAfterLast(':').toIntOrNull() ?: 0)
-                        else -> YouTab.You
-                    }
-                )
-                else -> Legacy { when (shown) {
-                Element.Map -> MapScreen(
-                    state = map,
-                    tiles = viewModel.tiles,
-                    style = mapStyle,
-                    saved = savedPlaces,
-                    hereLabel = hereLabel,
-                    travelMode = settings.travelMode,
-                    routing = routing,
-                    onSelect = viewModel::selectPlace,
-                    onRoute = viewModel::routeToPlace,
-                    onNavigate = viewModel::navigateToPlace,
-                    onModeChange = viewModel::setTravelMode,
-                    onClear = viewModel::clearMap,
-                    onStyleChange = { viewModel.setMapStyle(it.id) },
-                    onFollow = viewModel::followLocation,
-                    onSaveHere = viewModel::saveHere,
-                    onRouteSaved = viewModel::routeToSaved,
-                    onDropPin = viewModel::dropPin,
-                    onSaveSelected = viewModel::saveSelected,
-                    onRenameSaved = viewModel::renameSaved,
-                    onForgetSaved = viewModel::forgetSaved,
-                    message = mapMessage,
-                    onMessageShown = viewModel::mapMessageShown
-                )
-
-                Element.Music -> {
-                    LaunchedEffect(Unit) { viewModel.refreshLevels() }
-                    MusicScreen(
-                        onPlay = viewModel::playMusic,
-                        onPause = viewModel::pauseMusic,
-                        onNext = viewModel::nextTrack,
-                        onPrevious = viewModel::previousTrack,
-                        onVolume = viewModel::setMediaVolume,
-                        onOpenDevices = { viewModel.showElement(Element.Devices) },
-                        mediaVolume = levels?.media,
-                        nowPlaying = nowPlaying,
-                        canSeeMedia = canSeeMedia,
-                        onRefresh = viewModel::refreshNowPlaying,
-                        onGrantAccess = viewModel::openNotificationAccess
-                    )
-                }
-
-                Element.Devices -> DevicesScreen(
-                    status = bluetooth,
-                    phoneStatus = deviceStatus,
-                    onRefresh = {
-                        viewModel.refreshBluetooth()
-                        viewModel.refreshDeviceStatus()
-                        viewModel.refreshLevels()
-                    },
-                    onOpenSettings = viewModel::openBluetoothSettings,
-                    onTorch = viewModel::setTorch,
-                    levels = levels,
-                    onVolume = viewModel::setVolumeLevel,
-                    onBrightness = viewModel::setBrightnessLevel,
-                    onAutoBrightness = viewModel::setAutoBrightness,
-                    onRinger = viewModel::setRingerMode,
-                    onQuiet = viewModel::setQuiet
-                )
-
-                Element.Skills -> SkillsScreen(
+                Element.Skills -> PowersRoom(
                     settings = settings,
+                    onBack = { viewModel.showElement(Element.Globe) },
                     onToggle = { ability, on ->
                         if (ability == AbilitySwitch.Home && on &&
                             (settings.homeUrl.isBlank() || settings.homeToken.isBlank())
@@ -774,9 +684,90 @@ private fun JarvisRoot(
                     },
                     onTry = viewModel::trySkill
                 )
-
-                else -> Unit
-            } } } }
+                Element.Map -> {
+                    var hintRead by rememberStored("map.hint.read", false)
+                    val heading by produceState<Float?>(null) { Compass.headings(context).collect { value = it } }
+                    MapRoom(
+                        state = map,
+                        tiles = viewModel.tiles,
+                        style = mapStyle,
+                        styleId = settings.mapStyle,
+                        saved = savedPlaces,
+                        hereLabel = hereLabel,
+                        travelMode = settings.travelMode,
+                        routing = routing,
+                        heading = heading,
+                        message = mapMessage,
+                        hintRead = hintRead,
+                        actions = MapActions(
+                            onBack = { viewModel.showElement(Element.Globe) },
+                            onSelect = viewModel::selectPlace,
+                            onRoute = viewModel::routeToPlace,
+                            onNavigate = viewModel::navigateToPlace,
+                            onModeChange = viewModel::setTravelMode,
+                            onClear = viewModel::clearMap,
+                            onStyleChange = viewModel::setMapStyle,
+                            onFollow = viewModel::followLocation,
+                            onSaveHere = viewModel::saveHere,
+                            onRouteSaved = viewModel::routeToSaved,
+                            onDropPin = viewModel::dropPin,
+                            onSaveSelected = viewModel::saveSelected,
+                            onRenameSaved = viewModel::renameSaved,
+                            onForgetSaved = viewModel::forgetSaved,
+                            onMessageShown = viewModel::mapMessageShown,
+                            onHintRead = { hintRead = true }
+                        )
+                    )
+                }
+                Element.Settings -> YouRoute(
+                    viewModel = viewModel,
+                    tab = when {
+                        stage.note == SETTINGS_POWERS -> YouTab.Powers
+                        // "settings:tab:2" opens a shelf by number, for links and the screenshots.
+                        stage.note.startsWith("settings:tab:") -> YouTab.at(stage.note.substringAfterLast(':').toIntOrNull() ?: 0)
+                        else -> YouTab.You
+                    }
+                )
+                Element.Music -> {
+                    LaunchedEffect(Unit) { viewModel.refreshLevels() }
+                    MusicRoom(
+                        nowPlaying = nowPlaying,
+                        canSeeMedia = canSeeMedia,
+                        mediaVolume = levels?.media,
+                        actions = MusicActions(
+                            onBack = { viewModel.showElement(Element.Globe) },
+                            onPlay = viewModel::playMusic,
+                            onPause = viewModel::pauseMusic,
+                            onNext = viewModel::nextTrack,
+                            onPrevious = viewModel::previousTrack,
+                            onVolume = viewModel::setMediaVolume,
+                            onOpenDevices = { viewModel.showElement(Element.Devices) },
+                            onRefresh = viewModel::refreshNowPlaying,
+                            onGrantAccess = viewModel::openNotificationAccess
+                        )
+                    )
+                }
+                Element.Devices -> DevicesRoom(
+                    bluetooth = bluetooth,
+                    phoneStatus = deviceStatus,
+                    levels = levels,
+                    actions = DeviceActions(
+                        onBack = { viewModel.showElement(Element.Globe) },
+                        onRefresh = {
+                            viewModel.refreshBluetooth()
+                            viewModel.refreshDeviceStatus()
+                            viewModel.refreshLevels()
+                        },
+                        onOpenBluetooth = viewModel::openBluetoothSettings,
+                        onTorch = viewModel::setTorch,
+                        onVolume = viewModel::setVolumeLevel,
+                        onBrightness = viewModel::setBrightnessLevel,
+                        onAutoBrightness = viewModel::setAutoBrightness,
+                        onRinger = viewModel::setRingerMode,
+                        onQuiet = viewModel::setQuiet
+                    )
+                )
+            } }
 
         }
 
@@ -804,34 +795,20 @@ private val ROOMS = listOf(
     RoomItem(Element.Settings.name, "You", Icons.Rounded.AccountCircle)
 )
 
-/**
- * A screen still drawn in the 5.5 look, inside its own dark backdrop, while it
- * waits its turn to be rebuilt on the café.
- */
-@Composable
-private fun Legacy(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    JarvisTheme {
-        Box(modifier.fillMaxSize().background(PageBackground).hudBackdrop()) { content() }
-    }
-}
-
-/**
- * Which bar item lights up for the element on screen.
- *
- * Not every element has a slot — devices and music are reached by asking, and
- * the three list screens share one — so the bar shows the family an element
- * belongs to rather than going blank whenever the assistant raises something
- * that has no icon of its own.
- */
-/** The note that opens Settings on its Powers tab. */
+/** The note that opens You on its Powers shelf. */
 private const val SETTINGS_POWERS = "settings:powers"
 
-/** The three list screens, which share one element with tabs. */
+/** The note that opens the Library on its Notes shelf, which shares the memory element. */
 private const val LIBRARY_NOTES = "library:notes"
 
+/** The Library's shelves, each its own element so Mochi can open any of them by name. */
 private val HUB = setOf(Element.Notes, Element.Tasks, Element.Money, Element.Lists)
 
-
+/**
+ * Which room in the bar lights up for the element on screen. Not every element
+ * has a slot — music and the phone are reached by asking — so the bar shows the
+ * room an element belongs to rather than going blank.
+ */
 private fun barSelection(element: Element): Element = when (element) {
     Element.Tasks, Element.Money, Element.Lists -> Element.Notes
     Element.Music, Element.Devices, Element.Skills -> Element.Today
