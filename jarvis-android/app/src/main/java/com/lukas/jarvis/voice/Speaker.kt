@@ -620,6 +620,7 @@ class Speaker(context: Context) {
                 player = mp
                 playing = done
             }
+            meter = runCatching { AudioMeter(mp.audioSessionId) }.getOrNull()
             mp.start()
             pulse(gen)
             done.await(mp.duration.coerceAtLeast(1_000).toLong() + 5_000, TimeUnit.MILLISECONDS)
@@ -633,9 +634,15 @@ class Speaker(context: Context) {
                     playing = null
                 }
             }
+            meter?.release()
+            meter = null
             runCatching { mp.release() }
         }
     }
+
+    /** The cloud voice's real loudness, while one is playing and the phone lets it be read. */
+    @Volatile
+    private var meter: AudioMeter? = null
 
     /** Stops the cloud voice mid-sentence and drops everything queued behind it. */
     private fun cloudStop() {
@@ -652,17 +659,24 @@ class Speaker(context: Context) {
     private var pulseThread: Thread? = null
 
     /**
-     * The reactor's envelope while the cloud voice plays. The player reports
-     * no loudness either, so it breathes with the syllables' rough rhythm.
+     * The envelope while the cloud voice plays, which Mochi's mouth follows.
+     * It is the voice's real loudness, measured off the player's own audio
+     * session; where the phone will not report it, it breathes with the
+     * syllables' rough rhythm instead.
      */
     private fun pulse(gen: Int) {
         if (pulseThread?.isAlive == true) return
         pulseThread = Thread {
             var t = 0f
+            var silent = 0
             while (gen == generation && synchronized(lock) { player != null }) {
                 t += 0.21f
                 val beat = abs(sin(t * 2.3f)) * (0.6f + 0.4f * abs(sin(t * 0.7f)))
-                _level.value = (0.2f + 0.8f * beat).coerceIn(0f, 1f)
+                val measured = meter?.level()
+                // Some phones hand back silence for every reading; a second of
+                // nothing while the voice plays means the meter is not real.
+                silent = if (measured == null || measured > 0.01f) 0 else silent + 1
+                _level.value = if (measured != null && silent < 18) measured else (0.2f + 0.8f * beat).coerceIn(0f, 1f)
                 Thread.sleep(55)
             }
             _level.value = 0f
@@ -710,5 +724,32 @@ class Speaker(context: Context) {
         }
         if (current.isNotBlank()) out.add(current.toString().trim())
         return out
+    }
+}
+
+/**
+ * Reads how loud the cloud voice is right now, from the player's audio
+ * session. It needs the microphone permission the app already has; without
+ * it, creating one throws and the speaker keeps its rhythm instead.
+ */
+internal class AudioMeter(session: Int) {
+    private val visualizer = android.media.audiofx.Visualizer(session).apply {
+        enabled = false
+        captureSize = android.media.audiofx.Visualizer.getCaptureSizeRange()[0]
+        scalingMode = android.media.audiofx.Visualizer.SCALING_MODE_NORMALIZED
+        measurementMode = android.media.audiofx.Visualizer.MEASUREMENT_MODE_PEAK_RMS
+        enabled = true
+    }
+    private val reading = android.media.audiofx.Visualizer.MeasurementPeakRms()
+
+    /** 0 silent to 1 loud, or null when the phone gave no reading. */
+    fun level(): Float? = runCatching {
+        if (visualizer.getMeasurementPeakRms(reading) != android.media.audiofx.Visualizer.SUCCESS) return null
+        // RMS in millibels: around -9600 for silence and 0 at full scale; speech sits near -3000.
+        ((reading.mRms + 5200) / 4200f).coerceIn(0f, 1f)
+    }.getOrNull()
+
+    fun release() {
+        runCatching { visualizer.release() }
     }
 }
