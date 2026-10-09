@@ -27,7 +27,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.alpha
 import com.lukas.jarvis.maps.MapStyle
-import com.lukas.jarvis.ui.globe.GlobeMapFlight
 import com.lukas.jarvis.ui.theme.Motion
 import com.lukas.jarvis.vision.Photos
 import kotlinx.coroutines.Dispatchers
@@ -86,7 +85,6 @@ import com.lukas.jarvis.ui.screens.ListsScreen
 import com.lukas.jarvis.ui.screens.TasksScreen
 import com.lukas.jarvis.ui.screens.TodayScreen
 import com.lukas.jarvis.ui.screens.TrackersScreen
-import com.lukas.jarvis.ui.screens.VoiceScreen
 import com.lukas.jarvis.ui.screens.Onboarding
 import com.lukas.jarvis.llm.Tier
 import com.lukas.jarvis.llm.Abilities
@@ -95,11 +93,20 @@ import com.lukas.jarvis.llm.Personas
 import com.lukas.jarvis.ui.components.CoreStyle
 import com.lukas.jarvis.ui.components.MessageActions
 import com.lukas.jarvis.stage.Element
-import com.lukas.jarvis.ui.components.JarvisDock
 import com.lukas.jarvis.vm.Stage
 import com.lukas.jarvis.ui.components.NavEntry
 import com.lukas.jarvis.ui.theme.Ink
 import com.lukas.jarvis.ui.theme.JarvisTheme
+import com.lukas.jarvis.ui.theme.MochiTheme
+import com.lukas.jarvis.ui.theme.Cafe
+import com.lukas.jarvis.ui.talk.TalkRoute
+import com.lukas.jarvis.ui.kit.RoomBar
+import com.lukas.jarvis.ui.kit.RoomItem
+import androidx.compose.material.icons.rounded.ChatBubbleOutline
+import androidx.compose.material.icons.rounded.WbSunny
+import androidx.compose.material.icons.rounded.Map
+import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import com.lukas.jarvis.ui.theme.PageBackground
 import com.lukas.jarvis.ui.theme.hudBackdrop
 import com.lukas.jarvis.ui.theme.ThemeState
@@ -122,12 +129,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Always dark, whatever the system theme: left on automatic, a phone in
-        // light mode drew dark status icons on Jarvis's dark background.
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
-        )
+        // Drawn edge to edge; the bars' icons are set to match the café once it is known.
+        enableEdgeToEdge()
         // A recreation after rotation carries the same intent, already handled:
         // reading it again ran a notification's routine a second time.
         if (savedInstanceState == null) {
@@ -144,8 +147,26 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            JarvisTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = Ink) {
+            val look by (application as JarvisApp).container.settings.state.collectAsStateWithLifecycle()
+            MochiTheme(
+                themeMode = look.themeMode,
+                accentId = look.accent,
+                textScale = look.textScale,
+                reduceMotion = look.reduceMotion,
+                idleCharacter = look.characterIdle,
+                delights = look.characterDelights
+            ) {
+                // Status and navigation bar icons follow the café: dark on latte, light at night.
+                val dark = Cafe.colors.isDark
+                LaunchedEffect(dark) {
+                    enableEdgeToEdge(
+                        statusBarStyle = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                            else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+                        navigationBarStyle = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                            else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                    )
+                }
+                Surface(modifier = Modifier.fillMaxSize(), color = Cafe.colors.foam) {
                     JarvisRoot(
                         autoStartListening = startListeningOnOpen,
                         onAutoStartHandled = { startListeningOnOpen = false },
@@ -330,7 +351,6 @@ private fun JarvisRoot(
         ThemeState.apply(settings.accent, settings.backdrop, settings.textScale, settings.reduceMotion)
     }
 
-    val coreStyle = CoreStyle.of(settings.coreStyle)
     val messageActions = remember(viewModel) {
         MessageActions(
             onSpeak = viewModel::speakMessage,
@@ -476,36 +496,6 @@ private fun JarvisRoot(
         onRoutineHandled()
     }
 
-    // ------------------------------------------------ globe <-> map flight
-    //
-    // Only this pair gets the flight; everything else crossfades. The flight
-    // is laid over the destination, which settles underneath it unseen, and
-    // lifts off in its last frames.
-    var previousElement by remember { mutableStateOf(element) }
-    var flying by remember { mutableStateOf(false) }
-    val flight = remember { Animatable(0f) }
-    LaunchedEffect(element) {
-        val from = previousElement
-        previousElement = element
-        // The flight belongs to the globe; the reactor opens its centre instead.
-        val globe = coreStyle == CoreStyle.Globe
-        val inbound = globe && from == Element.Globe && element == Element.Map
-        val outbound = globe && from == Element.Map && element == Element.Globe
-        if (!inbound && !outbound) return@LaunchedEffect
-        flying = true
-        try {
-            if (inbound) {
-                flight.snapTo(0f)
-                flight.animateTo(1f, tween(FLIGHT_IN_MS, easing = LinearEasing))
-            } else {
-                flight.snapTo(1f)
-                flight.animateTo(0f, tween(FLIGHT_OUT_MS, easing = LinearEasing))
-            }
-        } finally {
-            flying = false
-        }
-    }
-
     LaunchedEffect(autoStartListening) {
         if (autoStartListening) {
             viewModel.showElement(Element.Globe)
@@ -513,20 +503,6 @@ private fun JarvisRoot(
             viewModel.startListening()
             onAutoStartHandled()
         }
-    }
-
-    // An answer about places is half map, so a turn that moved the map brings
-    // the map forward rather than leaving it a tab away. The starting revision
-    // is taken as already seen, so an activity recreation does not do it.
-    var seenMapRevision by remember { mutableStateOf(map.revision) }
-    LaunchedEffect(map.revision) {
-        if (map.revision == seenMapRevision) return@LaunchedEffect
-        seenMapRevision = map.revision
-        showHistory = false
-        // Voice mode shows the result on its own stage — the globe is mid-flight
-        // towards it — so jumping tabs would interrupt the thing being watched.
-        // Text mode has nowhere to put a map, so it goes to the map tab.
-        if (!settings.voiceMode) viewModel.showElement(Element.Map)
     }
 
     // Only one thing may hold the microphone. The wake-word service listens
@@ -566,14 +542,7 @@ private fun JarvisRoot(
 
     // The first launch belongs to the introduction; everything else waits.
     if (!settings.onboarded) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(PageBackground)
-            .hudBackdrop()
-                .windowInsetsPadding(WindowInsets.systemBars)
-                .imePadding()
-        ) {
+        Legacy(Modifier.windowInsetsPadding(WindowInsets.systemBars).imePadding()) {
             Onboarding(
                 settings = settings,
                 onUpdate = viewModel::updateSettings,
@@ -590,13 +559,13 @@ private fun JarvisRoot(
         return
     }
 
+    // Away from the canvas, back always leads back to it.
+    BackHandler(enabled = element != Element.Globe && !showHistory) { viewModel.showElement(Element.Globe) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            // One background for the whole app, defined with the rest of the
-            // palette rather than inline here.
-            .background(PageBackground)
-            .hudBackdrop()
+            .background(Cafe.colors.foam)
             .windowInsetsPadding(WindowInsets.systemBars)
             // Without this the soft keyboard sits on top of the text field it
             // was opened for, which makes typing to Jarvis a guessing game.
@@ -610,25 +579,23 @@ private fun JarvisRoot(
             if (showHistory) {
                 val everything by viewModel.history.collectAsStateWithLifecycle()
                 LaunchedEffect(Unit) { viewModel.loadHistory() }
-                HistoryScreen(messages = everything, onBack = { showHistory = false }, actions = messageActions)
+                Legacy { HistoryScreen(messages = everything, onBack = { showHistory = false }, actions = messageActions) }
             } else AnimatedContent(
                 targetState = element,
                 // The three list screens are one element with tabs; switching
                 // tabs is not a change of screen and should not fade the page.
                 contentKey = { if (it in HUB) "hub" else it.name },
                 transitionSpec = {
-                    val flightPair = coreStyle == CoreStyle.Globe &&
-                        setOf(initialState, targetState) == setOf(Element.Globe, Element.Map)
-                    if (flightPair) {
-                        fadeIn(tween(1)) togetherWith fadeOut(tween(Motion.standard))
-                    } else {
-                        (fadeIn(tween(Motion.standard, delayMillis = 60)) +
-                            scaleIn(tween(Motion.standard), initialScale = 0.97f)) togetherWith
-                            fadeOut(tween(Motion.quick))
-                    }
+                    fadeIn(tween(Motion.standard, delayMillis = 60)) togetherWith fadeOut(tween(Motion.quick))
                 },
                 label = "element"
-            ) { shown -> when (shown) {
+            ) { shown -> if (shown == Element.Globe) {
+                TalkRoute(
+                    viewModel = viewModel,
+                    settings = settings,
+                    onCamera = { viewModel.askCamera("What is this?") }
+                )
+            } else Legacy { when (shown) {
                 Element.Today -> TodayScreen(
                     address = Personas.address(settings),
                     brief = brief,
@@ -663,50 +630,7 @@ private fun JarvisRoot(
                     onForgetCountdown = viewModel::forgetCountdown
                 )
 
-                Element.Globe -> VoiceScreen(
-                    state = ui,
-                    assistantName = settings.assistantName.ifBlank { "Jarvis" },
-                    configured = settings.isConfigured || poolEntries.isNotEmpty(),
-                    voiceMode = settings.voiceMode,
-                    onModeChange = { voice ->
-                        viewModel.updateSettings { it.copy(voiceMode = voice) }
-                    },
-                    map = map,
-                    tiles = viewModel.tiles,
-                    // Only sentences whose ability is on, so a first tap never
-                    // earns "that is switched off".
-                    starters = remember(settings) { Abilities.starters(settings) },
-                    onSend = viewModel::sendTyped,
-                    onDismissError = viewModel::dismissError,
-                    onOpenHistory = { showHistory = true },
-                    onOpenSettings = { viewModel.showElement(Element.Settings) },
-                    onOpenSkills = { viewModel.showElement(Element.Skills) },
-                    onOpenMap = { viewModel.showElement(Element.Map) },
-                    onCamera = { viewModel.askCamera("What is this?") },
-                    onGallery = { viewModel.askCamera("What is in this picture?", fromGallery = true) },
-                    mapStyle = mapStyle,
-                    onClearMap = viewModel::clearMap,
-                    coreStyle = coreStyle,
-                    showHud = settings.showHud,
-                    brief = brief,
-                    address = Personas.address(settings),
-                    actions = messageActions,
-                    onStop = viewModel::cancelTurn,
-                    brainLabel = lastUsedEndpoint,
-                    onNewChat = viewModel::newConversation,
-                    timers = timers,
-                    onCancelTimer = viewModel::cancelTimer,
-                    online = online,
-                    ringing = ringingTimers,
-                    onStopRinging = viewModel::stopTimerAlarm,
-                    stopwatch = stopwatch,
-                    onStopwatchToggle = viewModel::toggleStopwatch,
-                    onStopwatchReset = viewModel::resetStopwatch,
-                    interpreter = interpreter,
-                    onInterpretListen = viewModel::interpretListen,
-                    onInterpretType = viewModel::interpretTyped,
-                    onEndInterpreter = viewModel::endInterpreter
-                )
+                Element.Globe -> Unit
 
                 // Notes, tasks and money are one element with three segments,
                 // so each stays one tap from the others while the assistant can
@@ -900,69 +824,42 @@ private fun JarvisRoot(
                     onReplayIntro = { viewModel.updateSettings { it.copy(onboarded = false) } },
                     onCheckHome = viewModel::checkHome
                 )
-            } }
+            } } }
 
-            // Decided in the same frame as the switch, so the destination never
-            // shows for a frame before the flight covers it.
-            val starting = coreStyle == CoreStyle.Globe && element != previousElement &&
-                setOf(previousElement, element) == setOf(Element.Globe, Element.Map)
-            if ((flying || starting) && !showHistory) {
-                val progress = when {
-                    flying -> flight.value
-                    element == Element.Map -> 0f
-                    else -> 1f
-                }
-                // Lifts off over the last stretch, handing the frame to the
-                // screen that has been settling underneath it.
-                val lift = if (element == Element.Map) {
-                    1f - ((progress - 0.9f) / 0.1f).coerceIn(0f, 1f)
-                } else {
-                    (progress / 0.12f).coerceIn(0f, 1f)
-                }
-                GlobeMapFlight(
-                    progress = progress,
-                    map = map,
-                    tiles = viewModel.tiles,
-                    style = mapStyle,
-                    saved = savedPlaces,
-                    modifier = Modifier.alpha(lift)
-                )
-            }
         }
 
-        // The dock: two destinations either side of the core. The core talks
-        // from anywhere and brings the assistant forward to show the answer;
-        // a long press opens the assistant ready to type.
-        val selected = barSelection(element)
-        JarvisDock(
-            compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 480,
-            left = remember { listOf(Element.Today, Element.Notes).map { NavEntry(it.name, it.title, iconFor(it)) } },
-            right = remember { listOf(Element.Map, Element.Settings).map { NavEntry(it.name, it.title, iconFor(it)) } },
-            selectedId = if (showHistory) null else selected.name,
-            onSelect = { id ->
-                showHistory = false
-                Element.entries.firstOrNull { it.name == id }?.let(viewModel::showElement)
-            },
-            stage = ui.stage,
-            level = ui.level,
-            coreStyle = coreStyle,
-            coreSelected = selected == Element.Globe && !showHistory,
-            onCoreTap = {
-                showHistory = false
-                if (ui.stage != Stage.Idle) {
-                    viewModel.toggleListening()
-                } else {
-                    if (element != Element.Globe) viewModel.showElement(Element.Globe)
-                    viewModel.startListening()
+        // Away from the canvas, a soft bar of rooms; on the canvas, the composer
+        // and its own top bar take its place.
+        if (element != Element.Globe || showHistory) {
+            RoomBar(
+                items = ROOMS,
+                selected = if (showHistory) null else barSelection(element).name,
+                onSelect = { id ->
+                    showHistory = false
+                    Element.entries.firstOrNull { it.name == id }?.let(viewModel::showElement)
                 }
-            },
-            onCoreLongPress = {
-                showHistory = false
-                viewModel.showElement(Element.Globe)
-                viewModel.updateSettings { it.copy(voiceMode = false) }
-            },
-            haptics = settings.haptics
-        )
+            )
+        }
+    }
+}
+
+/** The rooms of the app: Talk is home, the rest are a tap away. */
+private val ROOMS = listOf(
+    RoomItem(Element.Globe.name, "Talk", Icons.Rounded.ChatBubbleOutline),
+    RoomItem(Element.Today.name, "Today", Icons.Rounded.WbSunny),
+    RoomItem(Element.Notes.name, "Library", Icons.AutoMirrored.Rounded.MenuBook),
+    RoomItem(Element.Map.name, "Map", Icons.Rounded.Map),
+    RoomItem(Element.Settings.name, "You", Icons.Rounded.AccountCircle)
+)
+
+/**
+ * A screen still drawn in the 5.5 look, inside its own dark backdrop, while it
+ * waits its turn to be rebuilt on the café.
+ */
+@Composable
+private fun Legacy(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    JarvisTheme {
+        Box(modifier.fillMaxSize().background(PageBackground).hudBackdrop()) { content() }
     }
 }
 
@@ -980,9 +877,6 @@ private const val SETTINGS_POWERS = "settings:powers"
 /** The three list screens, which share one element with tabs. */
 private val HUB = setOf(Element.Notes, Element.Tasks, Element.Money, Element.Lists)
 
-/** Globe to map: long enough to read as a journey, short enough not to be waited on. */
-private const val FLIGHT_IN_MS = 1_750
-private const val FLIGHT_OUT_MS = 1_250
 
 private fun barSelection(element: Element): Element = when (element) {
     Element.Tasks, Element.Money, Element.Lists -> Element.Notes

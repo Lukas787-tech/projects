@@ -1,6 +1,6 @@
 package com.lukas.jarvis.ui.theme
 
-import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
@@ -146,16 +146,16 @@ enum class Elevation(val depth: Dp) {
  * motion on — the phone's own setting or the app's — every spec here is a cut.
  */
 object CafeMotion {
-    fun <T> settle(reduce: Boolean): AnimationSpec<T> =
+    fun <T> settle(reduce: Boolean): FiniteAnimationSpec<T> =
         if (reduce) snap() else spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
 
-    fun <T> gentle(reduce: Boolean): AnimationSpec<T> =
+    fun <T> gentle(reduce: Boolean): FiniteAnimationSpec<T> =
         if (reduce) snap() else spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessLow)
 
-    fun <T> quick(reduce: Boolean): AnimationSpec<T> =
+    fun <T> quick(reduce: Boolean): FiniteAnimationSpec<T> =
         if (reduce) snap() else spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium)
 
-    fun <T> fade(reduce: Boolean, millis: Int = 260): AnimationSpec<T> =
+    fun <T> fade(reduce: Boolean, millis: Int = 260): FiniteAnimationSpec<T> =
         if (reduce) snap() else tween(millis)
 
     const val SHORT = 180

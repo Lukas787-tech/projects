@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -224,17 +225,8 @@ class AssistantViewModel(
                 _ui.value = _ui.value.copy(partial = text)
             }
         }
-        viewModelScope.launch {
-            speech.level.collect { level ->
-                if (_ui.value.stage != Stage.Speaking) _ui.value = _ui.value.copy(level = level)
-            }
-        }
-        // While speaking, the reactor pulses with the words instead of the mic.
-        viewModelScope.launch {
-            speaker.level.collect { level ->
-                if (_ui.value.stage == Stage.Speaking) _ui.value = _ui.value.copy(level = level)
-            }
-        }
+        // The voice's loudness has its own flow (see [voiceLevel]): putting it in
+        // the screen state would recompose the whole canvas twenty times a second.
 
         _ui.value = _ui.value.copy(micAvailable = speech.available)
         viewModelScope.launch {
@@ -346,7 +338,7 @@ class AssistantViewModel(
                 }
             }
         }
-        turn(display = text) { onStage, onTool, onDraft ->
+        turn(display = text) { onStage, onTool, onDraft, onResult ->
             // With no network at all, a plain request — a timer, the torch, a
             // sum — is answered on the phone at once, not after every free
             // endpoint has timed out in turn.
@@ -359,7 +351,8 @@ class AssistantViewModel(
                 history = historyBefore(),
                 onStage = onStage,
                 onTool = onTool,
-                onDraft = onDraft
+                onDraft = onDraft,
+                onResult = onResult
             )
         }
     }
@@ -395,7 +388,7 @@ class AssistantViewModel(
         val stamp = System.currentTimeMillis()
         _ui.update { it.copy(photos = it.photos + (stamp to photo.preview)) }
 
-        turn(display = "\uD83D\uDCF7 $asked", createdAt = stamp, rewriteDisplay = true) { onStage, onTool, onDraft ->
+        turn(display = "\uD83D\uDCF7 $asked", createdAt = stamp, rewriteDisplay = true) { onStage, onTool, onDraft, onResult ->
             onStage("looking at the photo")
             onTool("take_photo")
             // The phone reads the text, codes and objects itself, offline, while
@@ -426,15 +419,176 @@ class AssistantViewModel(
                 }
             }
             pendingDisplay = "\uD83D\uDCF7 $asked\n\n${seen.take(900)}"
+            _canvas.update { com.lukas.jarvis.moment.CanvasRules.add(it, com.lukas.jarvis.moment.Cards.photo("photo:$stamp", seen.take(600), stamp)) }
             val result = container.agent.respond(
                 utterance = "[PHOTO] What the picture I just took shows:\n$seen\n\nMy question: $asked",
                 settings = settingsStore.current,
                 history = historyBefore(),
                 onStage = onStage,
                 onTool = onTool,
-                onDraft = onDraft
+                onDraft = onDraft,
+                onResult = onResult
             )
             result.copy(toolsUsed = (listOf("take_photo") + result.toolsUsed).distinct())
+        }
+    }
+
+    // ------------------------------------------------------------- the canvas
+
+    /**
+     * How loud things are right now, 0..1: the microphone while listening, Mochi's
+     * own voice while speaking. Read only where it is drawn.
+     */
+    val voiceLevel: StateFlow<Float> = kotlinx.coroutines.flow.combine(speech.level, speaker.level) { mic, voice ->
+        if (_ui.value.stage == Stage.Speaking) voice else maxOf(mic, voice)
+    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), 0f)
+
+    private val _canvas = MutableStateFlow(com.lukas.jarvis.moment.CanvasState())
+
+    /** The cards on the canvas: this turn's, the pinned ones, and the shelf of earlier ones. */
+    val canvas: StateFlow<com.lukas.jarvis.moment.CanvasState> = _canvas.asStateFlow()
+
+    private var cardIndex = 0
+
+    /** A tool just finished (or is waiting on a yes): its card goes up at once. */
+    private fun showCard(output: com.lukas.jarvis.llm.ToolOutput) {
+        val card = com.lukas.jarvis.moment.Cards.fromOutput(output, cardIndex++)
+        _canvas.update { com.lukas.jarvis.moment.CanvasRules.add(it, card) }
+    }
+
+    /** The turn is answered: a picture finds its card, and a win or a question back is noted. */
+    private fun finishCanvas(result: AgentResult) {
+        val image = result.effects.images.lastOrNull()
+        // Offline answers and routines did not stream their tools; their cards go up now.
+        if (_canvas.value.fresh.isEmpty()) {
+            result.effects.outputs.forEach { showCard(it) }
+        }
+        _canvas.update { state ->
+            val withImage = if (image == null) state else state.copy(
+                fresh = state.fresh.map { if (it.tool == "generate_image" && it.image == null) it.copy(image = image) else it }
+            )
+            com.lukas.jarvis.moment.CanvasRules.finish(withImage, result.reply, result.effects.outputs, System.currentTimeMillis())
+        }
+    }
+
+    /** Every tap on the canvas lands here, and every one of them leads somewhere. */
+    fun onCanvasAction(intent: com.lukas.jarvis.moment.ActionIntent) {
+        val now = System.currentTimeMillis()
+        _canvas.update { com.lukas.jarvis.moment.CanvasRules.touch(it, now) }
+        when (intent) {
+            is com.lukas.jarvis.moment.ActionIntent.Say -> sendTyped(intent.text)
+            is com.lukas.jarvis.moment.ActionIntent.Confirm -> confirmAction(intent.id)
+            is com.lukas.jarvis.moment.ActionIntent.Cancel -> cancelAction(intent.id)
+            is com.lukas.jarvis.moment.ActionIntent.EditPending -> if (intent.key.isNotBlank()) editAction(intent.id, intent.key, intent.value)
+            is com.lukas.jarvis.moment.ActionIntent.Undo -> undo(intent)
+            is com.lukas.jarvis.moment.ActionIntent.Open -> open(intent.room)
+            is com.lukas.jarvis.moment.ActionIntent.Pin -> pin(intent.cardId)
+            is com.lukas.jarvis.moment.ActionIntent.Unpin -> unpin(intent.cardId)
+            is com.lukas.jarvis.moment.ActionIntent.Dismiss -> _canvas.update { com.lukas.jarvis.moment.CanvasRules.dismiss(it, intent.cardId) }
+            is com.lukas.jarvis.moment.ActionIntent.BringBack -> _canvas.update { com.lukas.jarvis.moment.CanvasRules.bringBack(it, intent.cardId) }
+            com.lukas.jarvis.moment.ActionIntent.Retry -> retryOrRecapture()
+            com.lukas.jarvis.moment.ActionIntent.UseFreeModels -> {
+                restoreFreeBrain()
+                retryOrRecapture()
+            }
+            com.lukas.jarvis.moment.ActionIntent.Listen -> startListening()
+            com.lukas.jarvis.moment.ActionIntent.Stop -> when (_ui.value.stage) {
+                Stage.Listening -> stopListening()
+                Stage.Speaking -> stopSpeaking()
+                Stage.Thinking -> cancelTurn()
+                Stage.Idle -> Unit
+            }
+            is com.lukas.jarvis.moment.ActionIntent.StopTimer -> {
+                if (container.timers.ringing.value.any { it.id == intent.id }) {
+                    stopTimerAlarm(intent.id)
+                    _canvas.update { it.copy(win = com.lukas.jarvis.ui.character.Win.Delight, winAt = now) }
+                } else {
+                    cancelTimer(intent.id)
+                }
+            }
+            is com.lukas.jarvis.moment.ActionIntent.AddMinute -> addMinute(intent.id)
+            is com.lukas.jarvis.moment.ActionIntent.ReadAloud -> speaker.speak(intent.text)
+            is com.lukas.jarvis.moment.ActionIntent.CheckItem -> checkListItem(intent.list, intent.item, intent.done)
+            // The keyboard and permissions belong to the screen; it handles these itself.
+            is com.lukas.jarvis.moment.ActionIntent.Type, is com.lukas.jarvis.moment.ActionIntent.Grant -> Unit
+        }
+    }
+
+    /** A room asked for from the canvas. */
+    private fun open(room: com.lukas.jarvis.moment.Room) {
+        when (room) {
+            com.lukas.jarvis.moment.Room.Talk -> showElement(Element.Globe)
+            com.lukas.jarvis.moment.Room.Today -> showElement(Element.Today)
+            com.lukas.jarvis.moment.Room.Library, com.lukas.jarvis.moment.Room.Memory -> showElement(Element.Notes)
+            com.lukas.jarvis.moment.Room.Lists -> showElement(Element.Lists)
+            com.lukas.jarvis.moment.Room.Money -> showElement(Element.Money)
+            com.lukas.jarvis.moment.Room.Tasks -> showElement(Element.Tasks)
+            com.lukas.jarvis.moment.Room.Map -> showElement(Element.Map)
+            com.lukas.jarvis.moment.Room.Settings -> showElement(Element.Settings)
+            com.lukas.jarvis.moment.Room.Powers -> showElement(Element.Settings, note = "settings:powers")
+            com.lukas.jarvis.moment.Room.History -> showElement(Element.Globe, note = com.lukas.jarvis.stage.StageStore.HISTORY)
+        }
+    }
+
+    /** Again — or, for a photo, the camera again, since the picture itself was not kept. */
+    private fun retryOrRecapture() {
+        val last = _ui.value.messages.lastOrNull { it.role == ChatMessage.ROLE_USER }
+        when {
+            last == null -> startListening()
+            last.content.startsWith("\uD83D\uDCF7") -> askCamera("Let's try that picture again. What is this?")
+            else -> sendTyped(last.content)
+        }
+    }
+
+    private fun addMinute(id: Int) {
+        val timers = container.timers
+        val ringing = timers.ringing.value.firstOrNull { it.id == id }
+        if (ringing != null) {
+            timers.silence(id)
+            timers.start(60, ringing.label)
+        } else {
+            timers.all.value.firstOrNull { it.id == id }?.let { timers.extend(it.label, 60) }
+        }
+    }
+
+    /** Puts back what a card's tool just did. The tap is the person's own yes. */
+    private fun undo(intent: com.lukas.jarvis.moment.ActionIntent.Undo) {
+        viewModelScope.launch {
+            val output = withContext(Dispatchers.IO) {
+                container.agent.runDirect(com.lukas.jarvis.llm.ToolCall("undo", intent.tool, intent.argumentsJson), settingsStore.current)
+            }
+            if (com.lukas.jarvis.llm.ToolCatalog.risk(intent.tool).asksFirst) {
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        brain.logAction(intent.tool, "Undo", intent.argumentsJson, com.lukas.jarvis.llm.ToolCatalog.risk(intent.tool).name, output.result, "tap")
+                    }
+                }
+            }
+            refreshAll()
+            val said = if (output.failed) "I couldn't undo that: ${output.result.substringAfter(": ")}" else intent.label
+            _canvas.update { state -> state.copy(fresh = state.fresh.filterNot { card -> card.actions.any { it.intent == intent } }) }
+            deliver(AgentResult(said, com.lukas.jarvis.llm.ToolEffects(), listOf(intent.tool)), settingsStore.current)
+        }
+    }
+
+    private fun pin(id: String) {
+        val card = (_canvas.value.fresh + _canvas.value.shelf).firstOrNull { it.id == id } ?: return
+        _canvas.update { com.lukas.jarvis.moment.CanvasRules.pin(it, id) }
+        viewModelScope.launch(Dispatchers.IO) { runCatching { brain.addPin(PinCodec.record(card)) } }
+    }
+
+    private fun unpin(id: String) {
+        _canvas.update { com.lukas.jarvis.moment.CanvasRules.unpin(it, id) }
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { brain.pins().filter { PinCodec.cardId(it) == id }.forEach { brain.removePin(it.id) } }
+        }
+    }
+
+    init {
+        // Pinned cards come back where they were left.
+        viewModelScope.launch {
+            val pins = withContext(Dispatchers.IO) { runCatching { brain.pins() }.getOrDefault(emptyList()) }
+            if (pins.isNotEmpty()) _canvas.update { it.copy(pinned = pins.map(PinCodec::card)) }
         }
     }
 
@@ -467,6 +621,7 @@ class AssistantViewModel(
                     )
                 }
             }
+            showCard(output)
             val effects = com.lukas.jarvis.llm.ToolEffects(true, true, true).also { it.outputs += output }
             deliver(
                 AgentResult(reply = doneLine(output.result), effects = effects, toolsUsed = listOf(action.tool)),
@@ -529,7 +684,7 @@ class AssistantViewModel(
         }
         lastTurnWasVoice = false
         container.routines.markRun(routine.name)
-        turn(display = "Run my ${routine.name} routine") { onStage, onTool, _ ->
+        turn(display = "Run my ${routine.name} routine") { onStage, onTool, _, _ ->
             AgentResult(
                 reply = container.agent.runRoutine(routine, settingsStore.current, onStage, onTool),
                 effects = com.lukas.jarvis.llm.ToolEffects(true, true, true),
@@ -567,7 +722,8 @@ class AssistantViewModel(
         work: suspend (
             onStage: (String) -> Unit,
             onTool: (String) -> Unit,
-            onDraft: (String) -> Unit
+            onDraft: (String) -> Unit,
+            onResult: (com.lukas.jarvis.llm.ToolOutput) -> Unit
         ) -> AgentResult
     ) {
         if (busy) {
@@ -597,6 +753,8 @@ class AssistantViewModel(
 
         busy = true
         pendingDisplay = null
+        // Last turn's cards settle onto the shelf; this turn's arrive as each tool finishes.
+        _canvas.update { com.lukas.jarvis.moment.CanvasRules.beginTurn(it, System.currentTimeMillis()) }
         val userMessage = ChatMessage(role = ChatMessage.ROLE_USER, content = display, createdAt = createdAt)
         _ui.value = _ui.value.copy(
             stage = Stage.Thinking,
@@ -627,7 +785,8 @@ class AssistantViewModel(
                         { words ->
                             _ui.update { it.copy(draft = words) }
                             voice?.onDraft(words)
-                        }
+                        },
+                        { output -> showCard(output) }
                     )
                 }
 
@@ -759,6 +918,7 @@ class AssistantViewModel(
         )
 
         if (result.effects.any) refreshAll()
+        finishCanvas(result)
 
         if (current.speakReplies) {
             _ui.value = _ui.value.copy(stage = Stage.Speaking, stageLabel = "speaking")
@@ -785,6 +945,10 @@ class AssistantViewModel(
         // Sentences already spoken stay said; the speaker must not keep
         // waiting for the rest of a reply that is not coming.
         speaker.abandonStream()
+        val now = System.currentTimeMillis()
+        _canvas.update {
+            com.lukas.jarvis.moment.CanvasRules.fail(it, com.lukas.jarvis.moment.Cards.problem(message, now, offline = !_online.value), now)
+        }
         _ui.value = _ui.value.copy(
             stage = Stage.Idle,
             stageLabel = "",

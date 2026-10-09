@@ -75,6 +75,10 @@ enum class MapStyle(
     companion object {
         fun of(id: String?): MapStyle =
             entries.firstOrNull { it.id == id?.lowercase(Locale.ROOT) } ?: Dark
+
+        /** "auto" follows the café: light tiles by day, dark ones at night. */
+        fun of(id: String?, dark: Boolean): MapStyle =
+            if (id.isNullOrBlank() || id.equals("auto", ignoreCase = true)) (if (dark) Dark else Light) else of(id)
     }
 }
 

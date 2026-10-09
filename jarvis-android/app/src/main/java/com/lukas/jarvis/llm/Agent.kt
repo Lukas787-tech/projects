@@ -595,6 +595,17 @@ class Agent(
         return ToolOutput(action.tool, action.argumentsJson, result).also { effects.outputs += it }
     }
 
+    /**
+     * Runs one call the person asked for with a tap of their own — an Undo on a
+     * card. That tap is their yes, so it is not held for another.
+     */
+    suspend fun runDirect(call: ToolCall, settings: Settings): ToolOutput {
+        val effects = ToolEffects()
+        val result = runCatching { tools.execute(call, settings, effects) }
+            .getOrElse { "Tool '${call.name}' failed: ${it.message ?: it::class.java.simpleName}" }
+        return ToolOutput(call.name, call.argumentsJson, result)
+    }
+
     /** What is said when a sentence went straight to a waiting action, with no model to word it. */
     private fun waitingReply(action: PendingAction): String =
         "Ready when you are — ${action.line}. Say yes, or tap ${action.verb}."

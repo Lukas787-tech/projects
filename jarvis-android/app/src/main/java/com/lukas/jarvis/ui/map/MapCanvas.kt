@@ -54,10 +54,8 @@ import com.lukas.jarvis.maps.MapStyle
 import com.lukas.jarvis.maps.SavedPlace
 import com.lukas.jarvis.maps.TileCache
 import com.lukas.jarvis.maps.TileSource
-import com.lukas.jarvis.ui.theme.Accent
-import com.lukas.jarvis.ui.theme.Ink
-import com.lukas.jarvis.ui.theme.InkRaised
-import com.lukas.jarvis.ui.theme.Positive
+import com.lukas.jarvis.ui.theme.Cafe
+import com.lukas.jarvis.ui.theme.CafeColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -180,6 +178,7 @@ fun MapCanvas(
     /** A tap on one of the saved places — home, work, the car. */
     onTapSaved: (SavedPlace) -> Unit = {}
 ) {
+    inks = MapInks.of(Cafe.colors)
     val density = LocalDensity.current.density
     val scope = rememberCoroutineScope()
     val measurer = rememberTextMeasurer()
@@ -329,7 +328,7 @@ fun MapCanvas(
         // Read so a landed tile invalidates this frame.
         if (arrivals < 0) return@Canvas
         val light = (style == MapStyle.Light || style == MapStyle.Streets) && !source.darken
-        drawRect(color = if (light) LIGHT_PAPER else InkRaised)
+        drawRect(color = if (light) LIGHT_PAPER else inks.raised)
 
         val world = worldSize(zoom, density)
         val origin = topLeft(center, world, size)
@@ -346,8 +345,8 @@ fun MapCanvas(
                 val screen = project(point)
                 if (index == 0) path.moveTo(screen.x, screen.y) else path.lineTo(screen.x, screen.y)
             }
-            val line = if (dark) Accent else ROUTE_ON_LIGHT
-            val casing = if (dark) Ink.copy(alpha = 0.75f) else Color.White
+            val line = inks.accent
+            val casing = if (dark) inks.ink.copy(alpha = 0.75f) else Color.White
             drawPath(path, color = line.copy(alpha = 0.18f), style = stroke(18f * density / 2.6f))
             drawPath(path, color = casing, style = stroke(11f * density / 2.6f))
             drawPath(path, color = line, style = stroke(6.5f * density / 2.6f))
@@ -433,8 +432,8 @@ private fun stroke(width: Float) = Stroke(width = width, cap = StrokeCap.Round, 
 private fun DrawScope.drawHere(at: Offset, accuracy: Float?, heading: Float?, pulse: Float, density: Float) {
     val unit = density
     accuracy?.takeIf { it > 8f * unit }?.let { radius ->
-        drawCircle(Accent.copy(alpha = 0.10f), radius = radius, center = at)
-        drawCircle(Accent.copy(alpha = 0.35f), radius = radius, center = at, style = Stroke(width = unit))
+        drawCircle(inks.accent.copy(alpha = 0.10f), radius = radius, center = at)
+        drawCircle(inks.accent.copy(alpha = 0.35f), radius = radius, center = at, style = Stroke(width = unit))
     }
     heading?.let { degrees ->
         val length = 46f * unit
@@ -451,14 +450,14 @@ private fun DrawScope.drawHere(at: Offset, accuracy: Float?, heading: Float?, pu
         drawPath(
             cone,
             brush = Brush.radialGradient(
-                colors = listOf(Accent.copy(alpha = 0.55f), Color.Transparent),
+                colors = listOf(inks.accent.copy(alpha = 0.55f), Color.Transparent),
                 center = at,
                 radius = length
             )
         )
         // A thin tick straight ahead, so the cone has a direction you can read.
         drawLine(
-            Accent.copy(alpha = 0.7f),
+            inks.accent.copy(alpha = 0.7f),
             start = at,
             end = Offset(at.x + (cos(rad) * length * 0.55).toFloat(), at.y + (sin(rad) * length * 0.55).toFloat()),
             strokeWidth = 1.2f * unit,
@@ -466,14 +465,14 @@ private fun DrawScope.drawHere(at: Offset, accuracy: Float?, heading: Float?, pu
         )
     }
     drawCircle(
-        Accent.copy(alpha = (1f - pulse) * 0.35f),
+        inks.accent.copy(alpha = (1f - pulse) * 0.35f),
         radius = (9f + pulse * 18f) * unit,
         center = at
     )
-    drawCircle(Ink.copy(alpha = 0.55f), radius = 10f * unit, center = at)
+    drawCircle(inks.ink.copy(alpha = 0.55f), radius = 10f * unit, center = at)
     drawCircle(Color.White, radius = 8f * unit, center = at)
-    drawCircle(Ink, radius = 5.5f * unit, center = at)
-    drawCircle(Accent, radius = 4.5f * unit, center = at)
+    drawCircle(inks.ink, radius = 5.5f * unit, center = at)
+    drawCircle(inks.accent, radius = 4.5f * unit, center = at)
 }
 
 /** A numbered pin: a head, a point, and the name when it is the chosen one. */
@@ -493,14 +492,14 @@ private fun DrawScope.drawPin(
         lineTo(head.x + radius * 0.62f, head.y + radius * 0.72f)
         close()
     }
-    val fill = if (selected) Positive else Accent
-    drawCircle(Ink.copy(alpha = 0.35f), radius = radius * 0.45f, center = Offset(at.x, at.y + 1.5f * density))
+    val fill = if (selected) inks.selected else inks.accent
+    drawCircle(inks.ink.copy(alpha = 0.35f), radius = radius * 0.45f, center = Offset(at.x, at.y + 1.5f * density))
     drawPath(pin, fill)
-    drawCircle(Ink.copy(alpha = 0.85f), radius = radius + 2f * density, center = head)
+    drawCircle(inks.ink.copy(alpha = 0.85f), radius = radius + 2f * density, center = head)
     drawCircle(fill, radius = radius, center = head)
     val text = measurer.measure(
         text = "$number",
-        style = TextStyle(color = Ink, fontSize = if (selected) 13.sp else 11.sp, fontWeight = FontWeight.Bold)
+        style = TextStyle(color = inks.ink, fontSize = if (selected) 13.sp else 11.sp, fontWeight = FontWeight.Bold)
     )
     drawText(text, topLeft = Offset(head.x - text.size.width / 2f, head.y - text.size.height / 2f))
 
@@ -514,7 +513,7 @@ private fun DrawScope.drawPin(
         val boxLeft = head.x - name.size.width / 2f - padX
         val boxTop = head.y - radius - name.size.height - padY * 2 - 6f * density
         drawRoundRect(
-            color = Ink.copy(alpha = 0.82f),
+            color = inks.ink.copy(alpha = 0.82f),
             topLeft = Offset(boxLeft, boxTop),
             size = androidx.compose.ui.geometry.Size(name.size.width + padX * 2, name.size.height + padY * 2),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f * density)
@@ -540,7 +539,7 @@ private fun DrawScope.drawSaved(
         lineTo(at.x - r, at.y)
         close()
     }
-    drawPath(diamond, Ink.copy(alpha = 0.9f))
+    drawPath(diamond, inks.ink.copy(alpha = 0.9f))
     drawPath(diamond, Caution, style = Stroke(width = 1.6f * density))
     val letter = when {
         place.isCar -> "P"
@@ -557,7 +556,7 @@ private fun DrawScope.drawSaved(
         val name = measurer.measure(
             place.name.replaceFirstChar { it.uppercase() },
             TextStyle(
-                color = if (dark) Color.White.copy(alpha = 0.85f) else Ink,
+                color = if (dark) Color.White.copy(alpha = 0.85f) else inks.ink,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -581,8 +580,8 @@ private fun DrawScope.drawScaleBar(
     val barPx = (nice / metersPerPixel).toFloat()
     val left = 14f * density
     val y = size.height - 16f * density
-    val ink = if (dark) Color.White.copy(alpha = 0.8f) else Ink.copy(alpha = 0.8f)
-    val shadow = if (dark) Ink.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.8f)
+    val ink = if (dark) Color.White.copy(alpha = 0.8f) else inks.ink.copy(alpha = 0.8f)
+    val shadow = if (dark) inks.ink.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.8f)
     listOf(shadow to 3.5f, ink to 1.6f).forEach { (colour, width) ->
         drawLine(colour, Offset(left, y), Offset(left + barPx, y), strokeWidth = width * density, cap = StrokeCap.Round)
         drawLine(colour, Offset(left, y - 5f * density), Offset(left, y), strokeWidth = width * density)
@@ -618,8 +617,7 @@ private const val TAP_SLOP = 26f
 private const val MAX_IN_FLIGHT = 24
 private const val EARTH_CIRCUMFERENCE = 40_075_016.686
 private val DEFAULT_CENTER = GeoPoint(52.520008, 13.404954)
-private val LIGHT_PAPER = Color(0xFFE9E6E0)
-private val ROUTE_ON_LIGHT = Color(0xFF1C1C22)
+private val LIGHT_PAPER = Color(0xFFEFE6DA)
 private val Caution = Color(0xFFFFD60A)
 private val NICE_LENGTHS = listOf(
     5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1_000.0, 2_000.0, 5_000.0,
@@ -745,3 +743,26 @@ private val DARKEN_TILES = ColorFilter.colorMatrix(
 
 /** Leaves room for the pins, which are drawn outside the bounding box. */
 private const val FIT_FRACTION = 0.72
+
+/**
+ * The map's inks, from the café: the accent for the route and pins, espresso
+ * for lines and labels, sage for the place you picked.
+ */
+private class MapInks(
+    val accent: Color,
+    val ink: Color,
+    val raised: Color,
+    val selected: Color
+) {
+    companion object {
+        fun of(colors: CafeColors) = MapInks(
+            accent = colors.accentFill,
+            ink = Color(0xFF3A2E28),
+            raised = Color(0xFF1F1815),
+            selected = colors.sageText
+        )
+    }
+}
+
+/** Set as the map composes; read by the drawing below, all on the main thread. */
+private var inks = MapInks(Color(0xFFA86A3C), Color(0xFF3A2E28), Color(0xFF1F1815), Color(0xFF5E7A5D))

@@ -32,8 +32,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import com.lukas.jarvis.maps.GeoPoint
-import com.lukas.jarvis.ui.theme.Accent
-import com.lukas.jarvis.ui.theme.AccentSoft
+import com.lukas.jarvis.ui.theme.Cafe
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.pow
@@ -43,6 +42,38 @@ import kotlinx.coroutines.launch
 
 /** What the globe is doing, which is also what the assistant is doing. */
 enum class GlobeMood { Resting, Listening, Working, Speaking }
+
+/**
+ * The globe's inks: a paper sphere shaded from the top left, coastlines drawn
+ * like an engraving, a faint graticule, and the accent for what matters.
+ */
+data class GlobeColors(
+    val oceanLight: Color,
+    val ocean: Color,
+    val oceanEdge: Color,
+    val land: Color,
+    val grid: Color,
+    val mark: Color,
+    val here: Color,
+    val limb: Color
+) {
+    companion object {
+        @Composable
+        fun cafe(): GlobeColors {
+            val c = Cafe.colors
+            return GlobeColors(
+                oceanLight = if (c.isDark) c.latteDeep else c.paper,
+                ocean = c.latte,
+                oceanEdge = c.latteDeep,
+                land = c.cocoa.copy(alpha = 0.78f),
+                grid = c.cocoa.copy(alpha = if (c.isDark) 0.16f else 0.12f),
+                mark = c.accent,
+                here = c.accentFill,
+                limb = c.latteDeep
+            )
+        }
+    }
+}
 
 /**
  * A wireframe Earth, drawn in one canvas pass.
@@ -73,7 +104,10 @@ fun Globe(
     /** 0 = whole planet, 1 = fully closed in on [focus]. */
     approach: Float = 0f,
     /** A tap anywhere on the planet, which is how you start talking. */
-    onTap: () -> Unit = {}
+    onTap: () -> Unit = {},
+    colors: GlobeColors = GlobeColors.cafe(),
+    /** Reduce motion: the planet stays where it was left and nothing pulses. */
+    still: Boolean = Cafe.reduceMotion
 ) {
     val context = LocalContext.current
     val world = remember(context) { World.load(context) }
@@ -98,8 +132,8 @@ fun Globe(
         GlobeMood.Speaking -> 8f
     }
     val turning = approach < 0.02f
-    LaunchedEffect(turning, speed) {
-        if (!turning) return@LaunchedEffect
+    LaunchedEffect(turning, speed, still) {
+        if (!turning || still) return@LaunchedEffect
         var last = 0L
         while (true) {
             withFrameNanos { now ->
@@ -207,23 +241,20 @@ fun Globe(
         // Everything past the sphere's edge is clipped away, so closing in
         // crops rather than overflowing the frame.
         clipRound(centre, size.minDimension / 2f * 0.94f) {
-            drawAtmosphere(centre, radius, glow, zoom)
-            drawGraticule(camera, glow)
-            drawCoastlines(world, camera, glow)
-            marks.forEach { drawMark(camera, it, Accent, glow) }
-            here?.let { drawHere(camera, it, glow, sweep) }
-            if (mood == GlobeMood.Working && approach < 0.5f) {
-                drawScanArc(centre, size.minDimension / 2f * 0.9f, sweep, glow)
-            }
+            drawOcean(centre, radius, colors)
+            drawGraticule(camera, colors.grid, glow)
+            drawCoastlines(world, camera, colors.land)
+            marks.forEach { drawMark(camera, it, colors.mark, glow) }
+            here?.let { drawHere(camera, it, colors.here, if (still) 0f else sweep) }
         }
 
         // The limb is drawn outside the clip so it stays a crisp full circle.
         if (zoom < 1.4f) {
             drawCircle(
-                color = Accent.copy(alpha = 0.30f + 0.35f * glow),
+                color = colors.limb,
                 radius = radius,
                 center = centre,
-                style = Stroke(width = 1.4f)
+                style = Stroke(width = 2f)
             )
         }
     }
@@ -259,29 +290,24 @@ private class Camera(
     }
 }
 
-private fun DrawScope.drawAtmosphere(centre: Offset, radius: Float, glow: Float, zoom: Float) {
-    if (zoom > 2f) return
+/** The sphere itself: paper, lit from the top left. */
+private fun DrawScope.drawOcean(centre: Offset, radius: Float, colors: GlobeColors) {
     drawCircle(
         brush = Brush.radialGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 0.05f * glow),
-                Accent.copy(alpha = 0.03f * glow),
-                Color.Transparent
-            ),
-            center = centre,
-            radius = radius * 1.25f
+            colors = listOf(colors.oceanLight, colors.ocean, colors.oceanEdge),
+            center = Offset(centre.x - radius * 0.35f, centre.y - radius * 0.4f),
+            radius = radius * 1.6f
         ),
-        radius = radius * 1.25f,
+        radius = radius,
         center = centre
     )
 }
 
-/** Meridians and parallels: the wireframe that makes it read as a sphere. */
-private fun DrawScope.drawGraticule(camera: Camera, glow: Float) {
-    val colour = AccentSoft.copy(alpha = 0.12f + 0.16f * glow)
+/** Meridians and parallels: the faint lines that make it read as a sphere. */
+private fun DrawScope.drawGraticule(camera: Camera, grid: Color, glow: Float) {
     var meridian = -180
     while (meridian < 180) {
-        strokeArcOf(camera, colour) { step ->
+        strokeArcOf(camera, grid) { step ->
             val lat = -90f + step * 180f
             meridian.toFloat() to lat
         }
@@ -291,8 +317,8 @@ private fun DrawScope.drawGraticule(camera: Camera, glow: Float) {
     while (parallel <= 60) {
         val lat = parallel.toFloat()
         // The equator is the one line that says which way up the planet is.
-        val weight = if (parallel == 0) 0.26f + 0.3f * glow else 0.12f + 0.16f * glow
-        strokeArcOf(camera, AccentSoft.copy(alpha = weight)) { step ->
+        val colour = if (parallel == 0) grid.copy(alpha = (grid.alpha * 1.8f).coerceAtMost(1f)) else grid
+        strokeArcOf(camera, colour) { step ->
             (-180f + step * 360f) to lat
         }
         parallel += 30
@@ -326,9 +352,8 @@ private inline fun DrawScope.strokeArcOf(
     drawPath(path, colour, style = Stroke(width = 1f, cap = StrokeCap.Round))
 }
 
-private fun DrawScope.drawCoastlines(world: World, camera: Camera, glow: Float) {
-    val colour = Accent.copy(alpha = 0.45f + 0.45f * glow)
-    val pen = Stroke(width = 1.5f, cap = StrokeCap.Round)
+private fun DrawScope.drawCoastlines(world: World, camera: Camera, colour: Color) {
+    val pen = Stroke(width = 1.6f, cap = StrokeCap.Round)
     world.strokes.forEach { line ->
         val path = Path()
         var drawing = false
@@ -364,37 +389,17 @@ private fun DrawScope.drawMark(camera: Camera, point: GeoPoint, colour: Color, g
 }
 
 /** The user's own position: a dot inside a ring that keeps expanding. */
-private fun DrawScope.drawHere(camera: Camera, point: GeoPoint, glow: Float, sweep: Float) {
+private fun DrawScope.drawHere(camera: Camera, point: GeoPoint, colour: Color, sweep: Float) {
     val screen = camera.project(point.lon.toFloat(), point.lat.toFloat()) ?: return
     val phase = (sweep / 360f)
     drawCircle(
-        color = Accent.copy(alpha = (1f - phase) * 0.55f * (0.4f + glow)),
-        radius = 6f + phase * 20f,
+        color = colour.copy(alpha = (1f - phase) * 0.5f),
+        radius = 7f + phase * 22f,
         center = screen,
-        style = Stroke(width = 1.2f)
-    )
-    drawCircle(Accent, radius = 4f, center = screen)
-}
-
-/** The sweep that says work is happening, borrowed from a radar screen. */
-private fun DrawScope.drawScanArc(centre: Offset, radius: Float, sweep: Float, glow: Float) {
-    drawArc(
-        brush = Brush.sweepGradient(
-            colors = listOf(
-                Color.Transparent,
-                Accent.copy(alpha = 0.04f * glow),
-                Accent.copy(alpha = 0.85f * glow),
-                Color.Transparent
-            ),
-            center = centre
-        ),
-        startAngle = sweep,
-        sweepAngle = 100f,
-        useCenter = false,
-        topLeft = Offset(centre.x - radius, centre.y - radius),
-        size = Size(radius * 2, radius * 2),
         style = Stroke(width = 2f)
     )
+    drawCircle(Color.White, radius = 7f, center = screen)
+    drawCircle(colour, radius = 5f, center = screen)
 }
 
 /**

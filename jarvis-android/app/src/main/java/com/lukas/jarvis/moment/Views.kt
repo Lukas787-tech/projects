@@ -27,11 +27,15 @@ enum class CardKind(val mode: CardMode, val label: String) {
     Places(CardMode.Show, "Places"),
     Route(CardMode.Show, "Route"),
     Map(CardMode.Show, "Map"),
+    /** The globe turns to a place: a city, a country, somewhere far. */
+    Globe(CardMode.Show, "On the globe"),
     Chart(CardMode.Show, "Numbers"),
     Web(CardMode.Show, "From the web"),
     Calendar(CardMode.Show, "Calendar"),
     Contact(CardMode.Show, "Contact"),
-    Camera(CardMode.Show, "What I saw"),
+    Camera(CardMode.Show, "Camera"),
+    /** A picture you showed Mochi, and what it saw in it. */
+    Photo(CardMode.Show, "What I saw"),
     Screen(CardMode.Show, "Your screen"),
     Translation(CardMode.Show, "Translation"),
     Inbox(CardMode.Show, "Messages"),
