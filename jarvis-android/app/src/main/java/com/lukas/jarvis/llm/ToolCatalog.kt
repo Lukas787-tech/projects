@@ -1,6 +1,8 @@
 package com.lukas.jarvis.llm
 
 import com.lukas.jarvis.core.Settings
+import com.lukas.jarvis.moment.CardKind
+import com.lukas.jarvis.moment.FollowUp
 import java.util.Locale
 
 /**
@@ -17,160 +19,242 @@ enum class ToolGroup {
 }
 
 /**
+ * How much a tool may do before it has to ask.
+ *
+ * The rule the whole app follows: Mochi may read freely, may change your own
+ * things with an undo, and must ask before anything that leaves the phone or
+ * cannot be taken back.
+ */
+enum class Risk {
+    /** Only looks: the weather, a search, a memory, where you are. */
+    Read,
+
+    /** Changes your own things on the phone, and can be put back. */
+    Local,
+
+    /** Reaches someone or something outside the phone: a text, a call, a share. */
+    Outward,
+
+    /** Hard to take back: deleting, changing a booking, pressing the phone's own buttons. */
+    Sensitive;
+
+    /** True when the tool must wait for the person's yes before it runs. */
+    val asksFirst: Boolean get() = this == Outward || this == Sensitive
+}
+
+/**
  * What is known about one tool beyond its schema.
  *
- * [doing] is the line the dot shows while it runs, [chip] the word left under
- * the reply afterwards. [readOnly] is the one that changes behaviour: a tool
- * that only reads can run beside others in the same round and can be answered
- * from this turn's own cache when a small model asks for it twice.
+ * [doing] is the line shown while it runs, [chip] the word left under the reply
+ * afterwards. [readOnly] changes how the agent runs it: a tool that only reads
+ * can run beside others in the same round and can be answered from this turn's
+ * own cache when a small model asks for it twice. [risk] decides whether it
+ * may run at all before the person says yes. [view] is the card its result is
+ * shown on, and [next] the follow-ups that card offers.
  */
 data class ToolInfo(
     val name: String,
     val group: ToolGroup,
     val doing: String,
     val chip: String,
-    val readOnly: Boolean = false
+    val readOnly: Boolean = false,
+    val risk: Risk = if (readOnly) Risk.Read else Risk.Local,
+    val view: CardKind = CardKind.Answer,
+    val next: List<FollowUp> = emptyList()
 )
 
 /**
  * Every tool, described once.
  *
- * Before this the stage line knew a dozen tools by name and called the rest
- * "working", and nothing on screen said which tools a reply had used. One table
- * feeds the agent loop, the live trail and the Skills screen, so a tool added in
- * one place cannot be half-known in the others.
+ * One table feeds the agent loop, the confirmation gate, the live trail, the
+ * canvas's cards and the Skills screen, so a tool added in one place cannot be
+ * half-known in the others.
  */
 object ToolCatalog {
 
+    private fun f(label: String, say: String) = FollowUp(label, say)
+
     val ALL: List<ToolInfo> = listOf(
         // memory
-        ToolInfo("remember", ToolGroup.Memory, "saving that", "Saved"),
-        ToolInfo("recall", ToolGroup.Memory, "checking memory", "Memory", readOnly = true),
-        ToolInfo("update_memory", ToolGroup.Memory, "correcting a memory", "Memory"),
-        ToolInfo("forget", ToolGroup.Memory, "forgetting that", "Forgot"),
+        ToolInfo("remember", ToolGroup.Memory, "saving that", "Saved", view = CardKind.Memory,
+            next = listOf(f("What do you know about me?", "What do you remember about me?"))),
+        ToolInfo("recall", ToolGroup.Memory, "checking memory", "Memory", readOnly = true, view = CardKind.Memory),
+        ToolInfo("update_memory", ToolGroup.Memory, "correcting a memory", "Memory", view = CardKind.Memory),
+        ToolInfo("forget", ToolGroup.Memory, "forgetting that", "Forgot", risk = Risk.Sensitive, view = CardKind.Memory),
         ToolInfo("recall_conversation", ToolGroup.Memory, "looking back", "Past talks", readOnly = true),
 
         // money and anything else that is counted
-        ToolInfo("log_entry", ToolGroup.Money, "logging it", "Logged"),
-        ToolInfo("tracker_status", ToolGroup.Money, "checking the numbers", "Balances", readOnly = true),
-        ToolInfo("configure_tracker", ToolGroup.Money, "setting that up", "Tracker"),
-        ToolInfo("list_entries", ToolGroup.Money, "reading the entries", "Entries", readOnly = true),
-        ToolInfo("spending_report", ToolGroup.Money, "adding it up", "Report", readOnly = true),
-        ToolInfo("delete_entry", ToolGroup.Money, "taking that back", "Undone"),
+        ToolInfo("log_entry", ToolGroup.Money, "logging it", "Logged", view = CardKind.Entry,
+            next = listOf(f("What's left?", "How much is left on {tracker}?"), f("Where did it go?", "Where did my money go this month?"))),
+        ToolInfo("tracker_status", ToolGroup.Money, "checking the numbers", "Balances", readOnly = true, view = CardKind.Chart,
+            next = listOf(f("Where did it go?", "Where did my money go this month?"))),
+        ToolInfo("configure_tracker", ToolGroup.Money, "setting that up", "Tracker", view = CardKind.Entry),
+        ToolInfo("list_entries", ToolGroup.Money, "reading the entries", "Entries", readOnly = true, view = CardKind.Chart),
+        ToolInfo("spending_report", ToolGroup.Money, "adding it up", "Report", readOnly = true, view = CardKind.Chart,
+            next = listOf(f("Set a budget", "Help me set a monthly budget"))),
+        ToolInfo("delete_entry", ToolGroup.Money, "taking that back", "Undone", risk = Risk.Sensitive, view = CardKind.Entry),
 
         // tasks
-        ToolInfo("add_task", ToolGroup.Tasks, "adding a reminder", "Reminder"),
-        ToolInfo("countdown", ToolGroup.Tasks, "counting the days", "Countdown"),
-        ToolInfo("list", ToolGroup.Tasks, "the list", "List"),
-        ToolInfo("list_tasks", ToolGroup.Tasks, "checking tasks", "Tasks", readOnly = true),
-        ToolInfo("complete_task", ToolGroup.Tasks, "ticking it off", "Done"),
-        ToolInfo("update_task", ToolGroup.Tasks, "moving the task", "Moved"),
-        ToolInfo("delete_task", ToolGroup.Tasks, "removing the task", "Removed"),
+        ToolInfo("add_task", ToolGroup.Tasks, "adding a reminder", "Reminder", view = CardKind.Task,
+            next = listOf(f("Move it to tomorrow", "Move {title} to tomorrow at the same time"), f("What's still open?", "What's still open?"))),
+        ToolInfo("countdown", ToolGroup.Tasks, "counting the days", "Countdown", view = CardKind.Task),
+        ToolInfo("list", ToolGroup.Tasks, "the list", "List", view = CardKind.List,
+            next = listOf(f("Remind me at the shop", "Remind me about the {list} list when I get to the supermarket"), f("Read it out", "What's on my {list} list?"))),
+        ToolInfo("list_tasks", ToolGroup.Tasks, "checking tasks", "Tasks", readOnly = true, view = CardKind.Task),
+        ToolInfo("complete_task", ToolGroup.Tasks, "ticking it off", "Done", view = CardKind.Task,
+            next = listOf(f("What's next?", "What's still open?"))),
+        ToolInfo("update_task", ToolGroup.Tasks, "moving the task", "Moved", view = CardKind.Task),
+        ToolInfo("delete_task", ToolGroup.Tasks, "removing the task", "Removed", risk = Risk.Sensitive, view = CardKind.Task),
 
         // exact answers
-        ToolInfo("now", ToolGroup.Thinking, "checking the time", "Clock", readOnly = true),
-        ToolInfo("calculate", ToolGroup.Thinking, "working it out", "Maths", readOnly = true),
-        ToolInfo("convert_units", ToolGroup.Thinking, "converting", "Units", readOnly = true),
-        ToolInfo("date_calc", ToolGroup.Thinking, "counting the days", "Dates", readOnly = true),
-        ToolInfo("briefing", ToolGroup.Thinking, "gathering your day", "Briefing", readOnly = true),
+        ToolInfo("now", ToolGroup.Thinking, "checking the time", "Clock", readOnly = true, view = CardKind.Exact),
+        ToolInfo("calculate", ToolGroup.Thinking, "working it out", "Maths", readOnly = true, view = CardKind.Exact),
+        ToolInfo("convert_units", ToolGroup.Thinking, "converting", "Units", readOnly = true, view = CardKind.Exact),
+        ToolInfo("date_calc", ToolGroup.Thinking, "counting the days", "Dates", readOnly = true, view = CardKind.Exact,
+            next = listOf(f("Make it a countdown", "Count down the days to that"))),
+        ToolInfo("briefing", ToolGroup.Thinking, "gathering your day", "Briefing", readOnly = true, view = CardKind.Brief,
+            next = listOf(f("What's still open?", "What's still open?"), f("Plan my day", "Plan my day"))),
 
         // the internet
-        ToolInfo("web_search", ToolGroup.Web, "searching the web", "Web", readOnly = true),
-        ToolInfo("open_url", ToolGroup.Web, "reading a page", "Page", readOnly = true),
-        ToolInfo("convert_currency", ToolGroup.Web, "checking the rate", "Currency", readOnly = true),
-        ToolInfo("wikipedia", ToolGroup.Web, "reading Wikipedia", "Wikipedia", readOnly = true),
-        ToolInfo("weather", ToolGroup.Weather, "checking the sky", "Weather", readOnly = true),
+        ToolInfo("web_search", ToolGroup.Web, "searching the web", "Web", readOnly = true, view = CardKind.Web,
+            next = listOf(f("Tell me more", "Tell me more about that"), f("Remember this", "Remember the main point of that"))),
+        ToolInfo("open_url", ToolGroup.Web, "reading a page", "Page", readOnly = true, view = CardKind.Web,
+            next = listOf(f("Shorter, please", "Sum that page up in three lines"))),
+        ToolInfo("convert_currency", ToolGroup.Web, "checking the rate", "Currency", readOnly = true, view = CardKind.Exact),
+        ToolInfo("wikipedia", ToolGroup.Web, "reading Wikipedia", "Wikipedia", readOnly = true, view = CardKind.Web,
+            next = listOf(f("Show it on the globe", "Show {topic} on the map"), f("Tell me more", "Tell me more about {topic}"))),
+        ToolInfo("weather", ToolGroup.Weather, "checking the sky", "Weather", readOnly = true, view = CardKind.Weather,
+            next = listOf(f("And tomorrow?", "What's the weather tomorrow?"), f("Remind me to take an umbrella", "Remind me to take an umbrella tomorrow morning"))),
 
         // the world, beyond a search box
-        ToolInfo("news", ToolGroup.News, "reading the headlines", "News", readOnly = true),
-        ToolInfo("translate", ToolGroup.Language, "translating", "Translate", readOnly = true),
-        ToolInfo("interpreter", ToolGroup.Language, "opening the interpreter", "Interpreter"),
+        ToolInfo("news", ToolGroup.News, "reading the headlines", "News", readOnly = true, view = CardKind.Web,
+            next = listOf(f("More on the first one", "Tell me more about the first headline"))),
+        ToolInfo("translate", ToolGroup.Language, "translating", "Translate", readOnly = true, view = CardKind.Translation,
+            next = listOf(f("Be my interpreter", "Be my interpreter for {language}"))),
+        ToolInfo("interpreter", ToolGroup.Language, "opening the interpreter", "Interpreter", view = CardKind.Translation),
         ToolInfo("define_word", ToolGroup.Language, "opening the dictionary", "Dictionary", readOnly = true),
-        ToolInfo("market_price", ToolGroup.Markets, "checking the markets", "Markets", readOnly = true),
-        ToolInfo("holidays", ToolGroup.Knowledge, "checking the holidays", "Holidays", readOnly = true),
-        ToolInfo("recipe", ToolGroup.Knowledge, "finding a recipe", "Recipe", readOnly = true),
+        ToolInfo("market_price", ToolGroup.Markets, "checking the markets", "Markets", readOnly = true, view = CardKind.Chart),
+        ToolInfo("holidays", ToolGroup.Knowledge, "checking the holidays", "Holidays", readOnly = true, view = CardKind.Calendar),
+        ToolInfo("recipe", ToolGroup.Knowledge, "finding a recipe", "Recipe", readOnly = true,
+            next = listOf(f("Add it to my shopping list", "Add the ingredients for that to my shopping list"))),
         ToolInfo("sports", ToolGroup.Knowledge, "checking the scores", "Sports", readOnly = true),
-        ToolInfo("tv_show", ToolGroup.Knowledge, "looking up the show", "TV", readOnly = true),
+        ToolInfo("tv_show", ToolGroup.Knowledge, "looking up the show", "TV", readOnly = true,
+            next = listOf(f("Remind me when it's on", "Remind me when the next episode airs"))),
         ToolInfo("book", ToolGroup.Knowledge, "looking up the book", "Books", readOnly = true),
-        ToolInfo("fun", ToolGroup.Fun, "finding something good", "Fun", readOnly = true),
-        ToolInfo("random", ToolGroup.Fun, "rolling the dice", "Random"),
-        ToolInfo("generate_image", ToolGroup.Create, "drawing", "Picture"),
+        ToolInfo("fun", ToolGroup.Fun, "finding something good", "Fun", readOnly = true,
+            next = listOf(f("Another one", "Another one, please"))),
+        ToolInfo("random", ToolGroup.Fun, "rolling the dice", "Random", view = CardKind.Exact,
+            next = listOf(f("Again", "Do that again"))),
+        ToolInfo("generate_image", ToolGroup.Create, "drawing", "Picture", view = CardKind.Picture,
+            next = listOf(f("Another take", "Draw that again, a little different"))),
 
         // the house
-        ToolInfo("home_status", ToolGroup.Home, "checking the house", "Home", readOnly = true),
-        ToolInfo("home_control", ToolGroup.Home, "working the house", "Home"),
+        ToolInfo("home_status", ToolGroup.Home, "checking the house", "Home", readOnly = true, view = CardKind.Home),
+        ToolInfo("home_control", ToolGroup.Home, "working the house", "Home", view = CardKind.Home),
 
         // places; these draw on the map, so none of them counts as a pure read
-        ToolInfo("find_places", ToolGroup.Places, "looking around you", "Places"),
-        ToolInfo("route_to", ToolGroup.Places, "finding the way", "Route"),
-        ToolInfo("start_navigation", ToolGroup.Places, "opening directions", "Navigation"),
-        ToolInfo("where_am_i", ToolGroup.Places, "checking where you are", "Location"),
-        ToolInfo("save_place", ToolGroup.Places, "saving the spot", "Saved place"),
-        ToolInfo("saved_places", ToolGroup.Places, "checking your places", "Places", readOnly = true),
-        ToolInfo("rename_place", ToolGroup.Places, "renaming the place", "Places"),
-        ToolInfo("show_on_map", ToolGroup.Places, "finding it on the map", "Map", readOnly = true),
-        ToolInfo("forget_place", ToolGroup.Places, "forgetting the place", "Place"),
-        ToolInfo("place_reminder", ToolGroup.Places, "setting a place reminder", "Place reminder"),
-        ToolInfo("share_location", ToolGroup.Places, "sharing where you are", "Location"),
+        ToolInfo("find_places", ToolGroup.Places, "looking around you", "Places", risk = Risk.Read, view = CardKind.Places,
+            next = listOf(f("Route there", "How do I get to {place}?"), f("Save this place", "Save {place} as a place"))),
+        ToolInfo("route_to", ToolGroup.Places, "finding the way", "Route", risk = Risk.Read, view = CardKind.Route,
+            next = listOf(f("Start directions", "Start navigation to {place}"), f("Remind me to leave", "Remind me when it's time to leave for {place}"))),
+        ToolInfo("start_navigation", ToolGroup.Places, "opening directions", "Navigation", view = CardKind.Route),
+        ToolInfo("where_am_i", ToolGroup.Places, "checking where you are", "Location", risk = Risk.Read, view = CardKind.Map,
+            next = listOf(f("Save this spot", "Save this place as a spot I parked"), f("What's around?", "What's around here?"))),
+        ToolInfo("save_place", ToolGroup.Places, "saving the spot", "Saved place", view = CardKind.Place,
+            next = listOf(f("Take me there later", "How do I get to {place}?"))),
+        ToolInfo("saved_places", ToolGroup.Places, "checking your places", "Places", readOnly = true, view = CardKind.Map),
+        ToolInfo("rename_place", ToolGroup.Places, "renaming the place", "Places", view = CardKind.Place),
+        ToolInfo("show_on_map", ToolGroup.Places, "finding it on the map", "Map", readOnly = true, view = CardKind.Map,
+            next = listOf(f("Route there", "How do I get to {place}?"))),
+        ToolInfo("forget_place", ToolGroup.Places, "forgetting the place", "Place", risk = Risk.Sensitive, view = CardKind.Place),
+        ToolInfo("place_reminder", ToolGroup.Places, "setting a place reminder", "Place reminder", view = CardKind.Task),
+        ToolInfo("share_location", ToolGroup.Places, "sharing where you are", "Location", risk = Risk.Outward, view = CardKind.Message),
 
         // calendar and people
-        ToolInfo("calendar", ToolGroup.Calendar, "reading your calendar", "Calendar", readOnly = true),
-        ToolInfo("change_calendar_event", ToolGroup.Calendar, "changing the appointment", "Calendar"),
-        ToolInfo("add_calendar_event", ToolGroup.Calendar, "filling in the event", "Event"),
-        ToolInfo("find_contact", ToolGroup.People, "looking them up", "Contacts", readOnly = true),
+        ToolInfo("calendar", ToolGroup.Calendar, "reading your calendar", "Calendar", readOnly = true, view = CardKind.Calendar,
+            next = listOf(f("Plan around it", "Plan my day around that"))),
+        ToolInfo("change_calendar_event", ToolGroup.Calendar, "changing the appointment", "Calendar", risk = Risk.Sensitive, view = CardKind.Event),
+        ToolInfo("add_calendar_event", ToolGroup.Calendar, "filling in the event", "Event", view = CardKind.Event,
+            next = listOf(f("Remind me to leave", "Remind me when it's time to leave for {title}"))),
+        ToolInfo("find_contact", ToolGroup.People, "looking them up", "Contacts", readOnly = true, view = CardKind.Contact,
+            next = listOf(f("Text them", "Text {who}"), f("Call them", "Call {who}"))),
 
         // the phone itself
-        ToolInfo("set_alarm", ToolGroup.Phone, "setting the alarm", "Alarm"),
-        ToolInfo("set_timer", ToolGroup.Phone, "starting the timer", "Timer"),
-        ToolInfo("focus_session", ToolGroup.Phone, "starting a focus session", "Focus"),
-        ToolInfo("profile", ToolGroup.Phone, "switching the profile", "Profile"),
-        ToolInfo("change_setting", ToolGroup.Phone, "changing the setting", "Settings"),
-        ToolInfo("change_voice", ToolGroup.Phone, "finding the voice", "Voice"),
-        ToolInfo("timers", ToolGroup.Phone, "checking the timers", "Timers"),
-        ToolInfo("stopwatch", ToolGroup.Phone, "the stopwatch", "Stopwatch"),
-        ToolInfo("show_alarms", ToolGroup.Phone, "opening your alarms", "Alarms"),
-        ToolInfo("device_status", ToolGroup.Phone, "checking the phone", "Phone", readOnly = true),
-        ToolInfo("torch", ToolGroup.Phone, "the torch", "Torch"),
-        ToolInfo("ringer", ToolGroup.Phone, "the ringer", "Ringer"),
-        ToolInfo("volume", ToolGroup.Phone, "the volume", "Volume"),
-        ToolInfo("brightness", ToolGroup.Phone, "the brightness", "Brightness"),
-        ToolInfo("do_not_disturb", ToolGroup.Phone, "do not disturb", "Quiet"),
+        ToolInfo("set_alarm", ToolGroup.Phone, "setting the alarm", "Alarm", view = CardKind.Timer),
+        ToolInfo("set_timer", ToolGroup.Phone, "starting the timer", "Timer", view = CardKind.Timer),
+        ToolInfo("focus_session", ToolGroup.Phone, "starting a focus session", "Focus", view = CardKind.Timer),
+        ToolInfo("profile", ToolGroup.Phone, "switching the profile", "Profile", view = CardKind.Settings),
+        ToolInfo("change_setting", ToolGroup.Phone, "changing the setting", "Settings", view = CardKind.Settings),
+        ToolInfo("change_voice", ToolGroup.Phone, "finding the voice", "Voice", view = CardKind.Settings),
+        ToolInfo("timers", ToolGroup.Phone, "checking the timers", "Timers", view = CardKind.Timer),
+        ToolInfo("stopwatch", ToolGroup.Phone, "the stopwatch", "Stopwatch", view = CardKind.Stopwatch),
+        ToolInfo("show_alarms", ToolGroup.Phone, "opening your alarms", "Alarms", view = CardKind.Timer),
+        ToolInfo("device_status", ToolGroup.Phone, "checking the phone", "Phone", readOnly = true, view = CardKind.Device),
+        ToolInfo("torch", ToolGroup.Phone, "the torch", "Torch", view = CardKind.Device),
+        ToolInfo("ringer", ToolGroup.Phone, "the ringer", "Ringer", view = CardKind.Device),
+        ToolInfo("volume", ToolGroup.Phone, "the volume", "Volume", view = CardKind.Device),
+        ToolInfo("brightness", ToolGroup.Phone, "the brightness", "Brightness", view = CardKind.Device),
+        ToolInfo("do_not_disturb", ToolGroup.Phone, "do not disturb", "Quiet", view = CardKind.Device),
         ToolInfo("clipboard", ToolGroup.Phone, "the clipboard", "Clipboard"),
         ToolInfo("open_app", ToolGroup.Phone, "opening the app", "App"),
         ToolInfo("open_settings_page", ToolGroup.Phone, "opening settings", "Settings"),
-        ToolInfo("open_link", ToolGroup.Phone, "opening the page", "Browser"),
-        ToolInfo("system_action", ToolGroup.Phone, "pressing the button", "Phone"),
+        ToolInfo("open_link", ToolGroup.Phone, "opening the page", "Browser", view = CardKind.Web),
+        ToolInfo("system_action", ToolGroup.Phone, "pressing the button", "Phone", risk = Risk.Sensitive, view = CardKind.Device),
 
         // reaching people
-        ToolInfo("call", ToolGroup.Messages, "readying the call", "Call"),
-        ToolInfo("place_call", ToolGroup.Messages, "ringing", "Call"),
-        ToolInfo("cancel_call", ToolGroup.Messages, "dropping the call", "Call"),
-        ToolInfo("dial", ToolGroup.Messages, "dialling", "Dialler"),
-        ToolInfo("send_message", ToolGroup.Messages, "sending the text", "Text"),
-        ToolInfo("send_chat_message", ToolGroup.Messages, "writing the message", "Chat"),
-        ToolInfo("reply_to_message", ToolGroup.Messages, "replying", "Reply"),
-        ToolInfo("unread_messages", ToolGroup.Messages, "checking messages", "Inbox", readOnly = true),
-        ToolInfo("send_email", ToolGroup.Messages, "drafting the email", "Email"),
-        ToolInfo("share", ToolGroup.Messages, "sharing", "Share"),
+        ToolInfo("call", ToolGroup.Messages, "readying the call", "Call", risk = Risk.Outward, view = CardKind.Call),
+        ToolInfo("place_call", ToolGroup.Messages, "ringing", "Call", risk = Risk.Outward, view = CardKind.Call),
+        ToolInfo("cancel_call", ToolGroup.Messages, "dropping the call", "Call", view = CardKind.Call),
+        ToolInfo("dial", ToolGroup.Messages, "dialling", "Dialler", view = CardKind.Call),
+        ToolInfo("send_message", ToolGroup.Messages, "sending the text", "Text", risk = Risk.Outward, view = CardKind.Message),
+        ToolInfo("send_chat_message", ToolGroup.Messages, "writing the message", "Chat", risk = Risk.Outward, view = CardKind.Message),
+        ToolInfo("reply_to_message", ToolGroup.Messages, "replying", "Reply", risk = Risk.Outward, view = CardKind.Message),
+        ToolInfo("unread_messages", ToolGroup.Messages, "checking messages", "Inbox", readOnly = true, view = CardKind.Inbox,
+            next = listOf(f("Reply to the newest", "Help me reply to the newest message"))),
+        ToolInfo("send_email", ToolGroup.Messages, "drafting the email", "Email", risk = Risk.Outward, view = CardKind.Message),
+        ToolInfo("share", ToolGroup.Messages, "sharing", "Share", risk = Risk.Outward, view = CardKind.Message),
 
         // media and the screen
-        ToolInfo("play_music", ToolGroup.Media, "starting the music", "Music"),
-        ToolInfo("control_playback", ToolGroup.Media, "the music", "Playback"),
-        ToolInfo("now_playing", ToolGroup.Media, "checking what's playing", "Playing", readOnly = true),
-        ToolInfo("bluetooth", ToolGroup.Media, "checking Bluetooth", "Bluetooth"),
+        ToolInfo("play_music", ToolGroup.Media, "starting the music", "Music", view = CardKind.Media),
+        ToolInfo("control_playback", ToolGroup.Media, "the music", "Playback", view = CardKind.Media),
+        ToolInfo("now_playing", ToolGroup.Media, "checking what's playing", "Playing", readOnly = true, view = CardKind.Media),
+        ToolInfo("bluetooth", ToolGroup.Media, "checking Bluetooth", "Bluetooth", view = CardKind.Device),
         ToolInfo("show", ToolGroup.Screen, "putting it on screen", "Screen"),
 
         // eyes
-        ToolInfo("take_photo", ToolGroup.Vision, "opening the camera", "Camera"),
-        ToolInfo("read_screen", ToolGroup.Vision, "reading your screen", "Screen", readOnly = true),
-        ToolInfo("open_camera", ToolGroup.Vision, "opening the camera app", "Camera"),
+        ToolInfo("take_photo", ToolGroup.Vision, "opening the camera", "Camera", view = CardKind.Camera,
+            next = listOf(f("Remember this", "Remember what that picture showed"))),
+        ToolInfo("read_screen", ToolGroup.Vision, "reading your screen", "Screen", readOnly = true, view = CardKind.Screen,
+            next = listOf(f("Reply to this", "Help me reply to this"), f("Sum it up", "Sum up what's on my screen"))),
+        ToolInfo("open_camera", ToolGroup.Vision, "opening the camera app", "Camera", view = CardKind.Camera),
 
         // doing several things at once
-        ToolInfo("create_routine", ToolGroup.Automation, "setting up the routine", "Routine"),
-        ToolInfo("run_routine", ToolGroup.Automation, "running the routine", "Routine"),
-        ToolInfo("list_routines", ToolGroup.Automation, "checking routines", "Routines", readOnly = true),
-        ToolInfo("delete_routine", ToolGroup.Automation, "removing the routine", "Routine")
+        ToolInfo("create_routine", ToolGroup.Automation, "setting up the routine", "Routine", view = CardKind.Routine,
+            next = listOf(f("Try it now", "Run my {routine} routine"))),
+        ToolInfo("run_routine", ToolGroup.Automation, "running the routine", "Routine", view = CardKind.Routine),
+        ToolInfo("list_routines", ToolGroup.Automation, "checking routines", "Routines", readOnly = true, view = CardKind.Routine),
+        ToolInfo("delete_routine", ToolGroup.Automation, "removing the routine", "Routine", risk = Risk.Sensitive, view = CardKind.Routine)
     )
+
+    /**
+     * The risk of one particular call, which can be higher than the tool's own:
+     * switching a light is a home control like any other, unlocking the front
+     * door is not.
+     */
+    fun riskFor(name: String, argumentsJson: String = "{}"): Risk {
+        val base = info(name)?.risk ?: Risk.Local
+        if (name == "home_control") {
+            val args = argumentsJson.lowercase(Locale.ROOT)
+            if (UNLOCKING.containsMatchIn(args)) return Risk.Sensitive
+        }
+        return base
+    }
+
+    private val UNLOCKING = Regex("\"action\"\\s*:\\s*\"(unlock|open)\"|garage|front door|alarm_disarm|disarm")
+
+    fun risk(name: String): Risk = info(name)?.risk ?: Risk.Local
+
+    fun view(name: String): CardKind = info(name)?.view ?: CardKind.Answer
 
     private val byName: Map<String, ToolInfo> = ALL.associateBy { it.name }
 

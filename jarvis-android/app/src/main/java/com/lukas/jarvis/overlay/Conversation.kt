@@ -112,6 +112,16 @@ class Conversation(private val container: AppContainer) {
             onDone()
             return
         }
+        // A spoken yes or no to something waiting on screen — a text, a call —
+        // is answered here, without a model, and only while the question is fresh.
+        container.gate.awaitingVoice()?.let { action ->
+            val yes = com.lukas.jarvis.llm.ConfirmationGate.isYes(text)
+            val no = com.lukas.jarvis.llm.ConfirmationGate.isNo(text)
+            if (yes || no) {
+                answerWaiting(action, yes, onDone)
+                return
+            }
+        }
         busy = true
         _stage.value = Stage.Thinking
 
@@ -186,6 +196,49 @@ class Conversation(private val container: AppContainer) {
             } finally {
                 busy = false
                 if (!spoken) onDone()
+            }
+        }
+    }
+
+    /** Runs or drops a waiting action on a spoken yes or no, and says what happened. */
+    private fun answerWaiting(action: com.lukas.jarvis.llm.PendingAction, yes: Boolean, onDone: () -> Unit) {
+        busy = true
+        _stage.value = Stage.Thinking
+        scope.launch {
+            var spoken = false
+            try {
+                val settings = container.settings.current
+                val said = withContext(Dispatchers.IO) {
+                    val taken = if (yes) container.gate.take(action.id) else container.gate.cancel(action.id)
+                    if (taken == null) return@withContext "That's no longer waiting."
+                    if (yes) {
+                        val output = container.agent.carryOut(taken, settings)
+                        runCatching {
+                            container.brain.logAction(taken.tool, taken.title, taken.detail, taken.risk.name, output.result, "voice")
+                        }
+                        output.result.lineSequence().firstOrNull()?.takeIf { it.length <= 200 } ?: "Done."
+                    } else {
+                        runCatching {
+                            container.brain.logAction(taken.tool, taken.title, taken.detail, taken.risk.name, "Cancelled.", "cancelled")
+                        }
+                        "Okay, I won't."
+                    }
+                }
+                _lastReply.value = said
+                _stage.value = Stage.Speaking
+                spoken = true
+                container.speaker.speak(said) {
+                    scope.launch {
+                        if (_stage.value == Stage.Speaking) _stage.value = Stage.Idle
+                        onDone()
+                    }
+                }
+            } finally {
+                busy = false
+                if (!spoken) {
+                    _stage.value = Stage.Idle
+                    onDone()
+                }
             }
         }
     }

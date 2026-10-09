@@ -332,6 +332,20 @@ class AssistantViewModel(
             if (lastTurnWasVoice && settingsStore.current.handsFree) startListening()
             return
         }
+        // Something is waiting on a yes: a plain yes or no answers it here,
+        // on the phone, rather than being handed to a model to interpret.
+        container.gate.awaitingVoice()?.let { action ->
+            when {
+                com.lukas.jarvis.llm.ConfirmationGate.isYes(text) -> {
+                    confirmAction(action.id, spoken = text)
+                    return
+                }
+                com.lukas.jarvis.llm.ConfirmationGate.isNo(text) -> {
+                    cancelAction(action.id, spoken = text)
+                    return
+                }
+            }
+        }
         turn(display = text) { onStage, onTool, onDraft ->
             // With no network at all, a plain request — a timer, the torch, a
             // sum — is answered on the phone at once, not after every free
@@ -422,6 +436,80 @@ class AssistantViewModel(
             )
             result.copy(toolsUsed = (listOf("take_photo") + result.toolsUsed).distinct())
         }
+    }
+
+    // ------------------------------------------------------------ asking first
+
+    /** Texts, calls, deletes and the like that are waiting on the person's yes. */
+    val pendingActions: StateFlow<List<com.lukas.jarvis.llm.PendingAction>> = container.gate.pending
+
+    /**
+     * Runs a waiting action: the person tapped its card or said yes. The only
+     * way an outward or irreversible call ever happens.
+     */
+    fun confirmAction(id: Long, spoken: String? = null) {
+        val action = container.gate.take(id) ?: return
+        val current = settingsStore.current
+        lastTurnWasVoice = spoken != null && lastTurnWasVoice
+        viewModelScope.launch {
+            spoken?.let { said ->
+                val line = ChatMessage(role = ChatMessage.ROLE_USER, content = said)
+                _ui.update { it.copy(messages = it.messages + line) }
+                storeUserMessage(line, line)
+            }
+            _ui.update { it.copy(stage = Stage.Thinking, stageLabel = com.lukas.jarvis.llm.ToolCatalog.doing(action.tool), activity = listOf(action.tool)) }
+            val output = withContext(Dispatchers.IO) { container.agent.carryOut(action, current) }
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    container.brain.logAction(
+                        action.tool, action.title, action.detail, action.risk.name, output.result,
+                        if (spoken != null) "voice" else "tap"
+                    )
+                }
+            }
+            val effects = com.lukas.jarvis.llm.ToolEffects(true, true, true).also { it.outputs += output }
+            deliver(
+                AgentResult(reply = doneLine(output.result), effects = effects, toolsUsed = listOf(action.tool)),
+                current
+            )
+        }
+    }
+
+    /** Drops a waiting action; nothing is sent. */
+    fun cancelAction(id: Long, spoken: String? = null) {
+        val action = container.gate.cancel(id) ?: return
+        viewModelScope.launch {
+            spoken?.let { said ->
+                val line = ChatMessage(role = ChatMessage.ROLE_USER, content = said)
+                _ui.update { it.copy(messages = it.messages + line) }
+                storeUserMessage(line, line)
+            }
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    container.brain.logAction(action.tool, action.title, action.detail, action.risk.name, "Cancelled.", "cancelled")
+                }
+            }
+            deliver(
+                AgentResult(
+                    reply = "Okay, I won't. Nothing was sent.".takeIf { action.risk == com.lukas.jarvis.llm.Risk.Outward }
+                        ?: "Okay, left as it was.",
+                    effects = com.lukas.jarvis.llm.ToolEffects(),
+                    toolsUsed = emptyList()
+                ),
+                settingsStore.current
+            )
+        }
+    }
+
+    /** Changes one field of a waiting action before saying yes to it. */
+    fun editAction(id: Long, key: String, value: String) {
+        container.gate.edit(id, key, value)
+    }
+
+    /** What is said once a confirmed action has run: its own words, unless they are a wall of text. */
+    private fun doneLine(result: String): String {
+        val line = result.trim().lineSequence().firstOrNull().orEmpty()
+        return if (line.isNotBlank() && line.length <= 200) line else "Done."
     }
 
     /** The user closed the camera without taking anything. */

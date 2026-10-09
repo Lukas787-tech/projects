@@ -48,17 +48,6 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/** What changed as a result of a turn, so the UI knows which tabs to refresh. */
-data class ToolEffects(
-    var memoriesChanged: Boolean = false,
-    var trackersChanged: Boolean = false,
-    var tasksChanged: Boolean = false,
-    /** Pictures drawn this turn, as file paths, to be shown with the reply. */
-    val images: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf())
-) {
-    val any: Boolean get() = memoriesChanged || trackersChanged || tasksChanged
-}
-
 /**
  * The bridge between the model and the phone. Every tool returns plain text
  * rather than JSON: small free-tier models read prose far more reliably than
@@ -102,7 +91,7 @@ class Tools(
     private val settingsStore: com.lukas.jarvis.core.SettingsStore,
     /** For searching Fish Audio's voice library; null where nothing speaks. */
     private val speaker: com.lukas.jarvis.voice.Speaker? = null
-) {
+) : ToolBox {
 
     /**
      * Runs a routine's steps as turns of their own. Set by the container once
@@ -118,9 +107,9 @@ class Tools(
      * while one runs, keeps two routines at once (the app and a quiet one in
      * the background) from leaving the runner switched off for good.
      */
-    val routinesRunning = java.util.concurrent.atomic.AtomicInteger(0)
+    override val routinesRunning = java.util.concurrent.atomic.AtomicInteger(0)
 
-    fun schemas(settings: Settings): List<JSONObject> = buildList {
+    override fun schemas(settings: Settings): List<JSONObject> = buildList {
         addAll(memoryTools())
         addAll(trackerTools(settings))
         addAll(taskTools())
@@ -951,9 +940,8 @@ class Tools(
         ),
         tool(
             "call",
-            "Step one of ringing someone: this does NOT ring yet. It readies the call and hands " +
-                "you back a question. Read that question out and wait for the user to answer. " +
-                "Use find_contact first when given a name.",
+            "Ring someone. This does NOT ring yet: it puts the call on screen and it rings when " +
+                "the user taps Call or says yes. Use find_contact first when given a name.",
             props(
                 "number" to str("The phone number, digits and an optional leading +."),
                 "who" to str("The person's name, if you have it, so it can be read back.")
@@ -962,10 +950,8 @@ class Tools(
         ),
         tool(
             "place_call",
-            "Step two: actually rings the number readied by `call`. Only ever use this after " +
-                "you asked and the user clearly said yes in their next message. If they said " +
-                "anything else, or said nothing about it, use `cancel_call` instead. Never call " +
-                "this in the same turn as `call`.",
+            "Rings a call that is already waiting on screen. The user's own yes does this; you " +
+                "should not need it.",
             props(),
             emptyList()
         ),
@@ -985,9 +971,8 @@ class Tools(
         ),
         tool(
             "send_message",
-            "Send a text message. This really sends it — there is no draft and nothing for the " +
-                "user to press. Say it has been sent, in the past tense. Use find_contact first " +
-                "when given a name.",
+            "Send a text message. It goes up on screen and is sent when the user says yes or taps " +
+                "Send. Use find_contact first when given a name.",
             props(
                 "number" to str("Who to send to."),
                 "text" to str("The message, in the user's own voice and language.")
@@ -1010,8 +995,8 @@ class Tools(
         tool(
             "reply_to_message",
             "Answer a message that has just arrived in WhatsApp, Signal, Telegram, SMS or any " +
-                "other app, straight from its notification. It really sends. With no name, the " +
-                "newest message is answered, which is usually the one meant.",
+                "other app, straight from its notification, once the user says yes to the card. With " +
+                "no name, the newest message is answered, which is usually the one meant.",
             props(
                 "text" to str("The reply, in the user's own voice and language."),
                 "who" to str("The sender or the app, if the user named one. Leave out for the newest.")
@@ -1184,7 +1169,7 @@ class Tools(
 
     // ---------------------------------------------------------------- dispatch
 
-    suspend fun execute(call: ToolCall, settings: Settings, effects: ToolEffects): String {
+    override suspend fun execute(call: ToolCall, settings: Settings, effects: ToolEffects): String {
         val args = runCatching { JSONObject(call.argumentsJson) }.getOrDefault(JSONObject())
         return try {
             when (call.name) {

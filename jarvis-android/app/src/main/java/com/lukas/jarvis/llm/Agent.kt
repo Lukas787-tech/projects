@@ -4,11 +4,64 @@ import com.lukas.jarvis.auto.Routine
 import com.lukas.jarvis.core.Settings
 import com.lukas.jarvis.data.Brain
 import com.lukas.jarvis.data.ChatMessage
+import com.lukas.jarvis.data.Memory
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+
+/** What the agent needs from a model. [PooledLlm] is the real one. */
+interface ChatModel {
+    suspend fun chat(
+        settings: Settings,
+        messages: List<LlmMessage>,
+        tools: List<JSONObject> = emptyList(),
+        stream: ReplyStream? = null,
+        onEndpointChange: (String) -> Unit = {}
+    ): LlmReply
+
+    suspend fun look(settings: Settings, prompt: String, imageDataUrl: String): String
+}
+
+/** What the agent needs from the tools. [Tools] is the real one. */
+interface ToolBox {
+    fun schemas(settings: Settings): List<JSONObject>
+    suspend fun execute(call: ToolCall, settings: Settings, effects: ToolEffects): String
+    val routinesRunning: AtomicInteger
+}
+
+/** What the agent reads from memory before it answers. */
+interface AgentMemory {
+    /** The live context block: balances, open tasks, the memories this sentence touches. */
+    fun context(utterance: String, settings: Settings, extra: List<String>): String
+    fun search(query: String, limit: Int): List<Memory>
+}
+
+/** The phone's own memory, as the agent reads it. */
+class BrainMemory(private val brain: Brain) : AgentMemory {
+    override fun context(utterance: String, settings: Settings, extra: List<String>): String =
+        Prompt.context(brain, utterance, settings, extra)
+
+    override fun search(query: String, limit: Int): List<Memory> = brain.searchMemories(query, limit = limit)
+}
+
+/**
+ * One tool call as the canvas sees it: what was asked, what came back, and —
+ * for an outward or irreversible one — the action now waiting on the person.
+ */
+data class ToolOutput(
+    val tool: String,
+    val argumentsJson: String,
+    val result: String,
+    val waiting: PendingAction? = null,
+    val at: Long = System.currentTimeMillis()
+) {
+    val failed: Boolean
+        get() = waiting == null && (result.startsWith("Tool '") && result.contains("failed") ||
+            result.startsWith("Error", ignoreCase = true))
+}
 
 data class AgentResult(
     val reply: String,
@@ -28,9 +81,11 @@ data class AgentResult(
  * caught here rather than paid for.
  */
 class Agent(
-    private val client: PooledLlm,
-    private val tools: Tools,
-    private val brain: Brain
+    private val client: ChatModel,
+    private val tools: ToolBox,
+    private val memory: AgentMemory,
+    /** Where every outward or irreversible call waits for the person's yes. */
+    val gate: ConfirmationGate = ConfirmationGate()
 ) {
 
     /** Lines about the world right now — roughly where the phone is — for the context block. */
@@ -48,7 +103,9 @@ class Agent(
          * The answer so far, while it is still being written, cleaned of any
          * reasoning or tool markup. Empty means "nothing to show".
          */
-        onDraft: (String) -> Unit = {}
+        onDraft: (String) -> Unit = {},
+        /** Called with each tool's outcome as it finishes, so its card can appear at once. */
+        onResult: (ToolOutput) -> Unit = {}
     ): AgentResult {
         val draft = DraftStream(onDraft)
         val effects = ToolEffects()
@@ -75,7 +132,7 @@ class Agent(
             )
         }
         messages += LlmMessage.system(
-            Prompt.context(brain, utterance, settings, runCatching { ambient() }.getOrDefault(emptyList()))
+            memory.context(utterance, settings, runCatching { ambient() }.getOrDefault(emptyList()))
         )
         messages += LlmMessage.user(utterance)
 
@@ -107,7 +164,7 @@ class Agent(
                 // "Stopwatch running." without starting it is caught here,
                 // and the thing is done for real.
                 if (used.isEmpty()) {
-                    doneInstead(utterance, settings, effects, available, used, onTool)
+                    doneInstead(utterance, settings, effects, available, used, onTool, onResult)
                         ?.let { return AgentResult(it, effects, used.distinct()) }
                 }
                 val text = clean(reply.content)
@@ -153,10 +210,10 @@ class Agent(
                 messages += LlmMessage.assistant(reply.content.orEmpty())
             }
 
-            val outcomes = runRound(calls, settings, effects, available, answered, used, onStage, onTool)
+            val outcomes = runRound(calls, settings, effects, available, answered, used, onStage, onTool, onResult)
             calls.indices.lastOrNull { index ->
                 val info = ToolCatalog.info(ToolCatalog.resolve(calls[index].name, available) ?: calls[index].name)
-                info != null && !info.readOnly
+                info != null && !info.readOnly && !outcomes[index].startsWith(WAITING_PREFIX)
             }?.let { lastAction = outcomes[it] }
 
             if (nativeCalls.isNotEmpty()) {
@@ -207,7 +264,8 @@ class Agent(
         effects: ToolEffects,
         available: Set<String>,
         used: MutableList<String>,
-        onTool: (String) -> Unit
+        onTool: (String) -> Unit,
+        onResult: (ToolOutput) -> Unit
     ): String? {
         val call = Reflexes.parse(utterance) ?: return null
         val tool = ToolCatalog.resolve(call.name, available) ?: return null
@@ -215,7 +273,8 @@ class Agent(
         if (ToolCatalog.isReadOnly(tool) || tool == "remember" || tool == "open_app") return null
         used += tool
         onTool(tool)
-        val result = runCatching { tools.execute(call.copy(name = tool), settings, effects) }.getOrNull() ?: return null
+        val result = runCatching { perform(call.copy(name = tool), settings, effects, onResult) }.getOrNull() ?: return null
+        if (result.startsWith(WAITING_PREFIX)) return effects.waiting.lastOrNull()?.let { waitingReply(it) }
         return result.replace(Regex("\\s*\\(ISO [^)]*\\)"), "").replace(Regex("\\s*\\(id \\d+\\)"), "")
     }
 
@@ -244,7 +303,10 @@ class Agent(
         val available = names(tools.schemas(settings))
         if (call.name !in available) return null
         val effects = ToolEffects()
-        val result = tools.execute(call, settings, effects)
+        val result = perform(call, settings, effects)
+        effects.waiting.lastOrNull()?.let { action ->
+            return AgentResult(reply = waitingReply(action), effects = effects, toolsUsed = listOf(call.name))
+        }
         val said = if (call.name == "remember" && effects.memoriesChanged) {
             "Noted: ${Reflexes.secondPerson(JSONObject(call.argumentsJson).optString("content"))}."
         } else {
@@ -292,7 +354,7 @@ class Agent(
             .toSet()
         if (words.isEmpty()) return null
         val needed = if (words.size == 1) 1 else 2
-        val hit = runCatching { brain.searchMemories(utterance, limit = 3) }.getOrDefault(emptyList())
+        val hit = runCatching { memory.search(utterance, 3) }.getOrDefault(emptyList())
             .firstOrNull { memory ->
                 val content = memory.content.lowercase()
                 words.count { it in content } >= needed
@@ -415,7 +477,8 @@ class Agent(
         answered: ConcurrentHashMap<String, String>,
         used: MutableList<String>,
         onStage: (String) -> Unit,
-        onTool: (String) -> Unit
+        onTool: (String) -> Unit,
+        onResult: (ToolOutput) -> Unit
     ): List<String> {
         val pending = calls.map { call ->
             val tool = ToolCatalog.resolve(call.name, available)
@@ -443,13 +506,13 @@ class Agent(
             )
             coroutineScope {
                 pending.map { item ->
-                    async { runOne(item, settings, effects, available, answered, earlier) }
+                    async { runOne(item, settings, effects, available, answered, earlier, onResult) }
                 }.awaitAll()
             }
         } else {
             pending.map { item ->
                 item.tool?.let { onStage(ToolCatalog.doing(it)) }
-                runOne(item, settings, effects, available, answered, earlier)
+                runOne(item, settings, effects, available, answered, earlier, onResult)
             }
         }
     }
@@ -460,7 +523,8 @@ class Agent(
         effects: ToolEffects,
         available: Set<String>,
         answered: ConcurrentHashMap<String, String>,
-        earlier: Set<String>
+        earlier: Set<String>,
+        onResult: (ToolOutput) -> Unit
     ): String {
         val key = signature(item.call, available)
         // Remembered like any answer, so a model that keeps asking for a tool
@@ -474,10 +538,67 @@ class Agent(
             return "Already done earlier in this turn, so not repeated. It said: $before"
         }
 
-        val result = clamp(tools.execute(item.call, settings, effects))
+        val result = clamp(perform(item.call, settings, effects, onResult))
         answered[key] = result
         return result
     }
+
+    /**
+     * Runs one call, unless it reaches outside the phone or cannot be taken
+     * back: then it is handed to the [gate] and nothing happens until the
+     * person says yes. Every path the agent has to a tool comes through here —
+     * the model's calls, the claim check's fallback and the offline reflexes.
+     */
+    private suspend fun perform(
+        call: ToolCall,
+        settings: Settings,
+        effects: ToolEffects,
+        onResult: (ToolOutput) -> Unit = {}
+    ): String {
+        if (gate.asksFirst(call.name, call.argumentsJson)) {
+            val action = gate.propose(call)
+            val line = gate.waitingLine(action)
+            val output = ToolOutput(call.name, action.argumentsJson, line, waiting = action)
+            effects.outputs += output
+            runCatching { onResult(output) }
+            return line
+        }
+        val result = tools.execute(call, settings, effects)
+        val output = ToolOutput(call.name, call.argumentsJson, result)
+        effects.outputs += output
+        runCatching { onResult(output) }
+        return result
+    }
+
+    /**
+     * Carries out an action the person said yes to — by tapping its card or
+     * saying so. The only way a gated call ever runs.
+     *
+     * A call is readied and rung in one go here: the card was the question, so
+     * the old second "are you sure?" turn would only ask it twice.
+     */
+    suspend fun carryOut(action: PendingAction, settings: Settings): ToolOutput {
+        val effects = ToolEffects()
+        val result = runCatching {
+            when (action.tool) {
+                "call" -> {
+                    val armed = tools.execute(action.call, settings, effects)
+                    if (armed.startsWith("Ready to ring")) {
+                        tools.execute(ToolCall("confirmed_place_${action.id}", "place_call", "{}"), settings, effects)
+                    } else {
+                        armed
+                    }
+                }
+                else -> tools.execute(action.call, settings, effects)
+            }
+        }.getOrElse { "Tool '${action.tool}' failed: ${it.message ?: it::class.java.simpleName}" }
+        return ToolOutput(action.tool, action.argumentsJson, result).also { effects.outputs += it }
+    }
+
+    /** What is said when a sentence went straight to a waiting action, with no model to word it. */
+    private fun waitingReply(action: PendingAction): String =
+        "Ready when you are — ${action.line}. Say yes, or tap ${action.verb}."
+
 
     /**
      * Why a requested tool did not run, worded so the next round can fix it.
@@ -627,6 +748,10 @@ class Agent(
         const val MAX_HISTORY_CHARS = 24_000
 
         const val MAX_TOOL_RESULT_CHARS = 4_000
+
+        /** How the gate's answer to the model starts, so it is never taken for a result. */
+        const val WAITING_PREFIX = "NOT DONE YET"
+
         val TOOL_BLOCK = Regex("<tool>\\s*(\\{.*?\\})\\s*</tool>", RegexOption.DOT_MATCHES_ALL)
         val THINK_BLOCK = Regex("<(think|thinking|reasoning)>.*?</\\1>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
         const val THINK_OPEN = "<think>"

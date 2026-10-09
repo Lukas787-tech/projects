@@ -118,6 +118,9 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
     testImplementation(libs.okhttp.mockwebserver)
+    // A real SQLite for the upgrade test: a 5.5 database is built, upgraded
+    // by the phone's own statements and checked row by row.
+    testImplementation(libs.sqlite.jdbc)
 
     // Screenshots of the real app, rendered on the JVM. Debug-only on purpose:
     // the release build and its tests never compile or download any of it, so

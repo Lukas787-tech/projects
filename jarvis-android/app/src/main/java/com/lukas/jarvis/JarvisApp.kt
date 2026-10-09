@@ -145,7 +145,10 @@ class AppContainer(context: Context) {
 
     private val pooled = PooledLlm(client, pool)
 
-    val agent = Agent(pooled, tools, brain).also { agent ->
+    /** Where texts, calls, deletes and the like wait for the person's yes. */
+    val gate = com.lukas.jarvis.llm.ConfirmationGate()
+
+    val agent = Agent(pooled, tools, com.lukas.jarvis.llm.BrainMemory(brain), gate).also { agent ->
         agent.ambient = {
             listOfNotNull(
                 briefer.lastPlace?.let { "Roughly where the phone is: $it" },

@@ -450,6 +450,75 @@ class Brain(context: Context) {
         db.delete("messages", null, null)
     }
 
+    // -------------------------------------------------------------- action log
+
+    /**
+     * Records an outward or irreversible action and how the person answered:
+     * "tap", "voice" or "cancelled".
+     */
+    fun logAction(tool: String, title: String, detail: String, risk: String, outcome: String, confirmedBy: String): Long {
+        val values = ContentValues().apply {
+            put("tool", tool)
+            put("title", title)
+            put("detail", detail)
+            put("risk", risk)
+            put("outcome", outcome.take(500))
+            put("confirmed_by", confirmedBy)
+            put("created_at", System.currentTimeMillis())
+        }
+        return db.insert("action_log", null, values)
+    }
+
+    fun actionLog(limit: Int = 100): List<ActionRecord> =
+        db.rawQuery(
+            "SELECT * FROM action_log ORDER BY created_at DESC, id DESC LIMIT ?",
+            arrayOf(limit.toString())
+        ).use { cursor ->
+            cursor.readAll { c ->
+                ActionRecord(
+                    id = c.getLong(c.getColumnIndexOrThrow("id")),
+                    tool = c.getString(c.getColumnIndexOrThrow("tool")),
+                    title = c.getString(c.getColumnIndexOrThrow("title")),
+                    detail = c.getString(c.getColumnIndexOrThrow("detail")),
+                    risk = c.getString(c.getColumnIndexOrThrow("risk")),
+                    outcome = c.getString(c.getColumnIndexOrThrow("outcome")),
+                    confirmedBy = c.getString(c.getColumnIndexOrThrow("confirmed_by")),
+                    createdAt = c.getLong(c.getColumnIndexOrThrow("created_at"))
+                )
+            }
+        }
+
+    // -------------------------------------------------------------------- pins
+
+    fun addPin(pin: PinRecord): Long {
+        val values = ContentValues().apply {
+            put("kind", pin.kind)
+            put("tool", pin.tool)
+            put("title", pin.title)
+            put("body", pin.body)
+            put("payload", pin.payload)
+            put("created_at", pin.createdAt)
+        }
+        return db.insert("pins", null, values)
+    }
+
+    fun removePin(id: Long): Boolean = db.delete("pins", "id = ?", arrayOf(id.toString())) > 0
+
+    fun pins(): List<PinRecord> =
+        db.rawQuery("SELECT * FROM pins ORDER BY created_at ASC, id ASC", null).use { cursor ->
+            cursor.readAll { c ->
+                PinRecord(
+                    id = c.getLong(c.getColumnIndexOrThrow("id")),
+                    kind = c.getString(c.getColumnIndexOrThrow("kind")),
+                    tool = c.getString(c.getColumnIndexOrThrow("tool")),
+                    title = c.getString(c.getColumnIndexOrThrow("title")),
+                    body = c.getString(c.getColumnIndexOrThrow("body")),
+                    payload = c.getString(c.getColumnIndexOrThrow("payload")),
+                    createdAt = c.getLong(c.getColumnIndexOrThrow("created_at"))
+                )
+            }
+        }
+
     // ------------------------------------------------------------------ backup
 
     /**
@@ -615,6 +684,8 @@ class Brain(context: Context) {
 
     private companion object {
         /** Parents before children, so a restore never inserts an orphan. */
-        val BACKUP_TABLES = listOf("memories", "memory_tokens", "trackers", "entries", "tasks", "messages")
+        val BACKUP_TABLES = listOf(
+            "memories", "memory_tokens", "trackers", "entries", "tasks", "messages", "action_log", "pins"
+        )
     }
 }

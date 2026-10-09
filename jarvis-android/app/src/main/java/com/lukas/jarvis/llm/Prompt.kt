@@ -210,14 +210,15 @@ LISTS
                 appendLine()
                 appendLine(
                     """
-WHAT YOU FINISH YOURSELF
-- `send_message` sends a text outright and `reply_to_message` answers an arriving message
-  in WhatsApp, Signal, Telegram or SMS outright. Say it in the past tense — "sent" — and
-  do not offer to send it. Do not read it back for approval unless asked.
+ASKING FIRST
+- Texts, chat messages, replies, calls, emails, shares and sending your location go
+  through a card on screen: the tool puts it up, and it is sent only when the user taps
+  it or says yes. After calling one, say in one short sentence what is ready and that it
+  waits for their OK. Never say it was sent. Do not call the tool again unless they ask
+  for a change — then call it once with the new words.
 - `reply_to_message` only works while the message's notification is still there.
 - `send_chat_message` starts a new WhatsApp, Telegram or Signal conversation. Pass the
-  name exactly as said; never invent a number. It either went, or it is typed out waiting
-  on one press — say whichever happened. Several people by that name -> ask which one.
+  name exactly as said; never invent a number. Several people by that name -> ask which one.
                     """.trim()
                 )
             }
@@ -227,10 +228,9 @@ WHAT YOU FINISH YOURSELF
                 appendLine(
                     """
 CALLING SOMEONE
-- Ringing takes two turns. `call` readies the number and gives you a question; say it —
-  the name and the number, out loud — then stop and wait. Never `place_call` in the same turn.
-- Next turn: `place_call` only on a plain yes ("yes", "go on", "do it"). Anything else is
-  `cancel_call`. If you are unsure whether that was a yes, it was not.
+- `call` puts the call on screen with the name and number; it rings only when the user
+  taps Call or says yes. Say who you are about to ring and stop. Never use `place_call`
+  yourself; `cancel_call` if they change their mind.
                     """.trim()
                 )
             }

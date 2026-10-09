@@ -23,16 +23,16 @@ import org.json.JSONObject
 class PooledLlm(
     private val client: LlmClient,
     private val pool: ModelPool
-) {
+) : ChatModel {
 
     val lastDiagnostics: Diagnostics? get() = client.lastDiagnostics
 
-    suspend fun chat(
+    override suspend fun chat(
         settings: Settings,
         messages: List<LlmMessage>,
-        tools: List<JSONObject> = emptyList(),
-        stream: ReplyStream? = null,
-        onEndpointChange: (String) -> Unit = {}
+        tools: List<JSONObject>,
+        stream: ReplyStream?,
+        onEndpointChange: (String) -> Unit
     ): LlmReply {
         val plan = pool.plan(settings)
         if (plan.isEmpty) {
@@ -130,7 +130,7 @@ class PooledLlm(
      * see go first, then each account is tried once more with the model that
      * provider serves pictures on, which is usually free on the same key.
      */
-    suspend fun look(settings: Settings, prompt: String, imageDataUrl: String): String {
+    override suspend fun look(settings: Settings, prompt: String, imageDataUrl: String): String {
         val message = LlmMessage(LlmMessage.USER, prompt, images = listOf(imageDataUrl))
         val known = (pool.entries.value.map { it.endpoint }.filter { it.enabled } +
             pool.plan(settings, limit = 40).endpoints +

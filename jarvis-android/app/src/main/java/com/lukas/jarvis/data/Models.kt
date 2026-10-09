@@ -146,3 +146,27 @@ data class ChatMessage(
         const val ROLE_ASSISTANT = "assistant"
     }
 }
+
+/** One outward or irreversible action and how the person answered it. */
+data class ActionRecord(
+    val id: Long,
+    val tool: String,
+    val title: String,
+    val detail: String,
+    val risk: String,
+    val outcome: String,
+    /** "tap", "voice" or "cancelled". */
+    val confirmedBy: String,
+    val createdAt: Long
+)
+
+/** A card the person pinned to the canvas. [payload] is the card's own data as JSON. */
+data class PinRecord(
+    val id: Long = 0,
+    val kind: String,
+    val tool: String,
+    val title: String,
+    val body: String,
+    val payload: String = "{}",
+    val createdAt: Long = System.currentTimeMillis()
+)
