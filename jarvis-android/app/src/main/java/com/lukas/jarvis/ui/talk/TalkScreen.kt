@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -350,6 +351,9 @@ private fun Speech(state: TalkState, small: Boolean, act: (ActionIntent) -> Unit
             modifier = Modifier
                 .clip(Cafe.shape.medium)
                 .clickable(onClickLabel = "Read the whole conversation", role = Role.Button) { act(ActionIntent.Open(Room.History)) }
+                // A short line is still a finger's height to tap.
+                .defaultMinSize(minHeight = Cafe.space.touch)
+                .wrapContentHeight(Alignment.CenterVertically)
                 .padding(vertical = Cafe.space.xs)
         )
         if (state.trail.isNotEmpty()) {

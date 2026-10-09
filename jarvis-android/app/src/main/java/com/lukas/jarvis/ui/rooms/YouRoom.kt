@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -980,17 +981,27 @@ private fun PoolRow(entry: PoolEntry, actions: YouActions) {
     }
     val name = Providers.byId(entry.endpoint.providerId).label.substringBefore(" (") + " · " + entry.endpoint.model.substringAfterLast('/')
     Row(Modifier.fillMaxWidth().padding(vertical = Cafe.space.xs), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(10.dp).clip(CircleShape).background(dot))
-        Column(Modifier.weight(1f).padding(horizontal = Cafe.space.m)) {
-            Text(name, style = Cafe.type.body, color = if (entry.endpoint.enabled) Cafe.colors.espresso else Cafe.colors.cocoa, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(poolDetail(entry, status), style = Cafe.type.caption, color = Cafe.colors.cocoa, maxLines = 2)
+        // The name and the switch are one target, the way a settings row is.
+        Row(
+            Modifier
+                .weight(1f)
+                .clip(Cafe.shape.medium)
+                .toggleable(entry.endpoint.enabled, role = Role.Switch) { actions.onTogglePoolEntry(entry.endpoint.id, it) }
+                .defaultMinSize(minHeight = Cafe.space.touch)
+                .padding(vertical = Cafe.space.xxs),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(10.dp).clip(CircleShape).background(dot))
+            Column(Modifier.weight(1f).padding(horizontal = Cafe.space.m)) {
+                Text(name, style = Cafe.type.body, color = if (entry.endpoint.enabled) Cafe.colors.espresso else Cafe.colors.cocoa, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(poolDetail(entry, status), style = Cafe.type.caption, color = Cafe.colors.cocoa, maxLines = 2)
+            }
+            Switch(
+                checked = entry.endpoint.enabled,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(checkedTrackColor = Cafe.colors.accentFill, checkedThumbColor = Cafe.colors.onAccent)
+            )
         }
-        Switch(
-            checked = entry.endpoint.enabled,
-            onCheckedChange = { actions.onTogglePoolEntry(entry.endpoint.id, it) },
-            colors = SwitchDefaults.colors(checkedTrackColor = Cafe.colors.accentFill, checkedThumbColor = Cafe.colors.onAccent),
-            modifier = Modifier.semantics { contentDescription = "Use $name" }
-        )
         IconCircle(Icons.Rounded.DeleteOutline, "Take $name out of the pool", { actions.onRemoveFromPool(entry.endpoint.id) }, size = 44.dp, tint = Cafe.colors.cocoa)
     }
 }
