@@ -1,34 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The arc reactor: the same rings the assistant draws, still. Generated
-     from exact geometry so every arc is centred on the canvas. -->
+<!-- Mochi for themed icons: one colour, the face cut out. Generated from the sprite. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:pathData="M54.00,54.00m-31.00,0a31.00,31.00 0,1 1,62.00 0a31.00,31.00 0,1 1,-62.00 0"
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1.2" />
-    <path
-        android:pathData="M58.69,27.41A27.00,27.00 0 0,1 80.59,49.31M80.74,57.76A27.00,27.00 0 0,1 72.07,74.06M65.84,78.27A27.00,27.00 0 0,1 27.50,59.15M27.10,51.65A27.00,27.00 0 0,1 38.51,31.88M44.77,28.63A27.00,27.00 0 0,1 77.38,40.50"
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="2.6"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M67.49,54.47L74.99,54.73A21.00,21.00 0 0,1 72.00,64.82L65.57,60.95A13.50,13.50 0 0,0 67.49,54.47ZM64.64,62.31L70.55,66.93A21.00,21.00 0 0,1 62.21,73.33L59.27,66.43A13.50,13.50 0 0,0 64.64,62.31ZM57.72,66.98L59.79,74.19A21.00,21.00 0 0,1 49.28,74.46L50.96,67.15A13.50,13.50 0 0,0 57.72,66.98ZM49.38,66.69L46.82,73.73A21.00,21.00 0 0,1 38.15,67.78L43.81,62.86A13.50,13.50 0 0,0 49.38,66.69ZM42.81,61.55L36.59,65.74A21.00,21.00 0 0,1 33.08,55.83L40.55,55.18A13.50,13.50 0 0,0 42.81,61.55ZM40.51,53.53L33.01,53.27A21.00,21.00 0 0,1 36.00,43.18L42.43,47.05A13.50,13.50 0 0,0 40.51,53.53ZM43.36,45.69L37.45,41.07A21.00,21.00 0 0,1 45.79,34.67L48.73,41.57A13.50,13.50 0 0,0 43.36,45.69ZM50.28,41.02L48.21,33.81A21.00,21.00 0 0,1 58.72,33.54L57.04,40.85A13.50,13.50 0 0,0 50.28,41.02ZM58.62,41.31L61.18,34.27A21.00,21.00 0 0,1 69.85,40.22L64.19,45.14A13.50,13.50 0 0,0 58.62,41.31ZM65.19,46.45L71.41,42.26A21.00,21.00 0 0,1 74.92,52.17L67.45,52.82A13.50,13.50 0 0,0 65.19,46.45Z"
-        android:fillColor="#FFFFFFFF" />
-    <path
-        android:pathData="M54.00,54.00m-11.50,0a11.50,11.50 0,1 1,23.00 0a11.50,11.50 0,1 1,-23.00 0"
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1.4" />
-    <path
-        android:pathData="M54.00,54.00m-8.50,0a8.50,8.50 0,1 1,17.00 0a8.50,8.50 0,1 1,-17.00 0"
-        android:fillColor="#FFFFFFFF" />
-    <path
-        android:pathData="M54.00,54.00m-4.50,0a4.50,4.50 0,1 1,9.00 0a4.50,4.50 0,1 1,-9.00 0"
-        android:fillColor="#FFFFFFFF" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M54,28.8h4.2v2.1h-4.2zM51.9,30.9h4.2v2.1h-4.2zM51.9,33h4.2v2.1h-4.2zM54,35.1h4.2v2.1h-4.2zM54,37.2h4.2v2.1h-4.2zM51.9,39.3h4.2v2.1h-4.2zM49.8,43.5h8.4v2.1h-8.4zM47.7,45.6h12.6v2.1h-12.6zM43.5,47.7h21v2.1h-21zM39.3,49.8h29.4v2.1h-29.4zM35.1,51.9h37.8v2.1h-37.8zM33,54h42v2.1h-42zM33,56.1h42v2.1h-42zM30.9,58.2h10.5v2.1h-10.5zM45.6,58.2h16.8v2.1h-16.8zM66.6,58.2h10.5v2.1h-10.5zM30.9,60.3h8.4v2.1h-8.4zM47.7,60.3h12.6v2.1h-12.6zM68.7,60.3h8.4v2.1h-8.4zM30.9,62.4h8.4v2.1h-8.4zM47.7,62.4h12.6v2.1h-12.6zM68.7,62.4h8.4v2.1h-8.4zM30.9,64.5h10.5v2.1h-10.5zM45.6,64.5h16.8v2.1h-16.8zM66.6,64.5h10.5v2.1h-10.5zM30.9,66.6h46.2v2.1h-46.2zM30.9,68.7h18.9v2.1h-18.9zM51.9,68.7h4.2v2.1h-4.2zM58.2,68.7h18.9v2.1h-18.9zM30.9,70.8h21v2.1h-21zM56.1,70.8h21v2.1h-21zM33,72.9h42v2.1h-42zM37.2,75h33.6v2.1h-33.6z" />
 </vector>

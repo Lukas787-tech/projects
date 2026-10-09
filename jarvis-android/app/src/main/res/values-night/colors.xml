@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The night café. -->
+<resources>
+    <color name="mochi_foam">#FF1F1815</color>
+    <color name="mochi_paper">#FF2B221E</color>
+    <color name="mochi_latte">#FF3A2E28</color>
+    <color name="mochi_espresso">#FFF3E9DD</color>
+    <color name="mochi_cocoa">#FFCDBCAE</color>
+</resources>

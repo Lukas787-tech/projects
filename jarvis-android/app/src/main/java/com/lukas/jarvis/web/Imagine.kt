@@ -42,7 +42,7 @@ class Imagine(context: Context) {
             "?width=$width&height=$height&nologo=true&private=true&seed=$seed"
         val request = Request.Builder()
             .url(url)
-            .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) Jarvis/5.0")
+            .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) Mochi/6.0")
             .build()
         val file = File(folder, "img_${System.currentTimeMillis()}.jpg")
         http.newCall(request).execute().use { response ->

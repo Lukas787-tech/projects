@@ -86,7 +86,15 @@ class BubbleService : Service() {
 
     private fun attach() {
         windows = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        val view = DotView(this)
+        // Drawn in the user's café: their accent, and the night café when that is what they see.
+        val look = (application as JarvisApp).container.settings.current
+        val night = when (look.themeMode) {
+            "dark" -> true
+            "light" -> false
+            else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
+        val view = DotView(this, look.accent, night)
         val size = (DOT_DP * resources.displayMetrics.density).toInt()
 
         val params = WindowManager.LayoutParams(
@@ -220,7 +228,7 @@ class BubbleService : Service() {
         )
         val notification: Notification = Notification.Builder(this, Reminders.CHANNEL_WAKE)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Jarvis is on screen")
+            .setContentTitle("Mochi is on screen")
             .setContentText("Tap the dot to talk · tap here to put it away")
             .setContentIntent(stop)
             .setOngoing(true)

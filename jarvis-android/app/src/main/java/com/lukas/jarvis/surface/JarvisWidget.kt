@@ -19,7 +19,7 @@ class JarvisWidget : AppWidgetProvider() {
         val settings = runCatching {
             (context.applicationContext as JarvisApp).container.settings.current
         }.getOrNull()
-        val name = settings?.assistantName?.ifBlank { null } ?: "Jarvis"
+        val name = settings?.assistantName?.ifBlank { null } ?: "Mochi"
         val user = settings?.userName?.takeIf { it.isNotBlank() }
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         val part = when (hour) {

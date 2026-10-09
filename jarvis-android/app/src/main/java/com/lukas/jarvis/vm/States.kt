@@ -1,5 +1,8 @@
 package com.lukas.jarvis.vm
 
+/** Where a turn is: waiting, hearing you, working it out, or answering. */
+enum class Stage { Idle, Listening, Thinking, Speaking }
+
 /** State of "ask the provider which models it really has". */
 sealed interface ModelsState {
     data object Idle : ModelsState

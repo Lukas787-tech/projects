@@ -58,7 +58,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val builder = Notification.Builder(context, Reminders.CHANNEL_REMINDERS)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
-            .setContentText(notes ?: "Tap to open Jarvis")
+            .setContentText(notes ?: "Tap to open Mochi")
             .setCategory(Notification.CATEGORY_REMINDER)
             .setAutoCancel(true)
             .setContentIntent(open)

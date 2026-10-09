@@ -184,7 +184,7 @@ class Phone(context: Context) {
         val adapter = adapter ?: return "This phone has no Bluetooth."
         if (!mayTalkToBluetooth) {
             return "I need the Bluetooth permission before I can see your devices. " +
-                "Grant it in Android settings under Jarvis."
+                "Grant it in Android settings under Mochi."
         }
         if (!adapter.isEnabled) {
             return "Bluetooth is switched off. I cannot switch it on myself — " +

@@ -110,7 +110,7 @@ class PooledLlm(
 
         throw LlmException(
             buildString {
-                append("Every endpoint Jarvis tried came back empty.\n\n")
+                append("Every endpoint Mochi tried came back empty.\n\n")
                 append(tried.toString().trim())
                 append("\n\n")
                 append(advice(last))
@@ -223,7 +223,7 @@ class PooledLlm(
             "Those accounts are out of credit. Add a free-tier provider in Settings."
 
         FailureKind.Network ->
-            "Jarvis could not reach anything. Check the phone's connection."
+            "Mochi could not reach anything. Check the phone's connection."
 
         FailureKind.ModelMissing ->
             "Those model ids are gone. Tap Load models in Settings to refresh them."

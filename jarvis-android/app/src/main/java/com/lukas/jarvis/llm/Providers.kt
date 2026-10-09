@@ -169,7 +169,7 @@ object Providers {
             fallbackModels = listOf("default", "fast"),
             needsKey = false,
             keyUrl = null,
-            note = "Works with no key and no account. Built into Jarvis, so it " +
+            note = "Works with no key and no account. Built into Mochi, so it " +
                 "answers from the very first launch.",
             tier = Tier.Keyless,
             rate = RateHint(requestsPerMinute = 20),
@@ -252,7 +252,7 @@ object Providers {
             extraHeaders = mapOf(
                 // OpenRouter uses these purely for attribution on its dashboard.
                 "HTTP-Referer" to "https://github.com/Lukas787-tech/projects",
-                "X-Title" to "Jarvis"
+                "X-Title" to "Mochi"
             ),
             poolLimit = 6
         ),

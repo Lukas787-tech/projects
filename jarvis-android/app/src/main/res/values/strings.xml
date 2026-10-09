@@ -1,25 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Jarvis</string>
+    <string name="app_name">Mochi</string>
     <string name="wake_channel_name">Always listening</string>
     <string name="reminder_channel_name">Reminders</string>
     <!-- Shown by Android on the accessibility page, where the user decides
          whether to allow this. It should say exactly what it does. -->
-    <string name="tapper_description">Lets Jarvis press send in WhatsApp, Telegram and Signal after it has written a message you asked for. It does nothing at any other time and reads nothing back.</string>
+    <string name="tapper_description">Lets Mochi press send in WhatsApp, Telegram and Signal after it has written a message you asked for. It does nothing at any other time and reads nothing back.</string>
     <string name="shortcut_talk">Talk</string>
-    <string name="shortcut_talk_long">Talk to Jarvis</string>
+    <string name="shortcut_talk_long">Talk to Mochi</string>
     <string name="shortcut_type">Type</string>
-    <string name="shortcut_type_long">Type to Jarvis</string>
+    <string name="shortcut_type_long">Type to Mochi</string>
     <string name="shortcut_scan">Scan</string>
-    <string name="shortcut_scan_long">Show Jarvis something</string>
+    <string name="shortcut_scan_long">Show Mochi something</string>
     <string name="shortcut_today">Today</string>
     <string name="shortcut_today_long">My day</string>
-    <string name="tile_label">Jarvis</string>
-    <string name="widget_title">Ask Jarvis anything</string>
+    <string name="tile_label">Mochi</string>
+    <string name="widget_title">Ask Mochi anything</string>
     <string name="widget_subtitle">Tap to talk · no key needed</string>
-    <string name="widget_description">Talk, type or show Jarvis something, straight from the home screen.</string>
-    <string name="share_label">Ask Jarvis</string>
-    <string name="screen_reader_label">Jarvis screen reading</string>
+    <string name="widget_description">Talk, type or show Mochi something, straight from the home screen.</string>
+    <string name="share_label">Ask Mochi</string>
+    <string name="screen_reader_label">Mochi screen reading</string>
     <!-- Shown by Android on the accessibility page. It should say exactly what it does. -->
-    <string name="screen_reader_description">Lets Jarvis read the text on your screen when you ask it to — "summarise this page", "what does this say". It reads nothing at any other time, never reads Jarvis itself or the keyboard, and stores nothing.</string>
+    <string name="screen_reader_description">Lets Mochi read the text on your screen when you ask it to — "summarise this page", "what does this say". It reads nothing at any other time, never reads Mochi itself or the keyboard, and stores nothing.</string>
 </resources>

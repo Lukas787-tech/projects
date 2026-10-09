@@ -2,65 +2,103 @@ package com.lukas.jarvis.overlay
 
 import android.animation.ValueAnimator
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RadialGradient
-import android.graphics.RectF
-import android.graphics.Shader
-import android.graphics.SweepGradient
+import android.graphics.Rect
 import android.view.View
+import com.lukas.jarvis.ui.character.CharacterState
+import com.lukas.jarvis.ui.character.Choreo
+import com.lukas.jarvis.ui.character.MochiPalette
+import com.lukas.jarvis.ui.character.Mood
+import com.lukas.jarvis.ui.character.Sprites
+import com.lukas.jarvis.ui.theme.cafeColors
 import com.lukas.jarvis.vm.Stage
 import kotlin.math.min
-import kotlin.math.sin
 
 /**
- * The floating dot, drawn without Compose.
+ * Mochi floating over other apps, drawn without Compose.
  *
  * A Compose view in a window owned by a service needs a lifecycle owner, a
  * saved-state owner and a recomposer wired up by hand, and every one of those
  * is a crash in someone's notification shade if it is wrong. This is the same
- * pearl drawn straight onto a canvas: fewer moving parts, and nothing that can
- * fail outside the app's own process.
+ * sprite on a paper disc, drawn straight onto a canvas: the same frames the
+ * app shows, at whole-pixel sizes, and nothing that can fail outside the app.
  */
-class DotView(context: Context) : View(context) {
+class DotView(context: Context, accentId: String = "caramel", dark: Boolean = false) : View(context) {
 
     var stage: Stage = Stage.Idle
         set(value) {
             if (field == value) return
             field = value
+            frames = build(value)
             invalidate()
         }
 
-    /** Voice loudness 0..1, which the pearl swells with while listening. */
+    /** Voice loudness 0..1, which opens Mochi's mouth while it speaks. */
     var level: Float = 0f
         set(value) {
             val next = value.coerceIn(0f, 1f)
-            if (kotlin.math.abs(field - next) < 0.02f) return
+            if (kotlin.math.abs(field - next) < 0.05f) return
             field = next
             invalidate()
         }
 
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val palette = MochiPalette.from(cafeColors(dark, accentId)).argb
+    private val disc = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (dark) Color.rgb(0x2B, 0x22, 0x1E) else Color.rgb(0xFF, 0xFD, 0xF9) }
+    private val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = 3f
+        strokeWidth = 2f
+        color = if (dark) Color.rgb(0x3A, 0x2E, 0x28) else Color.rgb(0xEF, 0xE4, 0xD6)
     }
-    private val arcBounds = RectF()
+    private val shadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(46, 0x3A, 0x2E, 0x28) }
+    private val pixels = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
+    private val src = Rect()
+    private val dst = Rect()
 
-    private var phase = 0f
+    private var frames: List<Bitmap> = build(Stage.Idle)
+    private var tick = 0
 
-    // One animator for the breathing and the working arc. It runs only while
-    // the view is attached, because a forgotten animator in a service is a
-    // battery complaint nobody traces back to here.
-    private val ticker = ValueAnimator.ofFloat(0f, (2 * Math.PI).toFloat()).apply {
-        duration = 3600
+    // One animator at Mochi's own eight frames a second. It runs only while the
+    // view is attached: a forgotten animator in a service is a battery complaint.
+    private val ticker = ValueAnimator.ofInt(0, Choreo.FPS).apply {
+        duration = 1000
         repeatCount = ValueAnimator.INFINITE
         addUpdateListener {
-            phase = it.animatedValue as Float
-            invalidate()
+            val next = it.animatedValue as Int
+            if (next != tick % Choreo.FPS) {
+                tick++
+                invalidate()
+            }
         }
     }
+
+    private fun state(stage: Stage) = CharacterState(
+        mood = when (stage) {
+            Stage.Idle -> Mood.Idle
+            Stage.Listening -> Mood.Listening
+            Stage.Thinking -> Mood.Thinking
+            Stage.Speaking -> Mood.Speaking
+        },
+        talking = stage == Stage.Speaking
+    )
+
+    private fun bitmap(state: CharacterState, t: Int, mouth: com.lukas.jarvis.ui.character.Mouth?): Bitmap {
+        val cells = Sprites.compose(Choreo.pose(state, t, talkMouth = mouth))
+        val argb = IntArray(cells.size) { palette[cells[it].toInt()] }
+        return Bitmap.createBitmap(argb, Sprites.W, Sprites.H, Bitmap.Config.ARGB_8888)
+    }
+
+    private fun build(stage: Stage): List<Bitmap> {
+        val state = state(stage)
+        talking.clear()
+        return (0 until Choreo.loopLength(state).coerceAtLeast(1)).map { t -> bitmap(state, t, null) }
+    }
+
+    // While speaking the mouth follows the voice, so those frames are made as
+    // they are needed and kept: a loop times a handful of mouth shapes.
+    private val talking = HashMap<Pair<Int, com.lukas.jarvis.ui.character.Mouth>, Bitmap>()
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -73,79 +111,26 @@ class DotView(context: Context) : View(context) {
     }
 
     override fun onDraw(canvas: Canvas) {
-        val centreX = width / 2f
-        val centreY = height / 2f
-        val outer = min(width, height) / 2f
+        val cx = width / 2f
+        val cy = height / 2f
+        val radius = min(width, height) / 2f - 4f
+        canvas.drawCircle(cx, cy + 3f, radius, shadow)
+        canvas.drawCircle(cx, cy, radius, disc)
+        canvas.drawCircle(cx, cy, radius, edge)
 
-        val glow = when (stage) {
-            Stage.Idle -> 0.34f
-            Stage.Listening -> 0.85f
-            Stage.Thinking -> 0.58f
-            Stage.Speaking -> 1f
+        val t = tick % frames.size
+        val frame = if (stage == Stage.Speaking) {
+            val mouth = Choreo.mouthFor(level)
+            talking.getOrPut(t to mouth) { bitmap(state(stage), t, mouth) }
+        } else {
+            frames[t]
         }
-        val tint = if (stage == Stage.Thinking) SILVER_SOFT else SILVER
-
-        val pulse = 1f + 0.05f * sin(phase)
-        val voice = if (stage == Stage.Listening) level * 0.28f else 0f
-        val core = outer * (0.32f * pulse + voice)
-
-        // Halo, so the dot reads over a bright wallpaper as well as a dark one.
-        fill.shader = RadialGradient(
-            centreX, centreY, outer,
-            intArrayOf(
-                withAlpha(tint, 0.30f * glow),
-                withAlpha(tint, 0.10f * glow),
-                Color.TRANSPARENT
-            ),
-            floatArrayOf(0f, 0.55f, 1f),
-            Shader.TileMode.CLAMP
-        )
-        canvas.drawCircle(centreX, centreY, outer, fill)
-
-        ring.shader = null
-        ring.strokeWidth = 1.5f
-        ring.color = withAlpha(tint, 0.25f + 0.30f * glow)
-        canvas.drawCircle(centreX, centreY, outer * 0.68f, ring)
-
-        fill.shader = RadialGradient(
-            centreX - core * 0.2f, centreY - core * 0.24f, core * 1.7f,
-            intArrayOf(withAlpha(Color.WHITE, 0.92f * glow), tint, withAlpha(tint, 0.65f)),
-            floatArrayOf(0f, 0.55f, 1f),
-            Shader.TileMode.CLAMP
-        )
-        canvas.drawCircle(centreX, centreY, core, fill)
-
-        if (stage == Stage.Thinking) {
-            val radius = outer * 0.68f
-            arcBounds.set(
-                centreX - radius, centreY - radius,
-                centreX + radius, centreY + radius
-            )
-            val turn = Math.toDegrees(phase.toDouble()).toFloat() * 3f
-            ring.strokeWidth = 2.4f
-            ring.shader = SweepGradient(
-                centreX, centreY,
-                intArrayOf(Color.TRANSPARENT, withAlpha(tint, 0.95f), Color.TRANSPARENT),
-                floatArrayOf(0f, 0.12f, 0.3f)
-            )
-            canvas.save()
-            canvas.rotate(turn, centreX, centreY)
-            canvas.drawArc(arcBounds, 0f, 110f, false, ring)
-            canvas.restore()
-            ring.shader = null
-        }
-    }
-
-    private fun withAlpha(color: Int, alpha: Float): Int =
-        Color.argb(
-            (alpha.coerceIn(0f, 1f) * 255).toInt(),
-            Color.red(color),
-            Color.green(color),
-            Color.blue(color)
-        )
-
-    private companion object {
-        val SILVER = Color.rgb(0xE8, 0xEA, 0xED)
-        val SILVER_SOFT = Color.rgb(0x9C, 0xA0, 0xA8)
+        // The largest whole-pixel scale that keeps the sprite inside the disc.
+        val scale = ((radius * 1.85f) / Sprites.W).toInt().coerceAtLeast(1)
+        val w = Sprites.W * scale
+        val h = Sprites.H * scale
+        src.set(0, 0, Sprites.W, Sprites.H)
+        dst.set((cx - w / 2f).toInt(), (cy - h / 2f).toInt(), (cx + w / 2f).toInt(), (cy + h / 2f).toInt())
+        canvas.drawBitmap(frame, src, dst, pixels)
     }
 }

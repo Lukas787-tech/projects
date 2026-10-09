@@ -199,7 +199,7 @@ class Device(context: Context) {
             ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             runCatching { app.startActivity(intent) }
             return "Changing the brightness needs the 'modify system settings' permission, which " +
-                "Android only grants from its own page. I have opened it — switch Jarvis on " +
+                "Android only grants from its own page. I have opened it — switch Mochi on " +
                 "there and ask me again."
         }
         val resolver = app.contentResolver
@@ -289,7 +289,7 @@ class Device(context: Context) {
         if (!manager.isNotificationPolicyAccessGranted) {
             openSettings("dnd")
             return "Do Not Disturb needs its own access, which Android only grants from its own " +
-                "settings page. I have opened it — switch Jarvis on there and ask me again."
+                "settings page. I have opened it — switch Mochi on there and ask me again."
         }
         val filter = when (mode.trim().lowercase(Locale.ROOT)) {
             "on", "priority", "important" -> NotificationManager.INTERRUPTION_FILTER_PRIORITY
@@ -360,7 +360,7 @@ class Device(context: Context) {
         if (text.isBlank()) return "There was nothing to copy."
         val clipboard = clipboard ?: return "No clipboard on this phone."
         return runCatching {
-            clipboard.setPrimaryClip(ClipData.newPlainText("Jarvis", text))
+            clipboard.setPrimaryClip(ClipData.newPlainText("Mochi", text))
             "Copied: ${text.take(80)}${if (text.length > 80) "…" else ""}"
         }.getOrElse { "The clipboard would not take it." }
     }

@@ -47,8 +47,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-enum class Stage { Idle, Listening, Thinking, Speaking }
-
 data class AssistantUiState(
     val stage: Stage = Stage.Idle,
     val stageLabel: String = "",
@@ -1752,7 +1750,7 @@ class AssistantViewModel(
     fun restoreFreeBrain() {
         val added = container.pool.restoreBuiltIns()
         _poolMessage.value = if (added == 0) "The free built-in AI is already in the pool."
-        else "Free built-in AI restored — Jarvis works without any key again."
+        else "Free built-in AI restored — Mochi works without any key again."
     }
 
     /** Removes one message from the thread and from history. */

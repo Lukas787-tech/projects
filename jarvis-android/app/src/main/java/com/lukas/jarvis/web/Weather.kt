@@ -200,7 +200,7 @@ class Weather {
     }
 
     private fun fetch(url: String): String {
-        val request = Request.Builder().url(url).header("User-Agent", "Jarvis/2.2").build()
+        val request = Request.Builder().url(url).header("User-Agent", "Mochi/6.0").build()
         http.newCall(request).execute().use { response ->
             if (!response.isSuccessful) error("HTTP ${response.code}")
             return response.body?.string().orEmpty()

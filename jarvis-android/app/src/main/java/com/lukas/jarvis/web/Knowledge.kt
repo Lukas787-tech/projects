@@ -539,7 +539,7 @@ class Knowledge {
         Locale(code).getDisplayLanguage(Locale.ENGLISH).ifBlank { code }
 
     private companion object {
-        const val USER_AGENT = "Mozilla/5.0 (Linux; Android 14) Jarvis/5.0"
+        const val USER_AGENT = "Mozilla/5.0 (Linux; Android 14) Mochi/6.0"
         val ITEM = Regex("<item>(.*?)</item>", RegexOption.DOT_MATCHES_ALL)
         val TICKER = Regex("^[A-Za-z]{1,5}([.-][A-Za-z]{1,3})?$")
         val CRYPTO_WORDS = listOf(

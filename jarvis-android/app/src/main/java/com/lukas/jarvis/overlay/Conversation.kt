@@ -70,7 +70,7 @@ class Conversation(private val container: AppContainer) {
         if (busy) return
         val settings = container.settings.current
         if (!settings.isConfigured && container.pool.isEmpty) {
-            onProblem("Open Jarvis and restore the free AI in Settings first.")
+            onProblem("Open Mochi and restore the free AI in Settings first.")
             onDone()
             return
         }
@@ -96,7 +96,7 @@ class Conversation(private val container: AppContainer) {
         )
     }
 
-    /** Answers a request that was already heard — "Jarvis, what's the time" in one breath. */
+    /** Answers a request that was already heard — "Mochi, what's the time" in one breath. */
     fun ask(utterance: String, onProblem: (String) -> Unit, onDone: () -> Unit = {}) {
         val text = utterance.trim()
         if (text.isBlank() || busy) {
@@ -104,7 +104,7 @@ class Conversation(private val container: AppContainer) {
             onDone()
             return
         }
-        // "Jarvis, stop" with a timer sounding is about the timer.
+        // "Mochi, stop" with a timer sounding is about the timer.
         val ringing = container.timers.ringing.value
         if (ringing.isNotEmpty() && SILENCE.matches(text.lowercase().trimEnd('.', '!'))) {
             ringing.forEach { container.timers.silence(it.id) }

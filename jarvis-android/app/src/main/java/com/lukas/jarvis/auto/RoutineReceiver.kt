@@ -38,7 +38,7 @@ class RoutineReceiver : BroadcastReceiver() {
         val notification = Notification.Builder(context, Routines.CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(name.replaceFirstChar { it.uppercase() })
-            .setContentText("Tap and Jarvis runs your routine")
+            .setContentText("Tap and Mochi runs your routine")
             .setAutoCancel(true)
             .setContentIntent(open)
             .build()

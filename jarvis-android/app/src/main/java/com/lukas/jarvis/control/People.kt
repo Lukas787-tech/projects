@@ -62,7 +62,7 @@ class People(context: Context) {
     fun describe(query: String, limit: Int = 5): String {
         if (!hasPermission) {
             return "I need the contacts permission before I can look anyone up. " +
-                "Grant it in Android settings under Jarvis, or tell me the number yourself."
+                "Grant it in Android settings under Mochi, or tell me the number yourself."
         }
         val hits = find(query, limit)
         if (hits.isEmpty()) return "Nobody in your contacts matches '$query'."

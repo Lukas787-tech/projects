@@ -23,7 +23,7 @@ import com.lukas.jarvis.stage.Element
 object Prompt {
 
     fun system(settings: Settings, offered: Set<String> = ALL_TOOLS): String {
-        val name = settings.assistantName.ifBlank { "Jarvis" }
+        val name = settings.assistantName.ifBlank { "Mochi" }
         val user = settings.userName.ifBlank { "the user" }
         fun has(vararg tools: String) = tools.any { it in offered }
 
@@ -449,7 +449,7 @@ PLACES AND GETTING AROUND
   "pasta". "how long is left", "stop the timer", "five more minutes" -> `timers`. A thing to
   do rather than a time to be woken -> `add_task`.
 - "make it red", "speak slower", "call me boss", "your name is Friday", "bigger text",
-  "satellite map", "shorter answers" -> `change_setting`, one call per setting. Jarvis is theirs
+  "satellite map", "shorter answers" -> `change_setting`, one call per setting. You are theirs
   to shape: change what they ask for, then say what changed.
 - "speak like Morgan Freeman", "a deeper male voice", "sprich mit der Stimme von …", "another
   voice" -> `change_voice` with their description. Faster, slower, higher, on or off stays

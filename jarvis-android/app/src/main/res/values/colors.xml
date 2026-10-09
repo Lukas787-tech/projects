@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The café outside Compose: the window before the first frame, the widget and its glyphs. -->
 <resources>
-    <color name="jarvis_background">#FF02040A</color>
-    <color name="jarvis_accent">#FF4FD8FF</color>
+    <color name="mochi_foam">#FFFBF7F1</color>
+    <color name="mochi_paper">#FFFFFDF9</color>
+    <color name="mochi_latte">#FFEFE4D6</color>
+    <color name="mochi_espresso">#FF3A2E28</color>
+    <color name="mochi_cocoa">#FF6F5E53</color>
+    <color name="mochi_caramel">#FFC58A5B</color>
+    <color name="mochi_caramel_light">#FFD9A577</color>
 </resources>

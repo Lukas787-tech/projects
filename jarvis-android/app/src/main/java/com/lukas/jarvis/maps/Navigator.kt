@@ -128,7 +128,7 @@ class Navigator(
             "Opening ${Geo.modeVerb(travel)} directions to ${target.name} in your maps app."
         } else {
             "No maps app on this phone would take the directions. " +
-                "The route is on the Jarvis map instead."
+                "The route is on the Mochi map instead."
         }
     }
 

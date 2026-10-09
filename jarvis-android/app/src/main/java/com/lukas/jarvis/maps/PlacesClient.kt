@@ -311,7 +311,7 @@ class PlacesClient {
          * Both OSM services identify callers by User-Agent and block the default
          * library one, so this names the app and how to reach its author.
          */
-        const val USER_AGENT = "JarvisAssistant/1.0 (personal Android assistant; +https://github.com/lukas787-tech/projects)"
+        const val USER_AGENT = "MochiAssistant/6.0 (personal Android assistant; +https://github.com/lukas787-tech/projects)"
 
         val FORM = "application/x-www-form-urlencoded".toMediaType()
 

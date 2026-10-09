@@ -71,7 +71,7 @@ class Chats(context: Context, private val people: People) {
             "Sent to ${target.name} on ${chat.label}."
         } else {
             "The message to ${target.name} is typed out in ${chat.label}, waiting on " +
-                "one press. Switch on Jarvis in accessibility settings and I will " +
+                "one press. Switch on Mochi in accessibility settings and I will " +
                 "press it myself next time."
         }
     }

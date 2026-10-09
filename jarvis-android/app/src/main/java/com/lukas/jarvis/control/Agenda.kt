@@ -223,7 +223,7 @@ class Agenda(context: Context) {
     fun describe(days: Int = 1, limit: Int = 12): String {
         if (!hasPermission) {
             return "I need the calendar permission before I can read your schedule. " +
-                "Grant it in Android settings under Jarvis."
+                "Grant it in Android settings under Mochi."
         }
         val now = System.currentTimeMillis()
         val until = now + days.coerceIn(1, 30) * 86_400_000L

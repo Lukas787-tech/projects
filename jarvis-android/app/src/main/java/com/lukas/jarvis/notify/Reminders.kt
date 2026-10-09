@@ -27,14 +27,14 @@ class Reminders(private val context: Context) {
                 CHANNEL_REMINDERS,
                 context.getString(R.string.reminder_channel_name),
                 NotificationManager.IMPORTANCE_HIGH
-            ).apply { description = "Task and reminder alerts from Jarvis" }
+            ).apply { description = "Task and reminder alerts from Mochi" }
         )
         notifications?.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_WAKE,
                 context.getString(R.string.wake_channel_name),
                 NotificationManager.IMPORTANCE_LOW
-            ).apply { description = "Shown while Jarvis listens for the wake word" }
+            ).apply { description = "Shown while Mochi listens for the wake word" }
         )
     }
 

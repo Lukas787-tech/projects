@@ -11,8 +11,8 @@
 
     <ImageView
         android:id="@+id/widget_core"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:contentDescription="@string/shortcut_talk"
         android:src="@drawable/ic_launcher_foreground" />
 
@@ -32,7 +32,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/widget_title"
-            android:textColor="#FFF2F5F9"
+            android:textColor="@color/mochi_espresso"
             android:textSize="15sp" />
 
         <TextView
@@ -41,17 +41,15 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:letterSpacing="0.12"
             android:text="@string/widget_subtitle"
-            android:textAllCaps="true"
-            android:textColor="#FF4FD8FF"
-            android:textSize="10sp" />
+            android:textColor="@color/mochi_cocoa"
+            android:textSize="12sp" />
     </LinearLayout>
 
     <ImageView
         android:id="@+id/widget_type"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
         android:layout_marginEnd="6dp"
         android:background="@drawable/widget_button"
         android:contentDescription="@string/shortcut_type"
@@ -60,8 +58,8 @@
 
     <ImageView
         android:id="@+id/widget_scan"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
         android:layout_marginEnd="6dp"
         android:background="@drawable/widget_button"
         android:contentDescription="@string/shortcut_scan"
@@ -70,9 +68,9 @@
 
     <ImageView
         android:id="@+id/widget_talk"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:background="@drawable/widget_button"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="@drawable/widget_button_primary"
         android:contentDescription="@string/shortcut_talk"
         android:padding="8dp"
         android:src="@drawable/ic_talk" />

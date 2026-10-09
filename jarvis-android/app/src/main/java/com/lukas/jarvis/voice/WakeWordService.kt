@@ -139,7 +139,7 @@ class WakeWordService : Service() {
     /**
      * The phrase was heard. The answer happens right here, spoken, without
      * the app: Android 10 and later refuse to bring an app forward from the
-     * background, which made "Jarvis, …" from across the room open nothing.
+     * background, which made "Mochi, …" from across the room open nothing.
      * Whatever followed the name in the same breath is the request; if nothing
      * did, a tone says "go ahead" and the next sentence is.
      */
@@ -191,7 +191,7 @@ class WakeWordService : Service() {
         )
         val notification = Notification.Builder(this, Reminders.CHANNEL_REMINDERS)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Jarvis could not answer")
+            .setContentTitle("Mochi could not answer")
             .setContentText(message.take(160))
             .setAutoCancel(true)
             .setContentIntent(open)

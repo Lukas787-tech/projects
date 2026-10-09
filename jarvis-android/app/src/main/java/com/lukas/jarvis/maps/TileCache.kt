@@ -270,6 +270,6 @@ class TileCache(context: Context) {
         const val RETRY_AFTER_MS = 3L * 24 * 60 * 60 * 1000
 
         const val USER_AGENT =
-            "JarvisAssistant/1.0 (personal Android assistant; +https://github.com/lukas787-tech/projects)"
+            "MochiAssistant/6.0 (personal Android assistant; +https://github.com/lukas787-tech/projects)"
     }
 }

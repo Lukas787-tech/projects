@@ -768,7 +768,7 @@ class Tools(
         ),
         tool(
             "profile",
-            "Saved setups of Jarvis's look, character and voice. 'Save this as night mode', " +
+            "Saved setups of Mochi's look, character and voice. 'Save this as night mode', " +
                 "'switch to work mode', 'Mark III profile', 'what profiles do I have', " +
                 "'delete the party profile', 'switch to night mode every day at 22:00' (schedule). " +
                 "Switching changes colour, backdrop, core, " +
@@ -805,7 +805,7 @@ class Tools(
         ),
         tool(
             "timers",
-            "The timers Jarvis is running: how long is left, cancel one or all, or add time. " +
+            "The timers Mochi is running: how long is left, cancel one or all, or add time. " +
                 "'How long on the pasta', 'stop the timer', 'give it five more minutes'.",
             props(
                 "action" to str("What to do.", listOf("list", "cancel", "add")),
@@ -816,7 +816,7 @@ class Tools(
         ),
         tool(
             "change_setting",
-            "Change how Jarvis looks, sounds and behaves, as the user asks: 'make it red', 'speak slower', " +
+            "Change how Mochi looks, sounds and behaves, as the user asks: 'make it red', 'speak slower', " +
                 "'call me boss', 'your name is Friday', 'satellite map', 'bigger text', 'shorter answers', " +
                 "'turn off the emoji', 'always answer in English', 'morning brief at 7'. One setting per call; " +
                 "call it again for several. API keys cannot be changed this way.",
@@ -828,7 +828,7 @@ class Tools(
         ),
         tool(
             "change_voice",
-            "Change the voice Jarvis speaks with, by describing it: 'speak like Morgan Freeman', 'a deep " +
+            "Change the voice Mochi speaks with, by describing it: 'speak like Morgan Freeman', 'a deep " +
                 "male narrator', 'sprich mit einer ruhigen deutschen Frauenstimme', 'a British butler', 'my own " +
                 "cloned voice'. Searches Fish Audio's voice library, switches to the best match at once and " +
                 "names a few others. 'another one' tries the next match; 'your normal voice' goes back.",
@@ -841,7 +841,7 @@ class Tools(
         ),
         tool(
             "stopwatch",
-            "Jarvis's stopwatch, counting up: 'start the stopwatch', 'lap', 'how long has it been " +
+            "Mochi's stopwatch, counting up: 'start the stopwatch', 'lap', 'how long has it been " +
                 "running', 'pause it', 'stop and reset'. It shows in the notification shade.",
             props(
                 "action" to str(
@@ -1404,7 +1404,7 @@ class Tools(
             ?: return "Screen reading is switched off. Tell the user it is in Settings -> Powers -> " +
                 "Screen reading, and that Android asks once on its accessibility page."
         if (reading.app.isBlank()) {
-            return "Only Jarvis is on screen right now, so there is nothing else to read. Tell the " +
+            return "Only Mochi is on screen right now, so there is nothing else to read. Tell the " +
                 "user to ask from the floating dot or with the wake word while the other app is open."
         }
         if (reading.text.isBlank()) return "The screen (${reading.app}) shows no readable text."
@@ -1418,7 +1418,7 @@ class Tools(
             return "This phone's Android is too old to press ${action.id.replace('_', ' ')} from an app."
         }
         if (!ScreenReader.running) {
-            return "Pressing system buttons goes through Jarvis's screen access, which is switched " +
+            return "Pressing system buttons goes through Mochi's screen access, which is switched " +
                 "off. Tell the user it is in Settings -> Powers -> Screen reading, and that Android " +
                 "asks once on its accessibility page."
         }
@@ -2005,7 +2005,7 @@ class Tools(
         if (label.isBlank()) return "What should the reminder say?"
         if (!placeReminders.canWatch) {
             placeReminders.askPermission()
-            return "A place reminder needs precise location, which Jarvis doesn't have (approximate " +
+            return "A place reminder needs precise location, which Mochi doesn't have (approximate " +
                 "is not enough for Android to watch a spot). I've asked for it — tell the user to " +
                 "choose \"Precise\" and say the reminder again."
         }
@@ -2039,7 +2039,7 @@ class Tools(
             if (!placeReminders.canWatchClosed) {
                 placeReminders.askPermission()
                 append(
-                    " Tell the user, since a settings page just opened: for it to go off while Jarvis " +
+                    " Tell the user, since a settings page just opened: for it to go off while Mochi " +
                         "is closed, location has to be allowed \"all the time\" there."
                 )
             }
@@ -2200,7 +2200,7 @@ class Tools(
                 "Saved the current look, character and voice as '$name'."
             }
             "list" -> if (all.isEmpty()) {
-                "No profiles yet. Set Jarvis up the way you like and say 'save this as night mode'."
+                "No profiles yet. Set Mochi up the way you like and say 'save this as night mode'."
             } else {
                 "Profiles: " + all.joinToString { p ->
                     p.name + p.scheduleLabel().takeIf { it.isNotBlank() }?.let { " (switches on $it)" }.orEmpty()
@@ -2225,7 +2225,7 @@ class Tools(
             else -> {
                 val target = profiles.find(name)
                     ?: return if (all.isEmpty()) {
-                        "There are no saved profiles yet. Say 'save this as $name' once Jarvis looks the way you want."
+                        "There are no saved profiles yet. Say 'save this as $name' once Mochi looks the way you want."
                     } else {
                         "No profile called '$name'. There is: ${all.joinToString { it.name }}."
                     }
