@@ -742,7 +742,7 @@ class AssistantViewModel(
         if (!current.isConfigured && container.pool.isEmpty) {
             _ui.value = _ui.value.copy(
                 stage = Stage.Idle,
-                error = "Add a provider and API key in Settings first."
+                error = "Add a provider and API key in You → Brain first."
             )
             return
         }

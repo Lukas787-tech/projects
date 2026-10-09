@@ -1189,6 +1189,26 @@ private fun HomeCard(settings: Settings, actions: YouActions) {
 // ---------------------------------------------------------------------- data
 
 private fun LazyListScope.dataShelf(state: YouState, actions: YouActions) {
+    item(key = "privacy") {
+        val settings = state.settings
+        PaperCard(Modifier.fillMaxWidth(), tone = if (settings.localOnly) Tone.Sage else Tone.Paper) {
+            SectionHeader("Local only")
+            SwitchRow(
+                "Keep personal things off the free models",
+                settings.localOnly,
+                { v -> actions.onUpdate { it.copy(localOnly = v) } },
+                detail = "Your memories, what you wrote about yourself, contacts, calendar and where you are never go to the free keyless models."
+            )
+            Text(
+                if (state.pool.any { it.endpoint.preset.tier != Tier.Keyless && it.endpoint.enabled })
+                    "You have a key of your own, so Mochi answers through it and skips the free models entirely."
+                else
+                    "With only the free models, Mochi answers without those things and says so when you ask for one. A free key of your own (in Brain) brings them back, privately.",
+                style = Cafe.type.bodySmall,
+                color = Cafe.colors.cocoa
+            )
+        }
+    }
     item(key = "backup") {
         var passphrase by rememberSaveable { mutableStateOf("") }
         PaperCard(Modifier.fillMaxWidth()) {

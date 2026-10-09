@@ -174,6 +174,10 @@ class ModelPool(context: Context) {
     val hasOwnEndpoints: Boolean
         get() = _entries.value.any { it.endpoint.preset.tier != Tier.Keyless }
 
+    /** True when something besides the keyless endpoints can be called at all. */
+    val hasUsableOwnEndpoints: Boolean
+        get() = _entries.value.any { it.endpoint.preset.tier != Tier.Keyless && it.endpoint.enabled && !it.health.brokenKey }
+
     /** Re-reads everything from storage, for when a restored backup replaced it. */
     @Synchronized
     fun reload() {
@@ -261,12 +265,19 @@ class ModelPool(context: Context) {
     fun plan(
         settings: Settings,
         limit: Int = DEFAULT_FAILOVER_LIMIT,
-        now: Long = System.currentTimeMillis()
+        now: Long = System.currentTimeMillis(),
+        /** Local only with a key of their own: the free keyless models are not asked at all. */
+        privateOnly: Boolean = false
     ): Plan {
         val usable = _entries.value.filter {
-            it.endpoint.enabled && !it.health.brokenKey && !accountResting(it.endpoint, now)
+            it.endpoint.enabled && !it.health.brokenKey && !accountResting(it.endpoint, now) &&
+                !(privateOnly && it.endpoint.preset.tier == Tier.Keyless)
         }
         if (usable.isEmpty()) {
+            if (privateOnly && Providers.byId(settings.providerId).tier == Tier.Keyless) {
+                // Failing closed: better no answer than one from a model it was kept from.
+                return Plan(endpoints = emptyList(), totalCount = _entries.value.size)
+            }
             // Nothing in the pool is callable. Fall back to whatever Settings
             // points at, so the app behaves exactly as before for anyone not
             // using a pool — and so a fully rested pool still gets one attempt.

@@ -156,12 +156,12 @@ class AppContainer(context: Context) {
     val agent = Agent(pooled, tools, com.lukas.jarvis.llm.BrainMemory(brain), gate).also { agent ->
         agent.ambient = {
             listOfNotNull(
-                briefer.lastPlace?.let { "Roughly where the phone is: $it" },
                 lists.current.lists.takeIf { it.isNotEmpty() }?.let { all ->
                     "The user's lists: " + all.joinToString { "${it.name} (${it.open.size} open)" }
                 }
             )
         }
+        agent.whereabouts = { briefer.lastPlace }
         tools.routineRunner = { routine, settings ->
             routines.markRun(routine.name)
             "Routine '${routine.name}' finished. What each step came back with: " +

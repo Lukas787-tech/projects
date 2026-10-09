@@ -110,7 +110,7 @@ fun Intro(
                         2 -> Character(settings, onUpdate, onPreviewVoice)
                         3 -> Look(settings, onUpdate)
                         4 -> TalkOrType(settings, onUpdate)
-                        else -> WhatLeaves(name)
+                        else -> WhatLeaves(name, settings, onUpdate)
                     }
                 }
             }
@@ -324,7 +324,7 @@ private fun ModeCard(icon: ImageVector, title: String, body: String, selected: B
 
 /** The honest page: what stays, what goes where, and what always waits for a yes. */
 @Composable
-private fun WhatLeaves(name: String) {
+private fun WhatLeaves(name: String, settings: Settings, onUpdate: ((Settings) -> Settings) -> Unit) {
     Mochi(CharacterState(Mood.Idle, prop = Prop.House, description = "$name, keeping things at home"), size = 112.dp)
     VSpace(Cafe.space.m)
     Title("What leaves your phone")
@@ -334,7 +334,7 @@ private fun WhatLeaves(name: String) {
     )
     Point(
         "Goes to answer you",
-        "What you ask goes to the free AI models that answer it — or to your own key's provider, if you add one — with what $name needs to answer well: your name, what you wrote about yourself, your money totals and open tasks, the memories you pinned and the ones that touch the question, and whatever it looked up for you."
+        "What you ask goes to the free AI models that answer it — or to your own key's provider, if you add one — with what $name needs to answer well: your name, what you wrote about yourself, your money totals, open tasks and lists, the memories you pinned and the ones that touch the question, roughly where the phone is, and whatever it looked up for you."
     )
     Point(
         "Goes to look things up",
@@ -344,6 +344,15 @@ private fun WhatLeaves(name: String) {
         "Always waits for your yes",
         "A text, a call, an email, a share or anything that can't be undone shows a card first, and nothing happens until you say yes."
     )
+    VSpace(Cafe.space.s)
+    PaperCard(Modifier.fillMaxWidth(), tone = if (settings.localOnly) Tone.Sage else Tone.Paper, padding = Cafe.space.m) {
+        com.lukas.jarvis.ui.kit.SwitchRow(
+            "Local only",
+            settings.localOnly,
+            { v -> onUpdate { it.copy(localOnly = v) } },
+            detail = "Keep your memories, what you wrote about yourself, contacts, calendar and where you are off the free models. $name still answers, without them — or with them, through a key of your own."
+        )
+    }
     VSpace(Cafe.space.s)
     Text("You can change all of this in You, any time.", style = Cafe.type.bodySmall, color = Cafe.colors.cocoa, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
 }

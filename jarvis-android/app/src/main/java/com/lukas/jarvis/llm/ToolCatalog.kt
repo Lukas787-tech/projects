@@ -739,7 +739,7 @@ object Abilities {
             ToolGroup.Home,
             "Smart home",
             "Lights, plugs, heating, blinds, locks and scenes through your own Home Assistant — " +
-                "free, local, no cloud. Set it up in Settings -> Powers.",
+                "free, local, no cloud. Set it up in You -> Powers -> Smart home.",
             listOf(
                 "Turn off all the lights",
                 "Set the living room to 21 degrees",

@@ -1401,8 +1401,8 @@ class Tools(
 
     private fun readScreen(): String {
         val reading = ScreenReader.capture()
-            ?: return "Screen reading is switched off. Tell the user it is in Settings -> Powers -> " +
-                "Screen reading, and that Android asks once on its accessibility page."
+            ?: return "Screen reading is switched off. Tell the user it is in You -> Powers -> " +
+                "Reading the screen, and that Android asks once on its accessibility page."
         if (reading.app.isBlank()) {
             return "Only Mochi is on screen right now, so there is nothing else to read. Tell the " +
                 "user to ask from the floating dot or with the wake word while the other app is open."
@@ -1419,7 +1419,7 @@ class Tools(
         }
         if (!ScreenReader.running) {
             return "Pressing system buttons goes through Mochi's screen access, which is switched " +
-                "off. Tell the user it is in Settings -> Powers -> Screen reading, and that Android " +
+                "off. Tell the user it is in You -> Powers -> Reading the screen, and that Android " +
                 "asks once on its accessibility page."
         }
         // A screenshot of Jarvis's own answer coming up is not the one wanted,
@@ -1432,7 +1432,7 @@ class Tools(
         return when (ScreenReader.press(action)) {
             true -> action.done
             false -> "Android would not press ${action.id.replace('_', ' ')} just now."
-            null -> "The screen access stopped running. It can be switched on again under Settings -> Powers -> Screen reading."
+            null -> "The screen access stopped running. It can be switched on again under You -> Powers -> Reading the screen."
         }
     }
 
@@ -2262,7 +2262,7 @@ class Tools(
         }
         if (current.fishKey.isBlank()) {
             return@withContext "For that I need Fish Audio's voice library: paste a Fish Audio key under " +
-                "Settings → Voice (fish.audio has a free tier). Until then only the phone's own voices can be picked there."
+                "You → Voice (fish.audio has a free tier). Until then only the phone's own voices can be picked there."
         }
         val voices = speaker ?: return@withContext "No voice to change here."
         val choices = voiceChoices

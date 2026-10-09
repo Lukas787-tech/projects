@@ -23,6 +23,9 @@ interface ChatModel {
     ): LlmReply
 
     suspend fun look(settings: Settings, prompt: String, imageDataUrl: String): String
+
+    /** Whether a turn can be answered without the free keyless models, for Local only. */
+    fun answersPrivately(settings: Settings): Boolean = true
 }
 
 /** What the agent needs from the tools. [Tools] is the real one. */
@@ -36,6 +39,11 @@ interface ToolBox {
 interface AgentMemory {
     /** The live context block: balances, open tasks, the memories this sentence touches. */
     fun context(utterance: String, settings: Settings, extra: List<String>): String
+
+    /** The same, sealed for Local only: nothing personal in it. */
+    fun context(utterance: String, settings: Settings, extra: List<String>, sealed: Boolean): String =
+        context(utterance, settings, extra)
+
     fun search(query: String, limit: Int): List<Memory>
 }
 
@@ -43,6 +51,9 @@ interface AgentMemory {
 class BrainMemory(private val brain: Brain) : AgentMemory {
     override fun context(utterance: String, settings: Settings, extra: List<String>): String =
         Prompt.context(brain, utterance, settings, extra)
+
+    override fun context(utterance: String, settings: Settings, extra: List<String>, sealed: Boolean): String =
+        Prompt.context(brain, utterance, settings, extra, sealed)
 
     override fun search(query: String, limit: Int): List<Memory> = brain.searchMemories(query, limit = limit)
 }
@@ -92,6 +103,9 @@ class Agent(
     @Volatile
     var ambient: () -> List<String> = { emptyList() }
 
+    /** Roughly where the phone is, when known — left out of a sealed turn. */
+    var whereabouts: () -> String? = { null }
+
     suspend fun respond(
         utterance: String,
         settings: Settings,
@@ -110,7 +124,11 @@ class Agent(
         val draft = DraftStream(onDraft)
         val effects = ToolEffects()
         val used = mutableListOf<String>()
-        val everything = tools.schemas(settings)
+        // Local only with nothing but the free keyless models: the turn is sealed.
+        val sealed = settings.localOnly && !client.answersPrivately(settings)
+        val everything = tools.schemas(settings).let { all ->
+            if (sealed) all.filterNot { Privacy.isPersonal(it.optJSONObject("function")?.optString("name").orEmpty()) } else all
+        }
         // Everything switched on may run if asked for by name; only the tools
         // this sentence points at are described to the model, which keeps the
         // request small and a small model's choices short.
@@ -124,16 +142,16 @@ class Agent(
         val answered = ConcurrentHashMap<String, String>()
 
         val messages = mutableListOf<LlmMessage>()
-        messages += LlmMessage.system(Prompt.system(settings, offered))
+        messages += LlmMessage.system(Prompt.system(settings, offered, sealed))
         trimToBudget(history).forEach { past ->
             messages += LlmMessage(
                 role = if (past.role == ChatMessage.ROLE_USER) LlmMessage.USER else LlmMessage.ASSISTANT,
                 content = past.content
             )
         }
-        messages += LlmMessage.system(
-            memory.context(utterance, settings, runCatching { ambient() }.getOrDefault(emptyList()))
-        )
+        val extra = runCatching { ambient() }.getOrDefault(emptyList()) +
+            listOfNotNull(runCatching { whereabouts() }.getOrNull()?.takeIf { !sealed }?.let { "Roughly where the phone is: $it" })
+        messages += LlmMessage.system(memory.context(utterance, settings, extra, sealed))
         messages += LlmMessage.user(utterance)
 
         var lastText: String? = null
@@ -529,7 +547,7 @@ class Agent(
         val key = signature(item.call, available)
         // Remembered like any answer, so a model that keeps asking for a tool
         // that is not there trips the circle check instead of using up rounds.
-        val tool = item.tool ?: return unavailable(item.call.name, available).also { answered[key] = it }
+        val tool = item.tool ?: return unavailable(item.call.name, available, settings).also { answered[key] = it }
 
         if (ToolCatalog.isReadOnly(tool)) {
             answered[key]?.let { return it }
@@ -619,13 +637,18 @@ class Agent(
      * anyway: the switch is the user's, and a model finding the name in its
      * training is not the user turning it back on.
      */
-    private fun unavailable(requested: String, available: Set<String>): String {
+    private fun unavailable(requested: String, available: Set<String>, settings: Settings): String {
         val meant = ToolCatalog.canonical(requested)
         val info = meant?.let { ToolCatalog.info(it) }
         if (info != null) {
-            val ability = Abilities.ALL.firstOrNull { it.group == info.group }?.title ?: "That ability"
-            return "'$requested' is not available: $ability is switched off in Settings -> " +
-                "Abilities. Tell the user they can switch it on there."
+            val ability = Abilities.ALL.firstOrNull { it.group == info.group }
+            // Held back for Local only, not switched off: say which, or the advice is wrong.
+            if (settings.localOnly && Privacy.isPersonal(meant) && ability?.isOn(settings) != false) {
+                return "'$requested' is held back: Local only keeps it from the free keyless models. Tell the " +
+                    "user, and that a free key of their own in You -> Brain lets Mochi use it privately."
+            }
+            return "'$requested' is not available: ${ability?.title ?: "That ability"} is switched off in You -> " +
+                "Powers. Tell the user they can switch it on there."
         }
         val near = ToolCatalog.closest(requested, available).joinToString(", ")
         return "There is no tool called '$requested'. The closest ones are: $near."

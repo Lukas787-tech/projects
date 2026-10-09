@@ -70,7 +70,7 @@ class Conversation(private val container: AppContainer) {
         if (busy) return
         val settings = container.settings.current
         if (!settings.isConfigured && container.pool.isEmpty) {
-            onProblem("Open Mochi and restore the free AI in Settings first.")
+            onProblem("Open Mochi and put the free brain back in You → Brain first.")
             onDone()
             return
         }

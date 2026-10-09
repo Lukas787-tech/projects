@@ -27,6 +27,8 @@ class PooledLlm(
 
     val lastDiagnostics: Diagnostics? get() = client.lastDiagnostics
 
+    override fun answersPrivately(settings: Settings): Boolean = pool.hasUsableOwnEndpoints
+
     override suspend fun chat(
         settings: Settings,
         messages: List<LlmMessage>,
@@ -34,7 +36,7 @@ class PooledLlm(
         stream: ReplyStream?,
         onEndpointChange: (String) -> Unit
     ): LlmReply {
-        val plan = pool.plan(settings)
+        val plan = pool.plan(settings, privateOnly = settings.localOnly && answersPrivately(settings))
         if (plan.isEmpty) {
             throw noEndpointError(plan)
         }
@@ -188,7 +190,7 @@ class PooledLlm(
     private fun noEndpointError(plan: ModelPool.Plan): LlmException {
         if (plan.totalCount == 0) {
             return LlmException(
-                "No model set up yet. Open Settings, add a key and tap Load models.",
+                "No model set up yet. Open You → Brain, add a key and tap Load models.",
                 FailureKind.Unknown
             )
         }
@@ -213,22 +215,22 @@ class PooledLlm(
 
     private fun advice(last: LlmException?): String = when (last?.kind) {
         FailureKind.RateLimited ->
-            "That is every quota spent for now. Add another provider in Settings — " +
+            "That is every quota spent for now. Add another provider in You → Brain — " +
                 "a second account is the only thing a daily cap cannot follow you to."
 
         FailureKind.AuthFailed ->
-            "The keys were rejected. Check them in Settings, then tap Wake all."
+            "The keys were rejected. Check them in You → Brain, then tap Wake all."
 
         FailureKind.OutOfCredit ->
-            "Those accounts are out of credit. Add a free-tier provider in Settings."
+            "Those accounts are out of credit. Add a free-tier provider in You → Brain."
 
         FailureKind.Network ->
             "Mochi could not reach anything. Check the phone's connection."
 
         FailureKind.ModelMissing ->
-            "Those model ids are gone. Tap Load models in Settings to refresh them."
+            "Those model ids are gone. Tap Load models in You → Brain to refresh them."
 
-        else -> "Open Settings and run Test connection to see the raw response."
+        else -> "Open You → Brain and run Test the connection to see the raw response."
     }
 
     private companion object {
@@ -246,7 +248,7 @@ class PooledLlm(
         const val MAX_LOOKS = 6
 
         const val NO_EYES = "None of your models can look at pictures. Add a Google Gemini " +
-            "key in Settings (free at aistudio.google.com) — its models can."
+            "key in You → Brain (free at aistudio.google.com) — its models can."
 
         /** Model names that mean "takes images", across the providers in the picker. */
         val VISION_HINTS = listOf(

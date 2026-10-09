@@ -22,13 +22,13 @@ import com.lukas.jarvis.stage.Element
  */
 object Prompt {
 
-    fun system(settings: Settings, offered: Set<String> = ALL_TOOLS): String {
+    fun system(settings: Settings, offered: Set<String> = ALL_TOOLS, sealed: Boolean = false): String {
         val name = settings.assistantName.ifBlank { "Mochi" }
         val user = settings.userName.ifBlank { "the user" }
         fun has(vararg tools: String) = tools.any { it in offered }
 
         return buildString {
-            appendLine(identity(settings, name, user))
+            appendLine(identity(settings, name, user, sealed))
             appendLine()
             appendLine(style(settings, user))
 
@@ -258,7 +258,7 @@ HONESTY
     }
 
     /** Who the assistant is and who it works for. */
-    private fun identity(settings: Settings, name: String, user: String): String {
+    private fun identity(settings: Settings, name: String, user: String, sealed: Boolean = false): String {
         val persona = Personas.byId(settings.personality)
         val address = Personas.address(settings)
         return buildString {
@@ -275,7 +275,8 @@ HONESTY
                 appendLine()
                 append("Address $user as \"$address\" — naturally, not in every sentence.")
             }
-            val about = settings.aboutMe.trim()
+            // Sealed for Local only: what they wrote about themselves stays on the phone.
+            val about = if (sealed) "" else settings.aboutMe.trim()
             if (about.isNotBlank()) {
                 appendLine()
                 appendLine()
@@ -362,7 +363,9 @@ PLACES AND GETTING AROUND
         utterance: String,
         settings: Settings,
         /** Anything else worth knowing this turn: where the phone is, say. */
-        extra: List<String> = emptyList()
+        extra: List<String> = emptyList(),
+        /** Local only on a keyless model: no memories, and a note saying so. */
+        sealed: Boolean = false
     ): String {
         val now = System.currentTimeMillis()
         val builder = StringBuilder()
@@ -410,12 +413,17 @@ PLACES AND GETTING AROUND
         )
 
         // Pinned memories are things the user asked to keep at hand, so they
-        // come along every turn whether or not this sentence mentions them.
-        val pinned = runCatching { brain.recentMemories(12).filter { it.pinned } }
+        // come along every turn whether or not this sentence mentions them —
+        // unless the turn is sealed, when no memory comes along at all.
+        val pinned = if (sealed) emptyList() else runCatching { brain.recentMemories(12).filter { it.pinned } }
             .getOrDefault(emptyList())
-        val memories = runCatching { brain.searchMemories(utterance, limit = 8) }
+        val memories = if (sealed) emptyList() else runCatching { brain.searchMemories(utterance, limit = 8) }
             .getOrDefault(emptyList())
             .filterNot { hit -> pinned.any { it.id == hit.id } }
+        if (sealed) {
+            builder.appendLine()
+            builder.appendLine(Privacy.NOTE)
+        }
         if (pinned.isNotEmpty()) {
             builder.appendLine()
             builder.appendLine("Always at hand (pinned):")
@@ -431,7 +439,7 @@ PLACES AND GETTING AROUND
             }
         }
 
-        if (trackers.isEmpty() && tasks.isEmpty() && memories.isEmpty() && pinned.isEmpty()) {
+        if (!sealed && trackers.isEmpty() && tasks.isEmpty() && memories.isEmpty() && pinned.isEmpty()) {
             builder.appendLine()
             builder.appendLine("Nothing stored yet — this is a fresh brain.")
         }
