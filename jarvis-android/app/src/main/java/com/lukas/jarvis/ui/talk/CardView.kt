@@ -250,6 +250,21 @@ private fun ListBody(card: CanvasCard, context: CardContext, onAction: (ActionIn
         Text("Nothing on it yet.", style = Cafe.type.bodySmall, color = Cafe.colors.cocoa)
         return
     }
+    // The shopping list comes in the order the shop is walked; any other list as it was made.
+    if (com.lukas.jarvis.data.Aisle.suits(list.name) && list.open.size >= 3) {
+        var shown = 0
+        com.lukas.jarvis.data.Aisle.inShopOrder(list.open).forEach { (aisle, items) ->
+            if (shown >= 12) return@forEach
+            Eyebrow(aisle.label, Modifier.padding(top = Cafe.space.xs))
+            items.take(12 - shown).forEach { item ->
+                CheckRow(text = item.text, checked = false, onCheckedChange = { onAction(ActionIntent.CheckItem(list.name, item.text, it)) })
+                shown++
+            }
+        }
+        val got = list.items.count { it.done }
+        if (got > 0) Text("$got already in the basket", style = Cafe.type.caption, color = Cafe.colors.cocoa)
+        return
+    }
     list.items.sortedBy { it.done }.take(12).forEach { item ->
         CheckRow(
             text = item.text,

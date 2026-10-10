@@ -327,7 +327,7 @@ private fun LazyListScope.listShelf(book: ListBook, actions: LibraryActions, rem
         PaperCard(Modifier.fillMaxWidth()) {
             SectionHeader(list.name.replaceFirstChar { it.titlecase() }, action = if (list.items.any { it.done }) "Clear done" else null, onAction = { actions.clearDone(list.name) })
             if (list.items.isEmpty()) Text("Empty for now.", style = Cafe.type.bodySmall, color = Cafe.colors.cocoa)
-            list.items.sortedBy { it.done }.forEach { entry ->
+            val row: @Composable (com.lukas.jarvis.data.ListItem) -> Unit = { entry ->
                 CheckRow(
                     text = entry.text,
                     checked = entry.done,
@@ -339,6 +339,27 @@ private fun LazyListScope.listShelf(book: ListBook, actions: LibraryActions, rem
                         }, size = 36.dp, tint = Cafe.colors.cocoa)
                     }
                 )
+            }
+            val shop = com.lukas.jarvis.data.Aisle.suits(list.name) && list.open.size >= 3
+            var walking by rememberSaveable(list.name) { mutableStateOf(true) }
+            if (shop) {
+                Wrap {
+                    ChoiceChip("In shop order", walking, { walking = true })
+                    ChoiceChip("As added", !walking, { walking = false })
+                }
+            }
+            if (shop && walking) {
+                // Fruit and veg first, the freezer near the end: one walk round, nothing doubled back for.
+                com.lukas.jarvis.data.Aisle.inShopOrder(list.open).forEach { (aisle, open) ->
+                    Eyebrow(aisle.label, Modifier.padding(top = Cafe.space.xs))
+                    open.forEach { row(it) }
+                }
+                list.items.filter { it.done }.takeIf { it.isNotEmpty() }?.let { done ->
+                    Eyebrow("In the basket", Modifier.padding(top = Cafe.space.xs))
+                    done.forEach { row(it) }
+                }
+            } else {
+                list.items.sortedBy { it.done }.forEach { row(it) }
             }
             VSpace(Cafe.space.xs)
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -354,6 +375,9 @@ private fun LazyListScope.listShelf(book: ListBook, actions: LibraryActions, rem
                         adding = ""
                     }
                 }, filled = true, enabled = adding.isNotBlank(), modifier = Modifier.padding(start = Cafe.space.s))
+            }
+            if (com.lukas.jarvis.data.Aisle.suits(list.name)) {
+                QuietButton("Show it when I get to the shop", { actions.onType("Show my shopping list when I get to ") }, icon = Icons.Rounded.Place)
             }
             QuietButton("Delete the list", {
                 val items = list.items.map { it.text }

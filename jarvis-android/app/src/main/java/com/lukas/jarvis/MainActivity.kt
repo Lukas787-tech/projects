@@ -219,6 +219,7 @@ sealed interface Launch {
     data object Scan : Launch
     data object Today : Launch
     data object Money : Launch
+    data object Lists : Launch
     data class Shared(val text: String?, val image: Uri?) : Launch
 
     companion object {
@@ -230,6 +231,7 @@ sealed interface Launch {
             Entry.SCAN -> Scan
             Entry.TODAY -> Today
             Entry.MONEY -> Money
+            Entry.LISTS -> Lists
             Intent.ACTION_SEND -> {
                 val text = intent.getStringExtra(Intent.EXTRA_TEXT)
                     ?: intent.getStringExtra(Intent.EXTRA_SUBJECT)
@@ -455,6 +457,7 @@ private fun JarvisRoot(
             }
             Launch.Today -> viewModel.showElement(Element.Today)
             Launch.Money -> viewModel.showElement(Element.Money)
+            Launch.Lists -> viewModel.showElement(Element.Lists)
             is Launch.Shared -> {
                 viewModel.showElement(Element.Globe)
                 viewModel.updateSettings { it.copy(voiceMode = false) }

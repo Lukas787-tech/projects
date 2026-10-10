@@ -17,6 +17,8 @@ object Entry {
     const val TODAY = "com.lukas.jarvis.TODAY"
     /** The money shelf, from the notification of something that logged itself. */
     const val MONEY = "com.lukas.jarvis.MONEY"
+    /** The lists shelf, from a list shown at the shop. */
+    const val LISTS = "com.lukas.jarvis.LISTS"
 
     fun intent(context: Context, action: String): Intent =
         Intent(context, MainActivity::class.java)

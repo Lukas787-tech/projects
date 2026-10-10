@@ -33,7 +33,13 @@ data class PlaceWatch(
      * run my evening routine". It runs in the background, like a quiet one,
      * and its answer arrives as the notification.
      */
-    val routine: String? = null
+    val routine: String? = null,
+    /**
+     * A list to show there instead of a fixed note: "show my shopping list
+     * when I get to Rewe". What is on it is read when the phone arrives, so
+     * it is the list as it is then, not as it was when this was set.
+     */
+    val list: String? = null
 ) {
 
     enum class Crossing { Fire, Arm, Ignore }
@@ -72,6 +78,7 @@ data class PlaceWatch(
         .put("armed", armed)
         .put("at", createdAt)
         .apply { routine?.let { put("routine", it) } }
+        .apply { list?.let { put("list", it) } }
 
     companion object {
         /**
@@ -91,7 +98,8 @@ data class PlaceWatch(
             every: Boolean,
             here: GeoPoint?,
             radius: Int = DEFAULT_RADIUS,
-            routine: String? = null
+            routine: String? = null,
+            list: String? = null
         ): PlaceWatch {
             val inside = here != null && Geo.distance(here, point) <= radius
             return PlaceWatch(
@@ -103,7 +111,8 @@ data class PlaceWatch(
                 leaving = leaving,
                 every = every,
                 armed = leaving || !inside,
-                routine = routine?.trim()?.takeIf { it.isNotBlank() }
+                routine = routine?.trim()?.takeIf { it.isNotBlank() },
+                list = list?.trim()?.takeIf { it.isNotBlank() }
             )
         }
 
@@ -120,7 +129,8 @@ data class PlaceWatch(
                 every = obj.optBoolean("every", false),
                 armed = obj.optBoolean("armed", true),
                 createdAt = obj.optLong("at", 0L),
-                routine = obj.optString("routine").takeIf { it.isNotBlank() }
+                routine = obj.optString("routine").takeIf { it.isNotBlank() },
+                list = obj.optString("list").takeIf { it.isNotBlank() }
             )
         }
 

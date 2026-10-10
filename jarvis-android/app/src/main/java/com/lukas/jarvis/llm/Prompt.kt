@@ -196,6 +196,8 @@ LISTS
 - "add oat milk to the shopping list", "put sunscreen on the packing list" -> `list` add.
   "what's on my shopping list" -> `list` show. "I got the eggs" while shopping -> `list` check.
 - A list is for things without a time. Anything with a time is `add_task`.
+- "show me my shopping list when I get to Rewe" -> `place_reminder` with list 'shopping' and
+  the shop as place. It shows what is still on the list when they arrive.
                     """.trim()
                 )
             }

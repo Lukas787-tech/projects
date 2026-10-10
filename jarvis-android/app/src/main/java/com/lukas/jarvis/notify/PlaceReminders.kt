@@ -65,10 +65,11 @@ class PlaceReminders(context: Context) {
         leaving: Boolean,
         every: Boolean,
         here: GeoPoint?,
-        routine: String? = null
+        routine: String? = null,
+        list: String? = null
     ): PlaceWatch {
         val id = (current.maxOfOrNull { it.id } ?: 0L).coerceAtLeast(System.currentTimeMillis() / 1000) + 1
-        val watch = PlaceWatch.create(id, text, place, point, leaving, every, here, routine = routine)
+        val watch = PlaceWatch.create(id, text, place, point, leaving, every, here, routine = routine, list = list)
         write(current + watch)
         arm(watch)
         return watch
@@ -122,10 +123,10 @@ class PlaceReminders(context: Context) {
             }
             PlaceWatch.Crossing.Fire -> {
                 // A routine sends its own answer as the notification.
-                if (watch.routine != null) {
-                    com.lukas.jarvis.auto.RoutineWorker.enqueue(app, watch.routine)
-                } else {
-                    post(watch)
+                when {
+                    watch.routine != null -> com.lukas.jarvis.auto.RoutineWorker.enqueue(app, watch.routine)
+                    watch.list != null -> postList(watch, watch.list)
+                    else -> post(watch)
                 }
                 val next = watch.afterFiring()
                 if (next == null) {
@@ -178,6 +179,34 @@ class PlaceReminders(context: Context) {
         PendingIntent.FLAG_UPDATE_CURRENT or
             (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0)
     )
+
+    /**
+     * The list as it is now, at the shop: what is still to get, aisle by aisle.
+     * Nothing left on it is nothing to say, so then nothing is posted.
+     */
+    private fun postList(watch: PlaceWatch, name: String) {
+        val book = (app as? JarvisApp)?.container?.lists?.current ?: return post(watch)
+        val list = book.find(name) ?: return
+        val walk = com.lukas.jarvis.data.Aisle.walk(list) ?: return
+        Reminders(app) // makes sure the reminders channel exists
+        val open = PendingIntent.getActivity(
+            app,
+            watch.id.toInt(),
+            com.lukas.jarvis.surface.Entry.intent(app, com.lukas.jarvis.surface.Entry.LISTS),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val count = list.open.size
+        val notification = Notification.Builder(app, Reminders.CHANNEL_REMINDERS)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Your ${list.name} list, $count to get")
+            .setContentText(walk.lines().first())
+            .setStyle(Notification.BigTextStyle().bigText(walk))
+            .setCategory(Notification.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build()
+        runCatching { notifications?.notify(NOTIFICATION_BASE + (watch.id % 10_000).toInt(), notification) }
+    }
 
     private fun post(watch: PlaceWatch) {
         Reminders(app) // makes sure the reminders channel exists

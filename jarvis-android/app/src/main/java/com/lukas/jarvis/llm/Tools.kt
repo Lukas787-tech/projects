@@ -731,7 +731,8 @@ class Tools(
                 "place" to str("Where: a saved place such as 'home' or 'work', a shop, or an address. Omit for where the user is now."),
                 "leaving" to bool("True for 'when I leave', false for 'when I get there'."),
                 "every" to bool("True for every arrival or departure, not only the next."),
-                "routine" to str("A saved routine to run there instead, e.g. 'evening' for 'when I get home, run my evening routine'.")
+                "routine" to str("A saved routine to run there instead, e.g. 'evening' for 'when I get home, run my evening routine'."),
+                "list" to str("A list to show there instead, read when they arrive, e.g. 'shopping' for 'show my shopping list when I get to Rewe'.")
             ),
             emptyList()
         ),
@@ -2224,7 +2225,11 @@ class Tools(
                 ?: return "There is no routine called '$wanted'. Saved: " +
                     routines.all.value.joinToString { it.name }.ifBlank { "none yet" } + "."
         }
-        val label = text.ifBlank { routineName?.let { "run the $it routine" } ?: "" }
+        val listName = args.optString("list").trim().takeIf { it.isNotBlank() }
+            ?.let { com.lukas.jarvis.data.ListBook.canonical(it) }?.takeIf { it.isNotBlank() }
+        val label = text.ifBlank {
+            routineName?.let { "run the $it routine" } ?: listName?.let { "your $it list" } ?: ""
+        }
         if (label.isBlank()) return "What should the reminder say?"
         if (!placeReminders.canWatch) {
             placeReminders.askPermission()
@@ -2252,12 +2257,20 @@ class Tools(
             leaving = args.optBoolean("leaving", false),
             every = args.optBoolean("every", false),
             here = locator.remembered(),
-            routine = routineName
+            routine = routineName,
+            list = listName
         )
         return buildString {
             append("Set: ${watch.text}, ${watch.trigger}")
             if (watch.every) append(", every time")
             append(".")
+            if (listName != null) {
+                val open = lists.current.find(listName)?.open?.size ?: 0
+                append(
+                    if (open == 0) " The $listName list is empty now; it shows whatever is on it when they arrive."
+                    else " It shows what is still on it then ($open now), in the order of the shop."
+                )
+            }
             if (!watch.leaving && !watch.armed) append(" You're there now, so it counts from the next time you arrive.")
             if (!placeReminders.canWatchClosed) {
                 placeReminders.askPermission()
@@ -2308,14 +2321,19 @@ class Tools(
         if (action != "all" && name.isBlank()) return "Which list? Say its name, like 'shopping'."
         val label = com.lukas.jarvis.data.ListBook.canonical(name)
 
-        fun describe(): String {
+        fun describe(walking: Boolean = false): String {
             val list = lists.current.find(name) ?: return "There is no $label list yet."
             if (list.items.isEmpty()) return "The $label list is empty."
             val open = list.open.map { it.text }
             val done = list.items.filter { it.done }.map { it.text }
+            // Read out at the shop, the shopping list goes round it in order.
+            val walk = if (walking && open.size >= 3 && com.lukas.jarvis.data.Aisle.suits(label)) {
+                com.lukas.jarvis.data.Aisle.walk(list)?.lines()?.joinToString("; ")
+            } else null
             return buildString {
-                append("${label.replaceFirstChar { it.titlecase(Locale.ROOT) }} list: ")
-                append(if (open.isEmpty()) "everything is ticked off" else open.joinToString(", "))
+                append("${label.replaceFirstChar { it.titlecase(Locale.ROOT) }} list")
+                append(if (walk != null) ", in the order of the shop: " else ": ")
+                append(if (open.isEmpty()) "everything is ticked off" else walk ?: open.joinToString(", "))
                 append(" (${open.size} open")
                 if (done.isNotEmpty()) append("; done: ${done.joinToString(", ")}")
                 append(").")
@@ -2356,7 +2374,7 @@ class Tools(
                 lists.change { it.delete(name) }
                 "Deleted the $label list."
             }
-            else -> describe()
+            else -> describe(walking = true)
         }
     }
 
