@@ -55,10 +55,10 @@ jobs:
 
       # Zero dead ends, on the real canvas: every moment is composed and its
       # primary step is found on screen and tapped. A dead end fails the build.
-      - name: Walk every moment, and check every tap for words and size
+      - name: Walk every moment, check every tap, and run the daily-life tools for real
         run: |
           set -o pipefail
-          ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.MomentWalkTest' --tests 'com.lukas.jarvis.AccessibilityTest' --no-daemon 2>&1 | tee walk.log
+          ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.MomentWalkTest' --tests 'com.lukas.jarvis.AccessibilityTest' --tests 'com.lukas.jarvis.DailyLifeTest' --no-daemon 2>&1 | tee walk.log
 
       - name: What failed
         if: failure()

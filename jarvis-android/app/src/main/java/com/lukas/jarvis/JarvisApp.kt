@@ -110,7 +110,8 @@ class AppContainer(context: Context) {
     /** One day, gathered once, for the dashboard and the spoken brief alike. */
     val briefer = Briefer(brain, agenda, weather, locator, places, device, knowledge, countdowns)
 
-    private val tools = Tools(
+    /** Reached by the integration tests, which run real tool calls against a real database. */
+    internal val tools = Tools(
         brain = brain,
         web = web,
         weather = weather,
