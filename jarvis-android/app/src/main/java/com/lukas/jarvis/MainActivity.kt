@@ -290,6 +290,7 @@ private fun JarvisRoot(
     val entries by viewModel.entries.collectAsStateWithLifecycle()
     val streaks by viewModel.streaks.collectAsStateWithLifecycle()
     val repeats by viewModel.repeats.collectAsStateWithLifecycle()
+    val tidied by viewModel.tidied.collectAsStateWithLifecycle()
     val availableModels by viewModel.availableModels.collectAsStateWithLifecycle()
     val modelsState by viewModel.modelsState.collectAsStateWithLifecycle()
     val testState by viewModel.testState.collectAsStateWithLifecycle()
@@ -591,7 +592,10 @@ private fun JarvisRoot(
             deleteTask = viewModel::deleteTask,
             cancelPlaceReminder = viewModel::cancelPlaceReminder,
             didHabit = viewModel::didHabit,
-            stopRepeat = viewModel::stopRepeat
+            stopRepeat = viewModel::stopRepeat,
+            bringBack = viewModel::bringBack,
+            bringAllBack = viewModel::bringAllBack,
+            keepTidy = viewModel::keepTidy
         )
     }
 
@@ -680,7 +684,8 @@ private fun JarvisRoot(
                     actions = libraryActions,
                     defaultCurrency = settings.defaultCurrency,
                     streaks = streaks,
-                    repeats = repeats
+                    repeats = repeats,
+                    tidied = tidied
                 )
                 Element.Skills -> PowersRoom(
                     settings = settings,

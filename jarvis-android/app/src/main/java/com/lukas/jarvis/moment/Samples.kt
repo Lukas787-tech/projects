@@ -61,7 +61,23 @@ object Samples {
     }
 
     fun card(tool: String, result: String = resultFor(tool), args: String = argsFor(tool)): CanvasCard =
-        Cards.fromOutput(ToolOutput(tool, args, result, at = AT))
+        Cards.fromOutput(ToolOutput(tool, args, result, at = AT, chart = chartFor(tool)))
+
+    /** The numbers a money tool hands its card, so the chart is walked and drawn like the rest. */
+    fun chartFor(tool: String): Chart? = when (tool) {
+        "tracker_status" -> Chart(
+            bars = listOf(
+                Bar("Groceries", 182.40, "182.40 EUR", limit = 300.0, note = "of 300.00 EUR this month"),
+                Bar("Eating out", 74.00, "74.00 EUR", limit = 80.0, note = "of 80.00 EUR this week"),
+                Bar("Fun", 96.50, "96.50 EUR", limit = 90.0, note = "of 90.00 EUR this month")
+            )
+        )
+        "spending_report" -> Chart(
+            bars = listOf(Bar("Groceries", 182.40, "182.40 EUR", note = "last month by now 160.10 EUR", compare = 160.10), Bar("Fun", 40.0, "40.00 EUR", compare = 55.0)),
+            caption = "This month so far, against the same 9 days of last month"
+        )
+        else -> null
+    }
 
     private fun showTool(kind: ShowKind) = when (kind) {
         ShowKind.Map -> "find_places"

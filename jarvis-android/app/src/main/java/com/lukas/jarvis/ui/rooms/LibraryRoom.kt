@@ -96,7 +96,11 @@ class LibraryActions(
     /** One tap on a habit: done for today. */
     val didHabit: (Long) -> Unit = {},
     /** Ends something that logs itself; what it logged stays. */
-    val stopRepeat: (Long) -> Unit = {}
+    val stopRepeat: (Long) -> Unit = {},
+    /** A memory upkeep put away, brought back; or all of them; or the list let go. */
+    val bringBack: (Long) -> Unit = {},
+    val bringAllBack: () -> Unit = {},
+    val keepTidy: () -> Unit = {}
 )
 
 /** Something just removed, and how to put it back. */
@@ -121,7 +125,8 @@ fun LibraryRoom(
     modifier: Modifier = Modifier,
     defaultCurrency: String = "EUR",
     streaks: Map<Long, com.lukas.jarvis.data.Streak> = emptyMap(),
-    repeats: List<Recurring> = emptyList()
+    repeats: List<Recurring> = emptyList(),
+    tidied: List<Pair<com.lukas.jarvis.data.Tidied, Memory>> = emptyList()
 ) {
     var undo by remember { mutableStateOf<Undoable?>(null) }
     LaunchedEffect(undo) {
@@ -149,7 +154,7 @@ fun LibraryRoom(
             }
         ) {
             when (shelf) {
-                Shelf.Memory -> memoryShelf(memories.filter { it.kind != Memory.KIND_NOTE && it.kind != Memory.KIND_JOURNAL }, actions, removed)
+                Shelf.Memory -> memoryShelf(memories.filter { it.kind != Memory.KIND_NOTE && it.kind != Memory.KIND_JOURNAL }, actions, removed, tidied)
                 Shelf.Notes -> notesShelf(memories.filter { it.kind == Memory.KIND_NOTE || it.kind == Memory.KIND_JOURNAL }, actions, removed)
                 Shelf.Lists -> listShelf(lists, actions, removed)
                 Shelf.Money -> moneyShelf(trackers, entries, actions, removed, defaultCurrency, streaks, repeats)
@@ -181,7 +186,8 @@ fun LibraryRoom(
 
 // ------------------------------------------------------------------ memory
 
-private fun LazyListScope.memoryShelf(memories: List<Memory>, actions: LibraryActions, removed: (Undoable) -> Unit) {
+private fun LazyListScope.memoryShelf(memories: List<Memory>, actions: LibraryActions, removed: (Undoable) -> Unit, tidied: List<Pair<com.lukas.jarvis.data.Tidied, Memory>> = emptyList()) {
+    if (tidied.isNotEmpty()) item(key = "memory-tidied") { TidiedCard(tidied, actions) }
     item(key = "memory-add") { AddMemory(actions, Memory.KIND_FACT, "Something to remember") }
     if (memories.isEmpty()) {
         item(key = "memory-empty") {
@@ -418,6 +424,37 @@ private fun LazyListScope.moneyShelf(trackers: List<TrackerStatus>, entries: Lis
     }
     items(trackers, key = { "tracker:${it.tracker.id}" }) { status ->
         TrackerCard(status, entries.filter { it.trackerId == status.tracker.id }, actions, removed, streaks[status.tracker.id], repeats.filter { it.trackerId == status.tracker.id })
+    }
+}
+
+/**
+ * What memory upkeep put away overnight: each with why, and a way to bring
+ * it back; or all of them; or "That's fine", which lets the list go and
+ * leaves them put away.
+ */
+@Composable
+private fun TidiedCard(tidied: List<Pair<com.lukas.jarvis.data.Tidied, Memory>>, actions: LibraryActions) {
+    PaperCard(Modifier.fillMaxWidth(), tone = com.lukas.jarvis.ui.kit.Tone.Latte) {
+        SectionHeader("Tidied up overnight")
+        Text(
+            "Put away, not deleted: ${tidied.size} ${if (tidied.size == 1) "memory" else "memories"} that only got in the way.",
+            style = Cafe.type.bodySmall,
+            color = Cafe.colors.cocoa
+        )
+        VSpace(Cafe.space.xs)
+        tidied.take(8).forEach { (t, memory) ->
+            ListRow(
+                title = memory.content,
+                subtitle = t.reason.said.replaceFirstChar { it.titlecase() },
+                trailing = { QuietButton("Bring back", { actions.bringBack(memory.id) }) }
+            )
+        }
+        if (tidied.size > 8) Text("and ${tidied.size - 8} more", style = Cafe.type.caption, color = Cafe.colors.cocoa)
+        VSpace(Cafe.space.s)
+        Wrap {
+            CafeButton("That's fine", actions.keepTidy)
+            CafeButton("Bring them all back", actions.bringAllBack, kind = ButtonKind.Secondary)
+        }
     }
 }
 

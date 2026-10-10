@@ -27,6 +27,7 @@ import java.time.LocalDate
 object RoomSamples {
     private const val NOW = 1_760_000_000_000L
     private const val HOUR = 3_600_000L
+    private const val DAY = 24 * HOUR
 
     val tasks = listOf(
         Task(id = 1, title = "Call the landlord about the heating", dueAt = NOW + 2 * HOUR),
@@ -99,6 +100,17 @@ object RoomSamples {
         Memory(id = 5, content = "A good day — the long walk by the lake and dinner with Anna", kind = Memory.KIND_JOURNAL)
     )
 
+    /** A night's upkeep: one repeat put away. */
+    val tidied = listOf(
+        com.lukas.jarvis.data.Tidied(6, com.lukas.jarvis.data.Upkeep.Reason.Repeat, keptId = 2, at = NOW - HOUR) to
+            Memory(id = 6, content = "Bike lock code: in the blue notebook", archived = true)
+    )
+
+    /** The rent, logging itself. */
+    val repeats = listOf(
+        com.lukas.jarvis.data.Recurring(id = 1, trackerId = 1, amount = 12.99, note = "Veg box", anchor = NOW - 3 * DAY, logged = 1, nextAt = NOW + 27 * DAY)
+    )
+
     val lists = ListBook(
         listOf(
             NamedList("shopping", listOf(ListItem("oat milk"), ListItem("tomatoes"), ListItem("coffee beans", done = true), ListItem("bread"))),
@@ -142,7 +154,9 @@ fun LibrarySample(shelf: Shelf) = LibraryRoom(
     tasks = RoomSamples.tasks,
     placeReminders = emptyList(),
     actions = RoomSamples.libraryActions,
-    streaks = RoomSamples.streaks
+    streaks = RoomSamples.streaks,
+    repeats = RoomSamples.repeats,
+    tidied = RoomSamples.tidied
 )
 
 @Preview(name = "Today", widthDp = 411, heightDp = 1400)

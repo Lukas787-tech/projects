@@ -103,6 +103,10 @@ class AssistantViewModel(
     private val _streaks = MutableStateFlow<Map<Long, com.lukas.jarvis.data.Streak>>(emptyMap())
     val streaks: StateFlow<Map<Long, com.lukas.jarvis.data.Streak>> = _streaks.asStateFlow()
 
+    /** Memories put away overnight and not yet looked at, each with the memory itself. */
+    private val _tidied = MutableStateFlow<List<Pair<com.lukas.jarvis.data.Tidied, Memory>>>(emptyList())
+    val tidied: StateFlow<List<Pair<com.lukas.jarvis.data.Tidied, Memory>>> = _tidied.asStateFlow()
+
     /** What logs itself on a schedule: the rent, the subscriptions. */
     private val _repeats = MutableStateFlow<List<com.lukas.jarvis.data.Recurring>>(emptyList())
     val repeats: StateFlow<List<com.lukas.jarvis.data.Recurring>> = _repeats.asStateFlow()
@@ -1037,7 +1041,10 @@ class AssistantViewModel(
                         val days = com.lukas.jarvis.data.Streaks.days(brain.entriesBetween(now - 400L * 86_400_000L, now, status.tracker.id))
                         status.tracker.id to com.lukas.jarvis.data.Streaks.of(days, today)
                     },
-                    repeats = runCatching { brain.recurring() }.getOrDefault(emptyList())
+                    repeats = runCatching { brain.recurring() }.getOrDefault(emptyList()),
+                    tidied = runCatching {
+                        com.lukas.jarvis.auto.UpkeepWork.log(container.app).mapNotNull { t -> brain.getMemory(t.memoryId)?.let { t to it } }
+                    }.getOrDefault(emptyList())
                 )
             }
             _memories.value = snapshot.memories
@@ -1046,6 +1053,7 @@ class AssistantViewModel(
             _entries.value = snapshot.entries
             _streaks.value = snapshot.streaks
             _repeats.value = snapshot.repeats
+            _tidied.value = snapshot.tidied
         }
     }
 
@@ -1055,11 +1063,38 @@ class AssistantViewModel(
         val tasks: List<Task>,
         val entries: List<Entry>,
         val streaks: Map<Long, com.lukas.jarvis.data.Streak>,
-        val repeats: List<com.lukas.jarvis.data.Recurring>
+        val repeats: List<com.lukas.jarvis.data.Recurring>,
+        val tidied: List<Pair<com.lukas.jarvis.data.Tidied, Memory>>
     )
 
     /** One tap on a habit: done for today. */
     fun didHabit(trackerId: Long) = addEntry(trackerId, 1.0, Entry.DIR_OUT, null)
+
+    /** A memory upkeep put away, brought back as it was. */
+    fun bringBack(id: Long) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { com.lukas.jarvis.auto.UpkeepWork.bringBack(container.app, brain, id) }
+            refreshAll()
+        }
+    }
+
+    /** Every memory upkeep put away, brought back. */
+    fun bringAllBack() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                com.lukas.jarvis.auto.UpkeepWork.log(container.app).forEach { com.lukas.jarvis.auto.UpkeepWork.bringBack(container.app, brain, it.memoryId) }
+            }
+            refreshAll()
+        }
+    }
+
+    /** "That's fine": the list goes, the memories stay put away. */
+    fun keepTidy() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { com.lukas.jarvis.auto.UpkeepWork.clear(container.app) }
+            refreshAll()
+        }
+    }
 
     /** Ends something that logs itself, after the Library asked once more. What it logged stays. */
     fun stopRepeat(id: Long) {

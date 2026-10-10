@@ -227,6 +227,13 @@ class JarvisApp : Application() {
                     runCatching { com.lukas.jarvis.brief.BriefAlarm.schedule(this@JarvisApp, time, evening = true) }
                 }
         }
+        // Memory upkeep runs overnight on the charger while it is on.
+        appScope.launch {
+            container.settings.state
+                .map { it.tidyMemory }
+                .distinctUntilChanged()
+                .collect { runCatching { com.lukas.jarvis.auto.UpkeepWork.sync(this@JarvisApp, container.settings.current) } }
+        }
         // Nudges look every couple of hours while they are on, and not at all while they are off.
         appScope.launch {
             container.settings.state

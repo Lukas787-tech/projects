@@ -127,6 +127,8 @@ data class Settings(
      */
     val nudges: Boolean = false,
     val nudgeKinds: String = "",
+    /** Overnight, repeats and long-gone plans are put away (never deleted), with a list to undo it. */
+    val tidyMemory: Boolean = true,
 
     /** False until the first-run introduction has been completed or skipped. */
     val onboarded: Boolean = false,
@@ -245,6 +247,7 @@ class SettingsStore(context: Context) {
             localOnly = prefs.getBoolean(KEY_LOCAL_ONLY, false),
             nudges = prefs.getBoolean(KEY_NUDGES, false),
             nudgeKinds = prefs.getString(KEY_NUDGE_KINDS, "").orEmpty(),
+            tidyMemory = prefs.getBoolean(KEY_TIDY_MEMORY, true),
             onboarded = prefs.getBoolean(KEY_ONBOARDED, false),
             homeUrl = prefs.getString(KEY_HOME_URL, "").orEmpty(),
             homeToken = Secrets.box().open(prefs.getString(KEY_HOME_TOKEN, "")),
@@ -326,6 +329,7 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_LOCAL_ONLY, next.localOnly)
             .putBoolean(KEY_NUDGES, next.nudges)
             .putString(KEY_NUDGE_KINDS, next.nudgeKinds)
+            .putBoolean(KEY_TIDY_MEMORY, next.tidyMemory)
             .putBoolean(KEY_ONBOARDED, next.onboarded)
             .putString(KEY_HOME_URL, next.homeUrl)
             .putString(KEY_HOME_TOKEN, Secrets.box().seal(next.homeToken))
@@ -480,6 +484,7 @@ class SettingsStore(context: Context) {
         const val KEY_LOCAL_ONLY = "local_only"
         const val KEY_NUDGES = "nudges"
         const val KEY_NUDGE_KINDS = "nudge_kinds"
+        const val KEY_TIDY_MEMORY = "tidy_memory"
         const val KEY_HOME_URL = "home_url"
         const val KEY_HOME_TOKEN = "home_token"
         const val KEY_HOME_ENABLED = "home_enabled"

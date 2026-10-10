@@ -64,6 +64,10 @@ class Brain(context: Context) {
         return rows > 0
     }
 
+    /** Puts a memory away or brings it back, touching nothing else about it. */
+    fun setArchived(id: Long, archived: Boolean): Boolean =
+        db.update("memories", ContentValues().apply { put("archived", if (archived) 1 else 0) }, "id = ?", arrayOf(id.toString())) > 0
+
     fun deleteMemory(id: Long): Boolean {
         db.delete("memory_tokens", "memory_id = ?", arrayOf(id.toString()))
         return db.delete("memories", "id = ?", arrayOf(id.toString())) > 0

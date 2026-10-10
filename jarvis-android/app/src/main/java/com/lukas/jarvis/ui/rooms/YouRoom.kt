@@ -1226,6 +1226,17 @@ private fun HomeCard(settings: Settings, actions: YouActions) {
 // ---------------------------------------------------------------------- data
 
 private fun LazyListScope.dataShelf(state: YouState, actions: YouActions) {
+    item(key = "upkeep") {
+        PaperCard(Modifier.fillMaxWidth()) {
+            SectionHeader("Memory upkeep")
+            SwitchRow(
+                "Tidy memory overnight",
+                state.settings.tidyMemory,
+                { v -> actions.onUpdate { it.copy(tidyMemory = v) } },
+                detail = "On the charger, things said twice and plans for days long gone are put away, never deleted. The Library lists them, each with a way to bring it back."
+            )
+        }
+    }
     item(key = "privacy") {
         val settings = state.settings
         PaperCard(Modifier.fillMaxWidth(), tone = if (settings.localOnly) Tone.Sage else Tone.Paper) {
