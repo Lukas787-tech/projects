@@ -200,8 +200,13 @@ CANVAS_MARK = "You and settings"
 
 
 def to_canvas():
-    """Back to the canvas from wherever the walk ended up, starting the app if it has to."""
-    for _ in range(8):
+    """Back to the canvas from wherever the walk ended up, starting the app if it has to.
+
+    Each way back is tried in turn and written down, so a room that cannot be
+    left shows up as exactly that rather than as a walk that lost its way.
+    """
+    ways = ["Back to talking", "Talk", "KEYCODE_BACK"]
+    for attempt in range(9):
         if not alive():
             start()
         root = dump()
@@ -213,18 +218,23 @@ def to_canvas():
             continue
         if has(root, CANVAS_MARK):
             return True
-        if keyboard_up():
-            shell("input keyevent KEYCODE_BACK")
-            time.sleep(0.8)
-            continue
-        # A room: its own back arrow leads to the canvas.
-        if not tap_label("Back to talking", root):
+        way = ways[attempt % len(ways)]
+        if way == "KEYCODE_BACK":
             shell("input keyevent KEYCODE_BACK")
             time.sleep(1.2)
+            done = "pressed"
+        else:
+            done = "tapped" if tap_label(way, root) else "not on screen"
+        after = dump()
+        if after is not None and has(after, CANVAS_MARK):
+            return True
+        if attempt < 6:
+            say(f"  way back '{way}': {done}, still not on the canvas")
     root = dump()
     if root is not None:
         seen = sorted({words(n) for n in mine(root) if words(n)})[:30]
         say(f"  on screen instead: {seen}")
+    picture("stuck")
     return False
 
 
