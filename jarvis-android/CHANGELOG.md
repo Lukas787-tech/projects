@@ -110,6 +110,10 @@ drawn in pixels, who shows what the assistant is really doing.
   to end, or what is still open in the evening. Never at night, never the
   same thing twice, three a day at most, a switch for each kind, and worked
   out on the phone without any model.
+- **After a quiet time.** When Mochi ends a Do Not Disturb it set ("no calls
+  for an hour", a focus session), one notification says who wrote meanwhile,
+  newest first, and a tap goes through the messages with you. On the lock
+  screen it only says that someone wrote.
 - **Memory upkeep.** Overnight on the charger, things said twice and plans
   for days long gone are put away, never deleted. The Library lists them,
   each with a way to bring it back. Notes, the journal and anything pinned
@@ -146,6 +150,9 @@ drawn in pixels, who shows what the assistant is really doing.
   its fonts) are gone from the app.
 - Keys you add are stored encrypted, under a key held by the Android
   Keystore.
+- The tools are split into one file per group (money, places, the phone…),
+  with the same code, and the everyday and daily-life tools now run end to
+  end on every build against a real database.
 - The database gains one table, for money that logs itself. As with every
   step, it only adds; nothing in a 5.5 database is changed.
 - A backup can be locked with a passphrase. It carries your keys and every

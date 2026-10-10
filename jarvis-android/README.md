@@ -322,6 +322,11 @@ into your calendar with a reminder (or, without calendar write access, are
 filled in for you to save — and it says which). Emails are filled in for you to
 send, and it says so rather than claiming the job is done.
 
+**Says who wrote while it was quiet.** When Mochi ends a Do Not Disturb it set
+itself, one notification lists who wrote meanwhile, newest first, and a tap goes
+through the messages with you. It uses only what is already in the notification
+shade and keeps nothing; on the lock screen it only says that someone wrote.
+
 **Reads your day.** With calendar and contacts switched on it knows what is on
 today and who is in your address book. Ask "how does my day look" and it
 gathers the weather, what is due, the next appointment and your budgets in one
@@ -473,8 +478,10 @@ Needs JDK 17 and the Android SDK (platform 35).
 
 ./gradlew testReleaseUnitTest      # the unit tests
 ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.MomentWalkTest' \
-    --tests 'com.lukas.jarvis.AccessibilityTest'
-# every moment walked for dead ends, every tap checked for words and size
+    --tests 'com.lukas.jarvis.AccessibilityTest' \
+    --tests 'com.lukas.jarvis.DailyLifeTest' --tests 'com.lukas.jarvis.EverydayToolsTest'
+# every moment walked for dead ends, every tap checked for words and size,
+# and the offline tools run end to end against a real database
 ```
 
 The fonts (Newsreader, DM Sans and Pixelify Sans) are bundled under
@@ -493,8 +500,9 @@ app/src/main/java/com/lukas/jarvis/
               contacts, calendar
   core/       settings, time parsing, the calculator, unit conversion, dates
   data/       SQLite schema, models, BM25 retrieval, tracker maths
-  llm/        OpenAI-compatible client, tool definitions and catalog, agent
-              loop, prompt
+  llm/        OpenAI-compatible client, the tool catalog, the agent loop,
+              the prompt, and the tools themselves, one file per group
+              (ToolsMoney.kt, ToolsPlaces.kt, …)
   voice/      speech recognition, text to speech, wake word service
   maps/       places, routing, location, map tiles and state
   web/        DuckDuckGo search, page reader, weather, exchange rates, news,
