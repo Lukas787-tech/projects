@@ -26,6 +26,16 @@ interface ChatModel {
 
     /** Whether a turn can be answered without the free keyless models, for Local only. */
     fun answersPrivately(settings: Settings): Boolean = true
+
+    /** [chat], for a turn that asks for [need]: a pool leans towards a quick or a strong model. */
+    suspend fun chatFor(
+        need: Need,
+        settings: Settings,
+        messages: List<LlmMessage>,
+        tools: List<JSONObject> = emptyList(),
+        stream: ReplyStream? = null,
+        onEndpointChange: (String) -> Unit = {}
+    ): LlmReply = chat(settings, messages, tools, stream, onEndpointChange)
 }
 
 /** What the agent needs from the tools. [Tools] is the real one. */
@@ -156,6 +166,9 @@ class Agent(
         messages += LlmMessage.system(memory.context(utterance, settings, extra, sealed))
         messages += LlmMessage.user(utterance)
 
+        // A timer wants a quick model, a plan a strong one.
+        val need = Routing.need(utterance, offered)
+
         var lastText: String? = null
         // What the last thing done (not looked up) said, in case the model's
         // answer forgets to: "Stopwatch started."
@@ -166,7 +179,7 @@ class Agent(
         for (round in 1..MAX_ROUNDS) {
             onStage(if (round == 1) "thinking" else "working")
             draft.restart()
-            val reply = client.chat(settings, messages, schemas, draft) { next ->
+            val reply = client.chatFor(need, settings, messages, schemas, draft) { next ->
                 // Surfaced so a quota switch is visible rather than mysterious.
                 onStage("switching to $next")
             }
@@ -256,7 +269,8 @@ class Agent(
         onStage("thinking")
         draft.restart()
         val forced = runCatching {
-            client.chat(
+            client.chatFor(
+                need,
                 settings,
                 messages + LlmMessage.user("Answer now in plain speech, without using tools."),
                 emptyList(),

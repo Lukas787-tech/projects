@@ -35,8 +35,17 @@ class PooledLlm(
         tools: List<JSONObject>,
         stream: ReplyStream?,
         onEndpointChange: (String) -> Unit
+    ): LlmReply = chatFor(Need.Normal, settings, messages, tools, stream, onEndpointChange)
+
+    override suspend fun chatFor(
+        need: Need,
+        settings: Settings,
+        messages: List<LlmMessage>,
+        tools: List<JSONObject>,
+        stream: ReplyStream?,
+        onEndpointChange: (String) -> Unit
     ): LlmReply {
-        val plan = pool.plan(settings, privateOnly = settings.localOnly && answersPrivately(settings))
+        val plan = pool.plan(settings, privateOnly = settings.localOnly && answersPrivately(settings), need = need)
         if (plan.isEmpty) {
             throw noEndpointError(plan)
         }

@@ -267,7 +267,9 @@ class ModelPool(context: Context) {
         limit: Int = DEFAULT_FAILOVER_LIMIT,
         now: Long = System.currentTimeMillis(),
         /** Local only with a key of their own: the free keyless models are not asked at all. */
-        privateOnly: Boolean = false
+        privateOnly: Boolean = false,
+        /** How much thinking the turn asks for: leans the order towards a quick or a strong model. */
+        need: Need = Need.Normal
     ): Plan {
         val usable = _entries.value.filter {
             it.endpoint.enabled && !it.health.brokenKey && !accountResting(it.endpoint, now) &&
@@ -296,7 +298,7 @@ class ModelPool(context: Context) {
         val (ready, held) = usable.partition { it.heldUntil(now) <= 0L }
 
         val ordered = if (ready.isNotEmpty()) {
-            ready.sortedBy { score(it, now) }.map { it.endpoint }
+            ready.sortedBy { score(it, now) + Routing.bias(Routing.size(it.endpoint.model), need) }.map { it.endpoint }
         } else {
             // Everything is throttled or resting: try the ones that wake first.
             held.sortedBy { it.heldUntil(now) }.map { it.endpoint }

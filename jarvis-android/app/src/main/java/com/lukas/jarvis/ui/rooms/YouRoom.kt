@@ -961,7 +961,7 @@ private fun PoolCard(state: YouState, actions: YouActions) {
     PaperCard(Modifier.fillMaxWidth()) {
         SectionHeader("Model pool")
         Text(
-            "Mochi takes turns through these, counts every call against each free tier, and steps aside before a limit is hit. A pool across several accounts survives a daily cap.",
+            "Mochi takes turns through these, counts every call against each free tier, and steps aside before a limit is hit. A pool across several accounts survives a daily cap. A quick command leans to a small, fast model, a plan or an explanation to a bigger one.",
             style = Cafe.type.bodySmall,
             color = Cafe.colors.cocoa
         )
