@@ -1,6 +1,8 @@
 package com.lukas.jarvis.ui.rooms
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,12 +11,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LocalParking
+import androidx.compose.material.icons.rounded.Map
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.ReceiptLong
@@ -85,7 +92,14 @@ class TodayActions(
     val onSaveRoutine: (Routine) -> Unit = {},
     val onDeleteRoutine: (String) -> Unit = {},
     val onForgetCountdown: (Long) -> Unit = {},
-    val onDidHabit: (Long) -> Unit = {}
+    val onDidHabit: (Long) -> Unit = {},
+    // The rooms that have no button of their own on the canvas: without these
+    // they could only be reached by asking for them.
+    val onOpenMap: () -> Unit = {},
+    val onOpenMusic: () -> Unit = {},
+    val onOpenDevices: () -> Unit = {},
+    val onOpenPowers: () -> Unit = {},
+    val onOpenHistory: () -> Unit = {}
 )
 
 /**
@@ -115,6 +129,18 @@ fun TodayRoom(
         onBack = actions.onBack,
         mochi = CharacterState(if (loading) Mood.Working else Mood.Idle, prop = com.lukas.jarvis.ui.character.Prop.Calendar.takeIf { loading }, description = "$name, looking at your day"),
         onMochi = { actions.onAsk("How does my day look?") },
+        header = {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(Cafe.space.s)
+            ) {
+                FollowChip("Map", actions.onOpenMap, icon = Icons.Rounded.Map)
+                FollowChip("Music", actions.onOpenMusic, icon = Icons.Rounded.MusicNote)
+                FollowChip("This phone", actions.onOpenDevices, icon = Icons.Rounded.PhoneAndroid)
+                FollowChip("Powers", actions.onOpenPowers, icon = Icons.Rounded.AutoAwesome)
+                FollowChip("Conversation", actions.onOpenHistory, icon = Icons.Rounded.History)
+            }
+        },
         modifier = modifier
     ) {
         item(key = "weather") { WeatherCard(brief, loading, actions) }

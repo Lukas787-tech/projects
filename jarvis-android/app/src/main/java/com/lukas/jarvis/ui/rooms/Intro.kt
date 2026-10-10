@@ -1,5 +1,6 @@
 package com.lukas.jarvis.ui.rooms
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -86,6 +87,9 @@ fun Intro(
     initialStep: Int = 0
 ) {
     var step by rememberSaveable(initialStep) { mutableIntStateOf(initialStep.coerceIn(0, LAST)) }
+    // The phone's back button goes back a step, like the Back button below,
+    // instead of closing the app halfway through the introduction.
+    BackHandler(enabled = step > 0) { step-- }
     val reduce = Cafe.reduceMotion
     val name = settings.assistantName.ifBlank { "Mochi" }
     Box(modifier.fillMaxSize().background(Cafe.colors.foam), contentAlignment = Alignment.TopCenter) {

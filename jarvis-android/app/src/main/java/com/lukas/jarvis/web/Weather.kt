@@ -87,7 +87,10 @@ class Weather {
             val now = WeatherNow(
                 place = placeName,
                 temperature = current.optDouble("temperature_2m", Double.NaN),
-                feelsLike = current.optDouble("apparent_temperature", Double.NaN),
+                // Rounded straight onto the screen, where NaN throws: a missing
+                // "feels like" is the temperature itself.
+                feelsLike = current.optDouble("apparent_temperature", Double.NaN)
+                    .takeUnless { it.isNaN() } ?: current.optDouble("temperature_2m", Double.NaN),
                 description = describe(current.optInt("weather_code", -1)),
                 windKph = current.optDouble("wind_speed_10m", 0.0),
                 humidity = current.optInt("relative_humidity_2m", 0),
@@ -109,6 +112,11 @@ class Weather {
                 val uv = daily.optJSONArray("uv_index_max")
                 val count = highs?.length() ?: 0
                 for (i in 0 until count) {
+                    // A day the service left without a high or low is dropped
+                    // rather than shown: rounding NaN for the screen throws.
+                    if ((highs?.optDouble(i, Double.NaN) ?: Double.NaN).isNaN() ||
+                        (lows?.optDouble(i, Double.NaN) ?: Double.NaN).isNaN()
+                    ) continue
                     out.add(
                         WeatherDay(
                             label = when (i) {

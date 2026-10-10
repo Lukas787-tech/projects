@@ -379,7 +379,12 @@ private fun JarvisRoot(
 
     // The chat log is an overlay, so the system back gesture has to close it
     // rather than leave the app — it is not a destination of its own.
-    BackHandler(enabled = showHistory) { showHistory = false }
+    // The stage's note is cleared too: left behind, it opened the history again
+    // the next time the activity was recreated (a rotation, a theme change).
+    BackHandler(enabled = showHistory) {
+        showHistory = false
+        viewModel.showElement(Element.Globe)
+    }
     BackHandler(enabled = interpreter != null && !showHistory) { viewModel.endInterpreter() }
     // "Show me our old conversations" arrives as a note on the stage, and
     // any other change of screen — the dock, the assistant — closes it, so the
@@ -557,7 +562,12 @@ private fun JarvisRoot(
             onSaveRoutine = viewModel::saveRoutine,
             onDeleteRoutine = viewModel::deleteRoutine,
             onForgetCountdown = { id -> viewModel.forgetCountdown(id) },
-            onDidHabit = viewModel::didHabit
+            onDidHabit = viewModel::didHabit,
+            onOpenMap = { viewModel.showElement(Element.Map) },
+            onOpenMusic = { viewModel.showElement(Element.Music) },
+            onOpenDevices = { viewModel.showElement(Element.Devices) },
+            onOpenPowers = { viewModel.showElement(Element.Skills) },
+            onOpenHistory = { viewModel.showElement(Element.Globe, note = com.lukas.jarvis.stage.StageStore.HISTORY) }
         )
     }
     val libraryActions = remember(viewModel) {

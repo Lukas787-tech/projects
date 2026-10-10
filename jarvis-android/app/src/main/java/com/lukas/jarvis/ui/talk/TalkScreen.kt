@@ -233,6 +233,9 @@ private fun TopBar(state: TalkState, act: (ActionIntent) -> Unit) {
             state.status?.let { StatusLine(it, Cafe.colors.honey) }
         }
         IconCircle(Icons.Rounded.WbSunny, "Today", { act(ActionIntent.Open(Room.Today)) }, size = 44.dp)
+        // The map had a place in the old dock; without it here, it vanished from the
+        // canvas as soon as an answer was showing.
+        IconCircle(Icons.Rounded.Map, "Map", { act(ActionIntent.Open(Room.Map)) }, size = 44.dp)
         IconCircle(Icons.AutoMirrored.Rounded.MenuBook, "Library: memories, lists, money and tasks", { act(ActionIntent.Open(Room.Library)) }, size = 44.dp)
         IconCircle(Icons.Rounded.AccountCircle, "You and settings", { act(ActionIntent.Open(Room.Settings)) }, size = 44.dp)
     }
