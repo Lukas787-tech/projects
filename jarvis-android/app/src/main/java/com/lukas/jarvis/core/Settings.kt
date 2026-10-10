@@ -120,6 +120,13 @@ data class Settings(
      * the phone either way.
      */
     val localOnly: Boolean = false,
+    /**
+     * Nudges: now and then, at most one useful thing unasked — rain on the
+     * way, an appointment to leave for, a budget nearly gone. Off unless
+     * switched on; [nudgeKinds] says which kinds, as "rain,event".
+     */
+    val nudges: Boolean = false,
+    val nudgeKinds: String = "",
 
     /** False until the first-run introduction has been completed or skipped. */
     val onboarded: Boolean = false,
@@ -236,6 +243,8 @@ class SettingsStore(context: Context) {
             characterIdle = prefs.getBoolean(KEY_CHARACTER_IDLE, true),
             characterDelights = prefs.getBoolean(KEY_CHARACTER_DELIGHTS, true),
             localOnly = prefs.getBoolean(KEY_LOCAL_ONLY, false),
+            nudges = prefs.getBoolean(KEY_NUDGES, false),
+            nudgeKinds = prefs.getString(KEY_NUDGE_KINDS, "").orEmpty(),
             onboarded = prefs.getBoolean(KEY_ONBOARDED, false),
             homeUrl = prefs.getString(KEY_HOME_URL, "").orEmpty(),
             homeToken = Secrets.box().open(prefs.getString(KEY_HOME_TOKEN, "")),
@@ -315,6 +324,8 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_CHARACTER_IDLE, next.characterIdle)
             .putBoolean(KEY_CHARACTER_DELIGHTS, next.characterDelights)
             .putBoolean(KEY_LOCAL_ONLY, next.localOnly)
+            .putBoolean(KEY_NUDGES, next.nudges)
+            .putString(KEY_NUDGE_KINDS, next.nudgeKinds)
             .putBoolean(KEY_ONBOARDED, next.onboarded)
             .putString(KEY_HOME_URL, next.homeUrl)
             .putString(KEY_HOME_TOKEN, Secrets.box().seal(next.homeToken))
@@ -467,6 +478,8 @@ class SettingsStore(context: Context) {
         const val KEY_CHARACTER_IDLE = "character_idle"
         const val KEY_CHARACTER_DELIGHTS = "character_delights"
         const val KEY_LOCAL_ONLY = "local_only"
+        const val KEY_NUDGES = "nudges"
+        const val KEY_NUDGE_KINDS = "nudge_kinds"
         const val KEY_HOME_URL = "home_url"
         const val KEY_HOME_TOKEN = "home_token"
         const val KEY_HOME_ENABLED = "home_enabled"

@@ -66,7 +66,7 @@ class AppContainer(context: Context) {
     val speaker = Speaker(context)
 
     private val web = WebTools()
-    private val weather = Weather()
+    val weather = Weather()
     private val currency = Currency()
     val knowledge = Knowledge()
     val imagine = Imagine(context)
@@ -226,6 +226,13 @@ class JarvisApp : Application() {
                 .collect { time ->
                     runCatching { com.lukas.jarvis.brief.BriefAlarm.schedule(this@JarvisApp, time, evening = true) }
                 }
+        }
+        // Nudges look every couple of hours while they are on, and not at all while they are off.
+        appScope.launch {
+            container.settings.state
+                .map { it.nudges }
+                .distinctUntilChanged()
+                .collect { runCatching { com.lukas.jarvis.brief.NudgeWork.sync(this@JarvisApp, container.settings.current) } }
         }
     }
 

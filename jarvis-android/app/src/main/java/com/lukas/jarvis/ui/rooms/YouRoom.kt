@@ -395,6 +395,32 @@ private fun LazyListScope.voiceShelf(state: YouState, actions: YouActions) {
             CafeButton("Hear it", actions.onPreviewVoice, icon = Icons.AutoMirrored.Rounded.VolumeUp)
         }
     }
+    item(key = "nudges") {
+        PaperCard(Modifier.fillMaxWidth()) {
+            SectionHeader("Nudges")
+            SwitchRow(
+                "Nudge me when it helps",
+                settings.nudges,
+                { v -> update { it.copy(nudges = v) } },
+                detail = "Now and then, one useful thing unasked. Never at night, never twice, at most ${com.lukas.jarvis.brief.Nudges.MOST_A_DAY} a day, worked out on the phone"
+            )
+            if (settings.nudges) {
+                val on = com.lukas.jarvis.brief.Nudges.kinds(settings.nudgeKinds)
+                com.lukas.jarvis.brief.Nudges.ALL.forEach { kind ->
+                    SwitchRow(
+                        com.lukas.jarvis.brief.Nudges.label(kind),
+                        kind in on,
+                        { v ->
+                            val next = if (v) on + kind else on - kind
+                            // Every kind off is nudges off, not "all of them" again.
+                            update { it.copy(nudgeKinds = next.joinToString(","), nudges = next.isNotEmpty()) }
+                        },
+                        detail = com.lukas.jarvis.brief.Nudges.detail(kind)
+                    )
+                }
+            }
+        }
+    }
     item(key = "phone-voices") { PhoneVoices(settings, actions) }
     item(key = "language") {
         PaperCard(Modifier.fillMaxWidth()) {
