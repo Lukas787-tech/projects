@@ -275,20 +275,37 @@ fun SliderRow(
     modifier: Modifier = Modifier,
     range: ClosedFloatingPointRange<Float> = 0f..1f,
     valueLabel: String? = null,
-    onValueChangeFinished: (() -> Unit)? = null
+    onValueChangeFinished: (() -> Unit)? = null,
+    /**
+     * Hands the value over once, when the finger lets go, and only moves the
+     * thumb while dragging. For a setting that is saved and applied across the
+     * whole app, where doing that for every frame of a drag froze the phone.
+     */
+    commitOnRelease: Boolean = false,
+    /** The label for a value, so it follows the thumb while it is dragged. */
+    labelFor: ((Float) -> String)? = null
 ) {
     val colors = Cafe.colors
+    var dragged by remember { mutableStateOf<Float?>(null) }
+    val shown = (if (commitOnRelease) dragged ?: value else value).coerceIn(range.start, range.endInclusive)
+    val label = labelFor?.invoke(shown) ?: valueLabel
     Column(modifier.fillMaxWidth().padding(vertical = Cafe.space.xs)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(title, style = Cafe.type.body, color = colors.espresso, modifier = Modifier.weight(1f))
-            if (valueLabel != null) Text(valueLabel, style = Cafe.type.labelSmall, color = colors.cocoa)
+            if (label != null) Text(label, style = Cafe.type.labelSmall, color = colors.cocoa)
         }
         Slider(
-            value = value.coerceIn(range.start, range.endInclusive),
-            onValueChange = onValueChange,
+            value = shown,
+            onValueChange = { if (commitOnRelease) dragged = it else onValueChange(it) },
             valueRange = range,
-            onValueChangeFinished = onValueChangeFinished,
-            modifier = Modifier.semantics { if (valueLabel != null) stateDescription = valueLabel },
+            onValueChangeFinished = {
+                if (commitOnRelease) {
+                    dragged?.let(onValueChange)
+                    dragged = null
+                }
+                onValueChangeFinished?.invoke()
+            },
+            modifier = Modifier.semantics { if (label != null) stateDescription = label },
             colors = SliderDefaults.colors(
                 thumbColor = colors.accentFill,
                 activeTrackColor = colors.accent,

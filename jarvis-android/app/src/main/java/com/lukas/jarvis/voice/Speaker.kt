@@ -183,18 +183,32 @@ class Speaker(context: Context) {
             _cloudError.value = null
         }
         this.cloud = cloud
+        // Settings are saved on every frame of a slider and every keystroke, and
+        // each save lands here. Choosing the language and the voice asks the
+        // speech engine across processes, and the voice list can run to
+        // hundreds; doing that sixty times a second froze the app until Android
+        // offered to close it. Speed and pitch are only numbers kept here.
+        val voiceChanged = voiceName != this.voiceName || language != this.languageTag || autoLanguage != this.autoLanguage
+        val soundChanged = rate != this.rate || pitch != this.pitch
         this.rate = rate
         this.pitch = pitch
         this.voiceName = voiceName
         this.languageTag = language
         this.autoLanguage = autoLanguage
-        if (_ready.value) applyVoice()
+        if (!_ready.value) return
+        if (voiceChanged) applyVoice() else if (soundChanged) applySound()
+    }
+
+    private fun applySound() {
+        runCatching {
+            tts.setSpeechRate(rate.coerceIn(0.5f, 2.0f))
+            tts.setPitch(pitch.coerceIn(0.5f, 2.0f))
+        }
     }
 
     private fun applyVoice() {
         runCatching {
-            tts.setSpeechRate(rate.coerceIn(0.5f, 2.0f))
-            tts.setPitch(pitch.coerceIn(0.5f, 2.0f))
+            applySound()
             val locale = languageTag.takeIf { it.isNotBlank() }?.let(Locale::forLanguageTag)
                 ?: Locale.getDefault()
             if (tts.isLanguageAvailable(locale) >= TextToSpeech.LANG_AVAILABLE) {

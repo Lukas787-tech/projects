@@ -389,8 +389,8 @@ private fun LazyListScope.voiceShelf(state: YouState, actions: YouActions) {
             VSpace(Cafe.space.s)
             SwitchRow("Listening tones", settings.earcons, { v -> update { it.copy(earcons = v) } }, detail = "A short tone when the microphone opens and when it heard you")
             SwitchRow("Haptics", settings.haptics, { v -> update { it.copy(haptics = v) } }, detail = "A tick under your finger")
-            SliderRow("Speed", settings.speechRate, { v -> update { it.copy(speechRate = v) } }, range = 0.5f..2.0f, valueLabel = "%.2f×".format(settings.speechRate))
-            SliderRow("Pitch", settings.speechPitch, { v -> update { it.copy(speechPitch = v) } }, range = 0.5f..2.0f, valueLabel = "%.2f".format(settings.speechPitch))
+            SliderRow("Speed", settings.speechRate, { v -> update { it.copy(speechRate = v) } }, range = 0.5f..2.0f, commitOnRelease = true, labelFor = { "%.2f×".format(it) })
+            SliderRow("Pitch", settings.speechPitch, { v -> update { it.copy(speechPitch = v) } }, range = 0.5f..2.0f, commitOnRelease = true, labelFor = { "%.2f".format(it) })
             VSpace(Cafe.space.s)
             CafeButton("Hear it", actions.onPreviewVoice, icon = Icons.AutoMirrored.Rounded.VolumeUp)
         }
@@ -695,7 +695,9 @@ private fun LazyListScope.lookShelf(state: YouState, actions: YouActions) {
                 settings.textScale,
                 { v -> update { it.copy(textScale = (v * 20).toInt() / 20f) } },
                 range = 0.85f..1.4f,
-                valueLabel = "${(settings.textScale * 100).toInt()}%"
+                // The whole app is laid out again at each size: once, on letting go.
+                commitOnRelease = true,
+                labelFor = { "${((it * 20).toInt() / 20f * 100).toInt()}%" }
             )
         }
     }
@@ -737,10 +739,16 @@ private fun Swatch(label: String, color: Color, selected: Boolean, onClick: () -
     }
 }
 
-/** A rainbow to slide along; moving it switches the accent to that hue at once. */
+/**
+ * A rainbow to slide along; letting go switches the accent to that hue. The
+ * thumb shows the colour while it moves: switching the accent recolours the
+ * whole app and redraws every frame of Mochi, which for every frame of a drag
+ * was more than a phone could keep up with.
+ */
 @Composable
 private fun HueSlider(hue: Float?, onPick: (Float) -> Unit) {
     var value by remember(hue) { mutableFloatStateOf(hue ?: 30f) }
+    var moved by remember { mutableStateOf(false) }
     val rainbow = remember { Brush.horizontalGradient((0..6).map { Color.hsv(it * 60f % 360f, 0.45f, 0.82f) }) }
     Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp).height(10.dp).clip(CircleShape).background(rainbow))
@@ -748,11 +756,15 @@ private fun HueSlider(hue: Float?, onPick: (Float) -> Unit) {
             value = value,
             onValueChange = {
                 value = it
-                onPick(it)
+                moved = true
+            },
+            onValueChangeFinished = {
+                if (moved) onPick(value)
+                moved = false
             },
             valueRange = 0f..359f,
             colors = SliderDefaults.colors(
-                thumbColor = if (hue != null) Color.hsv(value, 0.45f, 0.82f) else Cafe.colors.cocoa,
+                thumbColor = if (hue != null || moved) Color.hsv(value, 0.45f, 0.82f) else Cafe.colors.cocoa,
                 activeTrackColor = Color.Transparent,
                 inactiveTrackColor = Color.Transparent
             ),
@@ -1086,7 +1098,8 @@ private fun LazyListScope.powersShelf(state: YouState, actions: YouActions) {
                     settings.searchRadiusMeters.toFloat(),
                     { v -> update { it.copy(searchRadiusMeters = v.toInt()) } },
                     range = 300f..10_000f,
-                    valueLabel = Geo.formatDistance(settings.searchRadiusMeters.toDouble())
+                    commitOnRelease = true,
+                    labelFor = { Geo.formatDistance(it.toDouble()) }
                 )
             }
         }
@@ -1154,10 +1167,13 @@ private fun LazyListScope.powersShelf(state: YouState, actions: YouActions) {
                 settings.temperature,
                 { v -> update { it.copy(temperature = v) } },
                 range = 0f..1.2f,
-                valueLabel = when {
-                    settings.temperature < 0.35f -> "Precise"
-                    settings.temperature < 0.8f -> "Balanced"
-                    else -> "Inventive"
+                commitOnRelease = true,
+                labelFor = { t ->
+                    when {
+                        t < 0.35f -> "Precise"
+                        t < 0.8f -> "Balanced"
+                        else -> "Inventive"
+                    }
                 }
             )
             // Typed freely and saved only when sensible: clamping each keystroke turned "2" of "2000" into 128.

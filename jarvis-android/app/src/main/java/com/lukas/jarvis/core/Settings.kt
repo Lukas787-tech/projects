@@ -264,12 +264,21 @@ class SettingsStore(context: Context) {
     }
 
     fun update(transform: (Settings) -> Settings) {
-        val next = transform(_state.value)
+        val before = _state.value
+        val next = transform(before)
         val providerId = next.providerId
-        prefs.edit()
+        val edit = prefs.edit()
+        // Sealing goes through the phone's key store, which is slow. A slider
+        // or a text field in You calls this for every frame and keystroke, so a
+        // secret is sealed and written only when it actually changed.
+        if (providerId != before.providerId || next.apiKey != before.apiKey) {
+            edit.putString(scoped(KEY_API_KEY, providerId), Secrets.box().seal(next.apiKey))
+        }
+        if (next.fishKey != before.fishKey) edit.putString(KEY_FISH_KEY, Secrets.box().seal(next.fishKey))
+        if (next.homeToken != before.homeToken) edit.putString(KEY_HOME_TOKEN, Secrets.box().seal(next.homeToken))
+        edit
             .putString(KEY_PROVIDER, providerId)
             .putString(scoped(KEY_BASE_URL, providerId), next.baseUrl)
-            .putString(scoped(KEY_API_KEY, providerId), Secrets.box().seal(next.apiKey))
             .putString(scoped(KEY_MODEL, providerId), next.model)
             .putString(KEY_USER_NAME, next.userName)
             .putString(KEY_ASSISTANT_NAME, next.assistantName)
@@ -308,7 +317,6 @@ class SettingsStore(context: Context) {
             .putString(KEY_SPEECH_LANGUAGE, next.speechLanguage)
             .putBoolean(KEY_AUTO_LANGUAGE, next.autoLanguage)
             .putString(KEY_VOICE_ENGINE, next.voiceEngine)
-            .putString(KEY_FISH_KEY, Secrets.box().seal(next.fishKey))
             .putString(KEY_FISH_VOICE, next.fishVoiceId)
             .putString(KEY_FISH_VOICE_NAME, next.fishVoiceName)
             .putString(KEY_FISH_MODEL, next.fishModel)
@@ -332,7 +340,6 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_TIDY_MEMORY, next.tidyMemory)
             .putBoolean(KEY_ONBOARDED, next.onboarded)
             .putString(KEY_HOME_URL, next.homeUrl)
-            .putString(KEY_HOME_TOKEN, Secrets.box().seal(next.homeToken))
             .putBoolean(KEY_HOME_ENABLED, next.homeEnabled)
             .apply()
         _state.value = next

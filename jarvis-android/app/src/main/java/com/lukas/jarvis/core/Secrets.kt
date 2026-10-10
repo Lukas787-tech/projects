@@ -112,9 +112,14 @@ object Secrets {
         guarded(sealing)
     }.getOrElse { PlainBox }
 
-    /** [inner], except that a value it cannot open reads as empty and is reported. */
+    /**
+     * [inner], except that a value it cannot open reads as empty and is
+     * reported, and a value it cannot seal is kept as it is. A key store that
+     * fails mid-use (a busy or invalidated key) used to throw out of a tap in
+     * You; the plain value is sealed again on the next start by [sealAll].
+     */
     fun guarded(inner: SecretBox): SecretBox = object : SecretBox {
-        override fun seal(plain: String) = inner.seal(plain)
+        override fun seal(plain: String): String = runCatching { inner.seal(plain) }.getOrElse { plain }
         override fun open(stored: String?): String = runCatching { inner.open(stored) }.getOrElse {
             unreadable = true
             ""

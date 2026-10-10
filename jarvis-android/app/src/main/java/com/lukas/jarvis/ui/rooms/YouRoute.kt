@@ -79,7 +79,9 @@ fun YouRoute(viewModel: AssistantViewModel, tab: YouTab, modifier: Modifier = Mo
     }
 
     var log by remember { mutableStateOf(emptyList<com.lukas.jarvis.data.ActionRecord>()) }
-    LaunchedEffect(tab, resumed) { if (tab == YouTab.Data) log = viewModel.actionLog() }
+    LaunchedEffect(tab, resumed) {
+        if (tab == YouTab.Data) log = runCatching { viewModel.actionLog() }.getOrDefault(emptyList())
+    }
 
     // ------------------------------------------------------------- backup
     var note by remember { mutableStateOf<String?>(null) }
@@ -176,13 +178,17 @@ fun YouRoute(viewModel: AssistantViewModel, tab: YouTab, modifier: Modifier = Mo
             },
             onSaveBackup = { passphrase ->
                 savePassphrase = passphrase
-                save.launch(Vault.fileName())
+                // A phone without Android's file picker has nowhere to save to;
+                // saying so beats closing the app.
+                runCatching { save.launch(Vault.fileName()) }
+                    .onFailure { note = "This phone has no file picker to save the backup with." }
             },
             onRestoreBackup = { passphrase ->
                 val text = waiting
                 // Some providers mislabel .json, so anything is offered and the contents decide.
                 if (passphrase != null && text != null) scope.launch { restore(text, passphrase) }
-                else open.launch(arrayOf("application/json", "text/plain", "*/*"))
+                else runCatching { open.launch(arrayOf("application/json", "text/plain", "*/*")) }
+                    .onFailure { note = "This phone has no file picker to open a backup with." }
             },
             onClearConversation = viewModel::clearConversation,
             onReplayIntro = { viewModel.updateSettings { it.copy(onboarded = false) } }
