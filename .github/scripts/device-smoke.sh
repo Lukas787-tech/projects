@@ -73,6 +73,15 @@ if tap_text "You and settings"; then
   done
   sleep 6
   shot 11b-floating-dot
+  # What Android holds about the dot, so a dot that does not come up says why.
+  {
+    echo "--- floating dot"
+    echo "switch saved: $(adb shell run-as "$PKG" cat shared_prefs/jarvis_settings.xml 2>/dev/null | grep -o 'name="floating_dot" value="[a-z]*"')"
+    echo "draw over apps: $(adb shell appops get "$PKG" SYSTEM_ALERT_WINDOW 2>/dev/null | tr -d '\r')"
+    echo "on screen: $(adb shell dumpsys window windows 2>/dev/null | grep -c "$PKG.*TYPE_APPLICATION_OVERLAY\|ty=APPLICATION_OVERLAY")"
+    adb shell dumpsys activity services "$PKG" 2>/dev/null | grep -iE "BubbleService|isForeground|foregroundId" | head -n 6
+    adb logcat -d 2>/dev/null | grep -iE "BubbleService|startForeground|ForegroundService|AndroidRuntime" | tail -n 15
+  } >> "$REPORT"
   if [ -z "$DOT" ]; then
     echo "DOT: no switch for the floating dot found" >> "$REPORT"
   elif ! alive; then
