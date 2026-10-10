@@ -3,7 +3,6 @@ package com.lukas.jarvis.ui.rooms
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
@@ -195,10 +193,9 @@ fun YouRoom(state: YouState, tab: YouTab, actions: YouActions, modifier: Modifie
         modifier = modifier,
         mochi = CharacterState(Mood.Idle, description = "${settings.assistantName.ifBlank { "Mochi" }}, listening"),
         header = {
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(Cafe.space.s)
-            ) {
+            // Wrapped, not scrolled sideways: in one row "Your data" sat past
+            // the edge of the screen and nothing said it was there.
+            Wrap(Modifier.fillMaxWidth()) {
                 YouTab.entries.forEach { t -> ChoiceChip(t.label, t == tab, { actions.onTab(t) }) }
             }
         }

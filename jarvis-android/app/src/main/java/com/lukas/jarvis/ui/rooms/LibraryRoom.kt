@@ -1,8 +1,6 @@
 package com.lukas.jarvis.ui.rooms
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -144,11 +142,9 @@ fun LibraryRoom(
             onBack = actions.onBack,
             mochi = CharacterState(Mood.Idle, description = "Mochi, in the Library"),
             header = {
-                // One row that scrolls sideways: five shelves never wrap onto a second line.
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(Cafe.space.s)
-                ) {
+                // Wrapped, not scrolled sideways: in one row the last shelf sat
+                // half past the edge of a narrow phone.
+                Wrap(Modifier.fillMaxWidth()) {
                     Shelf.values().forEach { s -> ChoiceChip(s.label, s == shelf, { actions.onShelf(s) }) }
                 }
             }

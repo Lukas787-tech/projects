@@ -1,8 +1,6 @@
 package com.lukas.jarvis.ui.rooms
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -130,10 +128,7 @@ fun TodayRoom(
         mochi = CharacterState(if (loading) Mood.Working else Mood.Idle, prop = com.lukas.jarvis.ui.character.Prop.Calendar.takeIf { loading }, description = "$name, looking at your day"),
         onMochi = { actions.onAsk("How does my day look?") },
         header = {
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(Cafe.space.s)
-            ) {
+            Wrap(Modifier.fillMaxWidth()) {
                 FollowChip("Map", actions.onOpenMap, icon = Icons.Rounded.Map)
                 FollowChip("Music", actions.onOpenMusic, icon = Icons.Rounded.MusicNote)
                 FollowChip("This phone", actions.onOpenDevices, icon = Icons.Rounded.PhoneAndroid)
