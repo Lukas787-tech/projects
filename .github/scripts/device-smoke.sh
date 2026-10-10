@@ -45,6 +45,25 @@ shot 01-first-open
 tap_text "Skip" && sleep 3
 shot 02-after-onboarding
 
+# The You room, opened the way a person opens it: the round face at the top
+# of the canvas, then every shelf. First, so a crash here is not lost among
+# the turns below, and the crash buffer is kept on its own.
+if tap_text "You and settings"; then
+  sleep 6
+  shot 11-settings-you
+  if alive; then echo "SETTINGS: the You room opened" >> "$REPORT"; else echo "SETTINGS: the app died opening the You room" >> "$REPORT"; fi
+  for tab in "Voice" "Look" "Brain" "Powers" "Your data" "You"; do
+    if ! alive; then start; sleep 8; tap_text "You and settings" && sleep 6; fi
+    tap_text "$tab" && sleep 4
+    shot "11-settings-$(echo "$tab" | tr 'A-Z ' 'a-z-')"
+    alive || echo "SETTINGS: the app died on the $tab shelf" >> "$REPORT"
+  done
+  adb shell input keyevent KEYCODE_BACK
+  sleep 3
+  alive || start
+fi
+adb logcat -d -b crash > "$OUT/crash-settings.txt" 2>/dev/null || true
+
 start -a com.lukas.jarvis.TODAY
 sleep 10
 shot 03-today
@@ -115,7 +134,7 @@ if adb shell run-as "$PKG" cat shared_prefs/jarvis_settings.xml 2>/dev/null | gr
 fi
 
 # Every main screen, through the bar at the bottom as a person would.
-for tab in "Map" "Notes" "Settings" "Today"; do
+for tab in "Map" "Notes" "Today"; do
   tap_text "$tab" && sleep 5
   shot "09-$(echo "$tab" | tr 'A-Z' 'a-z')"
 done
@@ -141,11 +160,6 @@ tap_text "Notes" && sleep 3
 for hub in "Trackers" "Tasks" "Lists" "Memory"; do
   tap_text "$hub" && sleep 3
   shot "10-hub-$(echo "$hub" | tr 'A-Z' 'a-z')"
-done
-tap_text "Settings" && sleep 3
-for tab in "You" "Voice" "Look" "Brain" "Powers" "Data"; do
-  tap_text "$tab" && sleep 3
-  shot "11-settings-$(echo "$tab" | tr 'A-Z' 'a-z')"
 done
 tap_text "Today" && sleep 3
 tap_text "Skills" && sleep 4
@@ -240,11 +254,12 @@ adb shell settings put system user_rotation 0
 sleep 3
 
 adb logcat -d > "$OUT/logcat.txt"
-CRASH=$(grep -E "FATAL EXCEPTION|ANR in $PKG|Process: $PKG" "$OUT/logcat.txt" | head -n 20)
+adb logcat -d -b crash > "$OUT/crash.txt" 2>/dev/null || true
+CRASH=$(cat "$OUT/logcat.txt" "$OUT/crash.txt" | grep -E "FATAL EXCEPTION|ANR in $PKG|Process: $PKG" | head -n 20)
 if [ -n "$CRASH" ]; then
   echo "CRASH:" >> "$REPORT"
   echo "$CRASH" >> "$REPORT"
-  grep -A 30 "FATAL EXCEPTION" "$OUT/logcat.txt" | head -n 80 >> "$REPORT"
+  cat "$OUT/crash.txt" "$OUT/logcat.txt" | grep -A 40 "FATAL EXCEPTION" | head -n 120 >> "$REPORT"
 fi
 if ! alive; then echo "app not running at the end" >> "$REPORT"; fi
 # Only the lines about the app are worth keeping in the repository.
