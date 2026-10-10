@@ -114,6 +114,12 @@ object ToolCatalog {
                 f("Put it in my calendar", "Put that plan in my calendar"),
                 f("Remind me for each step", "Set a reminder for each step of that plan")
             )),
+        ToolInfo("plan_trip", ToolGroup.Tasks, "getting the trip ready", "Trip", view = CardKind.Plan,
+            next = listOf(
+                f("Weather there", "What's the weather in {place}?"),
+                f("My packing list", "What's on my packing list for {place}?"),
+                f("What else to pack?", "What else should I pack for this trip?")
+            )),
         ToolInfo("countdown", ToolGroup.Tasks, "counting the days", "Countdown", view = CardKind.Task,
             next = listOf(f("All my countdowns", "What are my countdowns?"))),
         ToolInfo("list", ToolGroup.Tasks, "the list", "List", view = CardKind.List,

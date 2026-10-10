@@ -308,6 +308,19 @@ class Tools(
             listOf("title", "steps")
         ),
         tool(
+            "plan_trip",
+            "Get a trip ready in one go: a countdown, its own packing list for the length and the " +
+                "weather there, and the trip remembered. Use for 'I'm going to Lisbon on the 14th for " +
+                "five days', 'help me get ready for my trip to Rome next week'.",
+            props(
+                "destination" to str("Where, e.g. 'Lisbon'."),
+                "start" to str("The first day, ISO date, e.g. '2026-10-14'."),
+                "end" to str("The last day, ISO date. Or give nights."),
+                "nights" to int("How many nights, when no end is given.")
+            ),
+            listOf("destination", "start")
+        ),
+        tool(
             "countdown",
             "Days worth counting down to, kept and shown on Today: a holiday, an exam, a wedding, " +
                 "and birthdays and anniversaries that come every year. 'My holiday starts on 12 October', " +
@@ -1264,6 +1277,7 @@ class Tools(
                 "convert_units" -> convert(args)
                 "date_calc" -> dateCalc(args)
                 "countdown" -> countdown(args)
+                "plan_trip" -> planTrip(args, effects)
                 "make_plan" -> makePlan(args)
                 "briefing" -> if (args.optBoolean("evening", false)) {
                     briefer.evening(settings).let { (title, text) -> "$title. $text" }
@@ -2803,6 +2817,79 @@ class Tools(
     }
 
     // --------------------------------------------------------------- routines
+
+    /**
+     * A trip, made ready in one go: a countdown on Today, its own packing list
+     * for that many nights and the weather there, and the trip remembered.
+     * Nothing here leaves the phone except the weather lookup.
+     */
+    private suspend fun planTrip(args: JSONObject, effects: ToolEffects): String {
+        val today = java.time.LocalDate.now()
+        fun day(key: String): java.time.LocalDate? = args.optString(key).trim().takeIf { it.isNotBlank() }?.let { raw ->
+            runCatching { java.time.LocalDate.parse(raw.take(10)) }.getOrNull()
+                ?: TimeUtil.parse(raw)?.let { java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }
+        }
+        val nights = if (args.has("nights")) args.optInt("nights", -1).takeIf { it >= 0 } else null
+        val trip = com.lukas.jarvis.data.Trips.of(args.optString("destination"), day("start"), day("end"), nights)
+            ?: return "A trip needs where and the first day, and the last day or how many nights."
+        if (trip.end.isBefore(today)) return "That trip is already over."
+
+        // The forecast reaches a week ahead; further off, it waits for the trip to come closer.
+        val ahead = java.time.temporal.ChronoUnit.DAYS.between(today, trip.start).toInt()
+        val there = if (ahead in 0..6) {
+            runCatching {
+                val point = navigator.locate(trip.destination)?.point ?: return@runCatching null
+                val forecast = weather.at(point, trip.destination, days = 7) ?: return@runCatching null
+                val during = forecast.days.drop(ahead).take(trip.nights + 1)
+                if (during.isEmpty()) null else com.lukas.jarvis.data.TripWeather(
+                    high = during.maxOf { it.high },
+                    low = during.minOf { it.low },
+                    rainyDays = during.count { it.precipitationChance >= 50 }
+                )
+            }.getOrNull()
+        } else null
+
+        if (countdowns.find("${trip.destination} trip") == null) {
+            countdowns.add("${trip.destination} trip", trip.start, yearly = false, knowsYear = true, birthday = false)
+        }
+        val packing = com.lukas.jarvis.data.Trips.packing(trip, there)
+        lists.change { it.add(trip.listName, packing) }
+        brain.addMemory(
+            Memory(
+                kind = Memory.KIND_EVENT,
+                content = "Trip to ${trip.destination}, ${trip.dates} ${trip.start.year}",
+                importance = 4,
+                occurredAt = trip.start.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                source = "trip"
+            )
+        )
+        effects.memoriesChanged = true
+        effects.tasksChanged = true
+
+        val nightsText = when (trip.nights) {
+            0 -> "a day trip"
+            1 -> "1 night"
+            else -> "${trip.nights} nights"
+        }
+        return buildString {
+            appendLine("Trip to ${trip.destination} is ready: ${trip.dates}, $nightsText.")
+            appendLine(
+                "- A countdown on Today: " + when (ahead) {
+                    0 -> "it starts today"
+                    1 -> "it starts tomorrow"
+                    else -> "$ahead days to go"
+                }
+            )
+            appendLine("- A packing list, '${trip.listName}', with ${packing.size} things for $nightsText")
+            appendLine(
+                "- Weather there: " + (there?.let {
+                    "${it.high.roundToInt()}° by day, ${it.low.roundToInt()}° at night" +
+                        if (it.rainyDays > 0) ", rain likely on ${it.rainyDays} day${if (it.rainyDays == 1) "" else "s"}" else ", dry"
+                } ?: "the forecast comes closer to the date")
+            )
+            append("- Remembered, so \"when is my trip?\" has an answer")
+        }
+    }
 
     private fun createRoutine(args: JSONObject): String {
         val name = args.optString("name").trim()

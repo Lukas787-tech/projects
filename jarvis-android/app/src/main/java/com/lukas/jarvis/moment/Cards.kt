@@ -239,6 +239,10 @@ object Cards {
         s("who", "name")?.takeIf { tool == "find_contact" }?.let { out["who"] = it }
         s("query", "topic", "word")?.let { out["topic"] = it }
         s("name")?.takeIf { tool in ROUTINE_TOOLS }?.let { out["routine"] = it }
+        s("destination")?.takeIf { tool == "plan_trip" }?.let {
+            out["place"] = it
+            out["title"] = "${it.replaceFirstChar { c -> c.titlecase() }} trip"
+        }
         return out
     }
 

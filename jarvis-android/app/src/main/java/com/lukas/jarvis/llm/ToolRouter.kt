@@ -40,6 +40,7 @@ object ToolRouter {
         ),
         ToolGroup.Tasks to listOf(
             "remind", "reminder", "task", "todo", "to-do", "to do", "tomorrow", "tonight",
+            "trip", "travel", "holiday", "vacation", "going to", "flying to", "urlaub", "reise",
             "later", "deadline", "due", "o'clock", "snooze", "don't forget", "dont forget",
             "next week", "on monday", "on tuesday", "on wednesday", "on thursday", "on friday",
             "on saturday", "on sunday", " at ", "i did it", "done with", "finished", "open",

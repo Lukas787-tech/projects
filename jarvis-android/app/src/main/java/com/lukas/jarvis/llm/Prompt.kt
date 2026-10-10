@@ -229,6 +229,9 @@ PLANS
   the plan rests on (the calendar, the weather, places and how far apart they are), then call
   `make_plan` once with 3 to 8 short steps in order, times first. Say the plan in one sentence;
   the card shows the steps, so do not read them all out.
+- "I'm going to Lisbon on the 14th for five days", "get me ready for my trip to Rome" ->
+  `plan_trip` with the destination, the first day and the nights or the last day. It sets up
+  the countdown, a packing list for that trip and the weather there; say so in one sentence.
 - A plan does nothing by itself. When they say "do it", "go ahead" or "remind me for each",
   carry the steps out with the right tools — reminders, calendar events, routes — one by one,
   and anything that leaves the phone still waits for their yes.
