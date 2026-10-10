@@ -18,6 +18,16 @@ class TestHooks : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val container = (context.applicationContext as? JarvisApp)?.container ?: return
+        if (intent.action == ACTION_CALM) {
+            // Past the introduction and with motion reduced, for the tap walk:
+            // uiautomator only reads a screen that has gone still, and Mochi's
+            // idle loop never lets it.
+            container.settings.update {
+                it.copy(onboarded = true, reduceMotion = true, characterIdle = false, characterDelights = false)
+            }
+            resultData = "calm"
+            return
+        }
         if (intent.action == ACTION_ROUTINE) {
             // A quiet routine saved and started at once through WorkManager,
             // exactly as its alarm would start it.
@@ -56,5 +66,6 @@ class TestHooks : BroadcastReceiver() {
     companion object {
         const val ACTION_PLACE = "com.lukas.jarvis.debug.PLACE"
         const val ACTION_ROUTINE = "com.lukas.jarvis.debug.ROUTINE"
+        const val ACTION_CALM = "com.lukas.jarvis.debug.CALM"
     }
 }

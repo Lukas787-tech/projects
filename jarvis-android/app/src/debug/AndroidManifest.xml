@@ -8,6 +8,7 @@
             <intent-filter>
                 <action android:name="com.lukas.jarvis.debug.PLACE" />
                 <action android:name="com.lukas.jarvis.debug.ROUTINE" />
+                <action android:name="com.lukas.jarvis.debug.CALM" />
             </intent-filter>
         </receiver>
     </application>

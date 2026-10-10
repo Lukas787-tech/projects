@@ -16,6 +16,7 @@ canvas, never out of the app.
 
 Usage: device-walk.py OUT_DIR   (run from jarvis-android, with the debug APK built)
 """
+import base64
 import os
 import re
 import subprocess
@@ -84,11 +85,18 @@ def dump():
     for _ in range(5):
         out = shell("uiautomator dump /sdcard/ui.xml 2>&1", timeout=40)
         if "dumped" in out.lower():
-            xml = shell("cat /sdcard/ui.xml")
+            raw = subprocess.run(["adb", "exec-out", "cat", "/sdcard/ui.xml"], capture_output=True, timeout=60).stdout
+            # Text on screen can carry characters XML 1.0 does not allow;
+            # they are dropped rather than losing the whole screen.
+            xml = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", raw.decode("utf-8", "replace"))
             try:
                 return ET.fromstring(xml)
-            except ET.ParseError:
-                pass
+            except ET.ParseError as e:
+                if "parse" not in dump_errors:
+                    dump_errors.add("parse")
+                    say(f"  unreadable dump: {e}")
+                    with open(os.path.join(OUT, "unreadable-dump.xml"), "w") as f:
+                        f.write(xml)
         elif out.strip() not in dump_errors:
             # Said once: uiautomator refusing to read the screen is a problem
             # with the walk, not with the app, and needs telling apart.
@@ -213,6 +221,10 @@ def to_canvas():
         if not tap_label("Back to talking", root):
             shell("input keyevent KEYCODE_BACK")
             time.sleep(1.2)
+    root = dump()
+    if root is not None:
+        seen = sorted({words(n) for n in mine(root) if words(n)})[:30]
+        say(f"  on screen instead: {seen}")
     return False
 
 
@@ -394,15 +406,19 @@ def main():
     say(adb("install", "-r", "-g", apk, timeout=300).strip())
     shell(f"appops set {PKG} SYSTEM_ALERT_WINDOW allow")
     shell(f"am force-stop {PKG}")
-    wrote = subprocess.run(
-        ["adb", "shell", f"run-as {PKG} sh -c 'mkdir -p shared_prefs && cat > shared_prefs/jarvis_settings.xml'"],
-        input=PREFS, capture_output=True, text=True, timeout=60
-    )
-    say("settings written: " + (shell(f"run-as {PKG} cat shared_prefs/jarvis_settings.xml").count("true") == 4 and "yes" or f"no {wrote.stderr.strip()[:200]}"))
+    encoded = base64.b64encode(PREFS.encode()).decode()
+    wrote = shell(f"run-as {PKG} sh -c 'mkdir -p shared_prefs && echo {encoded} | base64 -d > shared_prefs/jarvis_settings.xml' 2>&1")
+    stored = shell(f"run-as {PKG} cat shared_prefs/jarvis_settings.xml 2>&1")
+    say("settings written: " + ("yes" if stored.count('value="true"') == 4 else f"no ({wrote.strip()[:160]} / {stored.strip()[:160]})"))
     adb("logcat", "-c")
     clear_crashes()
     start()
-    time.sleep(8)
+    time.sleep(6)
+    # The same, through the debug build's own hook, for when the file above
+    # did not take: it changes the running app's settings directly.
+    say("calm: " + adb("shell", "am", "broadcast", "-n", f"{PKG}/com.lukas.jarvis.debug.TestHooks",
+                       "-a", "com.lukas.jarvis.debug.CALM").strip().splitlines()[-1][:160])
+    time.sleep(3)
     picture("first-open")
     say(f"in front: {focused()[:160]}")
     to_canvas()
