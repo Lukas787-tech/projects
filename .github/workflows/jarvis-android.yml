@@ -58,12 +58,12 @@ jobs:
       - name: Walk every moment, check every tap, and run the daily-life tools for real
         run: |
           set -o pipefail
-          ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.MomentWalkTest' --tests 'com.lukas.jarvis.AccessibilityTest' --tests 'com.lukas.jarvis.DailyLifeTest' --tests 'com.lukas.jarvis.EverydayToolsTest' --no-daemon 2>&1 | tee walk.log
+          ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.MomentWalkTest' --tests 'com.lukas.jarvis.AccessibilityTest' --tests 'com.lukas.jarvis.DailyLifeTest' --tests 'com.lukas.jarvis.EverydayToolsTest' --tests 'com.lukas.jarvis.YouRouteTest' --no-daemon 2>&1 | tee walk.log
           # Which classes ran, and how many tests each: a filter that matched nothing would otherwise pass quietly.
           for f in app/build/test-results/testDebugUnitTest/*.xml; do
             grep -o 'testsuite name="[^"]*" tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' "$f"
           done
-          for c in MomentWalkTest AccessibilityTest DailyLifeTest EverydayToolsTest; do
+          for c in MomentWalkTest AccessibilityTest DailyLifeTest EverydayToolsTest YouRouteTest; do
             test -s "app/build/test-results/testDebugUnitTest/TEST-com.lukas.jarvis.$c.xml" || { echo "::error::$c did not run"; exit 1; }
           done
 
@@ -73,7 +73,7 @@ jobs:
           echo "--- Kotlin and resource errors ---"
           grep -E "^(e: |error: |ERROR:)|FAILURE: |What went wrong|FAILED$|AssertionError|expected:<" build.log walk.log 2>/dev/null | head -n 80 \
             || echo "No compiler error lines in the log; see the step above."
-          find app/build/test-results -name '*.xml' -exec grep -l "<failure" {} \; 2>/dev/null | xargs -r grep -h -A12 "<failure" | head -n 120
+          find app/build/test-results -name '*.xml' -exec grep -l "<failure" {} \; 2>/dev/null | xargs -r grep -h -A40 "<failure" | head -n 200
 
       - name: Stage APK
         run: |
