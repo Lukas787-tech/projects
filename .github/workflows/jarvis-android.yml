@@ -59,6 +59,13 @@ jobs:
         run: |
           set -o pipefail
           ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.MomentWalkTest' --tests 'com.lukas.jarvis.AccessibilityTest' --tests 'com.lukas.jarvis.DailyLifeTest' --no-daemon 2>&1 | tee walk.log
+          # Which classes ran, and how many tests each: a filter that matched nothing would otherwise pass quietly.
+          for f in app/build/test-results/testDebugUnitTest/*.xml; do
+            grep -o 'testsuite name="[^"]*" tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' "$f"
+          done
+          for c in MomentWalkTest AccessibilityTest DailyLifeTest; do
+            test -s "app/build/test-results/testDebugUnitTest/TEST-com.lukas.jarvis.$c.xml" || { echo "::error::$c did not run"; exit 1; }
+          done
 
       - name: What failed
         if: failure()
