@@ -57,6 +57,12 @@ class DotView(context: Context, accentId: String = "caramel", dark: Boolean = fa
     private val src = Rect()
     private val dst = Rect()
 
+    // While speaking the mouth follows the voice, so those frames are made as
+    // they are needed and kept: a loop times a handful of mouth shapes.
+    // Declared before the frames, whose first build clears it: the other way
+    // round it was still null then, and the dot crashed the app as it appeared.
+    private val talking = HashMap<Pair<Int, com.lukas.jarvis.ui.character.Mouth>, Bitmap>()
+
     private var frames: List<Bitmap> = build(Stage.Idle)
     private var tick = 0
 
@@ -95,10 +101,6 @@ class DotView(context: Context, accentId: String = "caramel", dark: Boolean = fa
         talking.clear()
         return (0 until Choreo.loopLength(state).coerceAtLeast(1)).map { t -> bitmap(state, t, null) }
     }
-
-    // While speaking the mouth follows the voice, so those frames are made as
-    // they are needed and kept: a loop times a handful of mouth shapes.
-    private val talking = HashMap<Pair<Int, com.lukas.jarvis.ui.character.Mouth>, Bitmap>()
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()

@@ -479,9 +479,12 @@ Needs JDK 17 and the Android SDK (platform 35).
 ./gradlew testReleaseUnitTest      # the unit tests
 ./gradlew testDebugUnitTest --tests 'com.lukas.jarvis.MomentWalkTest' \
     --tests 'com.lukas.jarvis.AccessibilityTest' \
-    --tests 'com.lukas.jarvis.DailyLifeTest' --tests 'com.lukas.jarvis.EverydayToolsTest'
+    --tests 'com.lukas.jarvis.DailyLifeTest' --tests 'com.lukas.jarvis.EverydayToolsTest' \
+    --tests 'com.lukas.jarvis.YouRouteTest' --tests 'com.lukas.jarvis.FloatingDotTest'
 # every moment walked for dead ends, every tap checked for words and size,
-# and the offline tools run end to end against a real database
+# the offline tools run end to end against a real database, the You room
+# opened on every shelf with the real view model, and the floating dot made
+# and started
 ```
 
 The fonts (Newsreader, DM Sans and Pixelify Sans) are bundled under

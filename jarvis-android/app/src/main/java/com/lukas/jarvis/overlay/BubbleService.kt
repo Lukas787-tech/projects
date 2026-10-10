@@ -94,7 +94,12 @@ class BubbleService : Service() {
             else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
                 android.content.res.Configuration.UI_MODE_NIGHT_YES
         }
-        val view = DotView(this, look.accent, night)
+        // Drawn in the app's own process: a dot that cannot be made ends the
+        // dot, never the app the person is using.
+        val view = runCatching { DotView(this, look.accent, night) }.getOrElse {
+            stopSelf()
+            return
+        }
         val size = (DOT_DP * resources.displayMetrics.density).toInt()
 
         val params = WindowManager.LayoutParams(

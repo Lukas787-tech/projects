@@ -58,6 +58,33 @@ if tap_text "You and settings"; then
     shot "11-settings-$(echo "$tab" | tr 'A-Z ' 'a-z-')"
     alive || echo "SETTINGS: the app died on the $tab shelf" >> "$REPORT"
   done
+  # The floating dot, switched on from the Powers shelf: it is started from
+  # the You room and nowhere else, so this is where it has to come up and
+  # leave the app running. Then off again, so it covers nothing below.
+  SIZE0=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -n1)
+  W0=${SIZE0%x*}; H0=${SIZE0#*x}
+  tap_text "Powers" && sleep 3
+  DOT=""
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    # The switch row reads its title and its line under it as one.
+    if tap_text 'Mochi over other apps[^"]*'; then DOT=tapped; break; fi
+    adb shell input swipe $((W0 / 2)) $((H0 * 3 / 4)) $((W0 / 2)) $((H0 / 4)) 400
+    sleep 2
+  done
+  sleep 6
+  shot 11b-floating-dot
+  if [ -z "$DOT" ]; then
+    echo "DOT: no switch for the floating dot found" >> "$REPORT"
+  elif ! alive; then
+    echo "DOT: the app died when the floating dot came up" >> "$REPORT"
+    start; sleep 8
+  elif adb shell dumpsys notification --noredact 2>/dev/null | grep -q "Mochi is on screen"; then
+    echo "DOT: on screen, and the app still running" >> "$REPORT"
+    tap_text 'Mochi over other apps[^"]*' && sleep 3
+  else
+    echo "DOT: switched on, but no dot came up" >> "$REPORT"
+    tap_text 'Mochi over other apps[^"]*' && sleep 3
+  fi
   adb shell input keyevent KEYCODE_BACK
   sleep 3
   alive || start
