@@ -77,17 +77,38 @@ def start():
     time.sleep(2)
 
 
+dump_errors = set()
+
+
 def dump():
     for _ in range(5):
-        out = shell("uiautomator dump /sdcard/ui.xml", timeout=40)
+        out = shell("uiautomator dump /sdcard/ui.xml 2>&1", timeout=40)
         if "dumped" in out.lower():
             xml = shell("cat /sdcard/ui.xml")
             try:
                 return ET.fromstring(xml)
             except ET.ParseError:
                 pass
+        elif out.strip() not in dump_errors:
+            # Said once: uiautomator refusing to read the screen is a problem
+            # with the walk, not with the app, and needs telling apart.
+            dump_errors.add(out.strip())
+            say(f"  uiautomator: {out.strip()[:300]}")
         time.sleep(1)
     return None
+
+
+shots = 0
+
+
+def picture(name):
+    """A screenshot beside the report, for whatever the text alone can't explain."""
+    global shots
+    shots += 1
+    if shots > 40:
+        return
+    with open(os.path.join(OUT, f"{shots:02d}-{name}.png"), "wb") as f:
+        f.write(subprocess.run(["adb", "exec-out", "screencap", "-p"], capture_output=True, timeout=60).stdout)
 
 
 BOUNDS = re.compile(r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]")
@@ -229,7 +250,8 @@ MOVES = {
 def go(screen, scrolls=0):
     name, path, _ = screen
     if not to_canvas():
-        say(f"  [{name}] could not get back to the canvas")
+        say(f"  [{name}] could not get back to the canvas (in front: {focused()[:160]})")
+        picture(f"{name}-no-canvas")
         return False
     for label in path:
         found = False
@@ -240,6 +262,7 @@ def go(screen, scrolls=0):
             scroll_down()
         if not found:
             say(f"  [{name}] no '{label}' on screen")
+            picture(f"{name}-no-{re.sub(r'[^a-z]+', '-', label.lower())[:20]}")
             return False
     for _ in range(scrolls):
         scroll_down()
@@ -262,6 +285,9 @@ def check(where, label):
     if PKG in crash and "FATAL EXCEPTION" in crash:
         problems.append(f"CRASH  {where}: '{label}'")
         say(f"  CRASH after '{label}'")
+        for line in crash.splitlines():
+            if "Exception" in line or "Error" in line or "com.lukas" in line or "Caused by" in line:
+                say("    " + line.strip()[:240])
         CRASHES.write(f"===== {where}: tapped '{label}'\n{crash}\n")
         clear_crashes()
         shell(f"am force-stop {PKG}")
@@ -350,15 +376,37 @@ def back_button(screen):
         say(f"  back on {name} did not reach the canvas")
 
 
+# Past the introduction, and with motion reduced: Mochi's idle loop redraws the
+# screen many times a second, and uiautomator only reads a screen that has
+# gone still. Everything else is the app as installed.
+PREFS = """<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <boolean name="onboarded" value="true" />
+    <boolean name="reduce_motion" value="true" />
+    <boolean name="character_idle" value="false" />
+    <boolean name="character_delights" value="false" />
+</map>
+"""
+
+
 def main():
     apk = "app/build/outputs/apk/debug/app-debug.apk"
     say(adb("install", "-r", "-g", apk, timeout=300).strip())
     shell(f"appops set {PKG} SYSTEM_ALERT_WINDOW allow")
+    shell(f"am force-stop {PKG}")
+    wrote = subprocess.run(
+        ["adb", "shell", f"run-as {PKG} sh -c 'mkdir -p shared_prefs && cat > shared_prefs/jarvis_settings.xml'"],
+        input=PREFS, capture_output=True, text=True, timeout=60
+    )
+    say("settings written: " + (shell(f"run-as {PKG} cat shared_prefs/jarvis_settings.xml").count("true") == 4 and "yes" or f"no {wrote.stderr.strip()[:200]}"))
     adb("logcat", "-c")
     clear_crashes()
     start()
     time.sleep(8)
+    picture("first-open")
+    say(f"in front: {focused()[:160]}")
     to_canvas()
+    picture("canvas")
     for screen in SCREENS:
         walk(screen)
     say("== the back button in every room")
@@ -394,7 +442,7 @@ def main():
         for line in text.splitlines():
             if line.startswith("=====") or "Exception" in line or "Error" in line or "com.lukas" in line or "Caused by" in line:
                 print(line)
-    sys.exit(1 if any(p.startswith(("CRASH", "DIED", "LEFT")) for p in problems) else 0)
+    sys.exit(1 if problems else 0)
 
 
 if __name__ == "__main__":
