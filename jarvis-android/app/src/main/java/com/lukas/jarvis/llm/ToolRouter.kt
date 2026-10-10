@@ -135,6 +135,9 @@ object ToolRouter {
             "every weekday", "every monday", "every tuesday", "every wednesday", "every thursday",
             "every friday", "every saturday", "every sunday", "each morning", "each evening",
             "on weekdays", "each week", "every week",
+            "when i plug", "plug in", "plugged in", "start charging", "when it charges",
+            "connects", "disconnects", "bluetooth", "when a meeting starts", "when my meeting",
+            "wenn ich lade", "verbindet",
             "morgenroutine", "jeden morgen", "jeden abend", "jeden tag", "werktags", "jeden montag",
             "jeden sonntag", "jede woche"
         ),

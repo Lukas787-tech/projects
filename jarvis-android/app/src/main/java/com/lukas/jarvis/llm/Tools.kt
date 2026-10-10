@@ -26,6 +26,7 @@ import com.lukas.jarvis.data.Task
 import com.lukas.jarvis.data.Tracker
 import com.lukas.jarvis.data.TrackerStatus
 import com.lukas.jarvis.data.Money
+import com.lukas.jarvis.auto.Trigger
 import com.lukas.jarvis.data.Recurring
 import com.lukas.jarvis.moment.Bar
 import com.lukas.jarvis.moment.Chart
@@ -1192,7 +1193,14 @@ class Tools(
                 "steps" to arr("The sentences to carry out, in order."),
                 "time" to str("Time as 'HH:MM', or omit to run only when asked."),
                 "days" to str("Which days: 'weekdays', 'weekends', or names like 'mon, wed, fri'. Omit for every day."),
-                "quiet" to bool("True to run by itself at the time and send the answer as a notification.")
+                "quiet" to bool("True to run by itself at the time and send the answer as a notification."),
+                "when" to str(
+                    "Starts it by itself when the phone notices something, instead of or as well as a time: " +
+                        "'charging' (plugged in), 'connected' or 'disconnected' (a Bluetooth device, named in device), " +
+                        "'event' (a calendar event starts). It then runs in the background and sends the answer.",
+                    listOf("charging", "connected", "disconnected", "event")
+                ),
+                "device" to str("For a Bluetooth trigger, the device: 'car', 'AirPods', 'headphones'. Omit for any device.")
             ),
             listOf("name", "steps")
         ),
@@ -2806,13 +2814,15 @@ class Tools(
         if (steps.isEmpty()) return "A routine needs at least one step."
         val rawTime = args.optString("time").trim()
         val time = Routines.normalizeTime(rawTime)
+        val trigger = Trigger.parse(args.optString("when"), args.optString("device"))
         val saved = routines.save(
             Routine(
                 name = name,
                 steps = steps,
                 time = time,
                 days = com.lukas.jarvis.auto.RoutineDays.parse(args.optString("days")),
-                quiet = args.optBoolean("quiet", false)
+                quiet = args.optBoolean("quiet", false),
+                trigger = trigger
             )
         )
         val whenLine = when {
@@ -2820,8 +2830,23 @@ class Tools(
             saved.quiet -> " It runs by itself ${saved.schedule} and sends the answer as a notification."
             else -> " I will offer it ${saved.schedule}."
         }
+        val triggerLine = saved.trigger?.let { t ->
+            buildString {
+                append(" It also starts by itself ${t.describe}, runs in the background and sends the answer as a notification.")
+                when (t.kind) {
+                    Trigger.Kind.Connected, Trigger.Kind.Disconnected -> if (!phone.hearsBluetooth) {
+                        phone.askBluetooth()
+                        append(" Android asks first whether Mochi may see Bluetooth devices; tell the user to allow it, or it can't notice the device.")
+                    }
+                    Trigger.Kind.EventStarts -> if (!agenda.hasPermission) {
+                        append(" It needs the calendar to know when events start: tell the user to switch Calendar on in Powers.")
+                    }
+                    Trigger.Kind.Charging -> append(" It may take a few minutes after plugging in, which is how Android lets a closed app know.")
+                }
+            }
+        }.orEmpty()
         return "Saved the '${saved.name}' routine with ${saved.steps.size} step(s): " +
-            saved.steps.joinToString("; ") + "." + whenLine
+            saved.steps.joinToString("; ") + "." + whenLine + triggerLine
     }
 
     private suspend fun runRoutine(args: JSONObject, settings: Settings): String {
@@ -2844,7 +2869,7 @@ class Tools(
         if (all.isEmpty()) return "No routines saved yet."
         return all.joinToString("\n") { routine ->
             "- ${routine.name}" +
-                (routine.time?.let { " (${routine.schedule}" + (if (routine.quiet) ", runs quietly)" else ")") } ?: "") +
+                (routine.schedule.takeIf { it.isNotBlank() }?.let { " ($it" + (if (routine.quiet) ", runs quietly)" else ")") } ?: "") +
                 ": " + routine.steps.joinToString("; ")
         }
     }

@@ -17,6 +17,17 @@ import com.lukas.jarvis.R
 class RoutineReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == TriggerWatch.ACTION_EVENT) {
+            // A calendar event starting: run what waits on it, then wait for the next one.
+            TriggerWatch.fire(context, Trigger.Kind.EventStarts)
+            val container = (context.applicationContext as? JarvisApp)?.container ?: return
+            TriggerWatch.scheduleEvent(
+                context,
+                container.agenda,
+                container.routines.all.value.any { it.trigger?.kind == Trigger.Kind.EventStarts }
+            )
+            return
+        }
         if (intent.action != Routines.ACTION_DUE) return
         val name = intent.getStringExtra(Routines.EXTRA_NAME) ?: return
         val routines = (context.applicationContext as? JarvisApp)?.container?.routines

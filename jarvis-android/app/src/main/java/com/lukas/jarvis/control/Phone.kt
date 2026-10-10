@@ -179,6 +179,16 @@ class Phone(context: Context) {
             ContextCompat.checkSelfPermission(app, Manifest.permission.BLUETOOTH_CONNECT) ==
             PackageManager.PERMISSION_GRANTED
 
+    /** Whether Android tells Mochi which Bluetooth device connected: Android 12 asks first. */
+    val hearsBluetooth: Boolean get() = mayTalkToBluetooth
+
+    /** Raises Android's own question for Bluetooth, for a routine that waits on a device. */
+    fun askBluetooth() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            AskPermissionActivity.ask(app, Manifest.permission.BLUETOOTH_CONNECT)
+        }
+    }
+
     /** The devices already paired with this phone, and whether the radio is on. */
     fun bluetoothDevices(): String {
         val adapter = adapter ?: return "This phone has no Bluetooth."

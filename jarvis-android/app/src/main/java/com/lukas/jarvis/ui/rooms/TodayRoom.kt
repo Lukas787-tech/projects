@@ -47,6 +47,7 @@ import com.lukas.jarvis.ui.kit.CafeSheet
 import com.lukas.jarvis.ui.kit.CafeTextField
 import com.lukas.jarvis.ui.kit.CafeButton
 import com.lukas.jarvis.ui.kit.CheckRow
+import com.lukas.jarvis.ui.kit.ChoiceChip
 import com.lukas.jarvis.ui.kit.Eyebrow
 import com.lukas.jarvis.ui.kit.FollowChip
 import com.lukas.jarvis.ui.kit.IconCircle
@@ -410,7 +411,13 @@ private fun RoutineSheet(
         mutableStateOf(if (initial.days.isEmpty()) "" else RoutineDays.describe(initial.days).removePrefix("on ").removePrefix("at "))
     }
     var quiet by remember { mutableStateOf(initial.quiet) }
+    var starts by remember { mutableStateOf(initial.trigger?.kind) }
+    var device by remember { mutableStateOf(initial.trigger?.device.orEmpty()) }
     val stepList = steps.lines().map { it.trim() }.filter { it.isNotBlank() }
+    val trigger = starts?.let { kind ->
+        val bluetooth = kind == com.lukas.jarvis.auto.Trigger.Kind.Connected || kind == com.lukas.jarvis.auto.Trigger.Kind.Disconnected
+        com.lukas.jarvis.auto.Trigger(kind, device.trim().lowercase().takeIf { bluetooth && it.isNotBlank() })
+    }
     val parsedDays = RoutineDays.parse(days)
     CafeSheet(title = if (initial.name.isBlank()) "New routine" else "Change routine", onDismiss = onDismiss) {
         CafeTextField(name, { name = it }, label = "Name", placeholder = "Morning")
@@ -435,11 +442,32 @@ private fun RoutineSheet(
                 onCheckedChange = { quiet = it }
             )
         }
+        VSpace(Cafe.space.m)
+        Eyebrow("Starts by itself")
+        Wrap {
+            ChoiceChip("Only when asked", starts == null, { starts = null })
+            ChoiceChip("When charging", starts == com.lukas.jarvis.auto.Trigger.Kind.Charging, { starts = com.lukas.jarvis.auto.Trigger.Kind.Charging })
+            ChoiceChip("Bluetooth connects", starts == com.lukas.jarvis.auto.Trigger.Kind.Connected, { starts = com.lukas.jarvis.auto.Trigger.Kind.Connected })
+            ChoiceChip("Bluetooth goes", starts == com.lukas.jarvis.auto.Trigger.Kind.Disconnected, { starts = com.lukas.jarvis.auto.Trigger.Kind.Disconnected })
+            ChoiceChip("An event starts", starts == com.lukas.jarvis.auto.Trigger.Kind.EventStarts, { starts = com.lukas.jarvis.auto.Trigger.Kind.EventStarts })
+        }
+        if (starts == com.lukas.jarvis.auto.Trigger.Kind.Connected || starts == com.lukas.jarvis.auto.Trigger.Kind.Disconnected) {
+            VSpace(Cafe.space.s)
+            CafeTextField(device, { device = it }, label = "Which device (optional)", placeholder = "car, AirPods")
+        }
+        trigger?.let {
+            Text(
+                it.describe.replaceFirstChar { c -> c.uppercase() } + ", it runs in the background and sends the answer.",
+                style = Cafe.type.bodySmall,
+                color = Cafe.colors.cocoa,
+                modifier = Modifier.padding(start = Cafe.space.xs, top = Cafe.space.xs)
+            )
+        }
         VSpace(Cafe.space.l)
         Wrap {
             CafeButton(
                 "Save",
-                { onSave(Routine(name = name.trim(), steps = stepList, time = Routines.normalizeTime(time), days = parsedDays, quiet = quiet)) },
+                { onSave(Routine(name = name.trim(), steps = stepList, time = Routines.normalizeTime(time), days = parsedDays, quiet = quiet, trigger = trigger)) },
                 enabled = name.isNotBlank() && stepList.isNotEmpty()
             )
             if (exists) CafeButton("Delete routine", onDelete, kind = ButtonKind.Secondary, icon = Icons.Rounded.DeleteOutline)

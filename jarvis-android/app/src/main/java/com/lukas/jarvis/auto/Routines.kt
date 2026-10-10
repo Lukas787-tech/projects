@@ -37,11 +37,17 @@ data class Routine(
      * notification: for the routines that are questions ("do I need an
      * umbrella?") rather than things to do on screen.
      */
-    val quiet: Boolean = false
+    val quiet: Boolean = false,
+    /**
+     * Starts it on its own when the phone notices something: charging, the
+     * car's Bluetooth, a meeting beginning. It then runs in the background
+     * and its answer arrives as a notification, like a quiet one.
+     */
+    val trigger: Trigger? = null
 ) {
-    /** "on weekdays at 07:30", or empty when it has no time. */
+    /** "on weekdays at 07:30", "when the car connects", or empty when it has neither. */
     val schedule: String
-        get() = time?.let { "${RoutineDays.describe(days)} at $it" }.orEmpty()
+        get() = listOfNotNull(time?.let { "${RoutineDays.describe(days)} at $it" }, trigger?.describe).joinToString(", ")
 
     val hour: Int? get() = time?.substringBefore(':')?.toIntOrNull()?.takeIf { it in 0..23 }
     val minute: Int? get() = time?.substringAfter(':', "")?.toIntOrNull()?.takeIf { it in 0..59 }
@@ -54,6 +60,14 @@ class Routines(private val context: Context) {
 
     private val _all = MutableStateFlow(read())
     val all: StateFlow<List<Routine>> = _all.asStateFlow()
+
+    /** Told whenever the routines change, so what watches for their triggers can follow. */
+    @Volatile
+    var onChanged: (List<Routine>) -> Unit = {}
+
+    /** The routines [happened] starts; [device] is the Bluetooth device's name, when there is one. */
+    fun triggeredBy(happened: Trigger.Kind, device: String? = null): List<Routine> =
+        _all.value.filter { it.trigger?.matches(happened, device) == true }
 
     init {
         ensureChannel()
@@ -110,6 +124,8 @@ class Routines(private val context: Context) {
     /** Alarms do not survive a reboot or a reinstall; this puts them back. */
     fun rescheduleAll() {
         _all.value.forEach { schedule(it) }
+        // The triggers are watched again too, from what is stored now.
+        runCatching { onChanged(_all.value) }
     }
 
     // ------------------------------------------------------------- scheduling
@@ -169,7 +185,8 @@ class Routines(private val context: Context) {
                 time = obj.optString("time").takeIf { it.isNotBlank() },
                 lastRunAt = obj.optLong("last"),
                 days = RoutineDays.decode(obj.optString("days")),
-                quiet = obj.optBoolean("quiet", false)
+                quiet = obj.optBoolean("quiet", false),
+                trigger = Trigger.decode(obj.optString("trigger"))
             )
         }.filter { it.name.isNotBlank() }
     }.getOrDefault(emptyList())
@@ -185,11 +202,13 @@ class Routines(private val context: Context) {
                     put("last", routine.lastRunAt)
                     if (routine.days.isNotEmpty()) put("days", RoutineDays.encode(routine.days))
                     if (routine.quiet) put("quiet", true)
+                    routine.trigger?.let { put("trigger", it.encode()) }
                 }
             )
         }
         prefs.edit().putString(KEY, array.toString()).apply()
         _all.value = routines
+        runCatching { onChanged(routines) }
     }
 
     companion object {

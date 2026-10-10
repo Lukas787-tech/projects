@@ -290,6 +290,17 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- The car or the headphones connecting or going, for a routine that waits on it.
+             The system's own broadcasts, which Android still sends to a closed app. -->
+        <receiver
+            android:name=".auto.BluetoothTriggerReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+            </intent-filter>
+        </receiver>
+
         <receiver
             android:name=".notify.BootReceiver"
             android:exported="true"

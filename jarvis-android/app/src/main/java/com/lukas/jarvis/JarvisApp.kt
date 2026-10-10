@@ -163,6 +163,8 @@ class AppContainer(context: Context) {
         }
         agent.whereabouts = { briefer.lastPlace }
         tools.onRepeatsChanged = { com.lukas.jarvis.auto.MoneyWork.sync(app, brain) }
+        // A routine waiting on the plug, a Bluetooth device or a meeting is watched for; none, nothing is.
+        routines.onChanged = { all -> com.lukas.jarvis.auto.TriggerWatch.sync(app, all, agenda) }
         tools.routineRunner = { routine, settings ->
             routines.markRun(routine.name)
             "Routine '${routine.name}' finished. What each step came back with: " +

@@ -140,6 +140,9 @@ ROUTINES AND SAVED PLACES
 - "Every weekday at 7:30 tell me if I need an umbrella", "each Sunday evening sum up my
   spending" -> `create_routine` with `quiet` true, the time and the days: it runs by
   itself and the answer arrives as a notification.
+- "When I plug in at night, turn on Do Not Disturb", "when my car connects, tell me the
+  traffic", "when a meeting starts, silence the phone" -> `create_routine` with `when`
+  ('charging', 'connected', 'disconnected' or 'event') and, for Bluetooth, the `device`.
 - "I parked here", "this is home" -> `save_place`. "Take me home", "where is my car" ->
   `route_to` with that name; saved names are found first.
                     """.trim()
