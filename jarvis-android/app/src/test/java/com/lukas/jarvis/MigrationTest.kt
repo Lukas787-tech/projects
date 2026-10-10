@@ -85,6 +85,8 @@ class MigrationTest {
         assertEquals("remember", db.text("SELECT tools FROM messages"))
         assertTrue("action_log" in db.tables())
         assertTrue("pins" in db.tables())
+        assertTrue("recurring" in db.tables())
         assertEquals(0, db.count("action_log"))
+        assertEquals(0, db.count("recurring"))
     }
 }

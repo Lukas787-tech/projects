@@ -21,6 +21,7 @@ object PinCodec {
             .put("lines", JSONArray(card.lines))
             .put("slots", JSONObject(card.slots as Map<*, *>))
             .apply { card.image?.let { put("image", it) } }
+            .apply { card.chart?.let { put("chart", it.toJson()) } }
             .toString(),
         createdAt = now
     )
@@ -43,6 +44,7 @@ object PinCodec {
             lines = lines,
             slots = slots,
             image = payload.optString("image").takeIf { it.isNotBlank() },
+            chart = com.lukas.jarvis.moment.Chart.fromJson(payload.optJSONObject("chart")),
             actions = listOf(
                 CardAction("Ask about it", ActionIntent.Say("Tell me more about ${record.title.ifBlank { "that" }}"), primary = true),
                 CardAction("Unpin", ActionIntent.Unpin(id))

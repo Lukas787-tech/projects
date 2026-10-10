@@ -97,7 +97,11 @@ object ToolCatalog {
         ToolInfo("list_entries", ToolGroup.Money, "reading the entries", "Entries", readOnly = true, view = CardKind.Chart,
             next = listOf(f("Where did it go?", "Where did my money go this month?"))),
         ToolInfo("spending_report", ToolGroup.Money, "adding it up", "Report", readOnly = true, view = CardKind.Chart,
-            next = listOf(f("Set a budget", "Help me set a monthly budget"))),
+            next = listOf(f("This month vs last", "How is this month going against last month?"), f("Set a budget", "Help me set a monthly budget"))),
+        ToolInfo("repeat_entry", ToolGroup.Money, "setting it to repeat", "Repeats", view = CardKind.Entry,
+            next = listOf(f("What repeats?", "What do I have repeating?"), f("What's left?", "How much is left on {tracker}?"))),
+        ToolInfo("stop_repeat", ToolGroup.Money, "stopping it", "Stopped", risk = Risk.Sensitive, view = CardKind.Entry,
+            next = listOf(f("What still repeats?", "What do I have repeating?"))),
         ToolInfo("delete_entry", ToolGroup.Money, "taking that back", "Undone", risk = Risk.Sensitive, view = CardKind.Entry,
             next = listOf(f("What's left now?", "How much is left?"))),
 
@@ -551,12 +555,14 @@ object Abilities {
         Ability(
             ToolGroup.Money,
             "Money and trackers",
-            "Running totals for spending, budgets, calories or kilometres, summed exactly.",
+            "Running totals for spending, budgets, calories or kilometres, summed exactly, a word when a " +
+                "budget is nearly gone, and the rent or a subscription logged by itself.",
             listOf(
                 "I spent 12 euros on lunch",
                 "How much is left this week?",
-                "Undo that last entry",
-                "Where did my money go this month?"
+                "My rent is 800 every month on the 1st",
+                "How is this month going against last month?",
+                "Undo that last entry"
             )
         ),
         Ability(

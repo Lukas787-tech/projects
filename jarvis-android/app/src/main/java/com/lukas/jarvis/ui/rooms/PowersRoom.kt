@@ -147,6 +147,7 @@ private val ASKS = mapOf(
     "share_location" to "sharing where you are",
     "forget" to "forgetting a memory",
     "delete_entry" to "taking back an entry",
+    "stop_repeat" to "stopping something that repeats",
     "delete_task" to "deleting a reminder",
     "delete_routine" to "deleting a routine",
     "forget_place" to "forgetting a place",

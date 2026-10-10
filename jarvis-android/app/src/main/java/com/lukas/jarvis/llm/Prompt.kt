@@ -200,6 +200,21 @@ LISTS
                 )
             }
 
+            if (has("repeat_entry")) {
+                appendLine()
+                appendLine(
+                    """
+MONEY THAT REPEATS
+- "my rent is 800 every month on the 1st", "Netflix 12.99 monthly", "I get paid on the 25th"
+  -> `repeat_entry` add, with the day it falls due. It then logs itself; never log it again by
+  hand. "What repeats?" -> `repeat_entry` list. "Stop the Netflix one" -> `stop_repeat`.
+- "How is this month going?", "this month against last" -> `spending_report` with this_month.
+- When a result says a budget is nearly spent, over, or heading over at this pace, say so in a
+  few words; the card shows the numbers.
+                    """.trim()
+                )
+            }
+
             if (has("make_plan")) {
                 appendLine()
                 appendLine(

@@ -153,7 +153,21 @@ fun CanvasCardView(
             CardKind.Photo -> PhotoBody(card, context)
             CardKind.Timer -> TimersBody(card, context, onAction)
             CardKind.Stopwatch -> StopwatchBody(context)
-            else -> TextBody(card)
+            else -> {
+                val chart = card.chart
+                if (chart != null && card.kind == CardKind.Chart && chart.bars.isNotEmpty()) {
+                    // The bars are the answer; the sentence behind them waits one tap away.
+                    ChartBody(chart)
+                    var details by rememberSaveable(card.id) { mutableStateOf(false) }
+                    if (card.body.isNotBlank()) {
+                        QuietButton(if (details) "Hide the numbers" else "Show the numbers", { details = !details })
+                        if (details) TextBody(card)
+                    }
+                } else {
+                    TextBody(card)
+                    chart?.let { ChartBody(it) }
+                }
+            }
         }
         CardActions(card, onAction)
     }

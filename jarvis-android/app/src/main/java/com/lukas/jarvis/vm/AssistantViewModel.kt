@@ -103,6 +103,10 @@ class AssistantViewModel(
     private val _streaks = MutableStateFlow<Map<Long, com.lukas.jarvis.data.Streak>>(emptyMap())
     val streaks: StateFlow<Map<Long, com.lukas.jarvis.data.Streak>> = _streaks.asStateFlow()
 
+    /** What logs itself on a schedule: the rent, the subscriptions. */
+    private val _repeats = MutableStateFlow<List<com.lukas.jarvis.data.Recurring>>(emptyList())
+    val repeats: StateFlow<List<com.lukas.jarvis.data.Recurring>> = _repeats.asStateFlow()
+
     private val _availableModels = MutableStateFlow<List<String>>(emptyList())
     val availableModels: StateFlow<List<String>> = _availableModels.asStateFlow()
 
@@ -1019,6 +1023,8 @@ class AssistantViewModel(
         if (_brief.value != null) refreshBrief()
         viewModelScope.launch {
             val snapshot = withContext(Dispatchers.IO) {
+                // The rent that fell due while the app was closed is counted before anything is shown.
+                runCatching { brain.catchUpRecurring() }
                 val trackers = brain.allTrackerStatus()
                 val now = System.currentTimeMillis()
                 val today = java.time.LocalDate.now()
@@ -1030,7 +1036,8 @@ class AssistantViewModel(
                     streaks = trackers.filter { com.lukas.jarvis.data.Streaks.isHabit(it.tracker) }.associate { status ->
                         val days = com.lukas.jarvis.data.Streaks.days(brain.entriesBetween(now - 400L * 86_400_000L, now, status.tracker.id))
                         status.tracker.id to com.lukas.jarvis.data.Streaks.of(days, today)
-                    }
+                    },
+                    repeats = runCatching { brain.recurring() }.getOrDefault(emptyList())
                 )
             }
             _memories.value = snapshot.memories
@@ -1038,6 +1045,7 @@ class AssistantViewModel(
             _tasks.value = snapshot.tasks
             _entries.value = snapshot.entries
             _streaks.value = snapshot.streaks
+            _repeats.value = snapshot.repeats
         }
     }
 
@@ -1046,11 +1054,23 @@ class AssistantViewModel(
         val trackers: List<TrackerStatus>,
         val tasks: List<Task>,
         val entries: List<Entry>,
-        val streaks: Map<Long, com.lukas.jarvis.data.Streak>
+        val streaks: Map<Long, com.lukas.jarvis.data.Streak>,
+        val repeats: List<com.lukas.jarvis.data.Recurring>
     )
 
     /** One tap on a habit: done for today. */
     fun didHabit(trackerId: Long) = addEntry(trackerId, 1.0, Entry.DIR_OUT, null)
+
+    /** Ends something that logs itself, after the Library asked once more. What it logged stays. */
+    fun stopRepeat(id: Long) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                brain.stopRecurring(id)
+                com.lukas.jarvis.auto.MoneyWork.sync(container.app, brain)
+            }
+            refreshAll()
+        }
+    }
 
     fun addMemory(content: String, kind: String, tags: List<String>, importance: Int) {
         if (content.isBlank()) return

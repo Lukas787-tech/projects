@@ -67,7 +67,9 @@ data class ToolOutput(
     val argumentsJson: String,
     val result: String,
     val waiting: PendingAction? = null,
-    val at: Long = System.currentTimeMillis()
+    val at: Long = System.currentTimeMillis(),
+    /** The numbers behind the result, for a card that draws them. */
+    val chart: com.lukas.jarvis.moment.Chart? = null
 ) {
     val failed: Boolean
         get() = waiting == null && (result.startsWith("Tool '") && result.contains("failed") ||
@@ -582,7 +584,7 @@ class Agent(
             return line
         }
         val result = tools.execute(call, settings, effects)
-        val output = ToolOutput(call.name, call.argumentsJson, result)
+        val output = ToolOutput(call.name, call.argumentsJson, result, chart = effects.charts.remove(call.id))
         effects.outputs += output
         runCatching { onResult(output) }
         return result
@@ -610,7 +612,7 @@ class Agent(
                 else -> tools.execute(action.call, settings, effects)
             }
         }.getOrElse { "Tool '${action.tool}' failed: ${it.message ?: it::class.java.simpleName}" }
-        return ToolOutput(action.tool, action.argumentsJson, result).also { effects.outputs += it }
+        return ToolOutput(action.tool, action.argumentsJson, result, chart = effects.charts.remove(action.call.id)).also { effects.outputs += it }
     }
 
     /**
@@ -621,7 +623,7 @@ class Agent(
         val effects = ToolEffects()
         val result = runCatching { tools.execute(call, settings, effects) }
             .getOrElse { "Tool '${call.name}' failed: ${it.message ?: it::class.java.simpleName}" }
-        return ToolOutput(call.name, call.argumentsJson, result)
+        return ToolOutput(call.name, call.argumentsJson, result, chart = effects.charts.remove(call.id))
     }
 
     /** What is said when a sentence went straight to a waiting action, with no model to word it. */

@@ -25,6 +25,10 @@ import com.lukas.jarvis.data.Memory
 import com.lukas.jarvis.data.Task
 import com.lukas.jarvis.data.Tracker
 import com.lukas.jarvis.data.TrackerStatus
+import com.lukas.jarvis.data.Money
+import com.lukas.jarvis.data.Recurring
+import com.lukas.jarvis.moment.Bar
+import com.lukas.jarvis.moment.Chart
 import com.lukas.jarvis.maps.Geo
 import com.lukas.jarvis.maps.Locator
 import com.lukas.jarvis.maps.Navigator
@@ -108,6 +112,10 @@ class Tools(
      * the background) from leaving the runner switched off for good.
      */
     override val routinesRunning = java.util.concurrent.atomic.AtomicInteger(0)
+
+    /** Told when a repeating entry starts or stops, so the daily check is kept or let go. */
+    @Volatile
+    var onRepeatsChanged: () -> Unit = {}
 
     override fun schemas(settings: Settings): List<JSONObject> = buildList {
         addAll(memoryTools())
@@ -243,7 +251,37 @@ class Tools(
                 "this week', 'what am I averaging'.",
             props(
                 "days" to int("How far back to look. Default 30."),
+                "this_month" to bool("True for 'this month so far', set against the same days of last month."),
                 "tracker" to str("Restrict to one tracker, or omit for all of them.")
+            ),
+            emptyList()
+        ),
+        tool(
+            "repeat_entry",
+            "Something logged by itself on a schedule: rent, a subscription, a salary, pocket " +
+                "money. Use for 'my rent is 800 every month on the 1st', 'Netflix 12.99 monthly', " +
+                "'I get paid 2400 on the 25th'. action 'add' sets one up; 'list' says what repeats.",
+            props(
+                "action" to str("What to do. Default 'add'.", listOf("add", "list")),
+                "tracker" to str("Which tracker it goes on, e.g. 'rent', 'subscriptions', 'salary'."),
+                "amount" to num("How much each time. Always positive."),
+                "every" to str("How often.", listOf(Recurring.EVERY_DAY, Recurring.EVERY_WEEK, Recurring.EVERY_MONTH, Recurring.EVERY_YEAR)),
+                "day" to str("The day it falls due: a day of the month like '1' or '25', or a weekday like 'friday'."),
+                "starting" to str("ISO date of the first one, when it is not simply the next such day."),
+                "direction" to str("'out' for spending, 'in' for income.", listOf("out", "in")),
+                "note" to str("What it is, e.g. 'Netflix'."),
+                "unit" to str("Currency code. Defaults to ${settings.defaultCurrency}.")
+            ),
+            emptyList()
+        ),
+        tool(
+            "stop_repeat",
+            "Stop something that repeats, so it is no longer logged by itself. What it already " +
+                "logged stays on the tracker.",
+            props(
+                "id" to int("The id repeat_entry's list shows."),
+                "tracker" to str("Or the tracker it goes on."),
+                "note" to str("Or what it is, e.g. 'Netflix'.")
             ),
             emptyList()
         ),
@@ -1182,6 +1220,8 @@ class Tools(
 
     override suspend fun execute(call: ToolCall, settings: Settings, effects: ToolEffects): String {
         val args = runCatching { JSONObject(call.argumentsJson) }.getOrDefault(JSONObject())
+        // Whatever fell due since the last look is counted before anything is read.
+        if (call.name in MONEY_TOOLS) runCatching { brain.catchUpRecurring() }
         return try {
             when (call.name) {
                 // memory
@@ -1192,11 +1232,13 @@ class Tools(
                 "recall_conversation" -> recallConversation(args)
 
                 // trackers
-                "log_entry" -> logEntry(args, settings, effects)
-                "tracker_status" -> trackerStatus(args)
+                "log_entry" -> logEntry(args, settings, effects, call.id)
+                "tracker_status" -> trackerStatus(args, effects, call.id)
                 "configure_tracker" -> configureTracker(args, settings, effects)
                 "list_entries" -> listEntries(args)
-                "spending_report" -> spendingReport(args)
+                "spending_report" -> spendingReport(args, effects, call.id)
+                "repeat_entry" -> repeatEntry(args, settings, effects)
+                "stop_repeat" -> stopRepeat(args, effects)
                 "delete_entry" -> deleteEntry(args, effects)
 
                 // tasks
@@ -1532,7 +1574,7 @@ class Tools(
 
     // ---------------------------------------------------------------- trackers
 
-    private fun logEntry(args: JSONObject, settings: Settings, effects: ToolEffects): String {
+    private fun logEntry(args: JSONObject, settings: Settings, effects: ToolEffects, callId: String = ""): String {
         val name = args.optString("tracker").trim()
         if (name.isBlank()) return "Need a tracker name."
         val amount = number(args, "amount") ?: Double.NaN
@@ -1552,6 +1594,7 @@ class Tools(
 
         val direction = args.optString("direction").ifBlank { Entry.DIR_OUT }
             .let { if (it == Entry.DIR_IN) Entry.DIR_IN else Entry.DIR_OUT }
+        val before = brain.trackerStatus(tracker).periodSpent
 
         brain.addEntry(
             Entry(
@@ -1568,27 +1611,71 @@ class Tools(
 
         val status = brain.trackerStatus(brain.findTracker(name) ?: tracker)
         val verb = if (direction == Entry.DIR_OUT) "Logged" else "Added"
+        val now = System.currentTimeMillis()
         // A habit's run is the news: "That's 5 days in a row."
-        val streak = if (com.lukas.jarvis.data.Streaks.isHabit(tracker)) {
-            val now = System.currentTimeMillis()
+        val run = if (com.lukas.jarvis.data.Streaks.isHabit(tracker)) {
             val days = com.lukas.jarvis.data.Streaks.days(brain.entriesBetween(now - 400L * 86_400_000L, now, tracker.id))
-            com.lukas.jarvis.data.Streaks.describe(com.lukas.jarvis.data.Streaks.of(days, java.time.LocalDate.now()))
-                .takeIf { it.isNotEmpty() }?.let { " That's $it." }.orEmpty()
-        } else ""
-        return "$verb ${money(abs(amount), tracker)} on ${tracker.label}.$streak ${summaryLine(status)}"
+            com.lukas.jarvis.data.Streaks.of(days, java.time.LocalDate.now())
+        } else null
+        val streak = run?.let { com.lukas.jarvis.data.Streaks.describe(it) }
+            ?.takeIf { it.isNotEmpty() }?.let { " That's $it." }.orEmpty()
+        // A budget crossing four fifths or all of itself is said once, as it happens.
+        val news = budgetNews(status, before, now)?.let { " $it" }.orEmpty()
+        val chart = when {
+            run != null -> Chart(week = run.week, caption = com.lukas.jarvis.data.Streaks.describe(run).replaceFirstChar { it.titlecase(Locale.getDefault()) })
+            tracker.budget != null -> Chart(bars = statusBars(listOf(status)))
+            else -> null
+        }
+        if (chart != null && callId.isNotEmpty()) effects.charts[callId] = chart
+        return "$verb ${money(abs(amount), tracker)} on ${tracker.label}.$streak$news ${summaryLine(status)}"
     }
 
-    private fun trackerStatus(args: JSONObject): String {
+    /** "Heads up: that's 84% of this month's budget, with 9 days to go", or where the pace leads. */
+    private fun budgetNews(status: TrackerStatus, before: Double, now: Long): String? {
+        val t = status.tracker
+        val budget = t.budget ?: return null
+        val window = Money.window(t.period, now)
+        Money.budgetNews(budget, before, status.periodSpent, t.period, window, now) { money(it, t) }?.let { return it }
+        val w = window ?: return null
+        val heading = Money.pace(status.periodSpent, budget, w, now) ?: return null
+        // The pace is mentioned when this entry is what tipped it, not on every one after.
+        if (Money.pace(before, budget, w, now) != null) return null
+        return "At this pace it'll be about ${money(heading, t)} by the end of ${Tracker.thisPeriod(t.period)}, over the ${money(budget, t)} budget."
+    }
+
+    /** One row per money tracker: a meter against its budget, or what went out this period. */
+    private fun statusBars(statuses: List<TrackerStatus>): List<Bar> = statuses
+        .filter { it.tracker.budget != null || it.tracker.kind == Tracker.KIND_MONEY }
+        .map { s ->
+            val t = s.tracker
+            Bar(
+                label = t.label,
+                value = s.periodSpent,
+                shown = money(s.periodSpent, t),
+                limit = t.budget,
+                note = t.budget?.let { "of ${money(it, t)} ${Tracker.thisPeriod(t.period)}" } ?: Tracker.thisPeriod(t.period)
+            )
+        }
+
+    private fun trackerStatus(args: JSONObject, effects: ToolEffects, callId: String = ""): String {
         val name = args.optString("tracker").trim()
-        if (name.isNotBlank()) {
+        val chosen = if (name.isNotBlank()) {
             val tracker = brain.findTracker(name)
                 ?: return "No tracker called '$name' yet. Create one with configure_tracker " +
                     "or just log something to it."
-            return summaryLine(brain.trackerStatus(tracker))
+            listOf(brain.trackerStatus(tracker))
+        } else {
+            brain.allTrackerStatus().ifEmpty { return "No trackers set up yet." }
         }
-        val all = brain.allTrackerStatus()
-        if (all.isEmpty()) return "No trackers set up yet."
-        return all.joinToString("\n") { summaryLine(it) }
+        val bars = statusBars(chosen)
+        if (bars.isNotEmpty() && callId.isNotEmpty()) effects.charts[callId] = Chart(bars = bars)
+        val now = System.currentTimeMillis()
+        return chosen.joinToString("\n") { status ->
+            val heading = status.tracker.budget?.let { budget ->
+                Money.window(status.tracker.period, now)?.let { Money.pace(status.periodSpent, budget, it, now) }
+            }
+            summaryLine(status) + (heading?.let { ", heading for about ${money(it, status.tracker)} at this pace" } ?: "")
+        }
     }
 
     private fun configureTracker(
@@ -1674,11 +1761,12 @@ class Tools(
      * plausible invention, so every number in this reply is summed from the rows
      * and the model is left with nothing to do but read it out.
      */
-    private fun spendingReport(args: JSONObject): String {
+    private fun spendingReport(args: JSONObject, effects: ToolEffects = ToolEffects(), callId: String = ""): String {
         val days = args.optInt("days", 30).coerceIn(1, 365)
         val name = args.optString("tracker").trim()
         val only = if (name.isBlank()) null else brain.findTracker(name)
         if (name.isNotBlank() && only == null) return "No tracker called '$name'."
+        if (args.optBoolean("this_month")) return monthReport(only, effects, callId)
 
         val now = System.currentTimeMillis()
         val from = now - days * 86_400_000L
@@ -1687,6 +1775,12 @@ class Tools(
 
         val byId = brain.allTrackers().associateBy { it.id }
         val grouped = entries.groupBy { it.trackerId }
+        val bars = grouped.mapNotNull { (trackerId, rows) ->
+            val tracker = byId[trackerId]?.takeIf { it.kind == Tracker.KIND_MONEY } ?: return@mapNotNull null
+            val out = rows.filter { it.direction == Entry.DIR_OUT }.sumOf { it.amount }
+            Bar(tracker.label, out, money(out, tracker), note = "${rows.size} ${if (rows.size == 1) "entry" else "entries"}")
+        }.filter { it.value > 0 }.sortedByDescending { it.value }
+        if (bars.isNotEmpty() && callId.isNotEmpty()) effects.charts[callId] = Chart(bars = bars, caption = "The last $days days")
 
         return buildString {
             appendLine("Last $days days:")
@@ -1719,6 +1813,116 @@ class Tools(
                 }
             }
         }.trim()
+    }
+
+    /** This month so far, tracker by tracker, set against the same days of last month. */
+    private fun monthReport(only: Tracker?, effects: ToolEffects, callId: String): String {
+        val now = System.currentTimeMillis()
+        val zone = java.time.ZoneId.systemDefault()
+        val from = java.time.Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+            .withDayOfMonth(1).minusMonths(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val lines = Money.month(brain.entriesBetween(from, now, only?.id), now, zone)
+        if (lines.isEmpty()) return "Nothing recorded this month or last."
+        val byId = brain.allTrackers(includeArchived = true).associateBy { it.id }
+        val day = java.time.LocalDate.now(zone).dayOfMonth
+        val bars = lines.mapNotNull { line ->
+            val t = byId[line.trackerId]?.takeIf { it.kind == Tracker.KIND_MONEY } ?: return@mapNotNull null
+            Bar(
+                label = t.label,
+                value = line.out,
+                shown = money(line.out, t),
+                limit = t.budget?.takeIf { t.period == Tracker.PERIOD_MONTHLY },
+                note = "last month by now ${money(line.lastByNow, t)}",
+                compare = line.lastByNow
+            )
+        }
+        if (bars.isNotEmpty() && callId.isNotEmpty()) {
+            effects.charts[callId] = Chart(bars = bars, caption = "This month so far, against the same $day days of last month")
+        }
+        return buildString {
+            appendLine("This month so far ($day days), with the same days of last month:")
+            lines.forEach { line ->
+                val t = byId[line.trackerId]
+                append("- ${t?.label ?: "Unknown"}: ${money(line.out, t)} out")
+                if (line.income > 0) append(", ${money(line.income, t)} in")
+                append(" (last month by now: ${money(line.lastByNow, t)}; all of last month: ${money(line.lastTotal, t)})")
+                appendLine(".")
+            }
+        }.trim()
+    }
+
+    private fun repeatEntry(args: JSONObject, settings: Settings, effects: ToolEffects): String {
+        if (args.optString("action").trim().lowercase(Locale.ROOT) == "list") return listRepeats()
+        val name = args.optString("tracker").trim()
+        if (name.isBlank()) return "Need a tracker name."
+        val amount = number(args, "amount") ?: return "Need a numeric amount."
+        val every = Recurring.parseEvery(args.optString("every")) ?: Recurring.EVERY_MONTH
+        val unit = args.optString("unit").trim()
+        val tracker = brain.findTracker(name) ?: brain.upsertTracker(
+            Tracker(
+                name = name,
+                label = name.replaceFirstChar { it.titlecase(Locale.getDefault()) },
+                kind = inferKind(unit, settings),
+                unit = unit.ifBlank { settings.defaultCurrency },
+                period = Tracker.PERIOD_MONTHLY
+            )
+        )
+        val now = System.currentTimeMillis()
+        val starting = TimeUtil.parse(args.optString("starting").takeIf { it.isNotBlank() })
+        val first = Money.firstDue(every, args.optString("day").takeIf { it.isNotBlank() }, starting, now)
+        val direction = if (args.optString("direction").trim() == Entry.DIR_IN) Entry.DIR_IN else Entry.DIR_OUT
+        val note = args.optString("note").trim().takeIf { it.isNotBlank() }
+        val id = brain.addRecurring(
+            Recurring(trackerId = tracker.id, amount = abs(amount), direction = direction, note = note, every = every, anchor = first)
+        )
+        val loggedNow = brain.catchUpRecurring(now).count { it.first.id == id }
+        effects.trackersChanged = true
+        runCatching { onRepeatsChanged() }
+        val next = brain.recurring(tracker.id).firstOrNull { it.id == id }?.nextAt
+        return buildString {
+            append("${note ?: tracker.label}: ${money(abs(amount), tracker)} ${Recurring.word(every)} on ${tracker.label} (id $id).")
+            when {
+                loggedNow == 1 -> append(" The first one is logged now.")
+                loggedNow > 1 -> append(" The $loggedNow already due are logged.")
+            }
+            next?.let { append(" Next: ${TimeUtil.formatDate(it)}.") }
+            append(" It logs itself each time from now on; say so to stop it.")
+        }
+    }
+
+    private fun listRepeats(): String {
+        val rules = brain.recurring()
+        if (rules.isEmpty()) return "Nothing repeats yet."
+        val byId = brain.allTrackers(includeArchived = true).associateBy { it.id }
+        return rules.joinToString("\n") { rule ->
+            val t = byId[rule.trackerId]
+            "[id ${rule.id}] ${rule.note ?: t?.label ?: "?"}: ${if (rule.direction == Entry.DIR_IN) "+" else "-"}${money(rule.amount, t)} " +
+                "${Recurring.word(rule.every)} on ${t?.label ?: "?"}, next ${TimeUtil.formatDate(rule.nextAt)}"
+        }
+    }
+
+    private fun stopRepeat(args: JSONObject, effects: ToolEffects): String {
+        val rules = brain.recurring()
+        if (rules.isEmpty()) return "Nothing repeats, so there is nothing to stop."
+        val byId = brain.allTrackers(includeArchived = true).associateBy { it.id }
+        val id = args.optLong("id", -1L)
+        val words = listOf(args.optString("note"), args.optString("tracker")).map { it.trim().lowercase(Locale.ROOT) }.filter { it.isNotBlank() }
+        val matches = when {
+            id > 0 -> rules.filter { it.id == id }
+            words.isNotEmpty() -> rules.filter { rule ->
+                val said = listOfNotNull(rule.note, byId[rule.trackerId]?.label, byId[rule.trackerId]?.name).joinToString(" ").lowercase(Locale.ROOT)
+                words.any { said.contains(it) }
+            }
+            rules.size == 1 -> rules
+            else -> emptyList()
+        }
+        if (matches.isEmpty()) return "Which one? ${listRepeats()}"
+        if (matches.size > 1) return "More than one matches; say which: " + matches.joinToString("; ") { "[id ${it.id}] ${it.note ?: byId[it.trackerId]?.label}" }
+        val rule = matches.single()
+        brain.stopRecurring(rule.id)
+        effects.trackersChanged = true
+        runCatching { onRepeatsChanged() }
+        return "Stopped ${rule.note ?: byId[rule.trackerId]?.label ?: "it"}. Nothing more will be logged by itself; what it logged stays."
     }
 
     private fun inferKind(unit: String, settings: Settings): String {
@@ -2789,6 +2993,12 @@ class Tools(
     private fun optDoubleOrNull(args: JSONObject, key: String): Double? = number(args, key)
 
     private companion object {
+        /** The tools that read or write trackers, for which anything already due is logged first. */
+        val MONEY_TOOLS = setOf(
+            "log_entry", "tracker_status", "configure_tracker", "list_entries",
+            "spending_report", "repeat_entry", "stop_repeat", "delete_entry"
+        )
+
         /** "My own voice", "meine eigene Stimme": the account's own clones. */
         val MY_VOICE = Regex("\\b(my own|my clone|my cloned|my voice|meine eigene|meiner eigenen|meine stimme|meiner stimme|mein klon)")
 

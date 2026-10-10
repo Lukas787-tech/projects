@@ -34,7 +34,9 @@ object ToolRouter {
             "tracker", "track", "log ", "calorie", "kcal", "km ", "kilomet", "income", "salary",
             "earned", "expense", "receipt", "afford", "undo", "owe", "cash", "wallet", "card",
             "ausgegeben", "gekauft", "bezahlt", "kostet", "kosten", "geld", "übrig", "kontostand",
-            "kalorien", "verdient", "gehalt", "rechnung", "quittung", "rückgängig"
+            "kalorien", "verdient", "gehalt", "rechnung", "quittung", "rückgängig",
+            "rent", "subscription", "repeating", "recurring", "standing order", "direct debit",
+            "miete", "abo", "dauerauftrag", "lastschrift", "last month", "letzten monat"
         ),
         ToolGroup.Tasks to listOf(
             "remind", "reminder", "task", "todo", "to-do", "to do", "tomorrow", "tonight",

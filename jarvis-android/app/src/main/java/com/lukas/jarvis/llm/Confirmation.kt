@@ -236,6 +236,12 @@ object ActionText {
             "delete_entry" -> Described("Take back a tracker entry", entryDetail(args), "Take back", emptyList())
             "delete_task" -> Described("Delete a reminder", s("title").ifBlank { "reminder #${s("id")}" }, "Delete", emptyList())
             "delete_routine" -> Described("Delete the ${s("name")} routine", "", "Delete", emptyList())
+            "stop_repeat" -> Described(
+                s("note").ifBlank { s("tracker") }.let { if (it.isBlank()) "Stop a repeating entry" else "Stop the repeating $it entry" },
+                "Nothing more is logged by itself. What it already logged stays.",
+                "Stop it",
+                emptyList()
+            )
             "forget_place" -> Described("Forget the place ${s("name")}", "", "Forget", emptyList())
             "change_calendar_event" -> {
                 val cancel = s("action").lowercase(Locale.ROOT) in setOf("cancel", "delete", "remove")

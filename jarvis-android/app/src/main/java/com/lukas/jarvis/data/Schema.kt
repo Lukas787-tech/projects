@@ -12,7 +12,7 @@ package com.lukas.jarvis.data
  */
 object Schema {
 
-    const val VERSION = 4
+    const val VERSION = 5
 
     /** Version 1, as the first release created it. */
     val V1: List<String> = listOf(
@@ -134,6 +134,27 @@ object Schema {
                 created_at INTEGER NOT NULL
             )
             """.trimIndent()
+        ),
+        // Entries that log themselves on a schedule: the rent, a subscription.
+        5 to listOf(
+            """
+            CREATE TABLE recurring (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tracker_id INTEGER NOT NULL,
+                amount REAL NOT NULL,
+                direction TEXT NOT NULL DEFAULT 'out',
+                note TEXT,
+                every TEXT NOT NULL DEFAULT 'monthly',
+                anchor INTEGER NOT NULL,
+                logged INTEGER NOT NULL DEFAULT 0,
+                next_at INTEGER NOT NULL,
+                active INTEGER NOT NULL DEFAULT 1,
+                created_at INTEGER NOT NULL
+            )
+            """.trimIndent(),
+            // No cascade from the tracker: Brain removes a tracker's schedules
+            // with it, and steps here never carry a delete of any kind.
+            "CREATE INDEX idx_recurring_next ON recurring(active, next_at)"
         )
     )
 

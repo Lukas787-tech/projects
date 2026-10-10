@@ -162,6 +162,7 @@ class AppContainer(context: Context) {
             )
         }
         agent.whereabouts = { briefer.lastPlace }
+        tools.onRepeatsChanged = { com.lukas.jarvis.auto.MoneyWork.sync(app, brain) }
         tools.routineRunner = { routine, settings ->
             routines.markRun(routine.name)
             "Routine '${routine.name}' finished. What each step came back with: " +
@@ -205,6 +206,7 @@ class JarvisApp : Application() {
             runCatching { container.stopwatch.restore() }
             runCatching { container.profiles.rescheduleAll() }
             runCatching { container.placeReminders.armAll() }
+            runCatching { com.lukas.jarvis.auto.MoneyWork.sync(this@JarvisApp, container.brain) }
         }
         // The written brief follows its setting wherever it changes — the
         // settings screen, a restored backup — and is set again at every

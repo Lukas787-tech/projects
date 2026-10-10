@@ -218,6 +218,7 @@ sealed interface Launch {
     data object Type : Launch
     data object Scan : Launch
     data object Today : Launch
+    data object Money : Launch
     data class Shared(val text: String?, val image: Uri?) : Launch
 
     companion object {
@@ -228,6 +229,7 @@ sealed interface Launch {
             Entry.TYPE -> Type
             Entry.SCAN -> Scan
             Entry.TODAY -> Today
+            Entry.MONEY -> Money
             Intent.ACTION_SEND -> {
                 val text = intent.getStringExtra(Intent.EXTRA_TEXT)
                     ?: intent.getStringExtra(Intent.EXTRA_SUBJECT)
@@ -285,6 +287,7 @@ private fun JarvisRoot(
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val entries by viewModel.entries.collectAsStateWithLifecycle()
     val streaks by viewModel.streaks.collectAsStateWithLifecycle()
+    val repeats by viewModel.repeats.collectAsStateWithLifecycle()
     val availableModels by viewModel.availableModels.collectAsStateWithLifecycle()
     val modelsState by viewModel.modelsState.collectAsStateWithLifecycle()
     val testState by viewModel.testState.collectAsStateWithLifecycle()
@@ -451,6 +454,7 @@ private fun JarvisRoot(
                 viewModel.askCamera("What is this? Read any text in it.")
             }
             Launch.Today -> viewModel.showElement(Element.Today)
+            Launch.Money -> viewModel.showElement(Element.Money)
             is Launch.Shared -> {
                 viewModel.showElement(Element.Globe)
                 viewModel.updateSettings { it.copy(voiceMode = false) }
@@ -583,7 +587,8 @@ private fun JarvisRoot(
             toggleTask = viewModel::toggleTask,
             deleteTask = viewModel::deleteTask,
             cancelPlaceReminder = viewModel::cancelPlaceReminder,
-            didHabit = viewModel::didHabit
+            didHabit = viewModel::didHabit,
+            stopRepeat = viewModel::stopRepeat
         )
     }
 
@@ -671,7 +676,8 @@ private fun JarvisRoot(
                     placeReminders = placeReminders,
                     actions = libraryActions,
                     defaultCurrency = settings.defaultCurrency,
-                    streaks = streaks
+                    streaks = streaks,
+                    repeats = repeats
                 )
                 Element.Skills -> PowersRoom(
                     settings = settings,

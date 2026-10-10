@@ -4,7 +4,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
-import java.util.Calendar
 import kotlin.math.ln
 import kotlin.math.max
 
@@ -229,8 +228,10 @@ class Brain(context: Context) {
             null
         ).use { it.readAll { c -> c.toTracker() } }
 
-    fun deleteTracker(id: Long): Boolean =
-        db.delete("trackers", "id = ?", arrayOf(id.toString())) > 0
+    fun deleteTracker(id: Long): Boolean {
+        db.delete("recurring", "tracker_id = ?", arrayOf(id.toString()))
+        return db.delete("trackers", "id = ?", arrayOf(id.toString())) > 0
+    }
 
     fun addEntry(entry: Entry): Long {
         val values = ContentValues().apply {
@@ -314,23 +315,104 @@ class Brain(context: Context) {
         )
     }
 
-    fun allTrackerStatus(): List<TrackerStatus> = allTrackers().map { trackerStatus(it) }
+    /**
+     * Every tracker's numbers. Whatever repeating entry fell due since the last
+     * look is logged first, so a total read anywhere (the screen, the brief, the
+     * context a model sees) already has this month's rent in it.
+     */
+    fun allTrackerStatus(): List<TrackerStatus> {
+        runCatching { catchUpRecurring() }
+        return allTrackers().map { trackerStatus(it) }
+    }
+
+    // --------------------------------------------------------------- recurring
+
+    fun addRecurring(rule: Recurring): Long {
+        val values = ContentValues().apply {
+            put("tracker_id", rule.trackerId)
+            put("amount", rule.amount)
+            put("direction", rule.direction)
+            put("note", rule.note)
+            put("every", rule.every)
+            put("anchor", rule.anchor)
+            put("logged", rule.logged)
+            put("next_at", Money.occurrence(rule.anchor, rule.every, rule.logged))
+            put("active", if (rule.active) 1 else 0)
+            put("created_at", rule.createdAt)
+        }
+        return db.insert("recurring", null, values)
+    }
+
+    /** Every schedule still running, soonest first. */
+    fun recurring(trackerId: Long? = null): List<Recurring> {
+        val (where, args) = if (trackerId == null) "active = 1" to emptyArray<String>()
+        else "active = 1 AND tracker_id = ?" to arrayOf(trackerId.toString())
+        return db.rawQuery("SELECT * FROM recurring WHERE $where ORDER BY next_at ASC", args)
+            .use { it.readAll { c -> c.toRecurring() } }
+    }
+
+    /** Ends a schedule. What it already logged stays logged. */
+    fun stopRecurring(id: Long): Boolean =
+        db.update("recurring", ContentValues().apply { put("active", 0) }, "id = ? AND active = 1", arrayOf(id.toString())) > 0
+
+    /**
+     * Logs every scheduled entry that has fallen due, each dated the moment it
+     * was due, and returns what it logged. Safe to call as often as anyone
+     * likes: a due time is counted as logged in the same transaction that logs
+     * it, so two callers at once cannot log the rent twice.
+     */
+    @Synchronized
+    fun catchUpRecurring(now: Long = System.currentTimeMillis()): List<Pair<Recurring, Entry>> {
+        val rules = db.rawQuery(
+            "SELECT * FROM recurring WHERE active = 1 AND next_at <= ?",
+            arrayOf(now.toString())
+        ).use { it.readAll { c -> c.toRecurring() } }
+        if (rules.isEmpty()) return emptyList()
+        val trackers = allTrackers(includeArchived = true).associateBy { it.id }
+        val logged = mutableListOf<Pair<Recurring, Entry>>()
+        val database = db
+        database.beginTransaction()
+        try {
+            rules.forEach { rule ->
+                if (rule.trackerId !in trackers) {
+                    database.update("recurring", ContentValues().apply { put("active", 0) }, "id = ?", arrayOf(rule.id.toString()))
+                    return@forEach
+                }
+                val due = Money.due(rule, now)
+                due.forEach { at ->
+                    val entry = Entry(
+                        trackerId = rule.trackerId,
+                        amount = rule.amount,
+                        direction = rule.direction,
+                        note = rule.note,
+                        category = "repeating",
+                        occurredAt = at,
+                        createdAt = now
+                    )
+                    val id = addEntry(entry)
+                    logged += rule to entry.copy(id = id)
+                }
+                val count = rule.logged + due.size
+                database.update(
+                    "recurring",
+                    ContentValues().apply {
+                        put("logged", count)
+                        put("next_at", Money.occurrence(rule.anchor, rule.every, count))
+                    },
+                    "id = ?",
+                    arrayOf(rule.id.toString())
+                )
+            }
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
+        return logged
+    }
 
     /** Start of the tracker's current window, or epoch when it does not reset. */
-    private fun periodStart(period: String): Long {
-        if (period == Tracker.PERIOD_NONE) return 0L
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        when (period) {
-            Tracker.PERIOD_WEEKLY -> cal.set(Calendar.DAY_OF_WEEK, cal.firstDayOfWeek)
-            Tracker.PERIOD_MONTHLY -> cal.set(Calendar.DAY_OF_MONTH, 1)
-        }
-        return cal.timeInMillis
-    }
+    private fun periodStart(period: String): Long =
+        Money.window(period, System.currentTimeMillis())?.start ?: 0L
 
     private fun normalizeName(raw: String): String =
         raw.trim().lowercase().replace(Regex("\\s+"), " ")
@@ -564,6 +646,9 @@ class Brain(context: Context) {
         val database = db
         database.beginTransaction()
         try {
+            // A backup from before schedules existed brings its own trackers back
+            // under the same ids; a schedule left over would log onto the wrong one.
+            if (tables.has("trackers") && !tables.has("recurring")) database.delete("recurring", null, null)
             BACKUP_TABLES.filter { tables.has(it) }.forEach { table ->
                 val rows = tables.optJSONArray(table) ?: return@forEach
                 val columns = columnsOf(table)
@@ -661,6 +746,20 @@ class Brain(context: Context) {
         createdAt = getLong(getColumnIndexOrThrow("created_at"))
     )
 
+    private fun Cursor.toRecurring() = Recurring(
+        id = getLong(getColumnIndexOrThrow("id")),
+        trackerId = getLong(getColumnIndexOrThrow("tracker_id")),
+        amount = getDouble(getColumnIndexOrThrow("amount")),
+        direction = getString(getColumnIndexOrThrow("direction")),
+        note = stringOrNull("note"),
+        every = getString(getColumnIndexOrThrow("every")),
+        anchor = getLong(getColumnIndexOrThrow("anchor")),
+        logged = getInt(getColumnIndexOrThrow("logged")),
+        nextAt = getLong(getColumnIndexOrThrow("next_at")),
+        active = getInt(getColumnIndexOrThrow("active")) == 1,
+        createdAt = getLong(getColumnIndexOrThrow("created_at"))
+    )
+
     private fun Cursor.toTask() = Task(
         id = getLong(getColumnIndexOrThrow("id")),
         title = getString(getColumnIndexOrThrow("title")),
@@ -685,7 +784,7 @@ class Brain(context: Context) {
     private companion object {
         /** Parents before children, so a restore never inserts an orphan. */
         val BACKUP_TABLES = listOf(
-            "memories", "memory_tokens", "trackers", "entries", "tasks", "messages", "action_log", "pins"
+            "memories", "memory_tokens", "trackers", "entries", "recurring", "tasks", "messages", "action_log", "pins"
         )
     }
 }

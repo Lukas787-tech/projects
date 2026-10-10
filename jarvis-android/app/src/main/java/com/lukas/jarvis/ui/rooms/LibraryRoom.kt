@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Autorenew
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.PushPin
@@ -35,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.lukas.jarvis.core.TimeUtil
 import com.lukas.jarvis.data.Entry
 import com.lukas.jarvis.data.ListBook
+import com.lukas.jarvis.data.Recurring
 import com.lukas.jarvis.data.Memory
 import com.lukas.jarvis.data.Task
 import com.lukas.jarvis.data.Tracker
@@ -91,7 +94,9 @@ class LibraryActions(
     val deleteTask: (Long) -> Unit,
     val cancelPlaceReminder: (Long) -> Unit,
     /** One tap on a habit: done for today. */
-    val didHabit: (Long) -> Unit = {}
+    val didHabit: (Long) -> Unit = {},
+    /** Ends something that logs itself; what it logged stays. */
+    val stopRepeat: (Long) -> Unit = {}
 )
 
 /** Something just removed, and how to put it back. */
@@ -115,7 +120,8 @@ fun LibraryRoom(
     actions: LibraryActions,
     modifier: Modifier = Modifier,
     defaultCurrency: String = "EUR",
-    streaks: Map<Long, com.lukas.jarvis.data.Streak> = emptyMap()
+    streaks: Map<Long, com.lukas.jarvis.data.Streak> = emptyMap(),
+    repeats: List<Recurring> = emptyList()
 ) {
     var undo by remember { mutableStateOf<Undoable?>(null) }
     LaunchedEffect(undo) {
@@ -146,7 +152,7 @@ fun LibraryRoom(
                 Shelf.Memory -> memoryShelf(memories.filter { it.kind != Memory.KIND_NOTE && it.kind != Memory.KIND_JOURNAL }, actions, removed)
                 Shelf.Notes -> notesShelf(memories.filter { it.kind == Memory.KIND_NOTE || it.kind == Memory.KIND_JOURNAL }, actions, removed)
                 Shelf.Lists -> listShelf(lists, actions, removed)
-                Shelf.Money -> moneyShelf(trackers, entries, actions, removed, defaultCurrency, streaks)
+                Shelf.Money -> moneyShelf(trackers, entries, actions, removed, defaultCurrency, streaks, repeats)
                 Shelf.Tasks -> taskShelf(tasks, placeReminders, actions, removed)
             }
         }
@@ -360,10 +366,11 @@ private fun LazyListScope.listShelf(book: ListBook, actions: LibraryActions, rem
 
 // ------------------------------------------------------------------- money
 
-private fun LazyListScope.moneyShelf(trackers: List<TrackerStatus>, entries: List<Entry>, actions: LibraryActions, removed: (Undoable) -> Unit, currency: String, streaks: Map<Long, com.lukas.jarvis.data.Streak>) {
+private fun LazyListScope.moneyShelf(trackers: List<TrackerStatus>, entries: List<Entry>, actions: LibraryActions, removed: (Undoable) -> Unit, currency: String, streaks: Map<Long, com.lukas.jarvis.data.Streak>, repeats: List<Recurring>) {
     item(key = "money-new") {
         var creating by remember { mutableStateOf(false) }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            if (trackers.isNotEmpty()) QuietButton("Something that repeats", { actions.onType("Every month on the 1st: ") }, icon = Icons.Rounded.Autorenew)
             QuietButton("New tracker", { creating = true }, icon = Icons.Rounded.Add)
         }
         if (creating) NewTrackerSheet(currency, onDismiss = { creating = false }, onCreate = {
@@ -385,11 +392,36 @@ private fun LazyListScope.moneyShelf(trackers: List<TrackerStatus>, entries: Lis
         }
         return
     }
-    items(trackers, key = { "tracker:${it.tracker.id}" }) { status -> TrackerCard(status, entries.filter { it.trackerId == status.tracker.id }, actions, removed, streaks[status.tracker.id]) }
+    items(trackers, key = { "tracker:${it.tracker.id}" }) { status ->
+        TrackerCard(status, entries.filter { it.trackerId == status.tracker.id }, actions, removed, streaks[status.tracker.id], repeats.filter { it.trackerId == status.tracker.id })
+    }
+}
+
+/** One thing that logs itself: what, how much, how often, when next, and a way to stop it. */
+@Composable
+private fun RepeatRow(rule: Recurring, t: Tracker, actions: LibraryActions) {
+    var stopping by remember { mutableStateOf(false) }
+    val what = rule.note ?: t.label
+    ListRow(
+        title = "$what · ${if (rule.direction == Entry.DIR_IN) "+" else "−"}${fmt(rule.amount)} ${t.unit}",
+        subtitle = "${Recurring.word(rule.every).replaceFirstChar { it.titlecase() }} · next ${TimeUtil.formatDate(rule.nextAt)}",
+        icon = Icons.Rounded.Autorenew,
+        trailing = { IconCircle(Icons.Rounded.Close, "Stop $what repeating", { stopping = true }, size = 40.dp, tint = Cafe.colors.cocoa) }
+    )
+    if (stopping) {
+        CafeSheet("Stop $what?", onDismiss = { stopping = false }) {
+            Text("Nothing more is logged by itself. What it already logged stays on ${t.label}.", style = Cafe.type.body, color = Cafe.colors.espresso)
+            VSpace(Cafe.space.m)
+            Wrap {
+                CafeButton("Stop it", { actions.stopRepeat(rule.id); stopping = false }, kind = ButtonKind.Danger)
+                CafeButton("Keep it", { stopping = false }, kind = ButtonKind.Secondary)
+            }
+        }
+    }
 }
 
 @Composable
-private fun TrackerCard(status: TrackerStatus, entries: List<Entry>, actions: LibraryActions, removed: (Undoable) -> Unit, streak: com.lukas.jarvis.data.Streak? = null) {
+private fun TrackerCard(status: TrackerStatus, entries: List<Entry>, actions: LibraryActions, removed: (Undoable) -> Unit, streak: com.lukas.jarvis.data.Streak? = null, repeats: List<Recurring> = emptyList()) {
     val t = status.tracker
     var amount by rememberSaveable(t.id) { mutableStateOf("") }
     var note by rememberSaveable(t.id) { mutableStateOf("") }
@@ -410,6 +442,11 @@ private fun TrackerCard(status: TrackerStatus, entries: List<Entry>, actions: Li
             }
         }
         VSpace(Cafe.space.s)
+        if (repeats.isNotEmpty()) {
+            Eyebrow("Logs itself")
+            repeats.forEach { RepeatRow(it, t, actions) }
+            VSpace(Cafe.space.xs)
+        }
         entries.take(6).forEach { entry ->
             ListRow(
                 title = "${if (entry.direction == Entry.DIR_IN) "+" else "−"}${fmt(entry.amount)} ${t.unit}",

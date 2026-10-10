@@ -15,6 +15,8 @@ object Entry {
     const val TYPE = "com.lukas.jarvis.TYPE"
     const val SCAN = "com.lukas.jarvis.SCAN"
     const val TODAY = "com.lukas.jarvis.TODAY"
+    /** The money shelf, from the notification of something that logged itself. */
+    const val MONEY = "com.lukas.jarvis.MONEY"
 
     fun intent(context: Context, action: String): Intent =
         Intent(context, MainActivity::class.java)

@@ -75,7 +75,9 @@ data class CanvasCard(
     val image: String? = null,
     val pending: PendingAction? = null,
     val pinned: Boolean = false,
-    val at: Long = 0L
+    val at: Long = 0L,
+    /** Real numbers to draw, from the tool that worked them out. */
+    val chart: Chart? = null
 ) {
     val primary: CardAction? get() = actions.firstOrNull { it.primary } ?: actions.firstOrNull { it.forward }
 }
@@ -120,7 +122,8 @@ object Cards {
             actions = actions,
             followUps = follow.drop(1),
             status = if (output.failed) CardStatus.Failed else CardStatus.Done,
-            at = output.at
+            at = output.at,
+            chart = output.chart?.takeUnless { output.failed || it.isEmpty }
         )
     }
 
@@ -205,6 +208,9 @@ object Cards {
         return when (output.tool) {
             "add_task" -> id?.let { ActionIntent.Undo("delete_task", JSONObject().put("id", it.toLong()).toString(), "Removed that reminder.") }
             "log_entry" -> id?.let { ActionIntent.Undo("delete_entry", JSONObject().put("id", it.toLong()).toString(), "Taken back.") }
+            "repeat_entry" -> id?.takeIf { args.optString("action").lowercase() != "list" }?.let {
+                ActionIntent.Undo("stop_repeat", JSONObject().put("id", it.toLong()).toString(), "Stopped. Nothing more is logged by itself.")
+            }
             "remember" -> id?.let { ActionIntent.Undo("forget", JSONObject().put("id", it.toLong()).toString(), "Forgotten.") }
             "list" -> if (args.optString("action").lowercase() == "add") {
                 ActionIntent.Undo("list", JSONObject(args.toString()).put("action", "remove").toString(), "Taken off the list.")
@@ -260,7 +266,7 @@ object Cards {
     private val ID = Regex("\\s*\\(id (\\d+)\\)")
     private val PLACE_TOOLS = setOf("find_places", "route_to", "start_navigation", "save_place", "show_on_map", "rename_place", "place_reminder", "wikipedia")
     private val TASK_TOOLS = setOf("add_task", "update_task", "complete_task", "add_calendar_event", "change_calendar_event", "countdown", "make_plan")
-    private val MONEY_TOOLS = setOf("log_entry", "tracker_status", "configure_tracker", "list_entries", "spending_report")
+    private val MONEY_TOOLS = setOf("log_entry", "tracker_status", "configure_tracker", "list_entries", "spending_report", "repeat_entry", "stop_repeat")
     private val ROUTINE_TOOLS = setOf("create_routine", "run_routine", "delete_routine")
 
     /**

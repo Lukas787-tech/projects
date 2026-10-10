@@ -8,7 +8,9 @@ data class ToolEffects(
     /** Pictures drawn this turn, as file paths, to be shown with the reply. */
     val images: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf()),
     /** Every tool that ran or is waiting, with what it was asked and what it said, for the canvas. */
-    val outputs: MutableList<ToolOutput> = java.util.Collections.synchronizedList(mutableListOf())
+    val outputs: MutableList<ToolOutput> = java.util.Collections.synchronizedList(mutableListOf()),
+    /** The numbers a tool worked out for its card, by the call's id. */
+    val charts: MutableMap<String, com.lukas.jarvis.moment.Chart> = java.util.concurrent.ConcurrentHashMap()
 ) {
     /** Actions this turn left waiting on the person's yes. */
     val waiting: List<PendingAction> get() = synchronized(outputs) { outputs.mapNotNull { it.waiting } }
