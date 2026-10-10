@@ -79,6 +79,44 @@ drawn in pixels, who shows what the assistant is really doing.
   how last week went.
 - **Routines you can edit.** Make a routine on Today, rename it and change
   its steps, its time and its days, or delete it.
+- **Routines that start by themselves.** "When I plug in at night, turn on
+  Do Not Disturb", "when my car connects, tell me the traffic", "when a
+  meeting starts, silence the phone". A routine can wait on charging, a
+  Bluetooth device connecting or going (named, like "car" or "AirPods"), or
+  a calendar event starting. It then runs in the background and sends its
+  answer as a notification. Only what some routine waits on is watched.
+- **Money that logs itself.** "My rent is 800 every month on the 1st",
+  "Netflix 12.99 monthly", "I get paid on the 25th". Each one is logged on
+  its day, even if the phone was off, and the Library lists it under its
+  tracker with a stop that asks once more.
+- **Budgets that speak up.** Once, as it happens: "Heads up: that's 83% of
+  this month's budget, with 10 days to go", or by how much it went over, or
+  where the month is heading at this pace.
+- **This month against last.** "How is this month going?" sets this month
+  so far against the same days of last month.
+- **Money cards with real charts.** Meters against each budget, bars with a
+  mark for last month, and a habit's week as dots, in the café's colours.
+  Every row also says its numbers in words.
+- **The shopping list at the shop.** "Show my shopping list when I get to
+  Rewe" posts what is still to get when you arrive. The shopping list comes
+  in the order a shop is walked: fruit and veg, bread, dairy, through to the
+  freezer and the household aisle.
+- **Trips.** "I'm going to Lisbon on the 14th for five days" sets up a
+  countdown, the trip's own packing list for that many nights and the
+  weather there, and remembers the trip.
+- **Nudges** (off unless you switch them on, under *You → Voice*). Now and
+  then, one useful thing unasked: an appointment somewhere in the next hour
+  and a half, rain on the way, a budget at nine tenths, a habit's run about
+  to end, or what is still open in the evening. Never at night, never the
+  same thing twice, three a day at most, a switch for each kind, and worked
+  out on the phone without any model.
+- **Memory upkeep.** Overnight on the charger, things said twice and plans
+  for days long gone are put away, never deleted. The Library lists them,
+  each with a way to bring it back. Notes, the journal and anything pinned
+  are never touched. The switch is under *You → Data*.
+- **A quick model for quick things.** Commands lean towards a small, fast
+  model in the pool, and plans and explanations towards a bigger one. A key
+  of your own still comes first.
 - **Countdowns** can be removed from Today.
 - **A *New tracker* button** in the Library, and deleting one asks first.
 
@@ -108,6 +146,8 @@ drawn in pixels, who shows what the assistant is really doing.
   its fonts) are gone from the app.
 - Keys you add are stored encrypted, under a key held by the Android
   Keystore.
+- The database gains one table, for money that logs itself. As with every
+  step, it only adds; nothing in a 5.5 database is changed.
 - A backup can be locked with a passphrase. It carries your keys and every
   memory, so it is worth locking.
 - **Not changed:** the app's package (`com.lukas.jarvis`), so 6.0 updates the

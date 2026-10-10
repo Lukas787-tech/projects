@@ -51,7 +51,13 @@ and free models.
   say yes.
 - **Local only**, a switch that keeps your personal things off the free
   public models.
-- **Plans** on one card, and **habits** that count the days in a row.
+- **Plans** on one card, **habits** that count the days in a row, **trips**
+  made ready in one go, and the **shopping list** in the order of the shop.
+- **Money, next level**: budgets that speak up once, rent and subscriptions
+  that log themselves, this month against last, and real charts on the cards.
+- **Routines that start by themselves** on the charger, when a Bluetooth
+  device connects, or when a meeting starts.
+- **Nudges** (off unless you want them) and **memory upkeep** overnight.
 - **Accessibility** checked on CI: words on every control for TalkBack, room
   for a finger on every tap, large text, landscape and reduce motion.
 - **"hey mochi"** is the new wake phrase.
@@ -226,6 +232,10 @@ put something — and it stores it. Ask later and it searches its memory before
 answering. Retrieval is BM25 over a locally built index, nudged by importance
 and recency. Everything it knows is on the Library's Memory shelf: pin what
 should always be in mind, tap any memory to correct it, or forget it (with an undo).
+Overnight on the charger it tidies up: the same thing said twice keeps its best
+telling, and a plan for a day a month gone is put away. Nothing is deleted, notes,
+the journal and pinned memories are never touched, and the Library lists what was
+put away, each with *Bring back* (switch it off under You → Data).
 
 **Counts things.** Any purchase or countable activity becomes an entry on a
 tracker. A tracker is a named number with a unit, optionally a starting balance
@@ -233,6 +243,19 @@ and a budget that resets daily, weekly or monthly. Money is the obvious case;
 calories, kilometres and gym sessions work identically. The totals are computed
 in SQL, so they are exact. The Library's Money shelf has a *New tracker*
 button, and deleting a tracker asks once more.
+
+**Watches the budget.** When an entry carries a budget past four fifths it says
+so once ("Heads up: that's 83% of this month's budget, with 10 days to go"), and
+again only if it goes over, or if the pace says the month will. "How is this
+month going?" sets this month so far against the same days of last month. The
+cards draw it: a meter against each budget, bars with a mark for last month, all
+in the café's colours, every row also said in words.
+
+**Logs what repeats.** "My rent is 800 every month on the 1st", "Netflix 12.99
+monthly", "I get paid on the 25th". Each one becomes an ordinary entry on its
+day, even after a week with the phone off, and the Library shows it under its
+tracker with a stop that asks once more. A quiet notification says when one was
+logged with the app closed.
 
 **Reminds.** Anything with a time becomes a task with a real Android alarm and
 notification. Repeating tasks roll themselves forward — ticking one off
@@ -245,7 +268,15 @@ alarm rather than adding a second one. They are on the Library's Tasks shelf.
 packing list", "what's on my shopping list", "I got the eggs". Any number of
 named lists, one of each thing per list, and "groceries" or "Einkaufsliste"
 find the same one. The Library's Lists shelf shows them with a box to tick
-for each item.
+for each item. The shopping list comes in the order a shop is walked (fruit and
+veg, bread, dairy, meat, the cupboard, drinks, the freezer, the household
+aisle), and "show my shopping list when I get to Rewe" puts what is still to get
+on the screen when you arrive.
+
+**Gets a trip ready.** "I'm going to Lisbon on the 14th for five days" sets up a
+countdown on Today, the trip's own packing list for that many nights and the
+weather there (a jumper when it is cold, sunscreen when it is hot, an umbrella
+when rain is likely), and remembers the trip.
 
 **Runs timers you can ask about.** "Ten minutes for the pasta" starts a named
 countdown that shows on the canvas and in the notification shade,
@@ -352,6 +383,19 @@ days ("weekdays", "Mo–Fr", "mon, wed, fri"), and one made of questions can
 run *quietly*: "every weekday at 7:30, tell me if I need an umbrella" runs by
 itself with the app closed and the answer arrives as a notification (and in
 the conversation). With no network at that moment it waits and tries again.
+A routine can also start by itself: when the phone starts charging, when a
+Bluetooth device connects or goes ("when my car connects, tell me the
+traffic"), or when a calendar event starts ("silence the phone"). Only what
+some routine waits on is watched, and Android asks once before Mochi may see
+Bluetooth devices.
+
+**Nudges, if you want them.** Switched on under You → Voice → Nudges, Mochi now
+and then says one useful thing unasked: an appointment somewhere in the next
+hour and a half (a tap asks the way there), rain on the way, a budget at nine
+tenths, a habit's run about to end, or what is still open in the evening. Never
+between ten at night and eight in the morning, never the same thing twice,
+three a day at most, each kind with its own switch, and worked out on the
+phone without asking any model.
 
 **Looks things up on Wikipedia** in the phone's language, for "tell me about…".
 
@@ -441,7 +485,10 @@ The fonts (Newsreader, DM Sans and Pixelify Sans) are bundled under
 
 ```
 app/src/main/java/com/lukas/jarvis/
-  brief/      the day, gathered once for the screen and the spoken answer
+  auto/       routines and what starts them, money that logs itself, memory
+              upkeep: the work that runs without the app open
+  brief/      the day, gathered once for the screen and the spoken answer,
+              and the nudges
   control/    the phone: media, device switches, app and intent handovers,
               contacts, calendar
   core/       settings, time parsing, the calculator, unit conversion, dates
@@ -498,6 +545,10 @@ around not hitting limits rather than recovering from them:
   together does not wake together.
 - **One turn walks at most five endpoints.** The tenth failure costs the same as
   the second and says the same thing.
+- **A quick model for quick things.** "Set a timer" leans towards a small, fast
+  model in the pool, "plan my Saturday" towards a bigger one, read from the
+  model's name. The lean is smaller than the gap between a key of your own and
+  the keyless models, so it only reorders within one.
 - **Each turn is offered only the tools its words point at.** Seventy tool
   definitions on every request cost thousands of tokens and make small models
   pick the wrong one; the families a sentence mentions (in English or German),
