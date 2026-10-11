@@ -1,0 +1,350 @@
+# Provider presets for Kickoff.
+#
+# This file is data, not code: update it when a provider changes its free tier,
+# limits or model names. It is bundled with the app and merged with an optional
+# user override file (<app data dir>/providers.override.toml), where entries with
+# the same `id` replace the bundled ones field by field.
+#
+# Model names churn constantly. The app always lists models live from each
+# provider and uses `model_preference` (glob patterns, best first) to pick one;
+# `default_model` is only a fallback when listing fails.
+#
+# `confidence` records how the entry was verified (see docs/PROVIDERS.md):
+#   high   = read from the provider's official docs or official SDK source
+#   medium = consistent across several recent secondary sources
+#   low    = conflicting or stale sources; treat as a guess until a live test passes
+#
+# Limits are free-tier limits. Omit a limit when it is unknown: the client then
+# relies on 429 handling instead of pre-emptive throttling.
+
+schema_version = 1
+updated = "2026-10-11"
+
+[defaults]
+# Order the setup wizard tries when recommending a free cloud provider.
+# A detected local Ollama with a usable model is recommended ahead of these.
+wizard_order = ["gemini", "groq", "openrouter", "mistral"]
+# Default fallback chain for every task; users can reorder it in Settings.
+fallback_chain = ["gemini", "groq", "openrouter", "ollama"]
+search = "tavily"
+stt = "whisper_local"
+tts = ["fish_audio", "piper", "system"]
+
+# ---------------------------------------------------------------- LLMs
+
+[[llm]]
+id = "gemini"
+display_name = "Google Gemini"
+kind = "openai_compat"
+base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+auth = "bearer"
+key_env = "GEMINI_API_KEY"
+signup_url = "https://aistudio.google.com/apikey"
+docs_url = "https://ai.google.dev/gemini-api/docs/openai"
+access = "free"
+card_required = false
+json_mode = "json_schema"
+streaming = true
+model_list = true
+model_preference = ["gemini-3*-flash", "gemini-3*-flash-*", "gemini-2.5-flash", "gemini-*-flash*"]
+model_exclude = ["*-lite*", "*image*", "*tts*", "*live*", "*embedding*"]
+default_model = "gemini-2.5-flash"
+privacy_note = "On the free tier Google may use prompts and responses to improve its products."
+notes = "Free tier covers Flash-class models only (Pro models left the free tier in April 2026)."
+confidence = "medium"
+verified_at = "2026-10-11"
+
+[[llm.limits]]
+models = "*"
+rpm = 10
+rpd = 250
+
+[[llm]]
+id = "groq"
+display_name = "Groq"
+kind = "openai_compat"
+base_url = "https://api.groq.com/openai/v1"
+auth = "bearer"
+key_env = "GROQ_API_KEY"
+signup_url = "https://console.groq.com/keys"
+docs_url = "https://console.groq.com/docs/rate-limits"
+access = "free"
+card_required = false
+json_mode = "json_object"
+streaming = true
+model_list = true
+model_preference = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/*", "llama-3.3-70b*"]
+model_exclude = ["whisper*", "*guard*", "*tts*"]
+default_model = "openai/gpt-oss-120b"
+notes = "Reports say Llama models left the free tier on 2026-08-16; gpt-oss models remain free."
+confidence = "medium"
+verified_at = "2026-10-11"
+
+[[llm.limits]]
+models = "openai/gpt-oss-*"
+rpm = 30
+rpd = 1000
+tpm = 8000
+tpd = 200000
+
+[[llm.limits]]
+models = "*"
+rpm = 30
+rpd = 1000
+
+[[llm]]
+id = "openrouter"
+display_name = "OpenRouter (free models)"
+kind = "openai_compat"
+base_url = "https://openrouter.ai/api/v1"
+auth = "bearer"
+key_env = "OPENROUTER_API_KEY"
+signup_url = "https://openrouter.ai/keys"
+docs_url = "https://openrouter.ai/docs/api-reference/limits"
+access = "free"
+card_required = false
+json_mode = "json_object"
+streaming = true
+model_list = true
+# Only models whose id ends in ":free" are offered; the free list changes monthly.
+model_filter = "free_only"
+model_preference = ["*:free"]
+default_model = ""
+extra_headers = { "X-Title" = "{app_name}" }
+notes = "Daily cap is 50 requests, or 1,000 after a one-time $10 credit purchase."
+confidence = "medium"
+verified_at = "2026-10-11"
+
+[[llm.limits]]
+models = "*"
+rpm = 20
+rpd = 50
+
+[[llm]]
+id = "mistral"
+display_name = "Mistral (Experiment plan)"
+kind = "openai_compat"
+base_url = "https://api.mistral.ai/v1"
+auth = "bearer"
+key_env = "MISTRAL_API_KEY"
+signup_url = "https://console.mistral.ai/api-keys"
+docs_url = "https://docs.mistral.ai/getting-started/models/"
+access = "free"
+card_required = false
+json_mode = "json_object"
+streaming = true
+model_list = true
+model_preference = ["mistral-medium-latest", "mistral-small-latest"]
+default_model = "mistral-small-latest"
+notes = "Free Experiment plan needs phone verification. Per-minute limits are low and not published; check Admin Console -> Limits."
+confidence = "low"
+verified_at = "2026-10-11"
+
+[[llm]]
+id = "cerebras"
+display_name = "Cerebras (trial)"
+kind = "openai_compat"
+base_url = "https://api.cerebras.ai/v1"
+auth = "bearer"
+key_env = "CEREBRAS_API_KEY"
+signup_url = "https://cloud.cerebras.ai/"
+docs_url = "https://inference-docs.cerebras.ai/support/rate-limits"
+access = "trial"
+card_required = true
+json_mode = "json_object"
+streaming = true
+model_list = true
+model_preference = ["gpt-oss-120b", "qwen-*", "*"]
+default_model = "gpt-oss-120b"
+notes = "The always-free tier was replaced by a 30-day trial with one-time credits that requires a card. Not in the default chain."
+confidence = "low"
+verified_at = "2026-10-11"
+
+[[llm.limits]]
+models = "*"
+rpm = 5
+
+[[llm]]
+id = "ollama"
+display_name = "Ollama (local)"
+kind = "ollama"
+base_url = "http://localhost:11434"
+auth = "none"
+signup_url = "https://ollama.com/download"
+docs_url = "https://github.com/ollama/ollama/blob/main/docs/api.md"
+access = "local"
+card_required = false
+json_mode = "json_schema"
+streaming = true
+model_list = true
+model_preference = ["qwen3*", "gemma3*", "llama3*", "mistral*", "*"]
+default_model = ""
+notes = "Fully local. Structured output via the `format` field (JSON schema). Models are whatever the user has pulled."
+confidence = "high"
+verified_at = "2026-10-11"
+
+[[llm]]
+id = "anthropic"
+display_name = "Anthropic Claude (paid)"
+kind = "anthropic"
+base_url = "https://api.anthropic.com"
+auth = "x_api_key"
+key_env = "KICKOFF_ANTHROPIC_KEY"
+signup_url = "https://platform.claude.com/settings/keys"
+docs_url = "https://docs.claude.com/en/api/messages"
+access = "paid"
+card_required = true
+json_mode = "none"
+streaming = true
+model_list = true
+model_preference = ["claude-sonnet-5-5", "claude-haiku-5-5", "claude-opus-5-5"]
+default_model = "claude-sonnet-5-5"
+notes = "Optional paid upgrade. Uses anthropic-version: 2023-06-01."
+confidence = "high"
+verified_at = "2026-10-11"
+
+# ---------------------------------------------------------------- Speech to text
+
+[[stt]]
+id = "whisper_local"
+display_name = "Whisper (local, whisper.cpp)"
+kind = "whisper_cpp"
+access = "local"
+model_url_template = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-{model}.bin"
+default_model = "base"
+confidence = "high"
+verified_at = "2026-10-11"
+
+# SHA-1 values are from whisper.cpp models/README.md.
+[[stt.models]]
+name = "tiny"
+size_mb = 75
+sha1 = "bd577a113a864445d4c299885e0cb97d4ba92b5f"
+
+[[stt.models]]
+name = "base"
+size_mb = 142
+sha1 = "465707469ff3a37a2b9b8d8f89f2f99de7299dac"
+
+[[stt.models]]
+name = "base.en"
+size_mb = 142
+sha1 = "137c40403d78fd54d454da0f9bd998f78703390c"
+
+[[stt.models]]
+name = "small"
+size_mb = 466
+sha1 = "55356645c2b361a969dfd0ef2c5a50d530afd8d5"
+
+[[stt.models]]
+name = "small.en"
+size_mb = 466
+sha1 = "db8a495a91d927739e50b3fc1cc4c6b8f6c2d022"
+
+[[stt.models]]
+name = "medium"
+size_mb = 1536
+sha1 = "fd9727b6e1217c2f614f9b698455c4ffd82463b4"
+
+[[stt]]
+id = "groq_whisper"
+display_name = "Groq Whisper (cloud, free tier)"
+kind = "openai_transcription"
+base_url = "https://api.groq.com/openai/v1"
+auth = "bearer"
+key_env = "GROQ_API_KEY"
+access = "free"
+default_model = "whisper-large-v3-turbo"
+max_upload_mb = 25
+notes = "Shares the Groq key and organization-level limits with the Groq LLM preset."
+confidence = "medium"
+verified_at = "2026-10-11"
+
+[stt.limits]
+rpm = 20
+rpd = 2000
+audio_seconds_per_day = 28800
+
+# ---------------------------------------------------------------- Text to speech
+
+[[tts]]
+id = "fish_audio"
+display_name = "Fish Audio"
+kind = "fish_audio"
+base_url = "https://api.fish.audio"
+ws_url = "wss://api.fish.audio/v1/tts/live"
+auth = "bearer"
+key_env = "FISH_AUDIO_API_KEY"
+signup_url = "https://fish.audio/app/api-keys"
+docs_url = "https://docs.fish.audio"
+access = "free_promo"
+# Tried in order. `s2.1-pro-free` was a promotional free model (last reported
+# extended to 2026-08-31); the wizard runs a real synthesis to find out whether
+# it still works for this key before recommending Fish Audio.
+models = ["s2.1-pro-free", "s2.1-pro", "s1"]
+usage_unit = "utf8_bytes"
+# No published numeric cap for the free model (fair use). Users can set their
+# own monthly budget in Settings; warnings fire at 80% and 95% of it.
+monthly_cap = 0
+notes = "Endpoints read from the official fish-audio-python SDK: POST /v1/tts (msgpack, `model` header), WS /v1/tts/live, GET /model, GET /wallet/self/api-credit."
+confidence = "high"
+verified_at = "2026-10-11"
+
+[[tts]]
+id = "piper"
+display_name = "Piper (local)"
+kind = "piper"
+access = "local"
+binary_url_windows = "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip"
+binary_license = "MIT"
+voices_base_url = "https://huggingface.co/rhasspy/piper-voices/resolve/main"
+default_voice = "en/en_US/lessac/medium/en_US-lessac-medium"
+notes = "Runs as a separate process: `piper --model <voice>.onnx --output_raw`, text on stdin, 16-bit mono PCM out at the voice's sample_rate. Each voice has its own license (MODEL_CARD)."
+confidence = "high"
+verified_at = "2026-10-11"
+
+[[tts]]
+id = "system"
+display_name = "Windows voices"
+kind = "system"
+access = "local"
+notes = "Windows.Media.SpeechSynthesis. Zero download; last-resort fallback."
+confidence = "high"
+verified_at = "2026-10-11"
+
+# ---------------------------------------------------------------- Web search
+
+[[search]]
+id = "tavily"
+display_name = "Tavily"
+kind = "tavily"
+endpoint = "https://api.tavily.com/search"
+auth = "bearer"
+key_env = "TAVILY_API_KEY"
+signup_url = "https://app.tavily.com"
+docs_url = "https://docs.tavily.com"
+access = "free"
+card_required = false
+monthly_free_units = 1000
+unit = "credit"
+notes = "1,000 credits/month, no card. Basic search = 1 credit, advanced = 2. Kickoff uses basic."
+confidence = "medium"
+verified_at = "2026-10-11"
+
+[[search]]
+id = "brave"
+display_name = "Brave Search"
+kind = "brave"
+endpoint = "https://api.search.brave.com/res/v1/web/search"
+auth = "header:X-Subscription-Token"
+key_env = "BRAVE_SEARCH_API_KEY"
+signup_url = "https://api-dashboard.search.brave.com"
+docs_url = "https://api-dashboard.search.brave.com/app/documentation"
+access = "free_credit"
+card_required = true
+monthly_free_units = 1000
+unit = "request"
+attribution_required = true
+notes = "$5 monthly credit (about 1,000 searches). Card required to subscribe; overages are billed. Attribution required."
+confidence = "medium"
+verified_at = "2026-10-11"

@@ -1,0 +1,86 @@
+# Asset and reference sources for Kickoff research.
+#
+# access = "api"       -> Kickoff queries the source's own API.
+# access = "link_only" -> Kickoff finds pages through web search (site-scoped)
+#                         and stores links + metadata only.
+#
+# License classification is deterministic (never decided by the LLM):
+#   - `source_license` set     -> every asset from this source carries that license
+#                                 (only for sources whose policy says so).
+#   - per-item license from API -> classified with the allowlist in `[licenses]`.
+#   - anything else             -> "unknown" (treated as reference-only).
+
+schema_version = 1
+updated = "2026-10-11"
+
+[[source]]
+id = "polyhaven"
+display_name = "Poly Haven"
+access = "api"
+base_url = "https://api.polyhaven.com"
+kinds = ["texture", "hdri", "model"]
+requires_key = false
+# ToS 2.4: every call needs a unique User-Agent or Referer naming the app.
+user_agent_required = true
+source_license = "CC0-1.0"
+license_url = "https://creativecommons.org/publicdomain/zero/1.0/"
+# ToS 2.5: content surfaced through the live API must be credited in the UI.
+ui_credit = "Powered by Poly Haven"
+docs_url = "https://github.com/Poly-Haven/Public-API"
+notes = "GET /search?q=&t=hdris|textures|models|all returns ranked slugs; GET /assets?t= returns metadata incl. thumbnail_url, authors, tags; GET /info/{id}. 429 carries Retry-After."
+confidence = "high"
+verified_at = "2026-10-11"
+
+[[source]]
+id = "sketchfab"
+display_name = "Sketchfab"
+access = "api"
+base_url = "https://api.sketchfab.com/v3"
+kinds = ["model"]
+requires_key = false
+notes = "Public GET /search?type=models&downloadable=true&q= without auth; each result carries its own license. Downloads need a user's OAuth login (later milestone)."
+confidence = "medium"
+verified_at = "2026-10-11"
+
+[[source]]
+id = "kenney"
+display_name = "Kenney"
+access = "link_only"
+search_scope = "site:kenney.nl/assets"
+kinds = ["sprite", "model", "texture", "audio", "font", "ui"]
+source_license = "CC0-1.0"
+license_url = "https://creativecommons.org/publicdomain/zero/1.0/"
+license_policy_url = "https://kenney.nl/support"
+notes = "No public API. Kenney's asset pages state CC0; links only."
+confidence = "medium"
+verified_at = "2026-10-11"
+
+[[source]]
+id = "opengameart"
+display_name = "OpenGameArt"
+access = "link_only"
+search_scope = "site:opengameart.org/content"
+kinds = ["sprite", "model", "texture", "audio", "font"]
+notes = "No official API. Licenses vary per entry (CC0, CC-BY, CC-BY-SA, GPL, OGA-BY); results stay `unknown` until the license is read from the page. robots.txt asks for slow crawling."
+confidence = "medium"
+verified_at = "2026-10-11"
+
+[[source]]
+id = "itch"
+display_name = "itch.io (free assets)"
+access = "link_only"
+search_scope = "site:itch.io game assets free"
+kinds = ["sprite", "model", "texture", "audio", "font", "ui"]
+notes = "No public search API for assets. Licenses are set per creator; always `unknown` until verified by the user."
+confidence = "medium"
+verified_at = "2026-10-11"
+
+# Licenses Kickoff can classify as `usable`. Anything not listed is `unknown`.
+[licenses]
+"CC0-1.0" = { name = "CC0 1.0", url = "https://creativecommons.org/publicdomain/zero/1.0/", attribution = false, share_alike = false }
+"CC-BY-3.0" = { name = "CC BY 3.0", url = "https://creativecommons.org/licenses/by/3.0/", attribution = true, share_alike = false }
+"CC-BY-4.0" = { name = "CC BY 4.0", url = "https://creativecommons.org/licenses/by/4.0/", attribution = true, share_alike = false }
+"CC-BY-SA-3.0" = { name = "CC BY-SA 3.0", url = "https://creativecommons.org/licenses/by-sa/3.0/", attribution = true, share_alike = true }
+"CC-BY-SA-4.0" = { name = "CC BY-SA 4.0", url = "https://creativecommons.org/licenses/by-sa/4.0/", attribution = true, share_alike = true }
+"OFL-1.1" = { name = "SIL Open Font License 1.1", url = "https://openfontlicense.org/", attribution = true, share_alike = false }
+"MIT" = { name = "MIT", url = "https://opensource.org/license/mit", attribution = true, share_alike = false }

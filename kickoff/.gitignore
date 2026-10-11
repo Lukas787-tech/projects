@@ -1,0 +1,18 @@
+# Rust
+/target/
+src-tauri/gen/schemas/
+
+# Node
+node_modules/
+dist/
+
+# Local environment and secrets (never commit real keys)
+.env
+.env.*
+!.env.example
+
+# Test / tool output
+coverage/
+test-results/
+playwright-report/
+*.log

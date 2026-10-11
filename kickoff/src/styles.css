@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/*
+ * Theme tokens. Components use the semantic utilities (bg-surface, text-muted,
+ * border-line, bg-accent …); the actual colors are swapped per theme below.
+ */
+@theme inline {
+  --color-bg: var(--k-bg);
+  --color-surface: var(--k-surface);
+  --color-surface-2: var(--k-surface-2);
+  --color-line: var(--k-line);
+  --color-text: var(--k-text);
+  --color-muted: var(--k-muted);
+  --color-accent: var(--k-accent);
+  --color-accent-strong: var(--k-accent-strong);
+  --color-on-accent: var(--k-on-accent);
+  --color-success: var(--k-success);
+  --color-warning: var(--k-warning);
+  --color-danger: var(--k-danger);
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "Cascadia Code", "Cascadia Mono", Consolas, ui-monospace, monospace;
+}
+
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --k-bg: #0f1117;
+  --k-surface: #161922;
+  --k-surface-2: #1e2230;
+  --k-line: #2a2f3e;
+  --k-text: #e7e9ee;
+  --k-muted: #9aa1b2;
+  --k-accent: #7c6cf2;
+  --k-accent-strong: #9384ff;
+  --k-on-accent: #ffffff;
+  --k-success: #3fb27f;
+  --k-warning: #e0a83a;
+  --k-danger: #ef5b5b;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --k-bg: #f6f7fb;
+  --k-surface: #ffffff;
+  --k-surface-2: #eef0f6;
+  --k-line: #dde1ea;
+  --k-text: #161922;
+  --k-muted: #5d6475;
+  --k-accent: #5b4ce0;
+  --k-accent-strong: #4a3bd0;
+  --k-on-accent: #ffffff;
+  --k-success: #1f8a5b;
+  --k-warning: #a8730f;
+  --k-danger: #c93636;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--k-bg);
+  color: var(--k-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--k-accent-strong);
+  outline-offset: 2px;
+}
