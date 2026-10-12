@@ -14,8 +14,8 @@ are optional.
 | Milestone | Scope | State |
 |---|---|---|
 | M0 | Provider verification, workspace, SQLite, logging with redaction, CI | ✅ |
-| M1 | Key library, LLM layer (free providers, fallback, usage meter), setup wizard | next |
-| M2 | Producer interview (text) with live brief | |
+| M1 | Key library, LLM layer (free providers, fallback, usage meter), setup wizard | ✅ |
+| M2 | Producer interview (text) with live brief | next |
 | M3 | Voice: local Whisper, Fish Audio / Piper / Windows voices | |
 | M4 | Research and reference triage with license tracking | |
 | M5 | Starter kit generator and key launcher | |
@@ -47,4 +47,5 @@ Logs are written to `%APPDATA%\dev.kickoff.studio\logs`. Set `KICKOFF_LOG=debug`
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): crates, security model, data and IPC
 - [docs/PROVIDERS.md](docs/PROVIDERS.md): which AI, voice, search and asset services are free and how each was verified
+- [docs/SMOKE_TESTS.md](docs/SMOKE_TESTS.md): manual Windows checks per milestone
 - [data/providers.toml](data/providers.toml): editable provider presets

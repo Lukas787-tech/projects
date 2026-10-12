@@ -1,8 +1,10 @@
 //! Kickoff app shell: wires state, logging and commands into Tauri.
 //! Domain logic lives in the `kickoff-*` crates, not here.
 
+mod ai;
 mod commands;
 mod error;
+mod keys;
 mod logging;
 mod state;
 
@@ -33,6 +35,11 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 window.set_title(APP_NAME)?;
             }
+            let state = app.state::<AppState>();
+            state.observer.attach(app.handle().clone());
+            // Scrub every stored key from logs from the start.
+            let keys = state.keys.clone();
+            tauri::async_runtime::spawn_blocking(move || keys.register_all_with_redactor());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -40,6 +47,20 @@ pub fn run() {
             commands::get_settings,
             commands::save_settings,
             commands::system_status,
+            commands::keys::list_keys,
+            commands::keys::add_key,
+            commands::keys::update_key,
+            commands::keys::replace_key_secret,
+            commands::keys::delete_key,
+            commands::keys::test_key,
+            commands::ai::list_presets,
+            commands::ai::get_ai_settings,
+            commands::ai::save_ai_settings,
+            commands::ai::list_models,
+            commands::ai::test_provider,
+            commands::ai::detect_ollama,
+            commands::ai::usage_today,
+            commands::ai::check_task,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the Tauri application");

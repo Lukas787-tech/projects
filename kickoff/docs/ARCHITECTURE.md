@@ -41,11 +41,34 @@ keys, so treat it as permanent.
 
 ## Secrets
 
-- **Where secrets are stored.** Raw values live only in Windows Credential Manager (`keyring-core` + `windows-native-keyring-store`), one entry per key, service = `APP_ID`. SQLite holds metadata only.
+- **Where secrets are stored.** Raw values live only in Windows Credential Manager (`keyring-core` + `windows-native-keyring-store`), one entry per key, service = `APP_ID`, with *Local* persistence so keys stay on this PC and never roam with a domain profile. SQLite holds metadata only.
 - **In memory.** Values are held as `kickoff_core::Secret`. It prints as `[redacted]` and has no `Serialize` impl, so it can't be sent over IPC or written to the database by accident.
 - **In logs.** Every log line goes through `redact::RedactingMakeWriter`. It scrubs registered key values and common key shapes (`sk-…`, `gsk_…`, `AIza…`, `Bearer …`, `api_key=…`). Command errors are redacted before reaching the UI.
 - **In generated projects.** Projects reference keys by env-var name only. A launcher injects the values at run time (M5), and the kit writer refuses to write any file where `redact::contains_secret` matches.
 - **Off Windows** (development only), the app uses an in-memory store that never persists, and the UI says keys can't be saved.
+
+## AI layer
+
+- **Provider abstraction.** `kickoff_core::llm::LlmProvider` (a trait with `list_models`, `chat_stream` and `chat`). There are three implementations in `kickoff-providers`:
+  - `OpenAiCompat` covers Gemini, Groq, OpenRouter, Mistral and Cerebras.
+  - `Ollama` uses Ollama's native `/api/chat` and `/api/tags`.
+  - `Anthropic` uses the Messages API over raw HTTP.
+- **Router.** `kickoff_core::llm::Router` takes an ordered list of `Route`s (provider + model + known RPM) and handles rate limits:
+  - It holds requests back so each provider stays under its per-minute limit, using the last 60 seconds of requests.
+  - On a per-minute 429 it waits for `Retry-After`, or backs off with jitter, then retries.
+  - Daily quota, a rejected key, a missing model or an unreachable provider moves it straight to the next route.
+  - Once text has been streamed, a failure is reported, not retried.
+  - Every wait and fallback is emitted as a `RouterEvent`.
+- **Structured output.** `structured_call` makes small models produce valid JSON:
+  - It uses the provider's native JSON mode, with unsupported schema keywords stripped.
+  - It always puts the schema in the prompt.
+  - It extracts the reply leniently (code fences, `<think>` blocks, trailing commas) and validates it with `jsonschema`.
+  - On failure it sends up to two repair prompts quoting the validation errors, then moves to the next route.
+- **App wiring.** `src-tauri/src/ai.rs` builds routes for a task:
+  - The order is the task's own choice first, then the fallback chain.
+  - Each route uses the provider's key from the key library and a model picked from the provider's live model list.
+  - `AppObserver` records usage per provider per day in `usage_daily` and forwards router events to the UI as `ai-status` events, which appear as toasts.
+- **Key library flow.** `src-tauri/src/keys.rs` writes the secret to Credential Manager first and the metadata to SQLite second, deleting the secret again if the second step fails. Every loaded secret is registered with the log redactor. A test scans the database files on disk to prove no secret is written there.
 
 ## Data
 

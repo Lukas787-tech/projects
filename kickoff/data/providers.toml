@@ -194,12 +194,12 @@ signup_url = "https://platform.claude.com/settings/keys"
 docs_url = "https://docs.claude.com/en/api/messages"
 access = "paid"
 card_required = true
-json_mode = "none"
+json_mode = "json_schema"
 streaming = true
 model_list = true
-model_preference = ["claude-sonnet-5-5", "claude-haiku-5-5", "claude-opus-5-5"]
-default_model = "claude-sonnet-5-5"
-notes = "Optional paid upgrade. Uses anthropic-version: 2023-06-01."
+model_preference = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"]
+default_model = "claude-opus-5-5"
+notes = "Optional paid upgrade. anthropic-version 2023-06-01; native structured outputs via output_config.format; temperature is not sent (current models reject it); server-side refusal fallback (fallbacks: \"default\") on Opus/Sonnet 5.5."
 confidence = "high"
 verified_at = "2026-10-11"
 

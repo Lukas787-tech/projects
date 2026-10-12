@@ -1,8 +1,10 @@
 import { FolderKanban, KeyRound, Settings } from "lucide-react";
 import type { ComponentType } from "react";
-import { NavLink, Outlet } from "react-router";
+import { useEffect } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router";
 
-import { useAppInfo } from "../app/queries";
+import { useAppInfo, useSettings } from "../app/queries";
+import { AiStatusToasts } from "./AiStatusToasts";
 
 const nav: { to: string; label: string; icon: ComponentType<{ size?: number }> }[] = [
   { to: "/", label: "Projects", icon: FolderKanban },
@@ -12,6 +14,14 @@ const nav: { to: string; label: string; icon: ComponentType<{ size?: number }> }
 
 export function Layout() {
   const { data: info } = useAppInfo();
+  const { data: settings } = useSettings();
+  const navigate = useNavigate();
+
+  // First run: go through the setup wizard (it can be skipped).
+  useEffect(() => {
+    if (settings && !settings.onboarding_done) navigate("/setup", { replace: true });
+  }, [settings, navigate]);
+
   return (
     <div className="flex h-full">
       <nav className="flex w-56 shrink-0 flex-col border-r border-line bg-surface px-3 py-4" aria-label="Main">
@@ -42,6 +52,7 @@ export function Layout() {
       <main className="min-w-0 flex-1 overflow-y-auto px-8 py-6">
         <Outlet />
       </main>
+      <AiStatusToasts />
     </div>
   );
 }

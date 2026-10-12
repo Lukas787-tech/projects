@@ -35,7 +35,7 @@ file alone:
 | **Mistral** | Free "Experiment" plan, phone verification | `https://api.mistral.ai/v1` | Low, unpublished per-minute limits | `mistral-small-latest` | low |
 | **Cerebras** | **Trial only**: one-time credits, card required, 30 days | `https://api.cerebras.ai/v1` | ~5 RPM during trial | `gpt-oss-120b` | low |
 | **Ollama** | Local, no key, no limits | `http://localhost:11434` (`/api/tags`, `/api/chat`, `/api/version`) | none | best installed model | high |
-| **Anthropic** | Paid (optional upgrade) | `https://api.anthropic.com/v1/messages`, `x-api-key`, `anthropic-version: 2023-06-01` | n/a | `claude-sonnet-5-5` (also `claude-haiku-5-5`, `claude-opus-5-5`) | high |
+| **Anthropic** | Paid (optional upgrade) | `https://api.anthropic.com/v1/messages`, `x-api-key`, `anthropic-version: 2023-06-01` | n/a | `claude-opus-5-5` (also `claude-sonnet-5-5`, `claude-haiku-5-5` for cheaper tasks) | high |
 
 What changed and how Kickoff handles it:
 
@@ -48,7 +48,8 @@ What changed and how Kickoff handles it:
   - Gemini's compatibility layer accepts `response_format` with a JSON schema.
   - Groq, OpenRouter, Mistral and Cerebras get `json_object` mode.
   - Ollama gets a JSON schema in `format`.
-  - Anthropic gets schema-in-prompt.
+  - Anthropic gets native structured outputs (`output_config.format`). The schema is sent without the keywords that native modes reject (`minLength`, `maxItems`, …), and Kickoff checks those client-side.
+- **Anthropic specifics.** Current Claude models reject `temperature` and explicit thinking settings, so Kickoff sends neither. On Opus 5.5 and Sonnet 5.5, Kickoff requests server-side refusal fallback (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`), so a safety decline is retried on the model Anthropic recommends instead of failing.
 
   Every structured result is then validated and repaired by Kickoff regardless, because free and local models often break format.
 

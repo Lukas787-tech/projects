@@ -32,3 +32,10 @@ tracing.workspace = true
 tracing-appender.workspace = true
 tracing-subscriber.workspace = true
 ts-rs.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+kickoff-core = { workspace = true, features = ["testing"] }
+tempfile.workspace = true
+wiremock.workspace = true

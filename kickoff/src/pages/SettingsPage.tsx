@@ -1,11 +1,13 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { FolderOpen } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 
 import type { AppSettings } from "../bindings/AppSettings";
 import type { Theme } from "../bindings/Theme";
 import { useAppInfo, useSaveSettings, useSettings, useSystemStatus } from "../app/queries";
 import { Button, Card, Notice, PageHeader } from "../components/ui";
+import { AiSettingsSection } from "./AiSettings";
 import { errorMessage } from "../lib/ipc";
 
 const themes: { value: Theme; label: string }[] = [
@@ -18,6 +20,7 @@ export function SettingsPage() {
   const { data: settings } = useSettings();
   const save = useSaveSettings();
   const [pickError, setPickError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   if (!settings) return null;
   const update = (patch: Partial<AppSettings>) => save.mutate({ ...settings, ...patch });
@@ -34,7 +37,10 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" />
+      <PageHeader
+        title="Settings"
+        actions={<Button onClick={() => navigate("/setup")}>Run setup again</Button>}
+      />
       <div className="flex max-w-3xl flex-col gap-4">
         {save.isError && <Notice tone="danger">Couldn't save settings: {errorMessage(save.error)}</Notice>}
 
@@ -64,6 +70,7 @@ export function SettingsPage() {
           </fieldset>
         </Card>
 
+        <AiSettingsSection />
         <ProjectsFolderCard settings={settings} onPick={pickProjectsDir} error={pickError} />
         <AboutCard />
       </div>

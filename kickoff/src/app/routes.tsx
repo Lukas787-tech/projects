@@ -4,8 +4,10 @@ import { Layout } from "../components/Layout";
 import { KeysPage } from "../pages/KeysPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
 import { SettingsPage } from "../pages/SettingsPage";
+import { SetupWizard } from "../pages/SetupWizard";
 
 const routes: RouteObject[] = [
+  { path: "/setup", element: <SetupWizard /> },
   {
     path: "/",
     element: <Layout />,

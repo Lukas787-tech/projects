@@ -1,17 +1,21 @@
 //! Shared app state, created once at startup.
 
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use kickoff_platform::{AppPaths, MemorySecretStore, OsSecretStore, SecretStore};
 use kickoff_providers::Presets;
 use kickoff_store::Database;
 
+use crate::ai::{AiService, AppObserver};
+use crate::keys::KeyLibrary;
+
 pub struct AppState {
     pub paths: AppPaths,
     pub db: Arc<Database>,
-    pub presets: RwLock<Arc<Presets>>,
-    #[allow(dead_code)] // read by the key library commands (M1)
-    pub secrets: Arc<dyn SecretStore>,
+    pub presets: Arc<Presets>,
+    pub keys: Arc<KeyLibrary>,
+    pub ai: Arc<AiService>,
+    pub observer: Arc<AppObserver>,
     /// `None` when the OS credential store works; otherwise why it doesn't.
     pub secret_store_problem: Option<String>,
 }
@@ -32,11 +36,11 @@ impl AppState {
             }
         };
 
-        Ok(Self { paths, db, presets: RwLock::new(presets), secrets, secret_store_problem })
-    }
+        let keys = Arc::new(KeyLibrary::new(db.clone(), secrets));
+        let observer = AppObserver::new(db.clone());
+        let ai = Arc::new(AiService::new(db.clone(), presets.clone(), keys.clone(), observer.clone()));
 
-    pub fn presets(&self) -> Arc<Presets> {
-        self.presets.read().unwrap_or_else(|e| e.into_inner()).clone()
+        Ok(Self { paths, db, presets, keys, ai, observer, secret_store_problem })
     }
 }
 

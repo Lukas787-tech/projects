@@ -60,7 +60,10 @@ impl SecretStore for OsSecretStore {
 }
 
 fn entry(id: &str) -> Result<keyring_core::Entry, SecretStoreError> {
-    keyring_core::Entry::new(APP_ID, id).map_err(map_err)
+    // "Local" persistence keeps keys on this computer. The store's default
+    // ("Enterprise") would roam them to other PCs with a domain roaming profile.
+    let modifiers = std::collections::HashMap::from([("persistence", "Local")]);
+    keyring_core::Entry::new_with_modifiers(APP_ID, id, &modifiers).map_err(map_err)
 }
 
 fn map_err(e: keyring_core::Error) -> SecretStoreError {

@@ -24,9 +24,13 @@ kickoff-store = { path = "crates/store" }
 anyhow = "1"
 async-trait = "0.1"
 directories = "6"
+fastrand = "2"
+futures = "0.3"
 globset = "0.4"
+jsonschema = { version = "0.58", default-features = false }
 keyring-core = "1"
 regex = "1"
+reqwest = { version = "0.13", features = ["json", "stream", "query", "multipart"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
 rusqlite_migration = "2.6"
 secrecy = "0.10"
@@ -42,6 +46,7 @@ tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 ts-rs = "12"
 uuid = { version = "1", features = ["v4", "serde"] }
+wiremock = "0.6"
 windows-native-keyring-store = "1.1"
 
 [profile.dev.package."*"]

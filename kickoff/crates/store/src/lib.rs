@@ -9,8 +9,13 @@ use std::sync::{Mutex, MutexGuard};
 use rusqlite::Connection;
 use rusqlite_migration::{M, Migrations};
 
+pub mod keys;
 pub mod settings;
 pub mod time;
+pub mod usage;
+
+pub use keys::NewKeyMeta;
+pub use usage::{UsageDay, UsageDelta};
 
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
