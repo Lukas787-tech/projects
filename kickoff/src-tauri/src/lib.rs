@@ -8,6 +8,7 @@ mod interview;
 mod keys;
 mod logging;
 mod state;
+mod voice;
 
 use kickoff_core::APP_NAME;
 use kickoff_platform::AppPaths;
@@ -38,6 +39,7 @@ pub fn run() {
             }
             let state = app.state::<AppState>();
             state.observer.attach(app.handle().clone());
+            state.voice.attach(app.handle().clone());
             // Scrub every stored key from logs from the start.
             let keys = state.keys.clone();
             tauri::async_runtime::spawn_blocking(move || keys.register_all_with_redactor());
@@ -71,6 +73,21 @@ pub fn run() {
             commands::interview::edit_brief_field,
             commands::interview::revisit_field,
             commands::interview::finish_interview,
+            commands::voice::get_voice_overview,
+            commands::voice::save_voice_settings,
+            commands::voice::download_whisper_model,
+            commands::voice::delete_whisper_model,
+            commands::voice::install_piper,
+            commands::voice::list_piper_voices,
+            commands::voice::download_piper_voice,
+            commands::voice::list_system_voices,
+            commands::voice::check_fish_audio,
+            commands::voice::search_fish_voices,
+            commands::voice::preview_voice,
+            commands::voice::start_recording,
+            commands::voice::stop_recording,
+            commands::voice::cancel_recording,
+            commands::voice::stop_speaking,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the Tauri application");

@@ -1,0 +1,38 @@
+[package]
+name = "kickoff-voice"
+description = "Audio capture and playback, speech to text and text to speech for Kickoff."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# Local speech recognition with whisper.cpp. Needs CMake and Clang to build.
+local-whisper = ["dep:whisper-rs"]
+
+[dependencies]
+async-trait.workspace = true
+cpal = "0.18"
+futures.workspace = true
+kickoff-core.workspace = true
+kickoff-platform.workspace = true
+reqwest.workspace = true
+rmp-serde = "1.3"
+rodio = { version = "0.23", default-features = false, features = ["playback"] }
+serde.workspace = true
+serde_json.workspace = true
+md-5 = "0.11"
+sha1 = "0.11"
+sha2 = "0.11"
+thiserror.workspace = true
+tokio = { workspace = true, features = ["process", "io-util", "fs"] }
+tracing.workspace = true
+whisper-rs = { version = "0.16", optional = true, features = ["tracing_backend"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+wiremock.workspace = true

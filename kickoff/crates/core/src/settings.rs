@@ -101,9 +101,94 @@ impl AiSettings {
     }
 }
 
+/// How the user talks to the producer.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum SpeechInput {
+    /// whisper.cpp on this computer.
+    #[default]
+    WhisperLocal,
+    /// Groq's hosted Whisper (free tier, uses the Groq key).
+    GroqWhisper,
+}
+
+/// A chosen voice: its engine-specific id and a name to show.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct VoiceRef {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(default)]
+#[ts(export)]
+pub struct VoiceSettings {
+    /// Off means text only: no microphone, no speech.
+    pub enabled: bool,
+    pub input: SpeechInput,
+    /// Local Whisper model name (`tiny`, `base`, `small` …).
+    pub whisper_model: String,
+    /// ISO 639-1 language of the user's speech, or `None` to detect it.
+    pub language: Option<String>,
+    /// Microphone device id, or `None` for the system default.
+    pub microphone: Option<String>,
+    /// Stop recording automatically when the user stops talking.
+    pub hands_free: bool,
+    /// Show the transcript for editing instead of sending it straight away.
+    pub review_transcript: bool,
+    /// Read the producer's replies aloud.
+    pub speak_replies: bool,
+    /// Speech engines to try, in order (`fish_audio`, `piper`, `system`).
+    pub output_order: Vec<String>,
+    /// The Fish Audio model found to work for this key.
+    pub fish_model: Option<String>,
+    pub fish_voice: Option<VoiceRef>,
+    /// Piper voice key, e.g. `en_US-lessac-medium`.
+    pub piper_voice: String,
+    pub system_voice: Option<VoiceRef>,
+    /// Monthly Fish Audio budget in UTF-8 bytes of text; warnings at 80% and 95%.
+    #[ts(type = "number | null")]
+    pub fish_monthly_budget: Option<u64>,
+}
+
+impl Default for VoiceSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            input: SpeechInput::WhisperLocal,
+            whisper_model: "base".into(),
+            language: None,
+            microphone: None,
+            hands_free: false,
+            review_transcript: false,
+            speak_replies: true,
+            output_order: vec!["fish_audio".into(), "piper".into(), "system".into()],
+            fish_model: None,
+            fish_voice: None,
+            piper_voice: "en_US-lessac-medium".into(),
+            system_voice: None,
+            fish_monthly_budget: None,
+        }
+    }
+}
+
+impl VoiceSettings {
+    pub const KEY: &'static str = "voice";
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn voice_defaults_are_free_and_local() {
+        let v: VoiceSettings = serde_json::from_str(r#"{"hands_free": true}"#).unwrap();
+        assert!(v.hands_free && v.enabled && v.speak_replies);
+        assert_eq!(v.input, SpeechInput::WhisperLocal);
+        assert_eq!(v.output_order, ["fish_audio", "piper", "system"]);
+    }
 
     #[test]
     fn task_chain_puts_task_choice_first_without_repeats() {

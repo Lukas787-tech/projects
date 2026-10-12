@@ -9,6 +9,7 @@ use kickoff_store::Database;
 use crate::ai::{AiService, AppObserver};
 use crate::interview::InterviewService;
 use crate::keys::KeyLibrary;
+use crate::voice::VoiceService;
 
 pub struct AppState {
     pub paths: AppPaths,
@@ -18,6 +19,7 @@ pub struct AppState {
     pub ai: Arc<AiService>,
     pub observer: Arc<AppObserver>,
     pub interview: Arc<InterviewService>,
+    pub voice: Arc<VoiceService>,
     /// `None` when the OS credential store works; otherwise why it doesn't.
     pub secret_store_problem: Option<String>,
 }
@@ -43,8 +45,9 @@ impl AppState {
         let ai = Arc::new(AiService::new(db.clone(), presets.clone(), keys.clone(), observer.clone()));
 
         let interview = Arc::new(InterviewService::new(db.clone(), ai.clone()));
+        let voice = Arc::new(VoiceService::new(db.clone(), presets.clone(), keys.clone(), &paths.models_dir));
 
-        Ok(Self { paths, db, presets, keys, ai, observer, interview, secret_store_problem })
+        Ok(Self { paths, db, presets, keys, ai, observer, interview, voice, secret_store_problem })
     }
 }
 

@@ -29,7 +29,17 @@ jobs:
       - name: Install system libraries for Tauri and audio
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev libasound2-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev libasound2-dev cmake clang libclang-dev
+
+      # whisper.cpp's tiny test model and sample, so the local speech
+      # recognition test runs the real pipeline.
+      - name: Fetch whisper.cpp test model
+        run: |
+          mkdir -p "$RUNNER_TEMP/whisper"
+          curl -sSfL -o "$RUNNER_TEMP/whisper/model.bin" https://raw.githubusercontent.com/ggml-org/whisper.cpp/master/models/for-tests-ggml-tiny.bin
+          curl -sSfL -o "$RUNNER_TEMP/whisper/jfk.wav" https://raw.githubusercontent.com/ggml-org/whisper.cpp/master/samples/jfk.wav
+          echo "KICKOFF_WHISPER_TEST_MODEL=$RUNNER_TEMP/whisper/model.bin" >> "$GITHUB_ENV"
+          echo "KICKOFF_WHISPER_TEST_WAV=$RUNNER_TEMP/whisper/jfk.wav" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v6
         with:
@@ -82,7 +92,18 @@ jobs:
 
       - run: npm ci
 
-      # Includes a real Windows Credential Manager round trip.
+      - name: Fetch whisper.cpp test model
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP whisper
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          Invoke-WebRequest https://raw.githubusercontent.com/ggml-org/whisper.cpp/master/models/for-tests-ggml-tiny.bin -OutFile "$dir/model.bin"
+          Invoke-WebRequest https://raw.githubusercontent.com/ggml-org/whisper.cpp/master/samples/jfk.wav -OutFile "$dir/jfk.wav"
+          "KICKOFF_WHISPER_TEST_MODEL=$dir/model.bin" >> $env:GITHUB_ENV
+          "KICKOFF_WHISPER_TEST_WAV=$dir/jfk.wav" >> $env:GITHUB_ENV
+
+      # Includes a real Windows Credential Manager round trip, Windows voices
+      # and local Whisper built with MSVC.
       - run: cargo test --workspace
 
       - name: Build debug installer

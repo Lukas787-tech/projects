@@ -282,6 +282,8 @@ access = "free_promo"
 # extended to 2026-08-31); the wizard runs a real synthesis to find out whether
 # it still works for this key before recommending Fish Audio.
 models = ["s2.1-pro-free", "s2.1-pro", "s1"]
+# Models usable without paid credits (see docs/PROVIDERS.md).
+free_models = ["s2.1-pro-free"]
 usage_unit = "utf8_bytes"
 # No published numeric cap for the free model (fair use). Users can set their
 # own monthly budget in Settings; warnings fire at 80% and 95% of it.
@@ -296,8 +298,14 @@ display_name = "Piper (local)"
 kind = "piper"
 access = "local"
 binary_url_windows = "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip"
+# Measured from the release asset on 2026-10-12.
+binary_sha256_windows = "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea"
+binary_size_windows = 22477236
+binary_path_in_archive = "piper/piper.exe"
 binary_license = "MIT"
-voices_base_url = "https://huggingface.co/rhasspy/piper-voices/resolve/main"
+# The revision Piper's own downloader uses; data/piper-voices.json (from the
+# rhasspy/piper repo) lists every file there with its size and MD5.
+voices_base_url = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0"
 default_voice = "en/en_US/lessac/medium/en_US-lessac-medium"
 notes = "Runs as a separate process: `piper --model <voice>.onnx --output_raw`, text on stdin, 16-bit mono PCM out at the voice's sample_rate. Each voice has its own license (MODEL_CARD)."
 confidence = "high"

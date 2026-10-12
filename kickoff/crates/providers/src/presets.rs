@@ -264,7 +264,14 @@ pub struct TtsPreset {
     pub models: Vec<String>,
     pub usage_unit: Option<String>,
     pub monthly_cap: Option<u64>,
+    /// Models that need no paid credits.
+    #[serde(default)]
+    pub free_models: Vec<String>,
     pub binary_url_windows: Option<String>,
+    pub binary_sha256_windows: Option<String>,
+    pub binary_size_windows: Option<u64>,
+    /// Path of the program inside the downloaded archive.
+    pub binary_path_in_archive: Option<String>,
     pub binary_license: Option<String>,
     pub voices_base_url: Option<String>,
     pub default_voice: Option<String>,

@@ -5,10 +5,13 @@
 //! Linux) but some features report themselves as unavailable.
 
 pub mod paths;
+pub mod process;
 pub mod secrets;
+pub mod speech;
 
 pub use paths::AppPaths;
 pub use secrets::{MemorySecretStore, OsSecretStore, SecretStore, SecretStoreError};
+pub use speech::{SpeechError, SystemVoice};
 
 /// Short name of the current OS, for diagnostics.
 pub fn os_name() -> &'static str {

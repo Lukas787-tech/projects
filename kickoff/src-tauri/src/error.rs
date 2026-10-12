@@ -7,6 +7,7 @@ use ts_rs::TS;
 use crate::ai::AiError;
 use crate::interview::InterviewServiceError;
 use crate::keys::KeyError;
+use crate::voice::VoiceServiceError;
 
 #[derive(Debug, Clone, Copy, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
@@ -88,3 +89,14 @@ impl From<InterviewServiceError> for CommandError {
 }
 
 pub type CmdResult<T> = Result<T, CommandError>;
+
+impl From<VoiceServiceError> for CommandError {
+    fn from(e: VoiceServiceError) -> Self {
+        match e {
+            VoiceServiceError::Keys(e) => e.into(),
+            VoiceServiceError::Store(e) => e.into(),
+            VoiceServiceError::Invalid(_) | VoiceServiceError::NotRecording => Self::new(ErrorCode::Invalid, e),
+            VoiceServiceError::Voice(_) | VoiceServiceError::Download(_) => Self::new(ErrorCode::Provider, e),
+        }
+    }
+}

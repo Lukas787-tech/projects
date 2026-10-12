@@ -16,12 +16,20 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2.6", features = [] }
 
+[features]
+default = ["local-whisper"]
+# Local speech recognition (whisper.cpp). Needs CMake and Clang to build;
+# build with `--no-default-features` to leave it out.
+local-whisper = ["kickoff-voice/local-whisper"]
+
 [dependencies]
 kickoff-core.workspace = true
 kickoff-platform.workspace = true
 kickoff-providers.workspace = true
 kickoff-store.workspace = true
+kickoff-voice.workspace = true
 anyhow.workspace = true
+reqwest.workspace = true
 async-trait.workspace = true
 serde.workspace = true
 serde_json.workspace = true

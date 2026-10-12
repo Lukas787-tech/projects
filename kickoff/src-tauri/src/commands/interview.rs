@@ -1,5 +1,7 @@
 //! Project and interview commands. Turns stream through a Tauri channel.
 
+use std::sync::Mutex;
+
 use kickoff_store::Project;
 use serde_json::Value;
 use tauri::State;
@@ -8,6 +10,7 @@ use tauri::ipc::Channel;
 use crate::error::CmdResult;
 use crate::interview::{InterviewEvent, InterviewView, ProjectCard};
 use crate::state::AppState;
+use crate::voice::ReplySpeech;
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn create_project(state: State<'_, AppState>) -> CmdResult<Project> {
@@ -39,10 +42,11 @@ pub async fn send_message(
     on_event: Channel<InterviewEvent>,
 ) -> CmdResult<InterviewView> {
     let mode = if input_mode == "voice" { "voice" } else { "text" };
-    let emit = move |e: InterviewEvent| {
-        let _ = on_event.send(e);
-    };
-    Ok(state.interview.send(&project_id, &text, mode, &emit).await?)
+    let speech = Mutex::new(state.voice.begin_reply().await);
+    let emit = |e: InterviewEvent| forward(&on_event, &speech, e);
+    let result = state.interview.send(&project_id, &text, mode, &emit).await;
+    finish_speech(speech);
+    Ok(result?)
 }
 
 /// Retry the producer's reply after a failure.
@@ -52,10 +56,28 @@ pub async fn continue_interview(
     project_id: String,
     on_event: Channel<InterviewEvent>,
 ) -> CmdResult<InterviewView> {
-    let emit = move |e: InterviewEvent| {
-        let _ = on_event.send(e);
-    };
-    Ok(state.interview.continue_turn(&project_id, &emit).await?)
+    let speech = Mutex::new(state.voice.begin_reply().await);
+    let emit = |e: InterviewEvent| forward(&on_event, &speech, e);
+    let result = state.interview.continue_turn(&project_id, &emit).await;
+    finish_speech(speech);
+    Ok(result?)
+}
+
+/// Pass a turn event to the UI and, when replies are read aloud, feed the
+/// producer's words to the voice as they stream in.
+fn forward(channel: &Channel<InterviewEvent>, speech: &Mutex<Option<ReplySpeech>>, event: InterviewEvent) {
+    if let InterviewEvent::Delta { text } = &event
+        && let Some(speech) = speech.lock().unwrap_or_else(|p| p.into_inner()).as_mut()
+    {
+        speech.push(text);
+    }
+    let _ = channel.send(event);
+}
+
+fn finish_speech(speech: Mutex<Option<ReplySpeech>>) {
+    if let Some(speech) = speech.into_inner().unwrap_or_else(|p| p.into_inner()) {
+        speech.finish();
+    }
 }
 
 #[tauri::command(rename_all = "snake_case")]

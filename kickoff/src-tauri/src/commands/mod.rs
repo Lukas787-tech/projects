@@ -5,6 +5,7 @@
 pub mod ai;
 pub mod interview;
 pub mod keys;
+pub mod voice;
 
 use kickoff_core::{AppInfo, AppSettings};
 use serde::Serialize;
