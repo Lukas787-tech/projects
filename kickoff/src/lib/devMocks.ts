@@ -15,6 +15,7 @@ import type { ProviderTest } from "../bindings/ProviderTest";
 import type { SystemStatus } from "../bindings/SystemStatus";
 import type { TaskCheck } from "../bindings/TaskCheck";
 import type { UsageSummary } from "../bindings/UsageSummary";
+import { interviewHandlers, type InterviewMockOptions } from "./interviewMocks";
 
 export const MOCK_APP_INFO: AppInfo = { name: "Kickoff", id: "dev.kickoff.studio", version: "0.0.0-dev" };
 export const PRESETS = presetCatalog as PresetCatalog;
@@ -22,7 +23,7 @@ export const PRESETS = presetCatalog as PresetCatalog;
 /** A key typed as this value fails its test, for exercising error paths. */
 export const MOCK_BAD_KEY = "bad-key-0000";
 
-export interface MockOptions {
+export interface MockOptions extends InterviewMockOptions {
   settings?: Partial<AppSettings>;
   ollama?: OllamaInfo;
   keys?: KeyEntry[];
@@ -49,13 +50,14 @@ export function installDevMocks(options: MockOptions = {}) {
     kit: null,
   };
   const ollama = options.ollama ?? NO_OLLAMA;
+  const interview: Record<string, (a: Record<string, unknown>) => unknown> = interviewHandlers(options);
   let nextId = 1;
 
   const status: SystemStatus = {
     os: "browser",
     data_dir: "(browser preview)",
     log_dir: "(browser preview)",
-    schema_version: 1,
+    schema_version: 2,
     presets_updated: PRESETS.updated,
     secret_store_problem: "Browser preview: keys are not stored.",
     default_projects_dir: "C:\\Users\\you\\Documents\\Kickoff Projects",
@@ -167,6 +169,7 @@ export function installDevMocks(options: MockOptions = {}) {
         return result;
       }
       default:
+        if (cmd in interview) return interview[cmd]!(a);
         throw { code: "internal", message: `No mock for command "${cmd}"` };
     }
   });

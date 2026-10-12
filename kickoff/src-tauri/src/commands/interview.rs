@@ -1,0 +1,79 @@
+//! Project and interview commands. Turns stream through a Tauri channel.
+
+use kickoff_store::Project;
+use serde_json::Value;
+use tauri::State;
+use tauri::ipc::Channel;
+
+use crate::error::CmdResult;
+use crate::interview::{InterviewEvent, InterviewView, ProjectCard};
+use crate::state::AppState;
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn create_project(state: State<'_, AppState>) -> CmdResult<Project> {
+    Ok(state.interview.create_project().await?)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn list_projects(state: State<'_, AppState>) -> CmdResult<Vec<ProjectCard>> {
+    Ok(state.interview.list().await?)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn delete_project(state: State<'_, AppState>, project_id: String) -> CmdResult<()> {
+    Ok(state.interview.delete(&project_id).await?)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn get_interview(state: State<'_, AppState>, project_id: String) -> CmdResult<InterviewView> {
+    Ok(state.interview.get(&project_id).await?)
+}
+
+/// Send the user's message; the producer's reply streams through `on_event`.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn send_message(
+    state: State<'_, AppState>,
+    project_id: String,
+    text: String,
+    input_mode: String,
+    on_event: Channel<InterviewEvent>,
+) -> CmdResult<InterviewView> {
+    let mode = if input_mode == "voice" { "voice" } else { "text" };
+    let emit = move |e: InterviewEvent| {
+        let _ = on_event.send(e);
+    };
+    Ok(state.interview.send(&project_id, &text, mode, &emit).await?)
+}
+
+/// Retry the producer's reply after a failure.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn continue_interview(
+    state: State<'_, AppState>,
+    project_id: String,
+    on_event: Channel<InterviewEvent>,
+) -> CmdResult<InterviewView> {
+    let emit = move |e: InterviewEvent| {
+        let _ = on_event.send(e);
+    };
+    Ok(state.interview.continue_turn(&project_id, &emit).await?)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn edit_brief_field(
+    state: State<'_, AppState>,
+    project_id: String,
+    field: String,
+    value: Value,
+) -> CmdResult<InterviewView> {
+    Ok(state.interview.edit_field(&project_id, &field, &value).await?)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn revisit_field(state: State<'_, AppState>, project_id: String, field: String) -> CmdResult<InterviewView> {
+    Ok(state.interview.revisit(&project_id, &field).await?)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn finish_interview(state: State<'_, AppState>, project_id: String) -> CmdResult<InterviewView> {
+    Ok(state.interview.finish(&project_id).await?)
+}

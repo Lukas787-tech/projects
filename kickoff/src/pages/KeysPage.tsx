@@ -13,7 +13,7 @@ import {
   useSystemStatus,
   useTestKey,
 } from "../app/queries";
-import { Badge, Button, Dialog, EmptyState, Field, Notice, PageHeader, Select, TextInput } from "../components/ui";
+import { Badge, Button, Dialog, EmptyState, Field, Notice, Page, PageHeader, Select, TextInput } from "../components/ui";
 import { openExternal } from "../lib/external";
 import { errorMessage } from "../lib/ipc";
 import { accessLabel, allProviders, displayName, findProvider, KIND_LABELS } from "../lib/providers";
@@ -25,7 +25,7 @@ export function KeysPage() {
   const [adding, setAdding] = useState(false);
 
   return (
-    <>
+    <Page>
       <PageHeader
         title="Key Library"
         description="API keys for AI, voice, search and asset services. They're stored in Windows Credential Manager; generated projects only ever see a variable name."
@@ -54,7 +54,7 @@ export function KeysPage() {
         </ul>
       )}
       {adding && <AddKeyDialog onClose={() => setAdding(false)} />}
-    </>
+    </Page>
   );
 }
 

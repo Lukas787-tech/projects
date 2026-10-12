@@ -43,5 +43,45 @@ per-user and needs no admin rights.
 8. **Theme and folder.** Switch to Light, then *Match Windows*. Pick a projects
    folder. Restart and check both are kept.
 
+## M2: producer interview
+
+Use any working free setup from M1. Ollama or Gemini both work.
+
+1. **Start from one sentence.** On *Projects*, click one of the example ideas
+   (or type your own) and click *Start interview*.
+   - Your sentence appears, and the producer's reply streams in word by word.
+   - It asks exactly one question.
+   - On the right, *One-line pitch* fills in.
+2. **The brief fills in as you talk.** Answer three or four questions. After
+   each answer, the matching field on the right should update, and the
+   progress bar and "N of 14 settled" should go up. Once you give a working
+   title, the project is renamed to it.
+3. **Honesty.** Answer one question with something too big, for example "an
+   open-world MMO with 200 hours of story". Expect the producer to push back
+   on scope, either in its next reply or under *Producer notes* on the right.
+4. **Your edits win.**
+   - Click *Genre* on the right, type your own genre and click *Save*. It shows
+     *Edited by you*.
+   - Click it again and choose *Ask the producer to revisit*. It shows
+     *Revisit next*, and the producer brings it up after your next answer.
+   - If the producer then proposes a different genre, it appears as "Producer
+     suggests: …" with *Use it* and *Keep mine*. Your own text stays until you
+     choose.
+5. **Recovering from failures.** Turn off Wi-Fi (or stop Ollama) and send an
+   answer.
+   - Your message stays.
+   - A red notice explains what failed and offers *Try again*.
+   - Reconnect and click *Try again*. The reply arrives, and the brief picks up
+     that answer too.
+6. **Everything is saved.** Close Kickoff and open it again. The project is in
+   the list with its pitch and progress. Opening it shows the whole
+   conversation and the brief as you left it.
+7. **Moving on.** Click *Continue to research* before the brief is complete.
+   - A dialog lists what's missing; *Keep talking* closes it.
+   - *Continue anyway* marks the interview finished. Research itself arrives
+     in M4.
+8. **Deleting.** On *Projects*, delete a test project and confirm. It
+   disappears from the list.
+
 If anything fails, the log is in `%APPDATA%\dev.kickoff.studio\logs`. Keys are
 redacted, so it is safe to share.

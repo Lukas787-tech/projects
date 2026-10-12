@@ -9,7 +9,7 @@ async function start() {
   // Outside the Tauri webview (plain `npm run dev`), serve commands from mocks.
   if (!isTauri()) {
     const { installDevMocks } = await import("./lib/devMocks");
-    installDevMocks();
+    installDevMocks({ streamDelayMs: 40 });
   }
   createRoot(document.getElementById("root")!).render(
     <StrictMode>

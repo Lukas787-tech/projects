@@ -1,18 +1,22 @@
 // Typed wrappers around Tauri commands. Request/response types are generated
 // from Rust by ts-rs into src/bindings (run `cargo test` to refresh them).
 // Command arguments are snake_case, matching the Rust side.
-import { invoke } from "@tauri-apps/api/core";
+import { type Channel, invoke } from "@tauri-apps/api/core";
 
 import type { AiSettings } from "../bindings/AiSettings";
 import type { AppInfo } from "../bindings/AppInfo";
 import type { AppSettings } from "../bindings/AppSettings";
 import type { CommandError } from "../bindings/CommandError";
+import type { InterviewEvent } from "../bindings/InterviewEvent";
+import type { InterviewView } from "../bindings/InterviewView";
 import type { KeyEntry } from "../bindings/KeyEntry";
 import type { KeyMeta } from "../bindings/KeyMeta";
 import type { ModelInfo } from "../bindings/ModelInfo";
 import type { NewKeyInput } from "../bindings/NewKeyInput";
 import type { OllamaInfo } from "../bindings/OllamaInfo";
 import type { PresetCatalog } from "../bindings/PresetCatalog";
+import type { Project } from "../bindings/Project";
+import type { ProjectCard } from "../bindings/ProjectCard";
 import type { ProviderTest } from "../bindings/ProviderTest";
 import type { SystemStatus } from "../bindings/SystemStatus";
 import type { Task } from "../bindings/Task";
@@ -42,6 +46,19 @@ export const ipc = {
   detectOllama: () => invoke<OllamaInfo>("detect_ollama"),
   usageToday: () => invoke<UsageSummary[]>("usage_today"),
   checkTask: (task: Task) => invoke<TaskCheck>("check_task", { task }),
+
+  createProject: () => invoke<Project>("create_project"),
+  listProjects: () => invoke<ProjectCard[]>("list_projects"),
+  deleteProject: (project_id: string) => invoke<null>("delete_project", { project_id }),
+  getInterview: (project_id: string) => invoke<InterviewView>("get_interview", { project_id }),
+  sendMessage: (project_id: string, text: string, input_mode: "text" | "voice", on_event: Channel<InterviewEvent>) =>
+    invoke<InterviewView>("send_message", { project_id, text, input_mode, on_event }),
+  continueInterview: (project_id: string, on_event: Channel<InterviewEvent>) =>
+    invoke<InterviewView>("continue_interview", { project_id, on_event }),
+  editBriefField: (project_id: string, field: string, value: unknown) =>
+    invoke<InterviewView>("edit_brief_field", { project_id, field, value }),
+  revisitField: (project_id: string, field: string) => invoke<InterviewView>("revisit_field", { project_id, field }),
+  finishInterview: (project_id: string) => invoke<InterviewView>("finish_interview", { project_id }),
 };
 
 /** Event name for router activity (rate limits, fallbacks). */

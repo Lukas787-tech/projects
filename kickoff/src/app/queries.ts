@@ -15,6 +15,8 @@ export const queryKeys = {
   models: (providerId: string) => ["models", providerId] as const,
   ollama: ["ollama"] as const,
   usage: ["usage-today"] as const,
+  projects: ["projects"] as const,
+  interview: (projectId: string) => ["interview", projectId] as const,
 };
 
 export function useAppInfo() {
@@ -107,4 +109,28 @@ export function useOllama() {
 
 export function useUsageToday() {
   return useQuery({ queryKey: queryKeys.usage, queryFn: ipc.usageToday, refetchInterval: 30_000 });
+}
+
+export function useProjects() {
+  return useQuery({ queryKey: queryKeys.projects, queryFn: ipc.listProjects });
+}
+
+export function useCreateProject() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ipc.createProject,
+    onSuccess: () => void client.invalidateQueries({ queryKey: queryKeys.projects }),
+  });
+}
+
+export function useDeleteProject() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (projectId: string) => ipc.deleteProject(projectId),
+    onSuccess: () => void client.invalidateQueries({ queryKey: queryKeys.projects }),
+  });
+}
+
+export function useInterview(projectId: string) {
+  return useQuery({ queryKey: queryKeys.interview(projectId), queryFn: () => ipc.getInterview(projectId) });
 }

@@ -34,6 +34,21 @@ export function Button({
   );
 }
 
+/** Scrollable page body with the standard padding. */
+export function Page({ children }: { children: ReactNode }) {
+  return <div className="h-full overflow-y-auto px-8 py-6">{children}</div>;
+}
+
+/** A simple progress bar where more is better (unlike usage meters). */
+export function Progress({ value, label }: { value: number; label: string }) {
+  const pct = Math.round(Math.min(1, Math.max(0, value)) * 100);
+  return (
+    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-1.5 overflow-hidden rounded-full bg-accent/15">
+      <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
   return (
     <header className="mb-6 flex items-start justify-between gap-4">

@@ -3,6 +3,7 @@
 //! Arguments use snake_case on the JS side, matching the ts-rs types.
 
 pub mod ai;
+pub mod interview;
 pub mod keys;
 
 use kickoff_core::{AppInfo, AppSettings};

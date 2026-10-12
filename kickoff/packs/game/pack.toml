@@ -1,0 +1,174 @@
+# Project type pack: games.
+#
+# A pack is data: the brief fields the interview fills, the prompts, and (from
+# M5) the starter-kit manifest. Adding a project type means adding a folder
+# like this one; the interview engine reads it generically.
+
+id = "game"
+name = "Game"
+version = "1"
+brief_schema = "game-brief/1"
+# A field counts as settled once its confidence reaches this.
+confidence_threshold = 0.7
+
+[[variants]]
+id = "godot"
+name = "Godot 4"
+
+[[variants]]
+id = "unity"
+name = "Unity"
+
+[[variants]]
+id = "web"
+name = "Web (Phaser / Three.js)"
+
+# Fields, asked roughly in `priority` order. Kinds:
+#   text   - a sentence or short paragraph
+#   list   - several short items (min_items / max_items)
+#   parts  - named sub-answers, each addressable as "<id>.<part>"
+#   choice - one of `options`, with a reason ("<id>" and "<id>.reason")
+
+[[fields]]
+id = "working_title"
+label = "Working title"
+kind = "text"
+required = true
+priority = 1
+hint = "A placeholder name is fine; it can change later."
+
+[[fields]]
+id = "pitch"
+label = "One-line pitch"
+kind = "text"
+required = true
+priority = 2
+hint = "One sentence a stranger would understand: what you do and why it's fun."
+
+[[fields]]
+id = "genre"
+label = "Genre"
+kind = "text"
+required = true
+priority = 3
+hint = "The closest genre or blend, e.g. cozy survival crafting."
+
+[[fields]]
+id = "target_player"
+label = "Target player"
+kind = "text"
+required = true
+priority = 4
+hint = "Who it's for: what they already play and enjoy."
+
+[[fields]]
+id = "pillars"
+label = "Design pillars"
+kind = "list"
+required = true
+priority = 5
+min_items = 3
+max_items = 5
+hint = "3 to 5 short, specific principles that decide every design argument."
+
+[[fields]]
+id = "core_loop"
+label = "Core loop"
+kind = "parts"
+required = true
+priority = 6
+hint = "What the player repeatedly does, at three time scales."
+parts = [
+  { id = "moment_to_moment", label = "Moment to moment" },
+  { id = "session", label = "One session" },
+  { id = "long_term", label = "Long term" },
+]
+
+[[fields]]
+id = "feeling"
+label = "The feeling"
+kind = "parts"
+required = true
+priority = 7
+hint = "What the player should feel while playing, and after they stop."
+parts = [
+  { id = "during", label = "During a session" },
+  { id = "after", label = "After a session" },
+]
+
+[[fields]]
+id = "scope"
+label = "Scope"
+kind = "text"
+required = true
+priority = 8
+hint = "Team size, time budget, and how big the first playable version is."
+
+[[fields]]
+id = "platforms"
+label = "Platforms"
+kind = "list"
+required = true
+priority = 9
+min_items = 1
+max_items = 6
+hint = "Where it runs first, e.g. Windows (Steam), web browser."
+
+[[fields]]
+id = "engine"
+label = "Engine"
+kind = "choice"
+required = true
+priority = 10
+hint = "The user's preference, or a recommendation with reasons if they have none."
+options = [
+  { id = "godot", label = "Godot 4" },
+  { id = "unity", label = "Unity" },
+  { id = "web", label = "Web (Phaser / Three.js)" },
+]
+
+[[fields]]
+id = "art_direction"
+label = "Art direction"
+kind = "text"
+required = true
+priority = 11
+hint = "Visual style, palette, perspective, references."
+
+[[fields]]
+id = "audio_direction"
+label = "Audio direction"
+kind = "text"
+required = true
+priority = 12
+hint = "Music and sound mood, references."
+
+[[fields]]
+id = "out_of_scope"
+label = "Out of scope"
+kind = "list"
+required = true
+priority = 13
+min_items = 1
+max_items = 10
+hint = "Things deliberately not in the first version (multiplayer, procedural worlds …)."
+
+[[fields]]
+id = "risks"
+label = "Risks"
+kind = "list"
+required = true
+priority = 14
+min_items = 1
+max_items = 8
+hint = "What could sink the project: scope, tech, skills, time."
+
+[[fields]]
+id = "open_questions"
+label = "Open questions"
+kind = "list"
+required = false
+priority = 15
+min_items = 0
+max_items = 10
+hint = "Things to find out by prototyping."

@@ -22,6 +22,7 @@ kickoff-platform.workspace = true
 kickoff-providers.workspace = true
 kickoff-store.workspace = true
 anyhow.workspace = true
+async-trait.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tauri = { version = "2.12", features = [] }

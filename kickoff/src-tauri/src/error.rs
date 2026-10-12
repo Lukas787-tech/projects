@@ -5,6 +5,7 @@ use serde::Serialize;
 use ts_rs::TS;
 
 use crate::ai::AiError;
+use crate::interview::InterviewServiceError;
 use crate::keys::KeyError;
 
 #[derive(Debug, Clone, Copy, Serialize, TS)]
@@ -65,6 +66,23 @@ impl From<AiError> for CommandError {
             AiError::Store(s) => s.into(),
             AiError::UnknownProvider(_) => Self::new(ErrorCode::NotFound, e),
             AiError::MissingKey(_) | AiError::Llm(_) => Self::new(ErrorCode::Provider, e),
+        }
+    }
+}
+
+impl From<InterviewServiceError> for CommandError {
+    fn from(e: InterviewServiceError) -> Self {
+        match e {
+            InterviewServiceError::Store(s) => s.into(),
+            InterviewServiceError::Ai(a) => a.into(),
+            InterviewServiceError::NotFound => Self::new(ErrorCode::NotFound, e),
+            InterviewServiceError::Busy | InterviewServiceError::Brief(_) | InterviewServiceError::Interview(_) => {
+                Self::new(ErrorCode::Invalid, e)
+            }
+            InterviewServiceError::NoAi => Self::new(ErrorCode::Provider, e),
+            InterviewServiceError::UnknownPack(_) | InterviewServiceError::Corrupt(_) => {
+                Self::new(ErrorCode::Internal, e)
+            }
         }
     }
 }

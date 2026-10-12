@@ -6,7 +6,7 @@ import { useNavigate } from "react-router";
 import type { AppSettings } from "../bindings/AppSettings";
 import type { Theme } from "../bindings/Theme";
 import { useAppInfo, useSaveSettings, useSettings, useSystemStatus } from "../app/queries";
-import { Button, Card, Notice, PageHeader } from "../components/ui";
+import { Button, Card, Notice, Page, PageHeader } from "../components/ui";
 import { AiSettingsSection } from "./AiSettings";
 import { errorMessage } from "../lib/ipc";
 
@@ -36,7 +36,7 @@ export function SettingsPage() {
   }
 
   return (
-    <>
+    <Page>
       <PageHeader
         title="Settings"
         actions={<Button onClick={() => navigate("/setup")}>Run setup again</Button>}
@@ -74,7 +74,7 @@ export function SettingsPage() {
         <ProjectsFolderCard settings={settings} onPick={pickProjectsDir} error={pickError} />
         <AboutCard />
       </div>
-    </>
+    </Page>
   );
 }
 

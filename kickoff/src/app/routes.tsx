@@ -1,6 +1,7 @@
 import { createHashRouter, createMemoryRouter, type RouteObject } from "react-router";
 
 import { Layout } from "../components/Layout";
+import { InterviewPage } from "../pages/InterviewPage";
 import { KeysPage } from "../pages/KeysPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
 import { SettingsPage } from "../pages/SettingsPage";
@@ -13,6 +14,7 @@ const routes: RouteObject[] = [
     element: <Layout />,
     children: [
       { index: true, element: <ProjectsPage /> },
+      { path: "project/:projectId", element: <InterviewPage /> },
       { path: "keys", element: <KeysPage /> },
       { path: "settings", element: <SettingsPage /> },
     ],

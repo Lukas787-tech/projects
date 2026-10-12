@@ -4,8 +4,11 @@
 //! can be unit-tested on any platform with fake providers.
 
 pub mod branding;
+pub mod brief;
+pub mod interview;
 pub mod keys;
 pub mod llm;
+pub mod pack;
 pub mod redact;
 pub mod secret;
 pub mod settings;

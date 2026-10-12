@@ -23,7 +23,7 @@ secret and has no network, filesystem or shell access of its own.
 
 | Crate | Responsibility | Must not |
 |---|---|---|
-| `crates/core` | Branding, `Secret`, redaction, settings types. Later: brief model, interview, research and kit logic. | Use Tauri, OS APIs, or concrete providers (traits only) |
+| `crates/core` | Branding, `Secret`, redaction, settings, the LLM router and structured output, project type packs, the brief model and the interview. Later: research and kit logic. | Use Tauri, OS APIs, or concrete providers (traits only) |
 | `crates/providers` | Provider presets (`data/providers.toml`) and, from M1, the LLM, search, voice and asset clients. | Store anything; it gets keys passed in as `Secret` |
 | `crates/store` | SQLite schema, migrations and repositories | Store raw secrets |
 | `crates/platform` | Data paths, Windows Credential Manager, system voices, process launch | Contain domain logic |
@@ -70,6 +70,54 @@ keys, so treat it as permanent.
   - `AppObserver` records usage per provider per day in `usage_daily` and forwards router events to the UI as `ai-status` events, which appear as toasts.
 - **Key library flow.** `src-tauri/src/keys.rs` writes the secret to Credential Manager first and the metadata to SQLite second, deleting the secret again if the second step fails. Every loaded secret is registered with the log redactor. A test scans the database files on disk to prove no secret is written there.
 
+## Project type packs
+
+A pack describes one kind of project as data, so new kinds don't touch the
+core. Bundled packs live in `packs/<id>/` and are embedded at build time
+(`include_dir`):
+
+- `pack.toml` lists the brief fields: id, label, priority, an interview hint,
+  and a kind (`text`, `list` with item bounds, `parts` with named sub-answers,
+  or `choice` with options). It also sets the confidence threshold and the
+  variants (for games: Godot, Unity, web).
+- `prompts/producer.md` and `prompts/extractor.md` are minijinja templates.
+
+`kickoff_core::pack::ProjectTypePack` is the trait the rest of the code uses,
+and `DataPack` implements it from those files. A pack that needs logic beyond
+data can implement the trait itself. The game pack's manifest is exported to
+`src/bindings/fixtures/gamePack.json` for frontend tests.
+
+## Interview
+
+- **Brief.** `kickoff_core::brief::Brief` holds one `FieldState` per pack
+  field: value, confidence (0 to 1, per part for multi-part fields), status
+  (`empty`, `draft`, `confirmed`, `user_edited`) and the turn it changed.
+  Values are checked against the field kind before they are stored.
+- **A turn** (`kickoff_core::interview::Interviewer`) runs two calls at once
+  with `tokio::join!`:
+  - The **producer** streams its reply. Its prompt holds the brief summary,
+    open issues and the next two open topics, so it can skip one the user just
+    answered.
+  - The **extractor** returns `{updates, flags}` through `structured_call`.
+    Updates are applied as soon as they land, so the brief panel fills in while
+    the producer is still talking. Flags (scope, contradiction, vague) go into
+    the producer's next prompt.
+- **The user wins.** A field the user edited is never overwritten. If the
+  extractor proposes a different value, it comes back as a suggestion the user
+  can take or ignore.
+- **Completeness is decided in code**, not by a model: every required field
+  needs a value at or above the pack's confidence threshold (lists also need
+  their minimum item count). The producer is told when the brief is complete,
+  and the user can always move on early.
+- **Failures.** If the extractor fails, the turn still succeeds. If the
+  producer fails, the user's message is kept and *Try again*
+  (`continue_interview`) re-runs the whole turn for it, extraction included.
+- **Persistence.** Every message is saved in `messages`, and every brief
+  change is saved as a new row in `brief_revisions` with its cause
+  (`extraction`, `user_edit`) and the message that caused it. Flags, the
+  revisit request and the turn counter live in `interview_meta`. The
+  project's name follows the working title.
+
 ## Data
 
 - **App data folder:** `%APPDATA%\<APP_ID>` contains `<APP_ID>.sqlite3` (WAL), `logs/` (daily rolling, 7 kept), `models/` (Whisper and Piper downloads) and `cache/` (thumbnails).
@@ -81,7 +129,8 @@ keys, so treat it as permanent.
 - **Commands.** Every command is `async` and moves blocking work (SQLite, credential store) to `spawn_blocking`, so the UI thread never stalls.
 - **Errors.** Commands return `Result<T, CommandError>`, where `CommandError` is `{ code, message }`.
 - **Shared types.** Request and response types derive `ts_rs::TS`. `cargo test` regenerates `src/bindings/*.ts`, and CI fails if the committed bindings are stale.
-- **Browser preview.** `src/lib/devMocks.ts` serves commands in a plain browser (`npm run dev`) and in Vitest. It is never loaded inside the Tauri app.
+- **Streaming.** Interview turns take a Tauri `Channel<InterviewEvent>` and stream `delta`, `brief_updated`, `producer_done`, `producer_failed` and `extraction_failed` events. The command still returns the full updated view at the end.
+- **Browser preview.** `src/lib/devMocks.ts` (with `interviewMocks.ts`) serves commands in a plain browser (`npm run dev`) and in Vitest. It is never loaded inside the Tauri app.
 
 ## Frontend
 

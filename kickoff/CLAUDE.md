@@ -19,3 +19,4 @@ Read `docs/ARCHITECTURE.md` before changing structure.
 - **Provider facts** (endpoints, limits, model names) go in `data/providers.toml` and `docs/PROVIDERS.md` with a confidence level, never hard-coded.
 - **App name:** use `APP_NAME` / `APP_ID` from `kickoff_core::branding`; never write "Kickoff" in code.
 - **Migrations** are append-only: add `crates/store/src/migrations/NNN_*.sql`; never edit a shipped one.
+- **Packs:** project-type specifics (brief fields, interview prompts) live in `packs/<id>/` as data. Keep game-specific logic out of `crates/core`; decisions like brief completeness stay in code, not prompts.

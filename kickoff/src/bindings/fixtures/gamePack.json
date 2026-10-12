@@ -1,0 +1,191 @@
+{
+  "id": "game",
+  "name": "Game",
+  "version": "1",
+  "brief_schema": "game-brief/1",
+  "confidence_threshold": 0.7,
+  "variants": [
+    {
+      "id": "godot",
+      "name": "Godot 4"
+    },
+    {
+      "id": "unity",
+      "name": "Unity"
+    },
+    {
+      "id": "web",
+      "name": "Web (Phaser / Three.js)"
+    }
+  ],
+  "fields": [
+    {
+      "id": "working_title",
+      "label": "Working title",
+      "required": true,
+      "priority": 1,
+      "hint": "A placeholder name is fine; it can change later.",
+      "kind": "text"
+    },
+    {
+      "id": "pitch",
+      "label": "One-line pitch",
+      "required": true,
+      "priority": 2,
+      "hint": "One sentence a stranger would understand: what you do and why it's fun.",
+      "kind": "text"
+    },
+    {
+      "id": "genre",
+      "label": "Genre",
+      "required": true,
+      "priority": 3,
+      "hint": "The closest genre or blend, e.g. cozy survival crafting.",
+      "kind": "text"
+    },
+    {
+      "id": "target_player",
+      "label": "Target player",
+      "required": true,
+      "priority": 4,
+      "hint": "Who it's for: what they already play and enjoy.",
+      "kind": "text"
+    },
+    {
+      "id": "pillars",
+      "label": "Design pillars",
+      "required": true,
+      "priority": 5,
+      "hint": "3 to 5 short, specific principles that decide every design argument.",
+      "kind": "list",
+      "min_items": 3,
+      "max_items": 5
+    },
+    {
+      "id": "core_loop",
+      "label": "Core loop",
+      "required": true,
+      "priority": 6,
+      "hint": "What the player repeatedly does, at three time scales.",
+      "kind": "parts",
+      "parts": [
+        {
+          "id": "moment_to_moment",
+          "label": "Moment to moment"
+        },
+        {
+          "id": "session",
+          "label": "One session"
+        },
+        {
+          "id": "long_term",
+          "label": "Long term"
+        }
+      ]
+    },
+    {
+      "id": "feeling",
+      "label": "The feeling",
+      "required": true,
+      "priority": 7,
+      "hint": "What the player should feel while playing, and after they stop.",
+      "kind": "parts",
+      "parts": [
+        {
+          "id": "during",
+          "label": "During a session"
+        },
+        {
+          "id": "after",
+          "label": "After a session"
+        }
+      ]
+    },
+    {
+      "id": "scope",
+      "label": "Scope",
+      "required": true,
+      "priority": 8,
+      "hint": "Team size, time budget, and how big the first playable version is.",
+      "kind": "text"
+    },
+    {
+      "id": "platforms",
+      "label": "Platforms",
+      "required": true,
+      "priority": 9,
+      "hint": "Where it runs first, e.g. Windows (Steam), web browser.",
+      "kind": "list",
+      "min_items": 1,
+      "max_items": 6
+    },
+    {
+      "id": "engine",
+      "label": "Engine",
+      "required": true,
+      "priority": 10,
+      "hint": "The user's preference, or a recommendation with reasons if they have none.",
+      "kind": "choice",
+      "options": [
+        {
+          "id": "godot",
+          "label": "Godot 4"
+        },
+        {
+          "id": "unity",
+          "label": "Unity"
+        },
+        {
+          "id": "web",
+          "label": "Web (Phaser / Three.js)"
+        }
+      ]
+    },
+    {
+      "id": "art_direction",
+      "label": "Art direction",
+      "required": true,
+      "priority": 11,
+      "hint": "Visual style, palette, perspective, references.",
+      "kind": "text"
+    },
+    {
+      "id": "audio_direction",
+      "label": "Audio direction",
+      "required": true,
+      "priority": 12,
+      "hint": "Music and sound mood, references.",
+      "kind": "text"
+    },
+    {
+      "id": "out_of_scope",
+      "label": "Out of scope",
+      "required": true,
+      "priority": 13,
+      "hint": "Things deliberately not in the first version (multiplayer, procedural worlds …).",
+      "kind": "list",
+      "min_items": 1,
+      "max_items": 10
+    },
+    {
+      "id": "risks",
+      "label": "Risks",
+      "required": true,
+      "priority": 14,
+      "hint": "What could sink the project: scope, tech, skills, time.",
+      "kind": "list",
+      "min_items": 1,
+      "max_items": 8
+    },
+    {
+      "id": "open_questions",
+      "label": "Open questions",
+      "required": false,
+      "priority": 15,
+      "hint": "Things to find out by prototyping.",
+      "kind": "list",
+      "min_items": 0,
+      "max_items": 10
+    }
+  ]
+}

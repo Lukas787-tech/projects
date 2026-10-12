@@ -212,6 +212,10 @@ impl AiService {
         }
     }
 
+    pub fn router(&self) -> &Router {
+        &self.router
+    }
+
     /// Send a one-word prompt through the task's chain, exactly as real work
     /// would go (throttling, retries, fallback).
     pub async fn check_task(&self, task: Task) -> TaskCheck {

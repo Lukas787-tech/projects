@@ -4,6 +4,7 @@
 mod ai;
 mod commands;
 mod error;
+mod interview;
 mod keys;
 mod logging;
 mod state;
@@ -61,6 +62,15 @@ pub fn run() {
             commands::ai::detect_ollama,
             commands::ai::usage_today,
             commands::ai::check_task,
+            commands::interview::create_project,
+            commands::interview::list_projects,
+            commands::interview::delete_project,
+            commands::interview::get_interview,
+            commands::interview::send_message,
+            commands::interview::continue_interview,
+            commands::interview::edit_brief_field,
+            commands::interview::revisit_field,
+            commands::interview::finish_interview,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the Tauri application");

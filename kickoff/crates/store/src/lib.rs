@@ -10,11 +10,13 @@ use rusqlite::Connection;
 use rusqlite_migration::{M, Migrations};
 
 pub mod keys;
+pub mod projects;
 pub mod settings;
 pub mod time;
 pub mod usage;
 
 pub use keys::NewKeyMeta;
+pub use projects::{InterviewMeta, Project, Stage, StoredMessage, StoredRevision};
 pub use usage::{UsageDay, UsageDelta};
 
 #[derive(Debug, thiserror::Error)]
@@ -30,7 +32,10 @@ pub enum StoreError {
 pub type Result<T> = std::result::Result<T, StoreError>;
 
 fn migrations() -> Migrations<'static> {
-    Migrations::new(vec![M::up(include_str!("migrations/001_initial.sql"))])
+    Migrations::new(vec![
+        M::up(include_str!("migrations/001_initial.sql")),
+        M::up(include_str!("migrations/002_interview_meta.sql")),
+    ])
 }
 
 pub struct Database {
@@ -82,11 +87,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.sqlite3");
         let db = Database::open(&path).unwrap();
-        assert_eq!(db.schema_version().unwrap(), 1);
+        assert_eq!(db.schema_version().unwrap(), 2);
         drop(db);
         // Re-opening an up-to-date database is a no-op.
         let db = Database::open(&path).unwrap();
-        assert_eq!(db.schema_version().unwrap(), 1);
+        assert_eq!(db.schema_version().unwrap(), 2);
     }
 
     #[test]
