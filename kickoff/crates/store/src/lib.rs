@@ -11,12 +11,14 @@ use rusqlite_migration::{M, Migrations};
 
 pub mod keys;
 pub mod projects;
+pub mod refs;
 pub mod settings;
 pub mod time;
 pub mod usage;
 
 pub use keys::NewKeyMeta;
 pub use projects::{InterviewMeta, Project, Stage, StoredMessage, StoredRevision};
+pub use refs::{Reaction, StoredRef};
 pub use usage::{UsageDay, UsageDelta};
 
 #[derive(Debug, thiserror::Error)]

@@ -172,3 +172,13 @@ priority = 15
 min_items = 0
 max_items = 10
 hint = "Things to find out by prototyping."
+
+# Research: what the producer looks for once the brief is ready.
+[research]
+comparables = 5
+visual_queries = 3
+asset_queries = 4
+asset_kinds = ["texture", "hdri", "model", "sprite", "audio", "font", "ui"]
+# Checks a suggested comparable exists before it's shown as verified.
+comparable_query = "{title} video game"
+refine_fields = ["genre", "pillars", "art_direction", "audio_direction", "out_of_scope"]

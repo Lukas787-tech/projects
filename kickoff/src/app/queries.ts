@@ -18,6 +18,8 @@ export const queryKeys = {
   usage: ["usage-today"] as const,
   projects: ["projects"] as const,
   interview: (projectId: string) => ["interview", projectId] as const,
+  research: (projectId: string) => ["research", projectId] as const,
+  thumbnail: (projectId: string, refId: string) => ["thumbnail", projectId, refId] as const,
   voice: ["voice"] as const,
   piperVoices: ["piper-voices"] as const,
   systemVoices: ["system-voices"] as const,

@@ -16,8 +16,8 @@ are optional.
 | M0 | Provider verification, workspace, SQLite, logging with redaction, CI | ✅ |
 | M1 | Key library, LLM layer (free providers, fallback, usage meter), setup wizard | ✅ |
 | M2 | Producer interview (text) with live brief | ✅ |
-| M3 | Voice: local Whisper, Fish Audio / Piper / Windows voices | next |
-| M4 | Research and reference triage with license tracking | |
+| M3 | Voice: local Whisper, Fish Audio / Piper / Windows voices | Windows CI pending |
+| M4 | Research and reference triage with license tracking | Windows CI pending |
 | M5 | Starter kit generator and key launcher | |
 | M6 | Hardening and installer | |
 

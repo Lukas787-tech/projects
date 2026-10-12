@@ -355,7 +355,9 @@ impl Brief {
             let mut probe = self.clone();
             // Pretend already-listed fields are settled so the next one surfaces.
             for id in &skip {
-                if let (Some(state), Some(def)) = (probe.fields.get_mut(id), pack.field(id)) {
+                if let Some(def) = pack.field(id) {
+                    // A brief saved before the pack gained this field has no entry for it.
+                    let state = probe.fields.entry(id.clone()).or_insert_with(FieldState::empty);
                     state.status = FieldStatus::UserEdited;
                     state.value = placeholder_value(def);
                 }
@@ -745,6 +747,16 @@ mod tests {
                 ("pitch".to_owned(), FocusReason::Missing)
             ]
         );
+    }
+
+    #[test]
+    fn open_topics_handle_fields_the_saved_brief_does_not_have() {
+        let pack = game();
+        let mut brief = Brief::new(&pack);
+        // As if the brief was saved before the pack added these fields.
+        brief.fields.retain(|id, _| id == "working_title");
+        let topics: Vec<String> = brief.open_topics(&pack, None, 3).into_iter().map(|f| f.field).collect();
+        assert_eq!(topics, ["working_title", "pitch", "genre"]);
     }
 
     #[test]

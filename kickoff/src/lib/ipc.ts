@@ -6,6 +6,7 @@ import { type Channel, invoke } from "@tauri-apps/api/core";
 import type { AiSettings } from "../bindings/AiSettings";
 import type { AppInfo } from "../bindings/AppInfo";
 import type { AppSettings } from "../bindings/AppSettings";
+import type { BriefProposal } from "../bindings/BriefProposal";
 import type { CommandError } from "../bindings/CommandError";
 import type { DownloadProgress } from "../bindings/DownloadProgress";
 import type { FishCheckResult } from "../bindings/FishCheckResult";
@@ -22,7 +23,12 @@ import type { PresetCatalog } from "../bindings/PresetCatalog";
 import type { Project } from "../bindings/Project";
 import type { ProjectCard } from "../bindings/ProjectCard";
 import type { ProviderTest } from "../bindings/ProviderTest";
+import type { Reaction } from "../bindings/Reaction";
 import type { RecordingEvent } from "../bindings/RecordingEvent";
+import type { ResearchProgress } from "../bindings/ResearchProgress";
+import type { ResearchRun } from "../bindings/ResearchRun";
+import type { ResearchView } from "../bindings/ResearchView";
+import type { StoredRef } from "../bindings/StoredRef";
 import type { SystemStatus } from "../bindings/SystemStatus";
 import type { SystemVoiceView } from "../bindings/SystemVoiceView";
 import type { Task } from "../bindings/Task";
@@ -69,6 +75,18 @@ export const ipc = {
     invoke<InterviewView>("edit_brief_field", { project_id, field, value }),
   revisitField: (project_id: string, field: string) => invoke<InterviewView>("revisit_field", { project_id, field }),
   finishInterview: (project_id: string) => invoke<InterviewView>("finish_interview", { project_id }),
+
+  getResearch: (project_id: string) => invoke<ResearchView>("get_research", { project_id }),
+  runResearch: (project_id: string, on_progress: Channel<ResearchProgress>) =>
+    invoke<ResearchRun>("run_research", { project_id, on_progress }),
+  moreLikeThis: (project_id: string, ref_id: string, on_progress: Channel<ResearchProgress>) =>
+    invoke<ResearchRun>("more_like_this", { project_id, ref_id, on_progress }),
+  reactToReference: (project_id: string, ref_id: string, reaction: Reaction | null) =>
+    invoke<StoredRef>("react_to_reference", { project_id, ref_id, reaction }),
+  referenceThumbnail: (project_id: string, ref_id: string) =>
+    invoke<string | null>("reference_thumbnail", { project_id, ref_id }),
+  refineBriefFromReferences: (project_id: string) =>
+    invoke<BriefProposal[]>("refine_brief_from_references", { project_id }),
 
   getVoiceOverview: () => invoke<VoiceOverview>("get_voice_overview"),
   saveVoiceSettings: (settings: VoiceSettings) => invoke<VoiceOverview>("save_voice_settings", { settings }),

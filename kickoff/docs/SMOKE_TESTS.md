@@ -126,5 +126,48 @@ You need a microphone and speakers (a headset is easiest).
 11. **Text only.** Turn off *Talk with the producer*. The microphone and the
     speaker icon disappear, and nothing is read aloud.
 
+## M4: research and references
+
+You need an AI provider set up. A free Tavily key (app.tavily.com, no card)
+makes results verified; step 1 runs without one.
+
+1. **Without a search key.** Open a project, *Continue to research* (or the
+   *Research* button once the interview is finished).
+   - A yellow notice says there is no web search key and links to the Key
+     Library.
+   - Click *Find references*. A progress line shows "Planning searches…",
+     then "Searching… n of m".
+   - Comparable games appear with an *Unverified* badge and no link. Poly
+     Haven and Sketchfab assets still appear (with thumbnails), each with a
+     license badge.
+2. **With Tavily.** Add the Tavily key in the Key Library, go back, click
+   *Find more*.
+   - The header shows "Web search: Tavily · n of 1,000 credits used this
+     month".
+   - Comparable games now have a link and no *Unverified* badge (a made-up
+     title would stay unverified with "Search didn't find this game").
+   - Mood references appear under *Mood*, some as images.
+   - Kenney or OpenGameArt pages may appear under *Assets*.
+3. **Triage with the keyboard.** Press → to keep, ← to reject. Kept items
+   collect on the right; rejected ones under *Rejected (n)*. Press Ctrl+Z:
+   the last one comes back. Click ✕ next to a kept item: it returns to the
+   queue.
+4. **Licenses.** Under *Assets*, check:
+   - A Poly Haven item says *Usable · CC0 1.0*, shows "Powered by Poly
+     Haven" and a credit line.
+   - A Sketchfab item with "CC Attribution" says *Usable · CC BY 4.0*; one
+     with a NonCommercial license says *Reference only* and explains why.
+   - OpenGameArt and itch.io items say *License unknown*.
+   - Click a source link: it opens in your browser. Note any item whose
+     license on the page differs from the badge.
+5. **More like this.** On a reference you like, press ↑. It moves to *Kept*
+   and a few similar ones join the queue.
+6. **Refine the brief.** Keep a few mood references and reject a game, then
+   click *Refine brief*. Suggestions show the current and the new value with a
+   reason. *Apply* one, go back to the interview: the brief shows the new
+   value as edited by you.
+7. **Restart.** Close and reopen the app. The references and your reactions
+   are still there.
+
 If anything fails, the log is in `%APPDATA%\dev.kickoff.studio\logs`. Keys are
 redacted, so it is safe to share.

@@ -1,8 +1,10 @@
 # Asset and reference sources for Kickoff research.
 #
-# access = "api"       -> Kickoff queries the source's own API.
-# access = "link_only" -> Kickoff finds pages through web search (site-scoped)
-#                         and stores links + metadata only.
+# access = "api"       -> Kickoff queries the source's own API (`client` picks
+#                         the implementation; `page_url` builds item links).
+# access = "link_only" -> Kickoff finds pages through web search restricted to
+#                         `site`, keeps only URLs under `url_prefix`, and
+#                         stores links + metadata only. Needs a search key.
 #
 # License classification is deterministic (never decided by the LLM):
 #   - `source_license` set     -> every asset from this source carries that license
@@ -17,7 +19,9 @@ updated = "2026-10-11"
 id = "polyhaven"
 display_name = "Poly Haven"
 access = "api"
+client = "polyhaven"
 base_url = "https://api.polyhaven.com"
+page_url = "https://polyhaven.com/a/{id}"
 kinds = ["texture", "hdri", "model"]
 requires_key = false
 # ToS 2.4: every call needs a unique User-Agent or Referer naming the app.
@@ -27,7 +31,7 @@ license_url = "https://creativecommons.org/publicdomain/zero/1.0/"
 # ToS 2.5: content surfaced through the live API must be credited in the UI.
 ui_credit = "Powered by Poly Haven"
 docs_url = "https://github.com/Poly-Haven/Public-API"
-notes = "GET /search?q=&t=hdris|textures|models|all returns ranked slugs; GET /assets?t= returns metadata incl. thumbnail_url, authors, tags; GET /info/{id}. 429 carries Retry-After."
+notes = "GET /search?q=&t=hdris|textures|models|all&limit= returns {total, results: [{slug, score}]}, best first; GET /info/{slug} returns name, type (0 hdri, 1 texture, 2 model), authors {name: role}, tags, thumbnail_url. 429 carries Retry-After."
 confidence = "high"
 verified_at = "2026-10-11"
 
@@ -35,10 +39,12 @@ verified_at = "2026-10-11"
 id = "sketchfab"
 display_name = "Sketchfab"
 access = "api"
+client = "sketchfab"
 base_url = "https://api.sketchfab.com/v3"
+page_url = "https://sketchfab.com/models/{id}"
 kinds = ["model"]
 requires_key = false
-notes = "Public GET /search?type=models&downloadable=true&q= without auth; each result carries its own license. Downloads need a user's OAuth login (later milestone)."
+notes = "Public GET /search?type=models&downloadable=true&q= without auth returns results [{uid, name, viewerUrl, user {displayName}, license {label}, thumbnails {images [{url, width}]}}]. Labels map to CC0-1.0 / CC-BY-4.0 / CC-BY-SA-4.0; NonCommercial, NoDerivs, Standard and Editorial stay non-usable. Downloads need a user's OAuth login (later milestone)."
 confidence = "medium"
 verified_at = "2026-10-11"
 
@@ -46,7 +52,8 @@ verified_at = "2026-10-11"
 id = "kenney"
 display_name = "Kenney"
 access = "link_only"
-search_scope = "site:kenney.nl/assets"
+site = "kenney.nl"
+url_prefix = "kenney.nl/assets/"
 kinds = ["sprite", "model", "texture", "audio", "font", "ui"]
 source_license = "CC0-1.0"
 license_url = "https://creativecommons.org/publicdomain/zero/1.0/"
@@ -59,7 +66,8 @@ verified_at = "2026-10-11"
 id = "opengameart"
 display_name = "OpenGameArt"
 access = "link_only"
-search_scope = "site:opengameart.org/content"
+site = "opengameart.org"
+url_prefix = "opengameart.org/content/"
 kinds = ["sprite", "model", "texture", "audio", "font"]
 notes = "No official API. Licenses vary per entry (CC0, CC-BY, CC-BY-SA, GPL, OGA-BY); results stay `unknown` until the license is read from the page. robots.txt asks for slow crawling."
 confidence = "medium"
@@ -67,9 +75,10 @@ verified_at = "2026-10-11"
 
 [[source]]
 id = "itch"
-display_name = "itch.io (free assets)"
+display_name = "itch.io"
 access = "link_only"
-search_scope = "site:itch.io game assets free"
+site = "itch.io"
+query_hint = "free game assets"
 kinds = ["sprite", "model", "texture", "audio", "font", "ui"]
 notes = "No public search API for assets. Licenses are set per creator; always `unknown` until verified by the user."
 confidence = "medium"

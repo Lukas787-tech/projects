@@ -23,8 +23,8 @@ secret and has no network, filesystem or shell access of its own.
 
 | Crate | Responsibility | Must not |
 |---|---|---|
-| `crates/core` | Branding, `Secret`, redaction, settings, the LLM router and structured output, project type packs, the brief model and the interview. Later: research and kit logic. | Use Tauri, OS APIs, or concrete providers (traits only) |
-| `crates/providers` | Provider presets (`data/providers.toml`) and, from M1, the LLM, search, voice and asset clients. | Store anything; it gets keys passed in as `Secret` |
+| `crates/core` | Branding, `Secret`, redaction, settings, the LLM router and structured output, project type packs, the brief model, the interview, voice policy and research (planning, license classification). Later: kit logic. | Use Tauri, OS APIs, or concrete providers (traits only) |
+| `crates/providers` | Provider presets (`data/providers.toml`), the asset-source catalog (`data/asset-sources.toml`), and the LLM, web search (Tavily, Brave) and asset (Poly Haven, Sketchfab) clients. | Store anything; it gets keys passed in as `Secret` |
 | `crates/store` | SQLite schema, migrations and repositories | Store raw secrets |
 | `crates/voice` | Microphone capture and speaker playback, resampling and WAV, verified downloads, speech engines: local Whisper (`local-whisper` feature), Groq Whisper, Fish Audio, Piper | Decide policy (fallback, barge-in); that's `kickoff_core::voice` |
 | `crates/platform` | Data paths, Windows Credential Manager, Windows voices (WinRT), background processes | Contain domain logic |
@@ -81,7 +81,13 @@ core. Bundled packs live in `packs/<id>/` and are embedded at build time
   and a kind (`text`, `list` with item bounds, `parts` with named sub-answers,
   or `choice` with options). It also sets the confidence threshold and the
   variants (for games: Godot, Unity, web).
-- `prompts/producer.md` and `prompts/extractor.md` are minijinja templates.
+- `prompts/producer.md` and `prompts/extractor.md` are minijinja templates,
+  as are `prompts/research.md` (plans searches from the brief) and
+  `prompts/refine.md` (proposes brief changes from kept and rejected
+  references).
+- `[research]` in `pack.toml` sets how many comparables, mood searches and
+  asset searches a run asks for, which asset kinds to search, the query that
+  checks a comparable exists, and which brief fields references may refine.
 
 `kickoff_core::pack::ProjectTypePack` is the trait the rest of the code uses,
 and `DataPack` implements it from those files. A pack that needs logic beyond
@@ -119,6 +125,48 @@ data can implement the trait itself. The game pack's manifest is exported to
   revisit request and the turn counter live in `interview_meta`. The
   project's name follows the working title.
 
+## Research
+
+`kickoff_core::research` holds the types and rules; `kickoff_providers` the
+clients; `src-tauri/src/research.rs` storage, thumbnails and commands.
+
+- **Planning.** One small structured call (`research_plan`) turns the brief
+  into comparable games (title, why, what to learn, what to avoid), mood
+  searches and asset searches. "More like this" uses the same call with the
+  chosen reference as a seed and asks for half as many, in its category only.
+- **Searching.** Searches run three at a time. Comparables are checked with a
+  web search: verified only if a result's title contains the game's title.
+  Mood references come from web and image search. Assets come from the
+  sites' own APIs (Poly Haven, Sketchfab) and, for link-only sites (Kenney,
+  OpenGameArt, itch.io), from web search restricted to the site and filtered
+  by URL prefix.
+- **Without a search key.** Comparables are kept as `llm_knowledge`,
+  unverified, with no link; mood references and link-only sites are skipped.
+  The research screen says so and links to the Key Library.
+- **Failures** never fail a run. A rejected key or used-up allowance disables
+  that service for the rest of the run, a short rate limit is waited out once
+  (shown as "… is rate limited, retrying in Ns"), and each problem becomes one
+  warning.
+- **Licenses** are classified in code (`LicensePolicy`), never by the model:
+  comparables and mood references are always `reference_only`; an asset is
+  `usable` only with a license on the allowlist in `data/asset-sources.toml`
+  (from the site's own policy, like Poly Haven's CC0, or stated per item, like
+  Sketchfab's), and then gets a ready-made credit line. Non-commercial,
+  no-derivatives and editorial licenses are `reference_only`; anything else
+  is `unknown`.
+- **De-duplication.** Comparables by title, everything else by normalized
+  URL, against both the run and what the project already has.
+- **Storage.** `refs` and `reactions` (migration 001). The latest reaction
+  wins; undo deletes the reference's reactions. Searches are counted in the
+  usage meter (one credit or request each).
+- **Thumbnails** are fetched by the backend (public `https` addresses only,
+  images up to 3 MB, no SVG), cached in `cache/thumbnails/`, and sent to the
+  UI as `data:` URLs, which the CSP allows.
+- **Refining the brief.** A structured call proposes whole new values for the
+  pack's `refine_fields` from what was kept and rejected. Proposals that don't
+  fit the field or don't change it are dropped. The user applies each one as
+  an ordinary brief edit.
+
 ## Voice
 
 Voice is optional: with it off, the interview is text only and no audio
@@ -147,9 +195,11 @@ device is touched.
 - **Usage.** Fish Audio text is metered in UTF-8 bytes per day in
   `usage_daily`; the monthly total is checked against the user's budget with
   warnings at 80% and 95%. Groq Whisper usage is recorded in audio seconds.
-- **Windows build.** `.cargo/config.toml` builds with `+crt-static`, so
-  whisper.cpp links the C++ runtime statically and the installed app doesn't
-  depend on the Visual C++ redistributable.
+- **Windows build.** `.cargo/config.toml` builds with `+crt-static` and tells
+  whisper.cpp's CMake build to use the static runtime too, so the installed
+  app doesn't depend on the Visual C++ redistributable. `src-tauri/build.rs`
+  embeds the app manifest (Common Controls v6) into every target, test
+  binaries included.
 
 ## Data
 
@@ -163,8 +213,9 @@ device is touched.
 - **Errors.** Commands return `Result<T, CommandError>`, where `CommandError` is `{ code, message }`.
 - **Shared types.** Request and response types derive `ts_rs::TS`. `cargo test` regenerates `src/bindings/*.ts`, and CI fails if the committed bindings are stale.
 - **Streaming.** Interview turns take a Tauri `Channel<InterviewEvent>` and stream `delta`, `brief_updated`, `producer_done`, `producer_failed` and `extraction_failed` events. The command still returns the full updated view at the end.
+- **Research.** Runs take a `Channel<ResearchProgress>` (`planning`, `searching {done, total}`, `waiting {source, seconds}`) and return what was added plus warnings.
 - **Voice.** Recording streams `RecordingEvent`s (levels, hands-free stop) over a `Channel`; speaking, engine switches and budget warnings arrive as `voice-status` events.
-- **Browser preview.** `src/lib/devMocks.ts` (with `interviewMocks.ts` and `voiceMocks.ts`) serves commands in a plain browser (`npm run dev`) and in Vitest. It is never loaded inside the Tauri app.
+- **Browser preview.** `src/lib/devMocks.ts` (with `interviewMocks.ts`, `researchMocks.ts` and `voiceMocks.ts`) serves commands in a plain browser (`npm run dev`) and in Vitest. It is never loaded inside the Tauri app.
 
 ## Frontend
 

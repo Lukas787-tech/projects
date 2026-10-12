@@ -5,6 +5,7 @@
 pub mod ai;
 pub mod interview;
 pub mod keys;
+pub mod research;
 pub mod voice;
 
 use kickoff_core::{AppInfo, AppSettings};

@@ -7,6 +7,7 @@ use ts_rs::TS;
 use crate::ai::AiError;
 use crate::interview::InterviewServiceError;
 use crate::keys::KeyError;
+use crate::research::ResearchServiceError;
 use crate::voice::VoiceServiceError;
 
 #[derive(Debug, Clone, Copy, Serialize, TS)]
@@ -89,6 +90,26 @@ impl From<InterviewServiceError> for CommandError {
 }
 
 pub type CmdResult<T> = Result<T, CommandError>;
+
+impl From<ResearchServiceError> for CommandError {
+    fn from(e: ResearchServiceError) -> Self {
+        use kickoff_core::research::pipeline::ResearchError;
+        match e {
+            ResearchServiceError::Store(s) => s.into(),
+            ResearchServiceError::Ai(a) => a.into(),
+            ResearchServiceError::NotFound => Self::new(ErrorCode::NotFound, e),
+            ResearchServiceError::Busy | ResearchServiceError::Research(ResearchError::NothingToRefine) => {
+                Self::new(ErrorCode::Invalid, e)
+            }
+            ResearchServiceError::NoAi | ResearchServiceError::Research(ResearchError::Model(_)) => {
+                Self::new(ErrorCode::Provider, e)
+            }
+            ResearchServiceError::UnknownPack(_)
+            | ResearchServiceError::Corrupt(_)
+            | ResearchServiceError::Research(ResearchError::Pack(_)) => Self::new(ErrorCode::Internal, e),
+        }
+    }
+}
 
 impl From<VoiceServiceError> for CommandError {
     fn from(e: VoiceServiceError) -> Self {

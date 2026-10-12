@@ -4,6 +4,7 @@ import { Layout } from "../components/Layout";
 import { InterviewPage } from "../pages/InterviewPage";
 import { KeysPage } from "../pages/KeysPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
+import { ResearchPage } from "../pages/ResearchPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { SetupWizard } from "../pages/SetupWizard";
 
@@ -15,6 +16,7 @@ const routes: RouteObject[] = [
     children: [
       { index: true, element: <ProjectsPage /> },
       { path: "project/:projectId", element: <InterviewPage /> },
+      { path: "project/:projectId/research", element: <ResearchPage /> },
       { path: "keys", element: <KeysPage /> },
       { path: "settings", element: <SettingsPage /> },
     ],

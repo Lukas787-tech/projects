@@ -175,7 +175,7 @@ describe("producer interview", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /continue to research/i }));
     await userEvent.click(await screen.findByRole("button", { name: /continue anyway/i }));
-    expect(await screen.findByText("Interview finished")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Untitled idea: research" })).toBeInTheDocument();
   });
 
   it("moves on straight away once the brief is complete", async () => {
@@ -183,7 +183,12 @@ describe("producer interview", () => {
     expect(await screen.findByText(/complete enough to start building/i)).toBeInTheDocument();
     expect(screen.getByText("14 of 14 settled")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /continue to research/i }));
-    expect(await screen.findByText("Interview finished")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /: research$/ })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // The interview stays reachable, and links back to research.
+    await userEvent.click(screen.getByRole("link", { name: "Back to the interview" }));
+    await userEvent.click(await screen.findByRole("link", { name: /^research$/i }));
+    expect(await screen.findByRole("heading", { name: /: research$/ })).toBeInTheDocument();
   });
 });

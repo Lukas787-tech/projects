@@ -3,12 +3,13 @@
 use std::sync::Arc;
 
 use kickoff_platform::{AppPaths, MemorySecretStore, OsSecretStore, SecretStore};
-use kickoff_providers::Presets;
+use kickoff_providers::{Presets, SourceCatalog};
 use kickoff_store::Database;
 
 use crate::ai::{AiService, AppObserver};
 use crate::interview::InterviewService;
 use crate::keys::KeyLibrary;
+use crate::research::{HttpThumbnails, KeyedSearch, ResearchService};
 use crate::voice::VoiceService;
 
 pub struct AppState {
@@ -19,6 +20,7 @@ pub struct AppState {
     pub ai: Arc<AiService>,
     pub observer: Arc<AppObserver>,
     pub interview: Arc<InterviewService>,
+    pub research: Arc<ResearchService>,
     pub voice: Arc<VoiceService>,
     /// `None` when the OS credential store works; otherwise why it doesn't.
     pub secret_store_problem: Option<String>,
@@ -45,9 +47,19 @@ impl AppState {
         let ai = Arc::new(AiService::new(db.clone(), presets.clone(), keys.clone(), observer.clone()));
 
         let interview = Arc::new(InterviewService::new(db.clone(), ai.clone()));
+        let catalog = Arc::new(SourceCatalog::bundled().expect("the bundled asset catalog is validated by tests"));
+        let research = Arc::new(ResearchService::new(
+            db.clone(),
+            ai.clone(),
+            Arc::new(KeyedSearch::new(presets.clone(), keys.clone(), db.clone())),
+            catalog.clone(),
+            catalog.build(),
+            Arc::new(HttpThumbnails::default()),
+            paths.cache_dir.join("thumbnails"),
+        ));
         let voice = Arc::new(VoiceService::new(db.clone(), presets.clone(), keys.clone(), &paths.models_dir));
 
-        Ok(Self { paths, db, presets, keys, ai, observer, interview, voice, secret_store_problem })
+        Ok(Self { paths, db, presets, keys, ai, observer, interview, research, voice, secret_store_problem })
     }
 }
 

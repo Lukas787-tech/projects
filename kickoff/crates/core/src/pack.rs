@@ -86,6 +86,24 @@ impl FieldDef {
     }
 }
 
+/// How research works for this project type.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ResearchConfig {
+    /// Comparable products the model suggests per run.
+    pub comparables: u32,
+    /// Web searches for mood and style references per run.
+    pub visual_queries: u32,
+    /// Asset searches per run.
+    pub asset_queries: u32,
+    /// Asset kinds worth searching for (matched against asset sources).
+    pub asset_kinds: Vec<String>,
+    /// Web query that checks a comparable exists; `{title}` is replaced.
+    pub comparable_query: String,
+    /// Brief fields references can refine.
+    pub refine_fields: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct PackManifest {
@@ -96,6 +114,7 @@ pub struct PackManifest {
     pub confidence_threshold: f32,
     pub variants: Vec<Variant>,
     pub fields: Vec<FieldDef>,
+    pub research: ResearchConfig,
 }
 
 impl PackManifest {
@@ -116,14 +135,26 @@ pub trait ProjectTypePack: Send + Sync {
     fn manifest(&self) -> &PackManifest;
     fn producer_template(&self) -> &str;
     fn extractor_template(&self) -> &str;
+    /// Plans research queries from the brief.
+    fn research_template(&self) -> &str;
+    /// Proposes brief changes from the references the user kept and rejected.
+    fn refine_template(&self) -> &str;
 }
 
 /// A pack defined entirely by files.
 #[derive(Debug, Clone)]
 pub struct DataPack {
     manifest: PackManifest,
-    producer: String,
-    extractor: String,
+    prompts: Prompts,
+}
+
+/// A pack's prompt templates, by file.
+#[derive(Debug, Clone, Default)]
+pub struct Prompts {
+    pub producer: String,
+    pub extractor: String,
+    pub research: String,
+    pub refine: String,
 }
 
 impl ProjectTypePack for DataPack {
@@ -131,25 +162,31 @@ impl ProjectTypePack for DataPack {
         &self.manifest
     }
     fn producer_template(&self) -> &str {
-        &self.producer
+        &self.prompts.producer
     }
     fn extractor_template(&self) -> &str {
-        &self.extractor
+        &self.prompts.extractor
+    }
+    fn research_template(&self) -> &str {
+        &self.prompts.research
+    }
+    fn refine_template(&self) -> &str {
+        &self.prompts.refine
     }
 }
 
 impl DataPack {
     /// Build a pack from its files' contents.
-    pub fn from_sources(manifest_toml: &str, producer: &str, extractor: &str) -> Result<Self, PackError> {
+    pub fn from_sources(manifest_toml: &str, prompts: Prompts) -> Result<Self, PackError> {
         let manifest: PackManifest =
             toml::from_str(manifest_toml).map_err(|e| PackError::Invalid("?".into(), e.to_string()))?;
         validate(&manifest)?;
-        let pack = Self { manifest, producer: producer.to_owned(), extractor: extractor.to_owned() };
         // Fail early on template syntax errors.
         let env = minijinja::Environment::new();
-        env.template_from_str(&pack.producer)?;
-        env.template_from_str(&pack.extractor)?;
-        Ok(pack)
+        for template in [&prompts.producer, &prompts.extractor, &prompts.research, &prompts.refine] {
+            env.template_from_str(template)?;
+        }
+        Ok(Self { manifest, prompts })
     }
 
     fn from_dir(dir: &Dir<'_>) -> Result<Self, PackError> {
@@ -159,10 +196,15 @@ impl DataPack {
                 .and_then(|f| f.contents_utf8())
                 .ok_or_else(|| PackError::Missing(name.clone(), what))
         };
+        let prompt = |name: &'static str| file(name, name).map(str::to_owned);
         Self::from_sources(
             file("pack.toml", "pack.toml")?,
-            file("prompts/producer.md", "prompts/producer.md")?,
-            file("prompts/extractor.md", "prompts/extractor.md")?,
+            Prompts {
+                producer: prompt("prompts/producer.md")?,
+                extractor: prompt("prompts/extractor.md")?,
+                research: prompt("prompts/research.md")?,
+                refine: prompt("prompts/refine.md")?,
+            },
         )
     }
 }
@@ -194,6 +236,19 @@ fn validate(m: &PackManifest) -> Result<(), PackError> {
     }
     if !m.fields.iter().any(|f| f.required) {
         return Err(invalid("at least one field must be required".into()));
+    }
+    let r = &m.research;
+    if !r.comparable_query.contains("{title}") {
+        return Err(invalid("research.comparable_query must contain {title}".into()));
+    }
+    // Proposals carry whole values, so only plain text and list fields qualify.
+    let refinable =
+        |id: &String| m.field(id).is_some_and(|f| matches!(f.kind, FieldKind::Text | FieldKind::List { .. }));
+    if let Some(f) = r.refine_fields.iter().find(|f| !refinable(f)) {
+        return Err(invalid(format!("research.refine_fields: `{f}` is not a text or list field")));
+    }
+    if r.asset_kinds.iter().any(|k| !valid_id(k)) {
+        return Err(invalid("research.asset_kinds must be lowercase ids".into()));
     }
     Ok(())
 }
@@ -276,24 +331,37 @@ mod tests {
 
     #[test]
     fn rejects_bad_manifests() {
-        let bad = r#"
-            id = "x"
-            name = "X"
-            version = "1"
-            brief_schema = "x/1"
-            confidence_threshold = 0.7
-            variants = []
-            [[fields]]
-            id = "a"
-            label = "A"
-            kind = "list"
-            required = true
-            priority = 1
-            min_items = 5
-            max_items = 2
-        "#;
-        assert!(matches!(DataPack::from_sources(bad, "", ""), Err(PackError::Invalid(..))));
-        assert!(DataPack::from_sources("not toml", "", "").is_err());
+        let manifest = |min_items: u32, refine: &str| {
+            format!(
+                r#"
+                id = "x"
+                name = "X"
+                version = "1"
+                brief_schema = "x/1"
+                confidence_threshold = 0.7
+                variants = []
+                [[fields]]
+                id = "a"
+                label = "A"
+                kind = "list"
+                required = true
+                priority = 1
+                min_items = {min_items}
+                max_items = 2
+                [research]
+                comparables = 3
+                visual_queries = 2
+                asset_queries = 2
+                asset_kinds = ["texture"]
+                comparable_query = "{{title}} game"
+                refine_fields = ["{refine}"]
+                "#
+            )
+        };
+        assert!(DataPack::from_sources(&manifest(1, "a"), Prompts::default()).is_ok());
+        for bad in [manifest(5, "a"), manifest(1, "nope"), "not toml".into()] {
+            assert!(matches!(DataPack::from_sources(&bad, Prompts::default()), Err(PackError::Invalid(..))), "{bad}");
+        }
     }
 
     #[test]

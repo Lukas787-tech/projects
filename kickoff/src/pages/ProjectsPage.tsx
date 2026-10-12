@@ -99,7 +99,7 @@ function ProjectRow({ card }: { card: ProjectCard }) {
   const { project } = card;
   return (
     <li className="flex items-center gap-4 rounded-lg border border-line bg-surface px-4 py-3 hover:border-accent">
-      <Link to={`/project/${project.id}`} className="min-w-0 flex-1">
+      <Link to={project.stage === "interview" ? `/project/${project.id}` : `/project/${project.id}/research`} className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate font-medium">{project.name}</span>
           <Badge>{STAGE[project.stage]}</Badge>

@@ -7,6 +7,7 @@ mod error;
 mod interview;
 mod keys;
 mod logging;
+mod research;
 mod state;
 mod voice;
 
@@ -73,6 +74,12 @@ pub fn run() {
             commands::interview::edit_brief_field,
             commands::interview::revisit_field,
             commands::interview::finish_interview,
+            commands::research::get_research,
+            commands::research::run_research,
+            commands::research::more_like_this,
+            commands::research::react_to_reference,
+            commands::research::reference_thumbnail,
+            commands::research::refine_brief_from_references,
             commands::voice::get_voice_overview,
             commands::voice::save_voice_settings,
             commands::voice::download_whisper_model,

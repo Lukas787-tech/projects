@@ -10,6 +10,7 @@ pub mod keys;
 pub mod llm;
 pub mod pack;
 pub mod redact;
+pub mod research;
 pub mod secret;
 pub mod settings;
 #[cfg(any(test, feature = "testing"))]

@@ -86,22 +86,29 @@ Because no numeric free cap is published, usage is metered in UTF-8 bytes agains
 
 | Provider | Access | Details | Confidence |
 |---|---|---|---|
-| **Tavily** (default) | **1,000 credits/month, no card** | `POST https://api.tavily.com/search`, `Authorization: Bearer`. Basic search = 1 credit, advanced = 2. Kickoff uses basic. | high (API, from official SDK), medium (quota) |
-| **Brave Search** | **$5 monthly credit (~1,000 searches), card required, attribution required** | `GET https://api.search.brave.com/res/v1/web/search`, header `X-Subscription-Token`. The old 2,000-query free plan no longer exists, and overages are billed. | medium |
+| **Tavily** (default) | **1,000 credits/month, no card** | `POST https://api.tavily.com/search`, `Authorization: Bearer`, JSON `{query, search_depth: "basic", max_results (0–20), include_domains, include_images}`. Response `results[] {title, url, content}` and, with images, `images[]` (URLs, or `{url, description}`). Errors: 401 bad key, 429 rate limit, 432 plan limit, 433 pay-as-you-go limit. Basic search = 1 credit. | high (API, from the official SDK), medium (quota) |
+| **Brave Search** | **$5 monthly credit (~1,000 searches), card required, attribution required** | `GET https://api.search.brave.com/res/v1/web/search?q=&count=` (1–20), header `X-Subscription-Token`. Response `web.results[] {title, url, description, thumbnail.src}`. Image search: `GET /res/v1/images/search`, `results[] {title, url (the page), thumbnail.src}`. Site limits go in `q` as `site:` operators. `X-RateLimit-Reset` gives seconds per window. The old 2,000-query free plan no longer exists, and overages are billed. | high (API, from the official MCP server), medium (pricing) |
 
-Without any search key, research still runs. It uses the asset APIs below and the model's own knowledge of comparable games, and every such record is stored with `origin = llm_knowledge` and labeled **Unverified** in the UI.
+Kickoff uses the first search service with a key in the Key Library, Tavily
+first. Each search counts one unit in the usage meter.
+
+Without any search key, research still runs. It uses the asset APIs below and the model's own knowledge of comparable games, and every such record is stored with `origin = llm_knowledge` and labeled **Unverified** in the UI. Mood references and link-only sites need search and are skipped.
 
 ## Asset and reference sources
 
 | Source | Access | License handling | Confidence |
 |---|---|---|---|
-| **Poly Haven** | API, no key | All assets CC0. Every call needs a **unique User-Agent** naming the app (ToS 2.4). Content shown from the live API needs a visible **"Powered by Poly Haven"** credit (ToS 2.5). `GET /search?q=&t=` (ranked slugs), `GET /assets?t=` (metadata + `thumbnail_url`), `GET /info/{id}`. `429` carries `Retry-After`. | high (from the official `Poly-Haven/Public-API` repo, swagger + ToS) |
-| **Sketchfab** | API (public search) | `GET https://api.sketchfab.com/v3/search?type=models&downloadable=true&q=`. Each result carries its own license, classified with the allowlist. Downloads require the user's OAuth login (later milestone). | medium |
-| **Kenney** | Link-only (site search) | Kenney's asset pages state CC0, recorded as a source-wide policy with its URL. | medium |
-| **OpenGameArt** | Link-only (site search) | Licenses vary per entry (CC0, CC-BY, CC-BY-SA, GPL, OGA-BY), so results stay `unknown` until verified. | medium |
-| **itch.io** | Link-only (site search) | Licenses are set per creator, so results are always `unknown` until you verify them. | medium |
+| **Poly Haven** | API, no key | All assets CC0. Every call needs a **unique User-Agent** naming the app (ToS 2.4); Kickoff sends `Kickoff/<version> (+repo URL)`. Content shown from the live API needs a visible **"Powered by Poly Haven"** credit (ToS 2.5), shown on every Poly Haven card. `GET /search?q=&t=hdris\|textures\|models\|all&limit=` returns `{total, results: [{slug, score}]}`, best first; `GET /info/{slug}` returns `name`, `type` (0 HDRI, 1 texture, 2 model), `authors {name: role}`, `tags`, `thumbnail_url`. Item page `https://polyhaven.com/a/{slug}`. `429` carries `Retry-After`. | high (from the official `Poly-Haven/Public-API` repo: routes, swagger, ToS) |
+| **Sketchfab** | API (public search, no key) | `GET https://api.sketchfab.com/v3/search?type=models&downloadable=true&q=` returns `results[] {uid, name, viewerUrl, user {displayName, username}, license {label}, thumbnails {images [{url, width}]}, tags [{name}]}`. Labels map to the allowlist: "CC0 Public Domain" → CC0-1.0, "CC Attribution" → CC-BY-4.0, "CC Attribution-ShareAlike" → CC-BY-SA-4.0. NonCommercial and NoDerivs variants and "Editorial" are reference-only; "Standard" is unknown. Downloads require the user's OAuth login (later milestone). | medium (search shape from Sketchfab's official Blender plugin; the CC version behind each label is assumed to be 4.0) |
+| **Kenney** | Link-only (site search, `kenney.nl/assets/…` only) | Kenney's asset pages state CC0, recorded as a source-wide policy with its URL. | medium |
+| **OpenGameArt** | Link-only (site search, `opengameart.org/content/…` only) | Licenses vary per entry (CC0, CC-BY, CC-BY-SA, GPL, OGA-BY), so results stay `unknown` until verified. | medium |
+| **itch.io** | Link-only (site search for "free game assets") | Licenses are set per creator, so results are always `unknown` until you verify them. | medium |
 
-License classification is deterministic. A result is `usable` only when the source supplies a license on the allowlist in `asset-sources.toml` together with a license URL. Everything else is `unknown` and treated as reference-only. The LLM never assigns or upgrades a license.
+The live APIs couldn't be called from the build environment (its network
+proxy blocks them), so the shapes above come from each service's own code;
+the M4 smoke test checks them against the real services.
+
+License classification is deterministic. A result is `usable` only when the source supplies a license on the allowlist in `asset-sources.toml` (by SPDX id, license URL or exact name). Restrictive wording (non-commercial, no derivatives, editorial, personal use, all rights reserved) makes it `reference_only`; everything else is `unknown` and treated as reference-only. The LLM never assigns or upgrades a license.
 
 ## Claude Code facts used by the starter kit
 

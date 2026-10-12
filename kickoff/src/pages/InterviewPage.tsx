@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
 import { ArrowLeft, ArrowRight, RotateCcw, Send, Square, Volume2, VolumeX } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Link, useLocation, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 
 import type { InterviewEvent } from "../bindings/InterviewEvent";
 import type { InterviewView } from "../bindings/InterviewView";
@@ -198,6 +198,7 @@ export function InterviewPage() {
 function Header({ view, onFinished, voice }: { view: InterviewView; onFinished: (v: InterviewView) => void; voice?: VoiceOverview }) {
   const [confirm, setConfirm] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const navigate = useNavigate();
   const { completeness, project } = view;
   const required = view.pack.fields.filter((f) => f.required).length;
   const settled = Math.round(completeness.ratio * required);
@@ -208,6 +209,7 @@ function Header({ view, onFinished, voice }: { view: InterviewView; onFinished: 
     try {
       onFinished(await ipc.finishInterview(project.id));
       setConfirm(false);
+      void navigate(`/project/${project.id}/research`);
     } finally {
       setFinishing(false);
     }
@@ -235,7 +237,12 @@ function Header({ view, onFinished, voice }: { view: InterviewView; onFinished: 
           Continue to research <ArrowRight size={16} />
         </Button>
       ) : (
-        <span className="text-sm text-muted">Interview finished</span>
+        <Link
+          to={`/project/${project.id}/research`}
+          className="inline-flex items-center gap-2 rounded-md border border-line bg-surface-2 px-3 py-1.5 text-sm font-medium hover:border-accent"
+        >
+          Research <ArrowRight size={16} />
+        </Link>
       )}
       <Dialog
         open={confirm}
