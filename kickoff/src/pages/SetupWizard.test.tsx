@@ -7,6 +7,7 @@ import { App } from "../app/App";
 import type { AiSettings } from "../bindings/AiSettings";
 import type { AppSettings } from "../bindings/AppSettings";
 import type { KeyEntry } from "../bindings/KeyEntry";
+import type { VoiceOverview } from "../bindings/VoiceOverview";
 import { CAPABLE_OLLAMA, installDevMocks, MOCK_BAD_KEY } from "../lib/devMocks";
 
 async function reachChooseStep() {
@@ -28,6 +29,12 @@ describe("setup wizard", () => {
     expect(await screen.findByText(/google may use prompts/i)).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText(/paste the key here/i), "AIza-test-key-123");
     await userEvent.click(screen.getByRole("button", { name: /test and save key/i }));
+
+    // Optional voice step: download local speech recognition, then go on.
+    expect(await screen.findByRole("heading", { name: /talk instead of typing/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /download/i }));
+    expect(await screen.findByText("Ready")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /^continue$/i }));
 
     expect(await screen.findByRole("heading", { name: /you're ready/i })).toBeInTheDocument();
     const keys = await invoke<KeyEntry[]>("list_keys");
@@ -52,7 +59,10 @@ describe("setup wizard", () => {
     await userEvent.click(screen.getByRole("button", { name: /continue/i }));
     await userEvent.click(await screen.findByRole("button", { name: /test ollama/i }));
 
+    // Choosing to type turns voice off.
+    await userEvent.click(await screen.findByRole("button", { name: /skip, i'll type/i }));
     expect(await screen.findByRole("heading", { name: /you're ready/i })).toBeInTheDocument();
+    expect((await invoke<VoiceOverview>("get_voice_overview")).settings.enabled).toBe(false);
     expect(await invoke<KeyEntry[]>("list_keys")).toHaveLength(0);
     const ai = await invoke<AiSettings>("get_ai_settings");
     expect(ai.fallback_chain[0]?.provider_id).toBe("ollama");

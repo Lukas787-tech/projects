@@ -8,6 +8,7 @@ import type { Theme } from "../bindings/Theme";
 import { useAppInfo, useSaveSettings, useSettings, useSystemStatus } from "../app/queries";
 import { Button, Card, Notice, Page, PageHeader } from "../components/ui";
 import { AiSettingsSection } from "./AiSettings";
+import { VoiceSettingsSection } from "./VoiceSettings";
 import { errorMessage } from "../lib/ipc";
 
 const themes: { value: Theme; label: string }[] = [
@@ -71,6 +72,7 @@ export function SettingsPage() {
         </Card>
 
         <AiSettingsSection />
+        <VoiceSettingsSection />
         <ProjectsFolderCard settings={settings} onPick={pickProjectsDir} error={pickError} />
         <AboutCard />
       </div>

@@ -463,12 +463,9 @@ impl TextToSpeech for Piper {
                     Ok(n) => {
                         odd.extend_from_slice(&buf[..n]);
                         let even = odd.len() - odd.len() % 2;
-                        let samples: Vec<f32> = odd
-                            .drain(..even)
-                            .collect::<Vec<_>>()
-                            .chunks_exact(2)
-                            .map(|b| i16_to_f32(i16::from_le_bytes([b[0], b[1]])))
-                            .collect();
+                        let pcm: Vec<u8> = odd.drain(..even).collect();
+                        let samples: Vec<f32> =
+                            pcm.as_chunks::<2>().0.iter().map(|b| i16_to_f32(i16::from_le_bytes(*b))).collect();
                         if let Some(clip) = chunker.push(AudioClip::new(samples, rate)) {
                             return Some((Ok(clip), (child, out, odd, chunker, false)));
                         }

@@ -22,7 +22,7 @@ pub struct InputDevice {
 }
 
 fn unavailable(e: impl std::fmt::Display) -> VoiceError {
-    VoiceError::Unavailable(format!("microphone: {e}"))
+    VoiceError::Unavailable(format!("Couldn't use the microphone ({e})."))
 }
 
 /// Microphones on this computer, default first.
@@ -45,7 +45,7 @@ pub fn input_devices() -> Result<Vec<InputDevice>, VoiceError> {
 fn find_device(id: Option<&str>) -> Result<cpal::Device, VoiceError> {
     let host = cpal::default_host();
     let chosen = id.and_then(|id| id.parse().ok()).and_then(|id| host.device_by_id(&id));
-    chosen.or_else(|| host.default_input_device()).ok_or_else(|| unavailable("no microphone found"))
+    chosen.or_else(|| host.default_input_device()).ok_or_else(|| VoiceError::Unavailable("No microphone found.".into()))
 }
 
 /// A recording in progress. Dropping it discards the audio.
@@ -173,7 +173,7 @@ mod tests {
                 let clip = rec.finish().unwrap();
                 assert_eq!(clip.sample_rate, SPEECH_RATE);
             }
-            Err(VoiceError::Unavailable(message)) => assert!(message.starts_with("microphone"), "{message}"),
+            Err(VoiceError::Unavailable(message)) => assert!(message.contains("microphone"), "{message}"),
             Err(e) => panic!("unexpected error: {e}"),
         }
     }

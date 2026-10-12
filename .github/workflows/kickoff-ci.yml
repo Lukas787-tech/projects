@@ -104,7 +104,7 @@ jobs:
 
       # Includes a real Windows Credential Manager round trip, Windows voices
       # and local Whisper built with MSVC.
-      - run: cargo test --workspace
+      - run: cargo test --workspace --no-fail-fast
 
       - name: Build debug installer
         run: npx tauri build --debug --bundles nsis

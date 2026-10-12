@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AiSettings } from "../bindings/AiSettings";
 import type { AppSettings } from "../bindings/AppSettings";
 import type { NewKeyInput } from "../bindings/NewKeyInput";
+import type { VoiceSettings } from "../bindings/VoiceSettings";
 import { ipc } from "../lib/ipc";
 
 export const queryKeys = {
@@ -17,6 +18,9 @@ export const queryKeys = {
   usage: ["usage-today"] as const,
   projects: ["projects"] as const,
   interview: (projectId: string) => ["interview", projectId] as const,
+  voice: ["voice"] as const,
+  piperVoices: ["piper-voices"] as const,
+  systemVoices: ["system-voices"] as const,
 };
 
 export function useAppInfo() {
@@ -133,4 +137,24 @@ export function useDeleteProject() {
 
 export function useInterview(projectId: string) {
   return useQuery({ queryKey: queryKeys.interview(projectId), queryFn: () => ipc.getInterview(projectId) });
+}
+
+export function useVoiceOverview() {
+  return useQuery({ queryKey: queryKeys.voice, queryFn: ipc.getVoiceOverview });
+}
+
+export function useSaveVoiceSettings() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (settings: VoiceSettings) => ipc.saveVoiceSettings(settings),
+    onSuccess: (overview) => client.setQueryData(queryKeys.voice, overview),
+  });
+}
+
+export function usePiperVoices(enabled: boolean) {
+  return useQuery({ queryKey: queryKeys.piperVoices, queryFn: ipc.listPiperVoices, enabled });
+}
+
+export function useSystemVoices(enabled: boolean) {
+  return useQuery({ queryKey: queryKeys.systemVoices, queryFn: ipc.listSystemVoices, enabled, retry: false });
 }

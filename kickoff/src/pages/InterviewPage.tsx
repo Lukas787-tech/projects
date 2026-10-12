@@ -1,14 +1,18 @@
 // The producer interview: conversation on the left, the live brief on the right.
 import { useQueryClient } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
-import { ArrowLeft, ArrowRight, RotateCcw, Send } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, RotateCcw, Send, Square, Volume2, VolumeX } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
 
 import type { InterviewEvent } from "../bindings/InterviewEvent";
 import type { InterviewView } from "../bindings/InterviewView";
-import { queryKeys, useInterview } from "../app/queries";
+import type { Transcript } from "../bindings/Transcript";
+import type { VoiceOverview } from "../bindings/VoiceOverview";
+import { queryKeys, useInterview, useSaveVoiceSettings, useVoiceOverview } from "../app/queries";
 import { BriefPanel } from "../components/BriefPanel";
+import { MicButton, useRecorder } from "../components/VoiceInput";
+import { useSpeaking } from "../components/VoiceNotices";
 import { Button, Dialog, Notice, Progress, Spinner } from "../components/ui";
 import { errorMessage, ipc } from "../lib/ipc";
 
@@ -27,13 +31,51 @@ export function InterviewPage() {
   const [turn, setTurn] = useState<Turn | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
   const startedIdea = useRef(false);
   const busy = turn !== null;
+  const { data: voice } = useVoiceOverview();
+  const voiceOn = voice?.settings.enabled ?? false;
+  const speaking = useSpeaking();
+
+  const onTranscript = (t: Transcript) => {
+    const text = t.text.trim();
+    if (!text) setVoiceError("I didn't catch anything. Try again, a little closer to the microphone.");
+    else if (voice?.settings.review_transcript) setDraft(text);
+    else void run(text, "voice");
+  };
+  const recorder = useRecorder({ onTranscript, onError: setVoiceError });
+
+  // Hold F2 to talk; Esc cancels a recording or interrupts the producer.
+  const keys = useRef({ recorder, voiceOn, busy, handsFree: false });
+  keys.current = { recorder, voiceOn, busy, handsFree: voice?.settings.hands_free ?? false };
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      const k = keys.current;
+      if (e.key === "F2" && !e.repeat && k.voiceOn && !k.busy) {
+        e.preventDefault();
+        void k.recorder.start();
+      } else if (e.key === "Escape") {
+        if (k.recorder.isActive()) void k.recorder.cancel();
+        else void ipc.stopSpeaking();
+      }
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === "F2" && !keys.current.handsFree) void keys.current.recorder.stop();
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
 
   const setView = (v: InterviewView) => client.setQueryData(queryKeys.interview(projectId), v);
 
   /** Run a turn (or a retry) and stream its events into the screen. */
-  async function run(text: string | null) {
+  async function run(text: string | null, mode: "text" | "voice" = "text") {
     setError(null);
     setNotice(null);
     setTurn({ pending: text, streamed: "" });
@@ -59,7 +101,7 @@ export function InterviewPage() {
       }
     };
     try {
-      setView(text === null ? await ipc.continueInterview(projectId, channel) : await ipc.sendMessage(projectId, text, "text", channel));
+      setView(text === null ? await ipc.continueInterview(projectId, channel) : await ipc.sendMessage(projectId, text, mode, channel));
       void client.invalidateQueries({ queryKey: queryKeys.projects });
     } catch (e) {
       setError(errorMessage(e));
@@ -90,7 +132,7 @@ export function InterviewPage() {
   return (
     <div className="flex h-full">
       <section className="flex min-w-0 flex-1 flex-col" aria-label="Interview">
-        <Header view={view} onFinished={setView} />
+        <Header view={view} onFinished={setView} voice={voice} />
         <Conversation view={view} turn={turn} />
         <div className="border-t border-line px-6 py-3">
           {error && (
@@ -123,7 +165,29 @@ export function InterviewPage() {
               <Notice tone="warning">{notice}</Notice>
             </div>
           )}
-          <Composer disabled={busy} onSend={(text) => void run(text)} empty={view.messages.length === 0} />
+          {voiceError && (
+            <div className="mb-3">
+              <Notice tone="warning">{voiceError}</Notice>
+            </div>
+          )}
+          {speaking && (
+            <div className="mx-auto mb-3 flex max-w-2xl items-center justify-between gap-2 rounded-md bg-accent/10 px-3 py-2 text-sm" role="status">
+              <span className="inline-flex items-center gap-2">
+                <Volume2 size={16} className="text-accent-strong" aria-hidden /> The producer is speaking.
+              </span>
+              <Button variant="ghost" onClick={() => void ipc.stopSpeaking()}>
+                <Square size={12} /> Stop (Esc)
+              </Button>
+            </div>
+          )}
+          <Composer
+            value={draft}
+            onChange={setDraft}
+            disabled={busy}
+            onSend={(text) => void run(text)}
+            empty={view.messages.length === 0}
+            mic={voiceOn ? <MicButton recorder={recorder} handsFree={voice?.settings.hands_free ?? false} disabled={busy} /> : null}
+          />
         </div>
       </section>
       <BriefPanel view={view} onChange={setView} />
@@ -131,7 +195,7 @@ export function InterviewPage() {
   );
 }
 
-function Header({ view, onFinished }: { view: InterviewView; onFinished: (v: InterviewView) => void }) {
+function Header({ view, onFinished, voice }: { view: InterviewView; onFinished: (v: InterviewView) => void; voice?: VoiceOverview }) {
   const [confirm, setConfirm] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const { completeness, project } = view;
@@ -165,6 +229,7 @@ function Header({ view, onFinished }: { view: InterviewView; onFinished: (v: Int
           </span>
         </div>
       </div>
+      {voice?.settings.enabled && <MuteToggle voice={voice} />}
       {project.stage === "interview" ? (
         <Button variant={completeness.complete ? "primary" : "secondary"} onClick={() => (completeness.complete ? void finish() : setConfirm(true))} busy={finishing}>
           Continue to research <ArrowRight size={16} />
@@ -238,21 +303,53 @@ function Bubble({ who, text, streaming = false }: { who: "user" | "producer"; te
   );
 }
 
-function Composer({ disabled, onSend, empty }: { disabled: boolean; onSend: (text: string) => void; empty: boolean }) {
-  const [text, setText] = useState("");
+function MuteToggle({ voice }: { voice: VoiceOverview }) {
+  const save = useSaveVoiceSettings();
+  const on = voice.settings.speak_replies;
+  return (
+    <Button
+      variant="ghost"
+      aria-label="Read replies aloud"
+      aria-pressed={on}
+      title={on ? "Replies are read aloud" : "Replies are text only"}
+      onClick={() => {
+        if (on) void ipc.stopSpeaking();
+        save.mutate({ ...voice.settings, speak_replies: !on });
+      }}
+    >
+      {on ? <Volume2 size={18} /> : <VolumeX size={18} />}
+    </Button>
+  );
+}
+
+function Composer({
+  value,
+  onChange,
+  disabled,
+  onSend,
+  empty,
+  mic,
+}: {
+  value: string;
+  onChange: (text: string) => void;
+  disabled: boolean;
+  onSend: (text: string) => void;
+  empty: boolean;
+  mic: ReactNode;
+}) {
   const send = () => {
-    const value = text.trim();
-    if (!value || disabled) return;
-    setText("");
-    onSend(value);
+    const text = value.trim();
+    if (!text || disabled) return;
+    onChange("");
+    onSend(text);
   };
   return (
     <div className="mx-auto flex max-w-2xl items-end gap-2">
       <textarea
         aria-label="Your answer"
         rows={2}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -262,7 +359,8 @@ function Composer({ disabled, onSend, empty }: { disabled: boolean; onSend: (tex
         placeholder={empty ? "Describe your game in one sentence…" : "Answer the producer… (Enter to send, Shift+Enter for a new line)"}
         className="min-h-[2.75rem] flex-1 resize-none rounded-md border border-line bg-surface-2 px-3 py-2 text-sm placeholder:text-muted focus:border-accent focus:outline-none"
       />
-      <Button variant="primary" onClick={send} disabled={disabled || !text.trim()} aria-label="Send">
+      {mic}
+      <Button variant="primary" onClick={send} disabled={disabled || !value.trim()} aria-label="Send">
         <Send size={16} />
       </Button>
     </div>

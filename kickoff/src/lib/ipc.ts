@@ -7,6 +7,9 @@ import type { AiSettings } from "../bindings/AiSettings";
 import type { AppInfo } from "../bindings/AppInfo";
 import type { AppSettings } from "../bindings/AppSettings";
 import type { CommandError } from "../bindings/CommandError";
+import type { DownloadProgress } from "../bindings/DownloadProgress";
+import type { FishCheckResult } from "../bindings/FishCheckResult";
+import type { FishVoicePage } from "../bindings/FishVoicePage";
 import type { InterviewEvent } from "../bindings/InterviewEvent";
 import type { InterviewView } from "../bindings/InterviewView";
 import type { KeyEntry } from "../bindings/KeyEntry";
@@ -14,14 +17,21 @@ import type { KeyMeta } from "../bindings/KeyMeta";
 import type { ModelInfo } from "../bindings/ModelInfo";
 import type { NewKeyInput } from "../bindings/NewKeyInput";
 import type { OllamaInfo } from "../bindings/OllamaInfo";
+import type { PiperVoiceView } from "../bindings/PiperVoiceView";
 import type { PresetCatalog } from "../bindings/PresetCatalog";
 import type { Project } from "../bindings/Project";
 import type { ProjectCard } from "../bindings/ProjectCard";
 import type { ProviderTest } from "../bindings/ProviderTest";
+import type { RecordingEvent } from "../bindings/RecordingEvent";
 import type { SystemStatus } from "../bindings/SystemStatus";
+import type { SystemVoiceView } from "../bindings/SystemVoiceView";
 import type { Task } from "../bindings/Task";
 import type { TaskCheck } from "../bindings/TaskCheck";
+import type { Transcript } from "../bindings/Transcript";
 import type { UsageSummary } from "../bindings/UsageSummary";
+import type { VoiceOverview } from "../bindings/VoiceOverview";
+import type { VoiceRef } from "../bindings/VoiceRef";
+import type { VoiceSettings } from "../bindings/VoiceSettings";
 
 export const ipc = {
   appInfo: () => invoke<AppInfo>("app_info"),
@@ -59,7 +69,28 @@ export const ipc = {
     invoke<InterviewView>("edit_brief_field", { project_id, field, value }),
   revisitField: (project_id: string, field: string) => invoke<InterviewView>("revisit_field", { project_id, field }),
   finishInterview: (project_id: string) => invoke<InterviewView>("finish_interview", { project_id }),
+
+  getVoiceOverview: () => invoke<VoiceOverview>("get_voice_overview"),
+  saveVoiceSettings: (settings: VoiceSettings) => invoke<VoiceOverview>("save_voice_settings", { settings }),
+  downloadWhisperModel: (name: string, on_progress: Channel<DownloadProgress>) =>
+    invoke<VoiceOverview>("download_whisper_model", { name, on_progress }),
+  deleteWhisperModel: (name: string) => invoke<VoiceOverview>("delete_whisper_model", { name }),
+  installPiper: (on_progress: Channel<DownloadProgress>) => invoke<VoiceOverview>("install_piper", { on_progress }),
+  listPiperVoices: () => invoke<PiperVoiceView[]>("list_piper_voices"),
+  downloadPiperVoice: (key: string, on_progress: Channel<DownloadProgress>) =>
+    invoke<VoiceOverview>("download_piper_voice", { key, on_progress }),
+  listSystemVoices: () => invoke<SystemVoiceView[]>("list_system_voices"),
+  checkFishAudio: () => invoke<FishCheckResult>("check_fish_audio"),
+  searchFishVoices: (query: string | null, page: number) => invoke<FishVoicePage>("search_fish_voices", { query, page }),
+  previewVoice: (engine: string, voice: VoiceRef | null) => invoke<null>("preview_voice", { engine, voice }),
+  startRecording: (on_event: Channel<RecordingEvent>) => invoke<null>("start_recording", { on_event }),
+  stopRecording: () => invoke<Transcript>("stop_recording"),
+  cancelRecording: () => invoke<null>("cancel_recording"),
+  stopSpeaking: () => invoke<null>("stop_speaking"),
 };
+
+/** Event name for voice activity (speaking, engine switches, budget). */
+export const VOICE_STATUS_EVENT = "voice-status";
 
 /** Event name for router activity (rate limits, fallbacks). */
 export const AI_STATUS_EVENT = "ai-status";

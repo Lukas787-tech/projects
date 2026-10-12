@@ -76,8 +76,8 @@ impl StreamDecoder {
         }
         let raw: Vec<u8> = self.buf.drain(..usable).collect();
         let interleaved: Vec<f32> = match (format.bits, format.float) {
-            (16, false) => raw.chunks_exact(2).map(|b| i16_to_f32(i16::from_le_bytes([b[0], b[1]]))).collect(),
-            (32, true) => raw.chunks_exact(4).map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]])).collect(),
+            (16, false) => raw.as_chunks::<2>().0.iter().map(|b| i16_to_f32(i16::from_le_bytes(*b))).collect(),
+            (32, true) => raw.as_chunks::<4>().0.iter().map(|b| f32::from_le_bytes(*b)).collect(),
             (8, false) => raw.iter().map(|&b| (f32::from(b) - 128.0) / 128.0).collect(),
             (bits, float) => {
                 return Err(VoiceError::Invalid(format!(

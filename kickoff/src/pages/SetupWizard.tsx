@@ -1,7 +1,7 @@
 // First-run setup: get the user to a working, free AI setup in about two
 // minutes. Detects Ollama, otherwise recommends a free cloud provider, links
 // to its key page, tests the key, and stores it in the key library.
-import { CheckCircle2, Cpu, ExternalLink, Sparkles, XCircle } from "lucide-react";
+import { CheckCircle2, Cpu, Download, ExternalLink, Mic, Play, Sparkles, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -17,14 +17,17 @@ import {
   useReplaceKeySecret,
   useSaveAiSettings,
   useSaveSettings,
+  useSaveVoiceSettings,
   useSettings,
+  useVoiceOverview,
 } from "../app/queries";
-import { Badge, Button, Field, Notice, Spinner, TextInput } from "../components/ui";
+import { Badge, Button, Field, Notice, Progress, Spinner, TextInput } from "../components/ui";
 import { openExternal } from "../lib/external";
 import { errorMessage, ipc } from "../lib/ipc";
 import { accessLabel, shortName } from "../lib/providers";
+import { useDownload } from "./VoiceSettings";
 
-type Step = "welcome" | "choose" | "connect" | "done";
+type Step = "welcome" | "choose" | "connect" | "voice" | "done";
 
 /** One line on why you'd pick each free provider. */
 const PITCH: Record<string, string> = {
@@ -93,10 +96,12 @@ export function SetupWizard() {
             onBack={() => setStep("choose")}
             onConnected={(r) => {
               setResult(r);
-              setStep("done");
+              setStep("voice");
             }}
           />
         )}
+
+        {step === "voice" && <VoiceStep onDone={() => setStep("done")} />}
 
         {step === "done" && result && (
           <section>
@@ -124,7 +129,7 @@ export function SetupWizard() {
 }
 
 function StepDots({ step }: { step: Step }) {
-  const steps: Step[] = ["welcome", "choose", "connect", "done"];
+  const steps: Step[] = ["welcome", "choose", "connect", "voice", "done"];
   const index = steps.indexOf(step);
   return (
     <ol className="ml-auto flex gap-1.5" aria-label={`Step ${index + 1} of ${steps.length}`}>
@@ -395,6 +400,102 @@ function ConnectStep({
         )}
         <Button variant="ghost" onClick={onBack}>
           Back
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+/** Optional: download local speech recognition and hear the producer's voice. */
+function VoiceStep({ onDone }: { onDone: () => void }) {
+  const { data: voice } = useVoiceOverview();
+  const save = useSaveVoiceSettings();
+  const download = useDownload();
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  if (!voice) return <Spinner label="Checking your microphone…" />;
+  const model = voice.whisper_models.find((m) => m.name === voice.settings.whisper_model);
+  const output = voice.engines.find((e) => e.ready);
+
+  return (
+    <section>
+      <div className="flex items-center gap-3">
+        <Mic className="text-accent-strong" size={26} aria-hidden />
+        <h1 className="text-2xl font-semibold">Talk instead of typing?</h1>
+      </div>
+      <p className="mt-3 text-muted">
+        The interview works best as a conversation. Speech recognition runs on this PC, so your voice never leaves it. This step is
+        optional; you can always type.
+      </p>
+      <div className="mt-6 flex flex-col gap-4">
+        <div className="rounded-lg border border-line p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="font-medium">Speech recognition</div>
+              <div className="text-sm text-muted">Whisper {model?.name} · {model?.size_mb} MB download</div>
+            </div>
+            {model?.installed ? (
+              <Badge tone="success">Ready</Badge>
+            ) : (
+              <Button
+                variant="primary"
+                disabled={download.busy || !voice.local_whisper_available}
+                onClick={() => void download.run((ch) => ipc.downloadWhisperModel(voice.settings.whisper_model, ch))}
+              >
+                <Download size={14} /> Download
+              </Button>
+            )}
+          </div>
+          {download.busy && (
+            <div className="mt-3">
+              <Progress value={download.progress ?? 0} label="Downloading speech recognition" />
+            </div>
+          )}
+          {download.error && (
+            <div className="mt-3">
+              <Notice tone="danger">{download.error}</Notice>
+            </div>
+          )}
+          {voice.microphone_problem && <p className="mt-2 text-sm text-warning">{voice.microphone_problem}</p>}
+        </div>
+        <div className="rounded-lg border border-line p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="font-medium">The producer's voice</div>
+              <div className="text-sm text-muted">
+                {output ? `${output.name} is ready.` : "No voice is ready yet."} Fish Audio and Piper voices sound more natural; set them up
+                later in Settings → Voice.
+              </div>
+            </div>
+            {output && (
+              <Button
+                onClick={async () => {
+                  setPreviewError(null);
+                  try {
+                    await ipc.previewVoice(output.id, null);
+                  } catch (e) {
+                    setPreviewError(errorMessage(e));
+                  }
+                }}
+              >
+                <Play size={14} /> Listen
+              </Button>
+            )}
+          </div>
+          {previewError && <p className="mt-2 text-sm text-danger">{previewError}</p>}
+        </div>
+      </div>
+      <div className="mt-8 flex gap-3">
+        <Button variant="primary" disabled={download.busy} onClick={onDone}>
+          Continue
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={async () => {
+            await save.mutateAsync({ ...voice.settings, enabled: false });
+            onDone();
+          }}
+        >
+          Skip, I'll type
         </Button>
       </div>
     </section>

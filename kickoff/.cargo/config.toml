@@ -1,3 +1,10 @@
 [env]
 # ts-rs writes the TypeScript bindings for IPC types here when `cargo test` runs.
 TS_RS_EXPORT_DIR = { value = "src/bindings", relative = true }
+
+# Windows: link the C and C++ runtimes statically. Rust and every C/C++
+# dependency (whisper.cpp included) then build with /MT, so the app doesn't
+# depend on whichever msvcp140.dll is installed. Tauri's build script keeps
+# the Universal CRT dynamic, which ships with Windows 10 and 11.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

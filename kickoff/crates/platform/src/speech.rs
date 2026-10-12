@@ -14,11 +14,11 @@ pub struct SystemVoice {
 
 #[derive(Debug, thiserror::Error)]
 pub enum SpeechError {
-    #[error("system voices are not available on this platform")]
+    #[error("System voices are only available on Windows.")]
     Unsupported,
-    #[error("no system voice is installed")]
+    #[error("No system voice is installed.")]
     NoVoices,
-    #[error("the system voice failed: {0}")]
+    #[error("The system voice failed: {0}")]
     Failed(String),
 }
 

@@ -5,6 +5,7 @@ import { NavLink, Outlet, useNavigate } from "react-router";
 
 import { useAppInfo, useSettings } from "../app/queries";
 import { AiStatusToasts } from "./AiStatusToasts";
+import { VoiceToasts } from "./VoiceNotices";
 
 const nav: { to: string; label: string; icon: ComponentType<{ size?: number }> }[] = [
   { to: "/", label: "Projects", icon: FolderKanban },
@@ -53,6 +54,7 @@ export function Layout() {
         <Outlet />
       </main>
       <AiStatusToasts />
+      <VoiceToasts />
     </div>
   );
 }

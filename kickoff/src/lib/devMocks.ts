@@ -16,6 +16,7 @@ import type { SystemStatus } from "../bindings/SystemStatus";
 import type { TaskCheck } from "../bindings/TaskCheck";
 import type { UsageSummary } from "../bindings/UsageSummary";
 import { interviewHandlers, type InterviewMockOptions } from "./interviewMocks";
+import { voiceHandlers, type VoiceMockOptions } from "./voiceMocks";
 
 export const MOCK_APP_INFO: AppInfo = { name: "Kickoff", id: "dev.kickoff.studio", version: "0.0.0-dev" };
 export const PRESETS = presetCatalog as PresetCatalog;
@@ -23,7 +24,7 @@ export const PRESETS = presetCatalog as PresetCatalog;
 /** A key typed as this value fails its test, for exercising error paths. */
 export const MOCK_BAD_KEY = "bad-key-0000";
 
-export interface MockOptions extends InterviewMockOptions {
+export interface MockOptions extends InterviewMockOptions, VoiceMockOptions {
   settings?: Partial<AppSettings>;
   ollama?: OllamaInfo;
   keys?: KeyEntry[];
@@ -50,7 +51,11 @@ export function installDevMocks(options: MockOptions = {}) {
     kit: null,
   };
   const ollama = options.ollama ?? NO_OLLAMA;
-  const interview: Record<string, (a: Record<string, unknown>) => unknown> = interviewHandlers(options);
+  const hasKey = (provider: string) => keys.some((k) => k.provider_id === provider && k.stored);
+  const extra: Record<string, (a: Record<string, unknown>) => unknown> = {
+    ...interviewHandlers(options),
+    ...voiceHandlers(hasKey, options),
+  };
   let nextId = 1;
 
   const status: SystemStatus = {
@@ -169,7 +174,7 @@ export function installDevMocks(options: MockOptions = {}) {
         return result;
       }
       default:
-        if (cmd in interview) return interview[cmd]!(a);
+        if (cmd in extra) return extra[cmd]!(a);
         throw { code: "internal", message: `No mock for command "${cmd}"` };
     }
   });

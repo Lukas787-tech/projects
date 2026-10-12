@@ -191,3 +191,46 @@ export function Spinner({ label }: { label?: string }) {
     </span>
   );
 }
+
+/** An on/off setting. The label names the setting; the switch shows its state. */
+export function Switch({
+  label,
+  description,
+  checked,
+  onChange,
+  disabled = false,
+}: {
+  label: string;
+  description?: ReactNode;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+}) {
+  const id = useId();
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0">
+        <label htmlFor={id} className="text-sm font-medium">
+          {label}
+        </label>
+        {description && <div className="mt-0.5 text-xs text-muted">{description}</div>}
+      </div>
+      <button
+        id={id}
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+          checked ? "bg-accent" : "bg-line"
+        }`}
+      >
+        <span
+          aria-hidden
+          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-4" : ""}`}
+        />
+      </button>
+    </div>
+  );
+}

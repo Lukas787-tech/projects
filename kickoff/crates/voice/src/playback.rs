@@ -31,7 +31,8 @@ impl Speakers {
                 let mut sink = match rodio::DeviceSinkBuilder::open_default_sink() {
                     Ok(sink) => sink,
                     Err(e) => {
-                        let _ = ready_tx.send(Err(VoiceError::Unavailable(format!("speakers: {e}"))));
+                        let _ =
+                            ready_tx.send(Err(VoiceError::Unavailable(format!("Couldn't open the speakers ({e})."))));
                         return;
                     }
                 };
@@ -55,8 +56,8 @@ impl Speakers {
                     playing_tx.send_if_modified(|p| std::mem::replace(p, now) != now);
                 }
             })
-            .map_err(|e| VoiceError::Unavailable(format!("speakers: {e}")))?;
-        ready_rx.recv().map_err(|e| VoiceError::Unavailable(format!("speakers: {e}")))??;
+            .map_err(|e| VoiceError::Unavailable(format!("Couldn't open the speakers ({e}).")))?;
+        ready_rx.recv().map_err(|e| VoiceError::Unavailable(format!("Couldn't open the speakers ({e}).")))??;
         Ok(Self { commands: tx, playing: playing_rx })
     }
 
@@ -90,7 +91,7 @@ mod tests {
                 speakers.stop();
                 let _ = playing.borrow_and_update();
             }
-            Err(VoiceError::Unavailable(m)) => assert!(m.starts_with("speakers"), "{m}"),
+            Err(VoiceError::Unavailable(m)) => assert!(m.contains("speakers"), "{m}"),
             Err(e) => panic!("{e}"),
         }
     }
