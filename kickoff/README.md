@@ -28,7 +28,8 @@ Prerequisites (Windows 11):
 - [Rust](https://rustup.rs) (stable, 1.90+) with the MSVC toolchain
 - [Node.js](https://nodejs.org) 22+
 - WebView2 (already included in Windows 11)
-- For local Whisper (from M3): LLVM/Clang and CMake
+- For local Whisper (on by default): LLVM/Clang and CMake. Build with
+  `--no-default-features` to leave it out (Groq Whisper still works).
 
 ```powershell
 cd kickoff

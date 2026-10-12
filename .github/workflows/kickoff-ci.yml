@@ -89,6 +89,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: kickoff -> target
+          # Bumped when C/C++ build settings change: whisper-rs-sys doesn't
+          # rebuild whisper.cpp for them, so old objects would be reused.
+          prefix-key: v1-rust-static-crt
 
       - run: npm ci
 

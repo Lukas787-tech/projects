@@ -26,7 +26,8 @@ secret and has no network, filesystem or shell access of its own.
 | `crates/core` | Branding, `Secret`, redaction, settings, the LLM router and structured output, project type packs, the brief model and the interview. Later: research and kit logic. | Use Tauri, OS APIs, or concrete providers (traits only) |
 | `crates/providers` | Provider presets (`data/providers.toml`) and, from M1, the LLM, search, voice and asset clients. | Store anything; it gets keys passed in as `Secret` |
 | `crates/store` | SQLite schema, migrations and repositories | Store raw secrets |
-| `crates/platform` | Data paths, Windows Credential Manager, system voices, process launch | Contain domain logic |
+| `crates/voice` | Microphone capture and speaker playback, resampling and WAV, verified downloads, speech engines: local Whisper (`local-whisper` feature), Groq Whisper, Fish Audio, Piper | Decide policy (fallback, barge-in); that's `kickoff_core::voice` |
+| `crates/platform` | Data paths, Windows Credential Manager, Windows voices (WinRT), background processes | Contain domain logic |
 | `src-tauri` | Wiring: state, commands, logging, Tauri config | Contain domain logic |
 
 Rule of thumb: only `crates/platform` may contain `cfg(windows)`.
@@ -118,6 +119,38 @@ data can implement the trait itself. The game pack's manifest is exported to
   revisit request and the turn counter live in `interview_meta`. The
   project's name follows the working title.
 
+## Voice
+
+Voice is optional: with it off, the interview is text only and no audio
+device is touched.
+
+- **Listening.** `kickoff_voice::capture::Recording` records on its own thread
+  (audio streams can't move between threads everywhere), reports loudness
+  every 50 ms for the meter, and returns 16 kHz mono audio through a
+  band-limited resampler. Push-to-talk is the default: click the microphone
+  or hold F2. In hands-free mode `kickoff_core::voice::SilenceDetector`
+  learns the room's noise floor and stops once the user has spoken and then
+  paused.
+- **Transcription.** `SpeechToText` is implemented by local whisper.cpp
+  (`whisper-rs`, models downloaded on demand and checked against SHA-1) and
+  Groq's hosted Whisper. Very short or silent clips never reach Whisper,
+  which otherwise invents a sentence for silence.
+- **Speaking.** Producer text streams into a `SentenceSplitter`; each
+  sentence goes to the `Narrator`, which tries the user's engines in order
+  (Fish Audio, then Piper, then Windows voices by default). An engine that
+  fails is skipped for the rest of the reply and rested for a while (an hour
+  for a rejected key or empty quota, five minutes otherwise), and the UI gets
+  a toast. Synthesis runs ahead of playback, so the next sentence is ready
+  while the current one plays.
+- **Barge-in.** Starting to record, pressing Esc or clicking Stop cancels the
+  narration and empties the playback queue at once.
+- **Usage.** Fish Audio text is metered in UTF-8 bytes per day in
+  `usage_daily`; the monthly total is checked against the user's budget with
+  warnings at 80% and 95%. Groq Whisper usage is recorded in audio seconds.
+- **Windows build.** `.cargo/config.toml` builds with `+crt-static`, so
+  whisper.cpp links the C++ runtime statically and the installed app doesn't
+  depend on the Visual C++ redistributable.
+
 ## Data
 
 - **App data folder:** `%APPDATA%\<APP_ID>` contains `<APP_ID>.sqlite3` (WAL), `logs/` (daily rolling, 7 kept), `models/` (Whisper and Piper downloads) and `cache/` (thumbnails).
@@ -130,7 +163,8 @@ data can implement the trait itself. The game pack's manifest is exported to
 - **Errors.** Commands return `Result<T, CommandError>`, where `CommandError` is `{ code, message }`.
 - **Shared types.** Request and response types derive `ts_rs::TS`. `cargo test` regenerates `src/bindings/*.ts`, and CI fails if the committed bindings are stale.
 - **Streaming.** Interview turns take a Tauri `Channel<InterviewEvent>` and stream `delta`, `brief_updated`, `producer_done`, `producer_failed` and `extraction_failed` events. The command still returns the full updated view at the end.
-- **Browser preview.** `src/lib/devMocks.ts` (with `interviewMocks.ts`) serves commands in a plain browser (`npm run dev`) and in Vitest. It is never loaded inside the Tauri app.
+- **Voice.** Recording streams `RecordingEvent`s (levels, hands-free stop) over a `Channel`; speaking, engine switches and budget warnings arrive as `voice-status` events.
+- **Browser preview.** `src/lib/devMocks.ts` (with `interviewMocks.ts` and `voiceMocks.ts`) serves commands in a plain browser (`npm run dev`) and in Vitest. It is never loaded inside the Tauri app.
 
 ## Frontend
 

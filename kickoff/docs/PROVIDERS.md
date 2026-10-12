@@ -67,8 +67,8 @@ What changed and how Kickoff handles it:
 
 | Engine | Access | Details | Confidence |
 |---|---|---|---|
-| **Fish Audio** | Uncertain free access (see below) | Base `https://api.fish.audio`, `Authorization: Bearer`. `POST /v1/tts` (msgpack body, model in `model` header). **Streaming:** WebSocket `wss://api.fish.audio/v1/tts/live` with msgpack events `start{request}` → `text{text}`… → `flush` → `stop`; server sends `audio{audio}` then `finish{reason}`. Voices: `GET /model?page_size&page_number&title&tag&language&sort_by`. Credits: `GET /wallet/self/api-credit`. Formats: pcm, wav, mp3, opus. | high (API), low (free tier) |
-| **Piper** | Free, offline | MIT-licensed Windows build `piper_windows_amd64.zip` from `rhasspy/piper` release `2023.11.14-2`. CLI: `piper --model <voice>.onnx --output_raw`, text on stdin, 16-bit mono PCM out at the voice's `audio.sample_rate`. Voices from `huggingface.co/rhasspy/piper-voices`, each with its own license. (Active development moved to the GPL-licensed `OHF-Voice/piper1-gpl`; Kickoff uses the MIT build as a separate process.) | high |
+| **Fish Audio** | Uncertain free access (see below) | Base `https://api.fish.audio`, `Authorization: Bearer`. `POST /v1/tts` (msgpack body, model in `model` header). **Streaming:** WebSocket `wss://api.fish.audio/v1/tts/live` with msgpack events `start{request}` → `text{text}`… → `flush` → `stop`; server sends `audio{audio}` then `finish{reason}`. Voices: `GET /model?page_size&page_number&title&tag&language&sort_by`. Credits: `GET /wallet/self/api-credit`. Formats: pcm, wav, mp3, opus. Kickoff sends one `POST /v1/tts` per sentence with `format: "wav"` and plays the streamed response as it arrives; the WAV header carries the sample rate, which the SDK doesn't document for raw PCM. | high (API), low (free tier) |
+| **Piper** | Free, offline | MIT-licensed Windows build `piper_windows_amd64.zip` from `rhasspy/piper` release `2023.11.14-2`. CLI: `piper --model <voice>.onnx --output_raw`, text on stdin, 16-bit mono PCM out at the voice's `audio.sample_rate`. Release asset SHA-256 `f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea` (22,477,236 bytes), measured 2026-10-12 and checked after download. Voices come from `huggingface.co/rhasspy/piper-voices` at revision `v1.0.0`, the revision Piper's own downloader uses; `data/piper-voices.json` is that downloader's `voices.json` catalog, with each file's size and MD5, which are checked. Each voice has its own license (its `MODEL_CARD` is downloaded alongside it). (Active development moved to the GPL-licensed `OHF-Voice/piper1-gpl`; Kickoff uses the MIT build as a separate process.) | high |
 | **Windows voices** | Free, built in | WinRT `Windows.Media.SpeechSynthesis`. Zero download. | high |
 
 **Fish Audio free tier.** The official SDK names the models `s1`, `s2-pro` and `s2.1-pro`. Fish Audio's blog announced a free `s2.1-pro-free` API model under a fair-use policy, with no SLA and requests possibly retained for training. That offer was last reported as extended to **2026-08-31**, and its current status could not be confirmed. Reviews also say the free web plan (about 8,000 credits a month) does **not** include API access.
@@ -76,8 +76,8 @@ What changed and how Kickoff handles it:
 Per the agreed plan, the wizard handles this as follows:
 
 1. Calls `/wallet/self/api-credit`.
-2. Tries a one-word synthesis with `s2.1-pro-free`, then `s2.1-pro`.
-3. Recommends Fish Audio only if one of those succeeds without consuming paid credit you don't have.
+2. Tries a one-word synthesis with the free model (`s2.1-pro-free`). Paid models (`s2.1-pro`, `s1`) are tried only when the account has credit, and the result then says that speech will spend those credits.
+3. Uses Fish Audio only if one of those succeeds.
 4. Otherwise falls back automatically to Piper, then Windows voices, and says why.
 
 Because no numeric free cap is published, usage is metered in UTF-8 bytes against a monthly budget you set yourself, with warnings at 80% and 95%.
