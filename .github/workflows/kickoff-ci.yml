@@ -109,6 +109,14 @@ jobs:
       # and local Whisper built with MSVC.
       - run: cargo test --workspace --no-fail-fast
 
+      # If a test binary won't start, say which imports Windows can't find.
+      - name: Diagnose test binaries that fail to start
+        if: failure()
+        shell: pwsh
+        run: |
+          python -m pip install --quiet pefile
+          python ../.github/scripts/missing_imports.py "target/debug/deps/kickoff_app_lib-*.exe"
+
       - name: Build debug installer
         run: npx tauri build --debug --bundles nsis
 
